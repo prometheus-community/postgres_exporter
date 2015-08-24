@@ -1,0 +1,7 @@
+.build
+mysqld_exporter
+*.tar.gz
+*.test
+*-stamp
+.idea
+*.iml
