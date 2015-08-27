@@ -348,8 +348,9 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	
 				// Get the label values for this row
 				var labels = make([]string, len(mapping.labels))
-				for i, n := range labels {
-					labels[i], _ = dbToString(columnData[columnIdx[n]])
+				for idx, columnName := range mapping.labels {
+
+					labels[idx], _ = dbToString(columnData[columnIdx[columnName]])
 				}
 	
 				// Loop over column names, and match to scan data. Unknown columns
