@@ -11,7 +11,7 @@ import (
 	//"strconv"
 	//"strings"
 	"time"
-	//"math"
+	"math"
 
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
@@ -98,9 +98,9 @@ var metricMaps = map[string]map[string]ColumnMapping {
 		"stats_reset" : { COUNTER, "Time at which these statistics were last reset", nil },
 	},
 	"pg_stat_database" : map[string]ColumnMapping {	
-		"datid" : { COUNTER, "OID of a database", nil }, 
-		"datname" : { COUNTER, "Name of this database", nil }, 
-		"numbackends" : { COUNTER, "Number of backends currently connected to this database. This is the only column in this view that returns a value reflecting current state; all other columns return the accumulated values since the last reset.", nil }, 
+		"datid" : { LABEL, "OID of a database", nil }, 
+		"datname" : { LABEL, "Name of this database", nil }, 
+		"numbackends" : { GAUGE, "Number of backends currently connected to this database. This is the only column in this view that returns a value reflecting current state; all other columns return the accumulated values since the last reset.", nil }, 
 		"xact_commit" : { COUNTER, "Number of transactions in this database that have been committed", nil }, 
 		"xact_rollback" : { COUNTER, "Number of transactions in this database that have been rolled back", nil }, 
 		"blks_read" : { COUNTER, "Number of disk blocks read in this database", nil }, 
@@ -119,8 +119,8 @@ var metricMaps = map[string]map[string]ColumnMapping {
 		"stats_reset" : { COUNTER, "Time at which these statistics were last reset", nil }, 
 	},
 	"pg_stat_database_conflicts" : map[string]ColumnMapping {
-		"datid" : { COUNTER, "OID of a database", nil }, 
-		"datname" : { COUNTER, "Name of this database", nil }, 
+		"datid" : { LABEL, "OID of a database", nil }, 
+		"datname" : { LABEL, "Name of this database", nil }, 
 		"confl_tablespace" : { COUNTER, "Number of queries in this database that have been canceled due to dropped tablespaces", nil }, 
 		"confl_lock" : { COUNTER, "Number of queries in this database that have been canceled due to lock timeouts", nil }, 
 		"confl_snapshot" : { COUNTER, "Number of queries in this database that have been canceled due to old snapshots", nil }, 
@@ -173,6 +173,44 @@ func makeDescMap(metricMaps map[string]map[string]ColumnMapping) map[string]Metr
 	}
 	
 	return metricMap
+}
+
+// Convert database.sql types to float64s for Prometheus consumption. Null types are mapped to NaN. string and []byte
+// types are mapped as NaN and !ok
+func dbToFloat64(t interface{}) (float64, bool) {
+	switch v := t.(type) {
+	case int64:
+		return float64(v), true
+	case float64:
+		return v, true
+	case time.Time:
+		return float64(v.Unix()), true
+	case nil:
+		return math.NaN(), true
+	default:
+		return math.NaN(), false
+	}
+}
+
+// Convert database.sql to string for Prometheus labels. Null types are mapped to empty strings.
+func dbToString(t interface{}) (string, bool) {
+	switch v := t.(type) {
+	case int64:
+		return fmt.Sprintf("%v", v), true
+	case float64:
+		return fmt.Sprintf("%v", v), true
+	case time.Time:
+		return fmt.Sprintf("%v", v.Unix()), true
+	case nil:
+		return "", true
+	case []byte:
+		// Try and convert to string
+		return string(v), true
+	case string:
+		return v, true
+	default:
+		return "", false
+	}
 }
 
 // Exporter collects MySQL metrics. It implements prometheus.Collector.
@@ -270,6 +308,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	defer db.Close()
 
 	for namespace, mapping := range e.metricMap {
+		log.Debugln("Querying namespace: ", namespace)
 		func () {	// Don't fail on a bad scrape of one metric
 			rows, err := db.Query(fmt.Sprintf("SELECT * FROM %s;", namespace))
 			if err != nil {
@@ -293,7 +332,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 				columnIdx[n] = i
 			}
 	
-			var columnData = make([]sql.RawBytes, len(columnNames))
+			var columnData = make([]interface{}, len(columnNames))
 			var scanArgs = make([]interface{}, len(columnNames))
 			for i := range columnData {
 				scanArgs[i] = &columnData[i]
@@ -310,7 +349,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 				// Get the label values for this row
 				var labels = make([]string, len(mapping.labels))
 				for i, n := range labels {
-					labels[i] = string(columnData[columnIdx[n]])
+					labels[i], _ = dbToString(columnData[columnIdx[n]])
 				}
 	
 				// Loop over column names, and match to scan data. Unknown columns
@@ -322,16 +361,13 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 						if metricMapping.discard {
 							continue
 						}
-						
-						var value float64
-						var nf sql.NullFloat64
-						err = nf.Scan(columnData[idx])
-						if err != nil {
+
+						value, ok := dbToFloat64(columnData[idx])
+						if ! ok {
 							e.error.Set(1)
-							log.Errorln("Unexpected error parsing column: ", namespace, columnName, err)
+							log.Errorln("Unexpected error parsing column: ", namespace, columnName, columnData[idx])
 							continue
 						}
-						value = nf.Float64
 						
 						// Generate the metric
 						ch <- prometheus.MustNewConstMetric(metricMapping.desc, metricMapping.vtype, value, labels...)
@@ -341,13 +377,11 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 						
 						// Its not an error to fail here, since the values are
 						// unexpected anyway.
-						var value float64
-						var nf sql.NullFloat64
-						err = nf.Scan(columnData[idx])
-						if err != nil {
-							log.Warnln("Could not parse unknown column to float64: ", namespace, columnName, err)
+						value, ok := dbToFloat64(columnData[idx])
+						if ! ok {
+							log.Warnln("Unparseable column type - discarding: ", namespace, columnName, err)
+							continue
 						}
-						value = nf.Float64
 						
 						ch <- prometheus.MustNewConstMetric(desc, prometheus.UntypedValue, value, labels...)
 					}
