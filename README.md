@@ -22,7 +22,6 @@ web.telemetry-path | Path under which to expose metrics.
 
 The PostgresSQL server's [data source name](http://en.wikipedia.org/wiki/Data_source_name)
 must be set via the `DATA_SOURCE_NAME` environment variable.
-The format of this variable is described at https://github.com/go-sql-driver/mysql#dsn-data-source-name.
 
 ### Adding new metrics
 
