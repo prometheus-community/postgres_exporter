@@ -1,5 +1,5 @@
 .build
-mysqld_exporter
+postgres_exporter
 *.tar.gz
 *.test
 *-stamp
