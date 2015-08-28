@@ -9,7 +9,7 @@ Supported Postgres versions: 9.1 and up.
     export DATA_SOURCE_NAME="postgres://postgres:password@localhost/?sslmode=disable"
     ./postgres_exporter <flags>
 
-See the github.com/lib/pg module for other ways to format the connection string.
+See the [github.com/lib/pq](http://github.com/lib/pq) module for other ways to format the connection string.
 
 ### Flags
 
