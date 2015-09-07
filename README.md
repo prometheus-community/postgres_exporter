@@ -23,6 +23,10 @@ web.telemetry-path | Path under which to expose metrics.
 The PostgresSQL server's [data source name](http://en.wikipedia.org/wiki/Data_source_name)
 must be set via the `DATA_SOURCE_NAME` environment variable.
 
+For running it locally on a default Debian/Ubuntu install, this will work (transpose to init script as appropriate):
+
+    sudo -u postgres DATA_SOURCE_NAME="user=postgres host=/var/run/postgresql/ sslmode=disable" postgres_exporter
+
 ### Adding new metrics
 
 The exporter will attempt to dynamically export additional metrics if they are added in the
