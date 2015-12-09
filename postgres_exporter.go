@@ -16,6 +16,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/log"
+	"strconv"
 )
 
 var (
@@ -56,9 +57,11 @@ const (
 	COUNTER ColumnUsage = iota	// Use this column as a counter
 	GAUGE ColumnUsage = iota	// Use this column as a gauge
 	MAPPEDMETRIC ColumnUsage = iota	// Use this column with the supplied mapping of text values
+	DURATION ColumnUsage = iota	// This column should be interpreted as a text duration (and converted to milliseconds)
 )
 
-
+// Which metric mapping should be acquired using "SHOW" queries
+const SHOW_METRIC = "pg_runtime_variables"
 
 // User-friendly representation of a prometheus descriptor map
 type ColumnMapping struct {
@@ -79,10 +82,27 @@ type MetricMap struct {
 	discard bool				// Should metric be discarded during mapping?
 	vtype prometheus.ValueType	// Prometheus valuetype
 	desc  *prometheus.Desc		// Prometheus descriptor
-	mapping map[string]float64 // If not nil, maps text values to float64s
+	conversion func(interface{}) (float64, bool)	// Conversion function to turn PG result into float64
 }
 
 // Metric descriptors for dynamically created metrics.
+var variableMaps = map[string]map[string]ColumnMapping{
+	"pg_runtime_variable" : map[string]ColumnMapping {
+		"max_connections" : {GAUGE, "Sets the maximum number of concurrent connections." , nil},
+		"max_files_per_process" : {GAUGE, "Sets the maximum number of simultaneously open files for each server process.", nil },
+		"max_function_args" : {GAUGE, "Shows the maximum number of function arguments.", nil },
+		"max_identifier_length" : {GAUGE, "Shows the maximum identifier length.", nil },
+		"max_index_keys" : {GAUGE, "Shows the maximum number of index keys.", nil },
+		"max_locks_per_transaction" : {GAUGE, "Sets the maximum number of locks per transaction.", nil },
+		"max_pred_locks_per_transaction" : {GAUGE, "Sets the maximum number of predicate locks per transaction.", nil },
+		"max_prepared_transactions" : {GAUGE, "Sets the maximum number of simultaneously prepared transactions.", nil },
+		//"max_stack_depth" : { GAUGE, "Sets the maximum number of concurrent connections.", nil }, // No dehumanize support yet
+		"max_standby_archive_delay" : {DURATION, "Sets the maximum delay before canceling queries when a hot standby server is processing archived WAL data.", nil },
+		"max_standby_streaming_delay" : {DURATION, "Sets the maximum delay before canceling queries when a hot standby server is processing streamed WAL data.", nil },
+		"max_wal_senders" : {GAUGE, "Sets the maximum number of simultaneously running WAL sender processes.", nil },
+	},
+}
+
 var metricMaps = map[string]map[string]ColumnMapping {
 	"pg_stat_bgwriter" : map[string]ColumnMapping {
 		"checkpoints_timed" : { COUNTER, "Number of scheduled checkpoints that have been performed", nil }, 
@@ -149,22 +169,66 @@ func makeDescMap(metricMaps map[string]map[string]ColumnMapping) map[string]Metr
 				case DISCARD, LABEL:
 					thisMap[columnName] = MetricMap{
 						discard : true,
+						conversion: func(in interface{}) (float64, bool) {
+							return math.NaN(), true
+						},
 					}
 				case COUNTER:
 					thisMap[columnName] = MetricMap{
 						vtype : prometheus.CounterValue,
 						desc : prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, constLabels, nil),
+						conversion: func(in interface{}) (float64, bool) {
+							return dbToFloat64(in)
+						},
 					}
 				case GAUGE:
 					thisMap[columnName] = MetricMap{
 						vtype : prometheus.GaugeValue,
 						desc : prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, constLabels, nil),
+						conversion: func(in interface{}) (float64, bool) {
+							return dbToFloat64(in)
+						},
 					}
 				case MAPPEDMETRIC:
 					thisMap[columnName] = MetricMap{
 						vtype : prometheus.GaugeValue,
 						desc : prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, constLabels, nil),
-						mapping: columnMapping.mapping,
+						conversion: func(in interface{}) (float64, bool) {
+							text, ok := in.(string)
+							if !ok {
+								return math.NaN(), false
+							}
+
+							val, ok := columnMapping.mapping[text]
+							if !ok {
+								return math.NaN(), false
+							}
+							return val, true
+						},
+					}
+				case DURATION:
+					thisMap[columnName] = MetricMap{
+						vtype : prometheus.GaugeValue,
+						desc : prometheus.NewDesc(fmt.Sprintf("%s_%s_milliseconds", namespace, columnName), columnMapping.description, constLabels, nil),
+						conversion: func(in interface{}) (float64, bool) {
+							var durationString string
+							switch t := in.(type) {
+							case []byte:
+								durationString = string(t)
+							case string:
+								durationString = t
+							default:
+								log.Errorln("DURATION conversion metric was not a string")
+								return math.NaN(), false
+							}
+
+							d, err := time.ParseDuration(durationString)
+							if err != nil {
+								log.Errorln("Failed converting result to metric:", columnName, in, err)
+								return math.NaN(), false
+							}
+							return float64(d / time.Millisecond), true
+						},
 					}
 			}
 		}
@@ -185,6 +249,14 @@ func dbToFloat64(t interface{}) (float64, bool) {
 		return v, true
 	case time.Time:
 		return float64(v.Unix()), true
+	case []byte:
+		// Try and convert to string and then parse to a float64
+		strV := string(v)
+		result, err := strconv.ParseFloat(strV, 64)
+		if err != nil {
+			return math.NaN(), false
+		}
+		return result, true
 	case nil:
 		return math.NaN(), true
 	default:
@@ -213,11 +285,12 @@ func dbToString(t interface{}) (string, bool) {
 	}
 }
 
-// Exporter collects MySQL metrics. It implements prometheus.Collector.
+// Exporter collects Postgres metrics. It implements prometheus.Collector.
 type Exporter struct {
 	dsn             string
 	duration, error prometheus.Gauge
 	totalScrapes    prometheus.Counter
+	variableMap		map[string]MetricMapNamespace
 	metricMap		map[string]MetricMapNamespace
 }
 
@@ -243,6 +316,7 @@ func NewExporter(dsn string) *Exporter {
 			Name:      "last_scrape_error",
 			Help:      "Whether the last scrape of metrics from PostgreSQL resulted in an error (1 for error, 0 for success).",
 		}),
+		variableMap : makeDescMap(variableMaps),
 		metricMap : makeDescMap(metricMaps),
 	}
 }
@@ -306,6 +380,35 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 		return
 	}
 	defer db.Close()
+
+	log.Debugln("Querying SHOW variables")
+	for _, mapping := range e.variableMap {
+		for columnName, columnMapping := range mapping.columnMappings {
+			// Check for a discard request on this value
+			if columnMapping.discard {
+				continue
+			}
+
+			// Use SHOW to get the value
+			row := db.QueryRow(fmt.Sprintf("SHOW %s;", columnName))
+
+			var val interface{};
+			err := row.Scan(&val)
+			if err != nil {
+				log.Errorln("Error scanning runtime variable:", columnName, err)
+				continue
+			}
+
+			fval, ok := columnMapping.conversion(val)
+			if ! ok {
+				e.error.Set(1)
+				log.Errorln("Unexpected error parsing column: ", namespace, columnName, val)
+				continue
+			}
+
+			ch <- prometheus.MustNewConstMetric(columnMapping.desc, columnMapping.vtype, fval)
+		}
+	}
 
 	for namespace, mapping := range e.metricMap {
 		log.Debugln("Querying namespace: ", namespace)
