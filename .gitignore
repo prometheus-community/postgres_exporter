@@ -1,5 +1,4 @@
 .build
-postgres_exporter
 *.tar.gz
 *.test
 *-stamp

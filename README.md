@@ -9,6 +9,8 @@ Supported Postgres versions: 9.1 and up.
     export DATA_SOURCE_NAME="postgres://postgres:password@localhost/?sslmode=disable"
     ./postgres_exporter <flags>
 
+Or without make on a mac: `bash -c 'GO_ENABLED=0 GOOS=linux go build .' ` 
+
 See the [github.com/lib/pq](http://github.com/lib/pq) module for other ways to format the connection string.
 
 ### Flags

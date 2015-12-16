@@ -154,7 +154,7 @@ var metricMaps = map[NamespaceAndQuery]map[string]ColumnMapping{
 	{"pg_stat_activity", "SELECT state, count(*) as count, max(EXTRACT(EPOCH FROM now() - xact_start))::float as max_tx_duration, (SELECT setting FROM pg_settings WHERE name = 'max_connections')::float as max_connections FROM pg_stat_activity GROUP BY state"}: map[string]ColumnMapping{
 		"state":           {LABEL, "connection state", nil},
 		"count":           {GAUGE, "number of connections in this state", nil},
-		"max_tx_duration": {GAUGE, "max duration any active transaction has been running", nil},
+		"max_tx_duration": {GAUGE, "max duration in seconds any active transaction has been running", nil},
 		"max_connections": {GAUGE, "maximum number of connections that the db is configured with", nil},
 	},
 }
