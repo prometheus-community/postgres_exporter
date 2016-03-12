@@ -3,13 +3,29 @@
 Prometheus exporter for PostgresSQL server metrics.
 Supported Postgres versions: 9.1 and up.
 
+## Quick Start
+This package is available for Docker:
+```
+docker run -e DATA_SOURCE_NAME="login:password@(hostname:port)/dbname" -p 9113:9113 wrouesnel/postgres_exporter
+```
+
 ## Building and running
+The default make file behavior is to build the binary:
+```
+make
+export DATA_SOURCE_NAME="login:password@(hostname:port)/dbname"
+./postgres_exporter <flags>
+```
 
-    make
-    export DATA_SOURCE_NAME="postgres://postgres:password@localhost/?sslmode=disable"
-    ./postgres_exporter <flags>
+To build the dockerfile, run `make docker`. 
 
-See the [github.com/lib/pq](http://github.com/lib/pq) module for other ways to format the connection string.
+This will build the docker image as `wrouesnel/postgres_exporter:latest`. This 
+is a minimal docker image containing *just* postgres_exporter. By default no SSL 
+certificates are included, if you need to use SSL you should either bind-mount 
+`/etc/ssl/certs/ca-certificates.crt` or derive a new image containing them.
+
+### Vendoring
+Package vendoring is handled with [`govendor`](https://github.com/kardianos/govendor)
 
 ### Flags
 
@@ -26,6 +42,8 @@ must be set via the `DATA_SOURCE_NAME` environment variable.
 For running it locally on a default Debian/Ubuntu install, this will work (transpose to init script as appropriate):
 
     sudo -u postgres DATA_SOURCE_NAME="user=postgres host=/var/run/postgresql/ sslmode=disable" postgres_exporter
+
+See the [github.com/lib/pq](http://github.com/lib/pq) module for other ways to format the connection string.
 
 ### Adding new metrics
 
