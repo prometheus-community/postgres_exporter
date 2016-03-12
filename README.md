@@ -3,11 +3,29 @@
 Prometheus exporter for PostgresSQL server metrics.
 Supported Postgres versions: 9.1 and up.
 
-## Building and running
+## Quick Start
+This package is available for Docker:
+```
+docker run -e DATA_SOURCE_NAME="login:password@(hostname:port)/dbname" -p 9113:9113 wrouesnel/postgres_exporter
+```
 
-    make
-    export DATA_SOURCE_NAME="login:password@(hostname:port)/dbname"
-    ./postgres_exporter <flags>
+## Building and running
+The default make file behavior is to build the binary:
+```
+make
+export DATA_SOURCE_NAME="login:password@(hostname:port)/dbname"
+./postgres_exporter <flags>
+```
+
+To build the dockerfile, run `make docker`. 
+
+This will build the docker image as `wrouesnel/postgres_exporter:latest`. This 
+is a minimal docker image containing *just* postgres_exporter. By default no SSL 
+certificates are included, if you need to use SSL you should either bind-mount 
+`/etc/ssl/certs/ca-certificates.crt` or derive a new image containing them.
+
+### Vendoring
+Package vendoring is handled with [`govendor`](https://github.com/kardianos/govendor)
 
 ### Flags
 
@@ -34,5 +52,5 @@ for l in StringIO(x):
     column, ctype, description = l.split('\t')
     print """"{0}" : {{ prometheus.CounterValue, prometheus.NewDesc("pg_stat_database_{0}", "{2}", nil, nil) }}, """.format(column.strip(), ctype, description.strip())
 ```
-Adjust the value of the resultant prometheus value type appropriately. This helps build
-rich self-documenting metrics for the exporter.
+Adjust the value of the resultant prometheus value type appropriately. This 
+helps build rich self-documenting metrics for the exporter.
