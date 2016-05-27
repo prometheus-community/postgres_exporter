@@ -156,7 +156,7 @@ var metricMaps = map[string]map[string]ColumnMapping{
 		"pid":              {DISCARD, "Process ID of a WAL sender process", nil},
 		"usesysid":         {DISCARD, "OID of the user logged into this WAL sender process", nil},
 		"usename":          {DISCARD, "Name of the user logged into this WAL sender process", nil},
-		"application_name": {DISCARD, "Name of the application that is connected to this WAL sender", nil},
+		"application_name": {LABEL, "Name of the application that is connected to this WAL sender", nil},
 		"client_addr":      {LABEL, "IP address of the client connected to this WAL sender. If this field is null, it indicates that the client is connected via a Unix socket on the server machine.", nil},
 		"client_hostname":  {DISCARD, "Host name of the connected client, as reported by a reverse DNS lookup of client_addr. This field will only be non-null for IP connections, and only when log_hostname is enabled.", nil},
 		"client_port":      {DISCARD, "TCP port number that the client is using for communication with this WAL sender, or -1 if a Unix socket is used", nil},
