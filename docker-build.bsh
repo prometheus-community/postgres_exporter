@@ -1,4 +1,0 @@
-#!/bin/bash
-cd $2
-CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o $1 . 1>&2
-tar -cf - $1

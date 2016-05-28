@@ -19,6 +19,8 @@ import (
 	"strconv"
 )
 
+var Version string = "0.0.0-dev"
+
 var (
 	listenAddress = flag.String(
 		"web.listen-address", ":9113",
