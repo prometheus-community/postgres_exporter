@@ -7,6 +7,7 @@ go:
 script:
 - make all
 - make docker
+- make test-integration
 after_success:
 - if [ "$TRAVIS_BRANCH" == "master" ]; then docker login -e $DOCKER_EMAIL -u $DOCKER_USER
   -p $DOCKER_PASS ; docker push wrouesnel/postgres_exporter ; fi

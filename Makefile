@@ -21,6 +21,9 @@ vet:
 test:
 	go test -v .
 
+test-integration:
+	tests/test-smoke
+
 # Do a self-contained docker build - we pull the official upstream container,
 # then template out a dockerfile which builds the real image.
 docker-build: postgres_exporter
