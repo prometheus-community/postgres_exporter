@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/wrouesnel/postgres_exporter.svg?branch=master)](https://travis-ci.org/wrouesnel/postgres_exporter)
+
 # PostgresSQL Server Exporter
 
 Prometheus exporter for PostgresSQL server metrics.
