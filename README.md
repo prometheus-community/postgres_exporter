@@ -6,14 +6,17 @@ Supported Postgres versions: 9.1 and up.
 ## Quick Start
 This package is available for Docker:
 ```
-docker run -e DATA_SOURCE_NAME="login:password@(hostname:port)/dbname" -p 9113:9113 wrouesnel/postgres_exporter
+# Start an example database
+docker run --net=host -it --rm -e POSTGRES_PASSWORD=password postgres
+# Connect to it
+docker run -e DATA_SOURCE_NAME="postgresql://postgres:password@localhost:5432/?sslmode=disable" -p 9113:9113 wrouesnel/postgres_exporter
 ```
 
 ## Building and running
 The default make file behavior is to build the binary:
 ```
 make
-export DATA_SOURCE_NAME="login:password@(hostname:port)/dbname"
+export DATA_SOURCE_NAME="postgresql://login:password@hostname:port/dbname"
 ./postgres_exporter <flags>
 ```
 
