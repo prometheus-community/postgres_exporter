@@ -22,4 +22,5 @@ deploy:
   file: postgres_exporter
   on:
     tags: true
+    branch: master
     repo: wrouesnel/postgres_exporter
