@@ -12,6 +12,8 @@ import (
 	//"strings"
 	"math"
 	"time"
+	"io/ioutil"
+	"gopkg.in/yaml.v2"
 
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
@@ -218,6 +220,95 @@ var queryOverrides = map[string]string{
           FROM pg_stat_activity GROUP BY datname,state) as tmp2 
       ON tmp.state = tmp2.state AND pg_database.datname = tmp2.datname`,
 }
+
+// Add queries to the metricMaps and queryOverrides maps
+func add_queries(queriesPath string) (err error) {
+	var extra map[string]interface{}
+
+	content, err := ioutil.ReadFile(queriesPath)
+	if err != nil {
+		return err
+	}
+
+	err = yaml.Unmarshal(content, &extra)
+	if err != nil {
+		return err
+	}
+
+
+	for metric, specs := range extra {
+		for key, value := range specs.(map[interface{}]interface{}) {
+			switch key.(string) {
+			case "query":
+				query := value.(string)
+				queryOverrides[metric] = query
+
+			case "metrics":
+				for _, c := range value.([]interface{}) {
+					column := c.(map[interface{}]interface{})
+
+					for n, a := range column {
+						var cmap ColumnMapping
+						var metric_map map[string]ColumnMapping
+
+						metric_map = make(map[string]ColumnMapping)
+
+						name := n.(string)
+
+						for attr_key, attr_val := range a.(map[interface{}]interface{}) {
+							switch(attr_key.(string)) {
+							case "usage":
+								usage, err := _string_to_columnusage(attr_val.(string))
+								if err != nil {
+									return err
+								}
+								cmap.usage = usage
+							case "description":
+								cmap.description = attr_val.(string)
+							}
+						}
+
+						cmap.mapping = nil
+
+						metric_map[name] = cmap
+
+						metricMaps[metric] = metric_map
+					}
+				}
+			}
+		}
+	}
+
+	return
+}
+
+// convert a string to the corresponding ColumnUsage
+func _string_to_columnusage(s string) (u ColumnUsage, err error) {
+	switch(s) {
+	case "DISCARD":
+		u = DISCARD
+
+	case "LABEL":
+		u = LABEL
+
+	case "COUNTER":
+		u = COUNTER
+
+	case "GAUGE":
+		u = GAUGE
+
+	case "MAPPEDMETRIC":
+		u = MAPPEDMETRIC
+
+	case "DURATION":
+		u = DURATION
+	default:
+		err = fmt.Errorf("wrong ColumnUsage given : %s", s)
+	}
+
+	return
+}
+
 
 // Turn the MetricMap column mapping into a prometheus descriptor mapping.
 func makeDescMap(metricMaps map[string]map[string]ColumnMapping) map[string]MetricMapNamespace {
@@ -578,6 +669,13 @@ func main() {
 	dsn := os.Getenv("DATA_SOURCE_NAME")
 	if len(dsn) == 0 {
 		log.Fatal("couldn't find environment variable DATA_SOURCE_NAME")
+	}
+
+	if *queriesPath != "" {
+		err := add_queries(*queriesPath)
+		if err != nil {
+			log.Warnln("Unparseable queries file - discarding merge: ", *queriesPath, err)
+		}
 	}
 
 	exporter := NewExporter(dsn)
