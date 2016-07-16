@@ -19,7 +19,7 @@ import (
 	"strconv"
 )
 
-var Version string = "0.0.0-dev"
+var Version string = "0.0.1"
 
 var (
 	listenAddress = flag.String(
