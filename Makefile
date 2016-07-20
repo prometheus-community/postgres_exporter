@@ -11,9 +11,7 @@ postgres_exporter: $(GO_SRC)
 
 # Take a go build and turn it into a minimal container
 docker: postgres_exporter
-	tar -cf - postgres_exporter | docker import --change "EXPOSE 9113" \
-			--change 'ENTRYPOINT [ "/postgres_exporter" ]' \
-			- $(CONTAINER_NAME)
+	docker build -t $(CONTAINER_NAME) .
 
 vet:
 	go vet .
