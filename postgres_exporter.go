@@ -323,6 +323,13 @@ func dbToFloat64(t interface{}) (float64, bool) {
 			return math.NaN(), false
 		}
 		return result, true
+	case string:
+		result, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			log.Println("Could not parse string:", err)
+			return math.NaN(), false
+		}
+		return result, true
 	case nil:
 		return math.NaN(), true
 	default:
