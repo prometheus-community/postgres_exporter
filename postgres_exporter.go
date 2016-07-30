@@ -288,6 +288,10 @@ func makeDescMap(metricMaps map[string]map[string]ColumnMapping) map[string]Metr
 							return math.NaN(), false
 						}
 
+						if durationString == "-1" {
+							return math.NaN(), false
+						}
+
 						d, err := time.ParseDuration(durationString)
 						if err != nil {
 							log.Errorln("Failed converting result to metric:", columnName, in, err)
