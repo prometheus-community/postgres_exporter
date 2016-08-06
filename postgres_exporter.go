@@ -1,22 +1,19 @@
 package main
 
 import (
-	//"bytes"
 	"database/sql"
 	"flag"
 	"fmt"
+	"math"
 	"net/http"
 	"os"
-	//"regexp"
-	//"strconv"
-	//"strings"
-	"math"
 	"time"
+
+	"strconv"
 
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/log"
-	"strconv"
+	"github.com/prometheus/common/log"
 )
 
 var Version string = "0.0.1"
@@ -330,7 +327,7 @@ func dbToFloat64(t interface{}) (float64, bool) {
 	case string:
 		result, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			log.Println("Could not parse string:", err)
+			log.Infoln("Could not parse string:", err)
 			return math.NaN(), false
 		}
 		return result, true
@@ -452,7 +449,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 
 	db, err := sql.Open("postgres", e.dsn)
 	if err != nil {
-		log.Println("Error opening connection to database:", err)
+		log.Infoln("Error opening connection to database:", err)
 		e.error.Set(1)
 		return
 	}
@@ -498,7 +495,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 			// Don't fail on a bad scrape of one metric
 			rows, err := db.Query(query)
 			if err != nil {
-				log.Println("Error running query on database: ", namespace, err)
+				log.Infoln("Error running query on database: ", namespace, err)
 				e.error.Set(1)
 				return
 			}
@@ -507,7 +504,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 			var columnNames []string
 			columnNames, err = rows.Columns()
 			if err != nil {
-				log.Println("Error retrieving column list for: ", namespace, err)
+				log.Infoln("Error retrieving column list for: ", namespace, err)
 				e.error.Set(1)
 				return
 			}
@@ -527,7 +524,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 			for rows.Next() {
 				err = rows.Scan(scanArgs...)
 				if err != nil {
-					log.Println("Error retrieving rows:", namespace, err)
+					log.Infoln("Error retrieving rows:", namespace, err)
 					e.error.Set(1)
 					return
 				}
