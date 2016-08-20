@@ -10,10 +10,10 @@ import (
 	//"regexp"
 	//"strconv"
 	//"strings"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
 	"math"
 	"time"
-	"io/ioutil"
-	"gopkg.in/yaml.v2"
 
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
@@ -35,6 +35,10 @@ var (
 	queriesPath = flag.String(
 		"extend.query-path", "",
 		"Path to custom queries to run.",
+	)
+	onlyDumpMaps = flag.Bool(
+		"dumpmaps", false,
+		"Do not run, simply dump the maps.",
 	)
 )
 
@@ -109,6 +113,21 @@ var variableMaps = map[string]map[string]ColumnMapping{
 		"max_standby_streaming_delay": {DURATION, "Sets the maximum delay before canceling queries when a hot standby server is processing streamed WAL data.", nil},
 		"max_wal_senders":             {GAUGE, "Sets the maximum number of simultaneously running WAL sender processes.", nil},
 	},
+}
+
+func dumpMaps() {
+	for name, cmap := range metricMaps {
+		query, ok := queryOverrides[name]
+		if ok {
+			fmt.Printf("%s: %s\n", name, query)
+		} else {
+			fmt.Println(name)
+		}
+		for column, details := range cmap {
+			fmt.Printf("  %-40s %v\n", column, details)
+		}
+		fmt.Println()
+	}
 }
 
 var metricMaps = map[string]map[string]ColumnMapping{
@@ -235,7 +254,6 @@ func addQueries(queriesPath string) (err error) {
 		return err
 	}
 
-
 	for metric, specs := range extra {
 		for key, value := range specs.(map[interface{}]interface{}) {
 			switch key.(string) {
@@ -249,14 +267,16 @@ func addQueries(queriesPath string) (err error) {
 
 					for n, a := range column {
 						var cmap ColumnMapping
-						var metric_map map[string]ColumnMapping
 
-						metric_map = make(map[string]ColumnMapping)
+						metric_map, ok := metricMaps[metric]
+						if !ok {
+							metric_map = make(map[string]ColumnMapping)
+						}
 
 						name := n.(string)
 
 						for attr_key, attr_val := range a.(map[interface{}]interface{}) {
-							switch(attr_key.(string)) {
+							switch attr_key.(string) {
 							case "usage":
 								usage, err := stringToColumnUsage(attr_val.(string))
 								if err != nil {
@@ -374,7 +394,7 @@ func makeDescMap(metricMaps map[string]map[string]ColumnMapping) map[string]Metr
 
 // convert a string to the corresponding ColumnUsage
 func stringToColumnUsage(s string) (u ColumnUsage, err error) {
-	switch(s) {
+	switch s {
 	case "DISCARD":
 		u = DISCARD
 
@@ -666,16 +686,21 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 func main() {
 	flag.Parse()
 
-	dsn := os.Getenv("DATA_SOURCE_NAME")
-	if len(dsn) == 0 {
-		log.Fatal("couldn't find environment variable DATA_SOURCE_NAME")
-	}
-
 	if *queriesPath != "" {
 		err := addQueries(*queriesPath)
 		if err != nil {
 			log.Warnln("Unparseable queries file - discarding merge: ", *queriesPath, err)
 		}
+	}
+
+	if *onlyDumpMaps {
+		dumpMaps()
+		return
+	}
+
+	dsn := os.Getenv("DATA_SOURCE_NAME")
+	if len(dsn) == 0 {
+		log.Fatal("couldn't find environment variable DATA_SOURCE_NAME")
 	}
 
 	exporter := NewExporter(dsn)
