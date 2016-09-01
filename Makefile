@@ -1,5 +1,5 @@
 
-GO_SRC := $(shell find -type f -name "*.go")
+GO_SRC := $(shell find . -type f -name "*.go")
 
 CONTAINER_NAME ?= wrouesnel/postgres_exporter:latest
 
