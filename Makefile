@@ -4,10 +4,10 @@ pkgs   = $(shell $(GO) list ./... | grep -v /vendor/)
 PREFIX              ?= $(shell pwd)
 BIN_DIR             ?= $(shell pwd)
 
-CONTAINER_NAME ?= wrouesnel/postgres_exporter:latest
+CONTAINER_NAME ?= wrouesnel/postgres_exporter
 DOCKER_IMAGE_TAG    ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 
-all: format vet build
+all: format vet build docker
 style:
 	@echo ">> checking code style"
 	@! gofmt -d $(shell find . -path ./vendor -prune -o -name '*.go' -print) | grep '^'
@@ -31,8 +31,8 @@ tarball: promu
 docker: postgres_exporter
 	CGO_ENABLED=0 GOOS=linux go build -a -ldflags "-extldflags '-static' -X main.Version=git:$(shell git rev-parse HEAD)" -o postgres_exporter .
 	tar -cf - postgres_exporter | docker import --change "EXPOSE 9113" \
-			--change 'ENTRYPOINT [ "/postgres_exporter" ]' \
-			- $(CONTAINER_NAME)
+			--change "ENTRYPOINT [ '/postgres_exporter' ]" \
+			- $(CONTAINER_NAME):$(DOCKER_IMAGE_TAG)
  
 
 promu:
