@@ -67,6 +67,12 @@
 			"path": "github.com/prometheus/procfs",
 			"revision": "406e5b7bfd8201a36e2bb5f7bdae0b03380c2ce8",
 			"revisionTime": "2015-10-29T15:50:50-04:00"
+		},
+		{
+			"checksumSHA1": "s+2qfRl74pRDc5cqo9/79foNcBs=",
+			"path": "github.com/wrouesnel/postgres_exporter",
+			"revision": "39bd5d393847c234d510899fc6e7030ded321dd9",
+			"revisionTime": "2016-08-06T02:46:52Z"
 		}
 	],
 	"rootPath": "github.com/wrouesnel/postgres_exporter"

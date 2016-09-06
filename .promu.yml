@@ -18,6 +18,4 @@ crossbuild:
         - linux/386
         - linux/arm
         - linux/arm64
-        - linux/ppc64
-        - linux/ppc64le
 
