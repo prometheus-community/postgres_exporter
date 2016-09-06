@@ -1,38 +1,52 @@
+GO    := GO15VENDOREXPERIMENT=1 go
+PROMU := $(GOPATH)/bin/promu
+pkgs   = $(shell $(GO) list ./... | grep -v /vendor/)
+PREFIX              ?= $(shell pwd)
+BIN_DIR             ?= $(shell pwd)
 
 GO_SRC := $(shell find -type f -name "*.go")
 
 CONTAINER_NAME ?= wrouesnel/postgres_exporter:latest
+DOCKER_IMAGE_TAG    ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 
-all: vet test postgres_exporter
-
-# Simple go build
-postgres_exporter: $(GO_SRC)
-	CGO_ENABLED=0 GOOS=linux go build -a -ldflags "-extldflags '-static' -X main.Version=git:$(shell git rev-parse HEAD)" -o postgres_exporter .
-
-# Take a go build and turn it into a minimal container
-docker: postgres_exporter
-	tar -cf - postgres_exporter | docker import --change "EXPOSE 9113" \
-			--change 'ENTRYPOINT [ "/postgres_exporter" ]' \
-			- $(CONTAINER_NAME)
-
-vet:
-	go vet .
+all: format vet build test 
+style:
+	@echo ">> checking code style"
+	@! gofmt -d $(shell find . -path ./vendor -prune -o -name '*.go' -print) | grep '^'
 
 test:
-	go test -v .
+		@echo ">> running tests"
+		@$(GO) test -v .
 
+format:
+		@echo ">> formatting code"
+			@$(GO) fmt $(pkgs)
+	
+vet:
+	@echo ">> vetting code"
+	@$(GO) vet $(pkgs)
+
+build: promu
+		@echo ">> building binaries"
+			@$(PROMU) build --prefix $(PREFIX)
+
+tarball: promu
+		@echo ">> building release tarball"
+			@$(PROMU) tarball --prefix $(PREFIX) $(BIN_DIR)
+
+docker:
+		@echo ">> building docker image"
+			@docker build -t "$(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG)" .
+
+promu:
+		@GOOS=$(shell uname -s | tr A-Z a-z) \
+					GOARCH=$(subst x86_64,amd64,$(patsubst i%86,386,$(shell uname -m))) \
+							$(GO) get -u github.com/prometheus/promu
+
+
+.PHONY: all style format build test vet tarball docker promu
 test-integration:
 	tests/test-smoke
 
-# Do a self-contained docker build - we pull the official upstream container,
-# then template out a dockerfile which builds the real image.
-docker-build: postgres_exporter
-	docker run -v $(shell pwd):/go/src/github.com/wrouesnel/postgres_exporter \
-	    -w /go/src/github.com/wrouesnel/postgres_exporter \
-		golang:1.6-wheezy \
-		/bin/bash -c "make >&2 && tar -cf - ./postgres_exporter" | \
-		docker import --change "EXPOSE 9113" \
-			--change 'ENTRYPOINT [ "/postgres_exporter" ]' \
-			- $(CONTAINER_NAME)
 
 .PHONY: docker-build docker test vet
