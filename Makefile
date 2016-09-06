@@ -28,17 +28,9 @@ tarball: promu
 	@echo ">> building release tarball"
 	@$(PROMU) tarball --prefix $(PREFIX) $(BIN_DIR)
 
-docker:
-		@echo ">> building docker image"
-	        docker run -v $(shell pwd):/go/src/github.com/wrouesnel/postgres_exporter \
-	          -w /go/src/github.com/wrouesnel/postgres_exporter \
-		  golang:1.6-wheezy \
-		  bash -c "CGO_ENABLED=0 GOOS=linux go build -a -ldflags "-extldflags '-static' -X main.Version=git:$(shell git rev-parse HEAD)" -o postgres_exporter . && tar -cf - .build/linux-amd64/postgres_exporter" | \
-			docker import --change "EXPOSE 9113" \
-				--change 'ENTRYPOINT [ "/postgres_exporter" ]' \
-				- $(CONTAINER_NAME)
 
-docker-build: postgres_exporter
+docker: postgres_exporter
+	@echo ">> building docker image"
 	docker run -v $(shell pwd):/go/src/github.com/wrouesnel/postgres_exporter \
 	    -w /go/src/github.com/wrouesnel/postgres_exporter \
 		golang:1.6-wheezy \
