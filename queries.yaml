@@ -13,7 +13,7 @@ pg_postmaster:
         description: "Time at which postmaster started"
 
 pg_settings_shared_buffers:
-  query: "SELECT 8192*setting as bytes from pg_settings where name = 'shared_buffers'"
+  query: "SELECT 8192*setting::int as bytes from pg_settings where name = 'shared_buffers'"
   metrics:
     - bytes:
         usage: "GAUGE"
