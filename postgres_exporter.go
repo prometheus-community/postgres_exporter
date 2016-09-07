@@ -1,27 +1,24 @@
 package main
 
 import (
-	//"bytes"
 	"database/sql"
 	"flag"
 	"fmt"
-	"net/http"
-	"os"
-	//"regexp"
-	//"strconv"
-	//"strings"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"math"
+	"net/http"
+	"os"
+	"strconv"
 	"time"
+
+	"gopkg.in/yaml.v2"
 
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/log"
-	"strconv"
+	"github.com/prometheus/common/log"
 )
 
-var Version string = "0.0.0-dev"
+var Version string = "0.0.1"
 
 var (
 	listenAddress = flag.String(
@@ -375,6 +372,10 @@ func makeDescMap(metricMaps map[string]map[string]ColumnMapping) map[string]Metr
 							return math.NaN(), false
 						}
 
+						if durationString == "-1" {
+							return math.NaN(), false
+						}
+
 						d, err := time.ParseDuration(durationString)
 						if err != nil {
 							log.Errorln("Failed converting result to metric:", columnName, in, err)
@@ -435,6 +436,13 @@ func dbToFloat64(t interface{}) (float64, bool) {
 		strV := string(v)
 		result, err := strconv.ParseFloat(strV, 64)
 		if err != nil {
+			return math.NaN(), false
+		}
+		return result, true
+	case string:
+		result, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			log.Infoln("Could not parse string:", err)
 			return math.NaN(), false
 		}
 		return result, true
@@ -556,7 +564,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 
 	db, err := sql.Open("postgres", e.dsn)
 	if err != nil {
-		log.Println("Error opening connection to database:", err)
+		log.Infoln("Error opening connection to database:", err)
 		e.error.Set(1)
 		return
 	}
@@ -602,7 +610,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 			// Don't fail on a bad scrape of one metric
 			rows, err := db.Query(query)
 			if err != nil {
-				log.Println("Error running query on database: ", namespace, err)
+				log.Infoln("Error running query on database: ", namespace, err)
 				e.error.Set(1)
 				return
 			}
@@ -611,7 +619,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 			var columnNames []string
 			columnNames, err = rows.Columns()
 			if err != nil {
-				log.Println("Error retrieving column list for: ", namespace, err)
+				log.Infoln("Error retrieving column list for: ", namespace, err)
 				e.error.Set(1)
 				return
 			}
@@ -631,7 +639,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 			for rows.Next() {
 				err = rows.Scan(scanArgs...)
 				if err != nil {
-					log.Println("Error retrieving rows:", namespace, err)
+					log.Infoln("Error retrieving rows:", namespace, err)
 					e.error.Set(1)
 					return
 				}

@@ -53,14 +53,15 @@
 			"revisionTime": "2015-12-08T14:32:55+01:00"
 		},
 		{
+			"checksumSHA1": "fKMoxZehNhXbklRQy7lpFAVH0XY=",
+			"path": "github.com/prometheus/common/log",
+			"revision": "bc0a4460d0fc2693fcdebafafbf07c6d18913b97",
+			"revisionTime": "2016-07-26T17:19:51Z"
+		},
+		{
 			"path": "github.com/prometheus/common/model",
 			"revision": "5cb53e5c863aca6e2b8ec958d16d9a93753ecea6",
 			"revisionTime": "2015-12-08T14:32:55+01:00"
-		},
-		{
-			"path": "github.com/prometheus/log",
-			"revision": "9a3136781e1ff7bc42736ba4acb81339b1422551",
-			"revisionTime": "2015-10-26T02:24:52+01:00"
 		},
 		{
 			"path": "github.com/prometheus/procfs",
@@ -73,5 +74,6 @@
 			"revision": "a83829b6f1293c91addabc89d0571c246397bbf4",
 			"revisionTime": "2016-03-01T20:40:22Z"
 		}
-	]
+	],
+	"rootPath": "github.com/wrouesnel/postgres_exporter"
 }

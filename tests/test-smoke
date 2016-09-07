@@ -1,0 +1,73 @@
+#!/bin/bash
+# Basic integration tests with postgres. Requires docker to work.
+
+VERSIONS=( \
+    9.1 \
+    9.2 \
+    9.3 \
+    9.4 \
+    9.5 \
+)
+
+smoketest_postgres() {
+    local version=$1
+    local CONTAINER_NAME=postgres_exporter-test-smoke
+    local TIMEOUT=30
+    local IMAGE_NAME=postgres
+    
+    local CUR_IMAGE=$IMAGE_NAME:$version
+    
+    docker run -d --name=$CONTAINER_NAME -e POSTGRES_PASSWORD=password -p 127.0.0.1:55432:5432 $CUR_IMAGE
+
+    local WAIT_START=$(date +%s)
+    while ! docker exec $CONTAINER_NAME bash -c "psql -U postgres -c \"select 'running'\" > /dev/null 2>&1 " ; do
+        echo "Waiting for postgres to start..."
+        if [ $(( $(date +%s) - $WAIT_START )) -gt $TIMEOUT ]; then
+            echo "Timed out waiting for postgres!" 1>&2
+            docker logs $CONTAINER_NAME
+            docker kill $CONTAINER_NAME
+            docker rm $CONTAINER_NAME
+            exit 1
+        fi
+        sleep 1
+    done
+
+    DATA_SOURCE_NAME="postgresql://postgres:password@localhost:55432/?sslmode=disable" ./postgres_exporter &
+    exporter_pid=$!
+    local DAEMON_WAIT_START=$(date +%s)
+    while ! nc -z localhost 9113 ; do
+        echo "Waiting for exporter to start..."
+        if [ $(( $(date +%s) - $WAIT_START )) -gt $TIMEOUT ]; then
+            echo "Timed out waiting for exporter!" 1>&2
+            docker logs $CONTAINER_NAME
+            docker kill $CONTAINER_NAME
+            docker rm $CONTAINER_NAME
+            exit 1            
+        fi
+        sleep 1
+    done
+
+    wget -q -O - http://localhost:9113/metrics 1> /dev/null
+    if [ "$?" != "0" ]; then
+        echo "Failed on postgres $version ($DOCKER_IMAGE)" 1>&2
+        kill $exporter_pid
+        docker logs $CONTAINER_NAME
+        docker kill $CONTAINER_NAME
+        docker rm $CONTAINER_NAME
+        exit 1
+    fi
+
+    kill $exporter_pid
+    docker kill $CONTAINER_NAME
+    docker rm $CONTAINER_NAME
+}
+
+# Start pulling the docker images in advance
+for version in ${VERSIONS[@]}; do
+    docker pull postgres:$version > /dev/null &
+done
+
+for version in ${VERSIONS[@]}; do
+    echo "Testing postgres version $version"
+    smoketest_postgres $version
+done
