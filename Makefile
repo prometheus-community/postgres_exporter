@@ -11,9 +11,7 @@ postgres_exporter: $(GO_SRC)
 
 # Take a go build and turn it into a minimal container
 docker: postgres_exporter
-	tar -cf - postgres_exporter | docker import --change "EXPOSE 9113" \
-			--change 'ENTRYPOINT [ "/postgres_exporter" ]' \
-			- $(CONTAINER_NAME)
+	docker build -t $(CONTAINER_NAME) .
 
 vet:
 	go vet .
@@ -24,15 +22,15 @@ test:
 test-integration:
 	tests/test-smoke
 
-# Do a self-contained docker build - we pull the official upstream container,
-# then template out a dockerfile which builds the real image.
+# Do a self-contained docker build - we pull the official upstream container
+# and do a self-contained build.
 docker-build: postgres_exporter
 	docker run -v $(shell pwd):/go/src/github.com/wrouesnel/postgres_exporter \
+	    -v $(shell pwd):/real_src \
+	    -e SHELL_UID=$(shell id -u) -e SHELL_GID=$(shell id -g) \
 	    -w /go/src/github.com/wrouesnel/postgres_exporter \
-		golang:1.6-wheezy \
-		/bin/bash -c "make >&2 && tar -cf - ./postgres_exporter" | \
-		docker import --change "EXPOSE 9113" \
-			--change 'ENTRYPOINT [ "/postgres_exporter" ]' \
-			- $(CONTAINER_NAME)
+		golang:1.7-wheezy \
+		/bin/bash -c "make >&2 && chown $$SHELL_UID:$$SHELL_GID ./postgres_exporter"
+	docker build -t $(CONTAINER_NAME) .
 
 .PHONY: docker-build docker test vet
