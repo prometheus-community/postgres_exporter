@@ -1,5 +1,5 @@
 
-GO_SRC := $(shell find -type f -name "*.go")
+GO_SRC := $(shell find . -type f -name "*.go")
 
 CONTAINER_NAME ?= wrouesnel/postgres_exporter:latest
 
@@ -7,7 +7,7 @@ all: vet test postgres_exporter
 
 # Simple go build
 postgres_exporter: $(GO_SRC)
-	CGO_ENABLED=0 GOOS=linux go build -a -ldflags "-extldflags '-static' -X main.Version=git:$(shell git rev-parse HEAD)" -o postgres_exporter .
+	CGO_ENABLED=0 go build -a -ldflags "-extldflags '-static' -X main.Version=git:$(shell git rev-parse HEAD)" -o postgres_exporter .
 
 # Take a go build and turn it into a minimal container
 docker: postgres_exporter
