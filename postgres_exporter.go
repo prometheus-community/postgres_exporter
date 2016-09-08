@@ -4,12 +4,14 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
-	"strconv"
+	"gopkg.in/yaml.v2"
 
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,6 +28,14 @@ var (
 	metricPath = flag.String(
 		"web.telemetry-path", "/metrics",
 		"Path under which to expose metrics.",
+	)
+	queriesPath = flag.String(
+		"extend.query-path", "",
+		"Path to custom queries to run.",
+	)
+	onlyDumpMaps = flag.Bool(
+		"dumpmaps", false,
+		"Do not run, simply dump the maps.",
 	)
 )
 
@@ -100,6 +110,21 @@ var variableMaps = map[string]map[string]ColumnMapping{
 		"max_standby_streaming_delay": {DURATION, "Sets the maximum delay before canceling queries when a hot standby server is processing streamed WAL data.", nil},
 		"max_wal_senders":             {GAUGE, "Sets the maximum number of simultaneously running WAL sender processes.", nil},
 	},
+}
+
+func dumpMaps() {
+	for name, cmap := range metricMaps {
+		query, ok := queryOverrides[name]
+		if ok {
+			fmt.Printf("%s: %s\n", name, query)
+		} else {
+			fmt.Println(name)
+		}
+		for column, details := range cmap {
+			fmt.Printf("  %-40s %v\n", column, details)
+		}
+		fmt.Println()
+	}
 }
 
 var metricMaps = map[string]map[string]ColumnMapping{
@@ -223,6 +248,68 @@ var queryOverrides = map[string]string{
       ON tmp.state = tmp2.state AND pg_database.datname = tmp2.datname`,
 }
 
+// Add queries to the metricMaps and queryOverrides maps
+func addQueries(queriesPath string) (err error) {
+	var extra map[string]interface{}
+
+	content, err := ioutil.ReadFile(queriesPath)
+	if err != nil {
+		return err
+	}
+
+	err = yaml.Unmarshal(content, &extra)
+	if err != nil {
+		return err
+	}
+
+	for metric, specs := range extra {
+		for key, value := range specs.(map[interface{}]interface{}) {
+			switch key.(string) {
+			case "query":
+				query := value.(string)
+				queryOverrides[metric] = query
+
+			case "metrics":
+				for _, c := range value.([]interface{}) {
+					column := c.(map[interface{}]interface{})
+
+					for n, a := range column {
+						var cmap ColumnMapping
+
+						metric_map, ok := metricMaps[metric]
+						if !ok {
+							metric_map = make(map[string]ColumnMapping)
+						}
+
+						name := n.(string)
+
+						for attr_key, attr_val := range a.(map[interface{}]interface{}) {
+							switch attr_key.(string) {
+							case "usage":
+								usage, err := stringToColumnUsage(attr_val.(string))
+								if err != nil {
+									return err
+								}
+								cmap.usage = usage
+							case "description":
+								cmap.description = attr_val.(string)
+							}
+						}
+
+						cmap.mapping = nil
+
+						metric_map[name] = cmap
+
+						metricMaps[metric] = metric_map
+					}
+				}
+			}
+		}
+	}
+
+	return
+}
+
 // Turn the MetricMap column mapping into a prometheus descriptor mapping.
 func makeDescMap(metricMaps map[string]map[string]ColumnMapping) map[string]MetricMapNamespace {
 	var metricMap = make(map[string]MetricMapNamespace)
@@ -315,6 +402,34 @@ func makeDescMap(metricMaps map[string]map[string]ColumnMapping) map[string]Metr
 	}
 
 	return metricMap
+}
+
+// convert a string to the corresponding ColumnUsage
+func stringToColumnUsage(s string) (u ColumnUsage, err error) {
+	switch s {
+	case "DISCARD":
+		u = DISCARD
+
+	case "LABEL":
+		u = LABEL
+
+	case "COUNTER":
+		u = COUNTER
+
+	case "GAUGE":
+		u = GAUGE
+
+	case "MAPPEDMETRIC":
+		u = MAPPEDMETRIC
+
+	case "DURATION":
+		u = DURATION
+
+	default:
+		err = fmt.Errorf("wrong ColumnUsage given : %s", s)
+	}
+
+	return
 }
 
 // Convert database.sql types to float64s for Prometheus consumption. Null types are mapped to NaN. string and []byte
@@ -589,6 +704,18 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 
 func main() {
 	flag.Parse()
+
+	if *queriesPath != "" {
+		err := addQueries(*queriesPath)
+		if err != nil {
+			log.Warnln("Unparseable queries file - discarding merge: ", *queriesPath, err)
+		}
+	}
+
+	if *onlyDumpMaps {
+		dumpMaps()
+		return
+	}
 
 	dsn := os.Getenv("DATA_SOURCE_NAME")
 	if len(dsn) == 0 {

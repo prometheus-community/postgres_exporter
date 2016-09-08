@@ -65,6 +65,10 @@ for l in StringIO(x):
 Adjust the value of the resultant prometheus value type appropriately. This helps build
 rich self-documenting metrics for the exporter.
 
+### Adding new metrics via a config file
+
+The -extend.query-path command-line argument specifies a YAML file containing additional queries to run.
+Some examples are provided in [queries.yaml](queries.yaml).
 
 ### Running as non-superuser
 
