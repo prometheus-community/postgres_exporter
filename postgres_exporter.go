@@ -168,6 +168,16 @@ var metricMaps = map[string]map[string]ColumnMapping{
 		"replay_location":          {DISCARD, "Last transaction log position replayed into the database on this standby server", nil},
 		"sync_priority":            {DISCARD, "Priority of this standby server for being chosen as the synchronous standby", nil},
 		"sync_state":               {DISCARD, "Synchronous state of this standby server", nil},
+		"slot_name":                {LABEL, "A unique, cluster-wide identifier for the replication slot", nil},
+		"plugin":                   {DISCARD, "The base name of the shared object containing the output plugin this logical slot is using, or null for physical slots", nil},
+		"slot_type":                {DISCARD, "The slot type - physical or logical", nil},
+		"datoid":                   {DISCARD, "The OID of the database this slot is associated with, or null. Only logical slots have an associated database", nil},
+		"database":                 {DISCARD, "The name of the database this slot is associated with, or null. Only logical slots have an associated database", nil},
+		"active":                   {DISCARD, "True if this slot is currently actively being used", nil},
+		"active_pid":               {DISCARD, "Process ID of a WAL sender process", nil},
+		"xmin":                     {DISCARD, "The oldest transaction that this slot needs the database to retain. VACUUM cannot remove tuples deleted by any later transaction", nil},
+		"catalog_xmin":             {DISCARD, "The oldest transaction affecting the system catalogs that this slot needs the database to retain. VACUUM cannot remove catalog tuples deleted by any later transaction", nil},
+		"restart_lsn":              {DISCARD, "The address (LSN) of oldest WAL which still might be required by the consumer of this slot and thus won't be automatically removed during checkpoints", nil},
 		"pg_current_xlog_location": {DISCARD, "pg_current_xlog_location", nil},
 		"pg_xlog_location_diff":    {GAUGE, "Lag in bytes between master and slave", nil},
 	},
@@ -192,7 +202,8 @@ var queryOverrides = map[string]string{
       ON tmp.mode=tmp2.mode and pg_database.oid = tmp2.database ORDER BY 1`,
 
 	"pg_stat_replication": `
-        SELECT *, pg_current_xlog_location(), pg_xlog_location_diff(pg_current_xlog_location(), replay_location)::float FROM pg_stat_replication`,
+        SELECT *, pg_current_xlog_location(), pg_xlog_location_diff(pg_current_xlog_location(), replay_location)::float FROM pg_stat_replication
+				INNER JOIN pg_replication_slots ON pg_stat_replication.pid=pg_replication_slots.active_pid`,
 
 	"pg_stat_activity": `
       SELECT
