@@ -53,8 +53,8 @@ var (
 		"Specifie host for postgres Server",
 	)
 	params = flag.String(
-		"params", "sslmode=disable",
-		"Specifie params for dsn (default: sslmode=disable)",
+		"params", "?sslmode=disable",
+		"Specifie params for dsn (default: ?sslmode=disable)",
 	)
 	user = flag.String(
 		"user", "postgres",
@@ -754,8 +754,9 @@ func main() {
 	if *password == 'none' {
 		password := ReadPassword(*pathpassword)
 	}
-
-	dsn := fmt.Sprintf("postgresql://%s:%s@%s:%s/?%s", *user, *password, *host, *port, *params)
+	if os.Getenv("DATA_SOURCE_NAME") == '' {
+		dsn := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s", *user, *password, *host, *port, *params)
+	}
 	
 	if len(dsn) == 0 {
 		log.Fatal("couldn't find environment variable DATA_SOURCE_NAME")
