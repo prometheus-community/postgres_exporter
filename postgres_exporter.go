@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
@@ -36,6 +35,10 @@ var (
 	onlyDumpMaps = flag.Bool(
 		"dumpmaps", false,
 		"Do not run, simply dump the maps.",
+	)
+	pathpassword = flag.String(
+		"pathpassword", "",
+		"Specifie path to file contain password for postgres Server",
 	)
 )
 
@@ -521,6 +524,18 @@ func NewExporter(dsn string) *Exporter {
 	}
 }
 
+func check(e error) {
+    if e != nil {
+        panic(e)
+    }
+}
+
+func ReadPassword(pathpass string) string {
+	dat, err := ioutil.ReadFile(pathpass)
+	check(err)
+    return string(dat)
+}
+
 // Describe implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	// We cannot know in advance what metrics the exporter will generate
@@ -717,7 +732,8 @@ func main() {
 		return
 	}
 
-	dsn := os.Getenv("DATA_SOURCE_NAME")
+	dsn := fmt.Sprintf("postgresql://postgres:%s@localhost:5432/?sslmode=disable", ReadPassword(*pathpassword))
+	
 	if len(dsn) == 0 {
 		log.Fatal("couldn't find environment variable DATA_SOURCE_NAME")
 	}

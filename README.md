@@ -17,6 +17,11 @@ docker run -e DATA_SOURCE_NAME="postgresql://postgres:password@localhost:5432/?s
 ## Building and running
 The default make file behavior is to build the binary:
 ```
+mkdir /tmp/go
+export GOPATH=/tmp/go
+go get github.com/prometheus/client_golang/prometheus
+go get github.com/prometheus/common/log
+go get gopkg.in/yaml.v2
 make
 export DATA_SOURCE_NAME="postgresql://login:password@hostname:port/dbname"
 ./postgres_exporter <flags>
