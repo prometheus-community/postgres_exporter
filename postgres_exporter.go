@@ -40,6 +40,26 @@ var (
 		"pathpassword", "",
 		"Specifie path to file contain password for postgres Server",
 	)
+	password = flag.String(
+		"password", "none",
+		"Specifie password for postgres Server",
+	)
+	port = flag.String(
+		"port", "5432",
+		"Specifie port for postgres Server",
+	)
+	host = flag.String(
+		"port", "localhost",
+		"Specifie host for postgres Server",
+	)
+	params = flag.String(
+		"params", "sslmode=disable",
+		"Specifie params for dsn (default: sslmode=disable)",
+	)
+	user = flag.String(
+		"user", "postgres",
+		"Specifie the user postgres",
+	)
 )
 
 // Metric name parts.
@@ -731,8 +751,11 @@ func main() {
 		dumpMaps()
 		return
 	}
+	if *password == 'none' {
+		password := ReadPassword(*pathpassword)
+	}
 
-	dsn := fmt.Sprintf("postgresql://postgres:%s@localhost:5432/?sslmode=disable", ReadPassword(*pathpassword))
+	dsn := fmt.Sprintf("postgresql://%s:%s@%s:%s/?%s", *user, *password, *host, *port, *params)
 	
 	if len(dsn) == 0 {
 		log.Fatal("couldn't find environment variable DATA_SOURCE_NAME")
