@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -751,15 +752,15 @@ func main() {
 		dumpMaps()
 		return
 	}
-	if *password == 'none' {
-		password := ReadPassword(*pathpassword)
-	}
-	if os.Getenv("DATA_SOURCE_NAME") == '' {
-		dsn := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s", *user, *password, *host, *port, *params)
+
+	if *password == "none" {
+		*password = ReadPassword(*pathpassword)
 	}
 	
+	dsn := os.Getenv("DATA_SOURCE_NAME")
+	
 	if len(dsn) == 0 {
-		log.Fatal("couldn't find environment variable DATA_SOURCE_NAME")
+		dsn = fmt.Sprintf("postgresql://%s:%s@%s:%s/%s", *user, *password, *host, *port, *params)
 	}
 
 	exporter := NewExporter(dsn)
