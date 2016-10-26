@@ -18,8 +18,6 @@ import (
 	"github.com/prometheus/common/log"
 )
 
-var Version string = "0.0.1"
-
 var (
 	listenAddress = flag.String(
 		"web.listen-address", ":9113",
