@@ -16,6 +16,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
+	"regexp"
 )
 
 var Version string = "0.0.1"
@@ -45,7 +46,14 @@ const (
 	namespace = "pg"
 	// Subsystems.
 	exporter = "exporter"
+	// Metric label used for static string data thats handy to send to Prometheus
+	// e.g. version
+	staticLabelName = "static"
 )
+
+// Highest version of Postgres we have explicit behavior for. This is the
+// assumed default if the version string does match any known versions.
+const HighestSupportedVersion = "9.6"
 
 // landingPage contains the HTML served at '/'.
 // TODO: Make this nicer and more informative.
@@ -69,8 +77,25 @@ const (
 	DURATION     ColumnUsage = iota // This column should be interpreted as a text duration (and converted to milliseconds)
 )
 
-// Which metric mapping should be acquired using "SHOW" queries
-const SHOW_METRIC = "pg_runtime_variables"
+// Special case matric mappings
+const (
+	// Which metric mapping should be acquired using "SHOW" queries
+	SHOW_METRIC = "pg_runtime_variables"
+)
+
+// Regex used to get the "short-version" from the postgres version field.
+var versionRegex = regexp.MustCompile(`^\w+ (\d+\.\d+)`)
+
+// Parses the version of postgres into the short version string we can use to
+// match behaviors.
+func parseVersion(versionString string) string {
+	submatches := versionRegex.FindStringSubmatch(versionString)
+	if len(submatches) > 1 {
+		return submatches[1]
+	}
+	log.Debugln("Could not parse postgres version regex:", versionString)
+	return ""
+}
 
 // User-friendly representation of a prometheus descriptor map
 type ColumnMapping struct {
@@ -579,6 +604,20 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 		return
 	}
 	defer db.Close()
+
+	log.Debugln("Querying Postgres Version")
+	versionRow := db.QueryRow("SELECT version();")
+	var versionString string
+	err = versionRow.Scan(&versionString)
+	if err != nil {
+		log.Errorln("Error scanning version string:", err)
+		e.error.Set(1)
+		return
+	}
+	shortVersion := parseVersion(versionString)
+	// Output the version as a special metric
+	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName), "Version string as reported by postgres", []string{"version", "short_version"}, nil)
+	ch <- prometheus.MustNewConstMetric(versionDesc, prometheus.UntypedValue, 1, versionString, shortVersion)
 
 	log.Debugln("Querying SHOW variables")
 	for _, mapping := range e.variableMap {
