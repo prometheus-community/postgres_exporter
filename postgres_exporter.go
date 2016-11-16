@@ -10,13 +10,14 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"regexp"
+	"errors"
 
 	"gopkg.in/yaml.v2"
 
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
-	"regexp"
 )
 
 var Version string = "0.0.1"
@@ -589,6 +590,119 @@ func newDesc(subsystem, name, help string) *prometheus.Desc {
 	)
 }
 
+// Query the SHOW variables from the query map
+// TODO: make this more functional
+func (e *Exporter) queryShowVariables(ch chan<- prometheus.Metric, db *sql.DB) {
+	log.Debugln("Querying SHOW variables")
+	for _, mapping := range e.variableMap {
+		for columnName, columnMapping := range mapping.columnMappings {
+			// Check for a discard request on this value
+			if columnMapping.discard {
+				continue
+			}
+
+			// Use SHOW to get the value
+			row := db.QueryRow(fmt.Sprintf("SHOW %s;", columnName))
+
+			var val interface{}
+			err := row.Scan(&val)
+			if err != nil {
+				log.Errorln("Error scanning runtime variable:", columnName, err)
+				continue
+			}
+
+			fval, ok := columnMapping.conversion(val)
+			if !ok {
+				e.error.Set(1)
+				log.Errorln("Unexpected error parsing column: ", namespace, columnName, val)
+				continue
+			}
+
+			ch <- prometheus.MustNewConstMetric(columnMapping.desc, columnMapping.vtype, fval)
+		}
+	}
+}
+
+func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace string, mapping MetricMapNamespace) error {
+	query, er := queryOverrides[namespace]
+	if er == false {
+		query = fmt.Sprintf("SELECT * FROM %s;", namespace)
+	}
+
+	// Don't fail on a bad scrape of one metric
+	rows, err := db.Query(query)
+	if err != nil {
+		return errors.New(fmt.Sprintln("Error running query on database: ", namespace, err))
+	}
+	defer rows.Close()
+
+	var columnNames []string
+	columnNames, err = rows.Columns()
+	if err != nil {
+		return errors.New(fmt.Sprintln("Error retrieving column list for: ", namespace, err))
+	}
+
+	// Make a lookup map for the column indices
+	var columnIdx = make(map[string]int, len(columnNames))
+	for i, n := range columnNames {
+		columnIdx[n] = i
+	}
+
+	var columnData = make([]interface{}, len(columnNames))
+	var scanArgs = make([]interface{}, len(columnNames))
+	for i := range columnData {
+		scanArgs[i] = &columnData[i]
+	}
+
+	for rows.Next() {
+		err = rows.Scan(scanArgs...)
+		if err != nil {
+			return errors.New(fmt.Sprintln("Error retrieving rows:", namespace, err))
+		}
+
+		// Get the label values for this row
+		var labels = make([]string, len(mapping.labels))
+		for idx, columnName := range mapping.labels {
+			labels[idx], _ = dbToString(columnData[columnIdx[columnName]])
+		}
+
+		// Loop over column names, and match to scan data. Unknown columns
+		// will be filled with an untyped metric number *if* they can be
+		// converted to float64s. NULLs are allowed and treated as NaN.
+		for idx, columnName := range columnNames {
+			if metricMapping, ok := mapping.columnMappings[columnName]; ok {
+				// Is this a metricy metric?
+				if metricMapping.discard {
+					continue
+				}
+
+				value, ok := dbToFloat64(columnData[idx])
+				if !ok {
+					log.Errorln("Unexpected error parsing column: ", namespace, columnName, columnData[idx])
+					continue
+				}
+
+				// Generate the metric
+				ch <- prometheus.MustNewConstMetric(metricMapping.desc, metricMapping.vtype, value, labels...)
+			} else {
+				// Unknown metric. Report as untyped if scan to float64 works, else note an error too.
+				desc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), fmt.Sprintf("Unknown metric from %s", namespace), nil, nil)
+
+				// Its not an error to fail here, since the values are
+				// unexpected anyway.
+				value, ok := dbToFloat64(columnData[idx])
+				if !ok {
+					log.Warnln("Unparseable column type - discarding: ", namespace, columnName, err)
+					continue
+				}
+
+				ch <- prometheus.MustNewConstMetric(desc, prometheus.UntypedValue, value, labels...)
+			}
+		}
+	}
+	return nil
+}
+
 func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	defer func(begun time.Time) {
 		e.duration.Set(time.Since(begun).Seconds())
@@ -619,124 +733,16 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName), "Version string as reported by postgres", []string{"version", "short_version"}, nil)
 	ch <- prometheus.MustNewConstMetric(versionDesc, prometheus.UntypedValue, 1, versionString, shortVersion)
 
-	log.Debugln("Querying SHOW variables")
-	for _, mapping := range e.variableMap {
-		for columnName, columnMapping := range mapping.columnMappings {
-			// Check for a discard request on this value
-			if columnMapping.discard {
-				continue
-			}
-
-			// Use SHOW to get the value
-			row := db.QueryRow(fmt.Sprintf("SHOW %s;", columnName))
-
-			var val interface{}
-			err := row.Scan(&val)
-			if err != nil {
-				log.Errorln("Error scanning runtime variable:", columnName, err)
-				continue
-			}
-
-			fval, ok := columnMapping.conversion(val)
-			if !ok {
-				e.error.Set(1)
-				log.Errorln("Unexpected error parsing column: ", namespace, columnName, val)
-				continue
-			}
-
-			ch <- prometheus.MustNewConstMetric(columnMapping.desc, columnMapping.vtype, fval)
-		}
-	}
+	// Handle querying the show variables
+	e.queryShowVariables(ch, db)
 
 	for namespace, mapping := range e.metricMap {
 		log.Debugln("Querying namespace: ", namespace)
-		func() {
-			query, er := queryOverrides[namespace]
-			if er == false {
-				query = fmt.Sprintf("SELECT * FROM %s;", namespace)
-			}
-
-			// Don't fail on a bad scrape of one metric
-			rows, err := db.Query(query)
-			if err != nil {
-				log.Infoln("Error running query on database: ", namespace, err)
-				e.error.Set(1)
-				return
-			}
-			defer rows.Close()
-
-			var columnNames []string
-			columnNames, err = rows.Columns()
-			if err != nil {
-				log.Infoln("Error retrieving column list for: ", namespace, err)
-				e.error.Set(1)
-				return
-			}
-
-			// Make a lookup map for the column indices
-			var columnIdx = make(map[string]int, len(columnNames))
-			for i, n := range columnNames {
-				columnIdx[n] = i
-			}
-
-			var columnData = make([]interface{}, len(columnNames))
-			var scanArgs = make([]interface{}, len(columnNames))
-			for i := range columnData {
-				scanArgs[i] = &columnData[i]
-			}
-
-			for rows.Next() {
-				err = rows.Scan(scanArgs...)
-				if err != nil {
-					log.Infoln("Error retrieving rows:", namespace, err)
-					e.error.Set(1)
-					return
-				}
-
-				// Get the label values for this row
-				var labels = make([]string, len(mapping.labels))
-				for idx, columnName := range mapping.labels {
-
-					labels[idx], _ = dbToString(columnData[columnIdx[columnName]])
-				}
-
-				// Loop over column names, and match to scan data. Unknown columns
-				// will be filled with an untyped metric number *if* they can be
-				// converted to float64s. NULLs are allowed and treated as NaN.
-				for idx, columnName := range columnNames {
-					if metricMapping, ok := mapping.columnMappings[columnName]; ok {
-						// Is this a metricy metric?
-						if metricMapping.discard {
-							continue
-						}
-
-						value, ok := dbToFloat64(columnData[idx])
-						if !ok {
-							e.error.Set(1)
-							log.Errorln("Unexpected error parsing column: ", namespace, columnName, columnData[idx])
-							continue
-						}
-
-						// Generate the metric
-						ch <- prometheus.MustNewConstMetric(metricMapping.desc, metricMapping.vtype, value, labels...)
-					} else {
-						// Unknown metric. Report as untyped if scan to float64 works, else note an error too.
-						desc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), fmt.Sprintf("Unknown metric from %s", namespace), nil, nil)
-
-						// Its not an error to fail here, since the values are
-						// unexpected anyway.
-						value, ok := dbToFloat64(columnData[idx])
-						if !ok {
-							log.Warnln("Unparseable column type - discarding: ", namespace, columnName, err)
-							continue
-						}
-
-						ch <- prometheus.MustNewConstMetric(desc, prometheus.UntypedValue, value, labels...)
-					}
-				}
-
-			}
-		}()
+		err = queryNamespaceMapping(ch, db, namespace, mapping)
+		if err != nil {
+			log.Infoln(err)
+			e.error.Set(1)
+		}
 	}
 }
 
