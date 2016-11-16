@@ -592,9 +592,11 @@ func newDesc(subsystem, name, help string) *prometheus.Desc {
 
 // Query the SHOW variables from the query map
 // TODO: make this more functional
-func (e *Exporter) queryShowVariables(ch chan<- prometheus.Metric, db *sql.DB) {
+func queryShowVariables(ch chan<- prometheus.Metric, db *sql.DB, variableMap map[string]MetricMapNamespace) []error {
 	log.Debugln("Querying SHOW variables")
-	for _, mapping := range e.variableMap {
+	nonFatalErrors := []error{}
+
+	for _, mapping := range variableMap {
 		for columnName, columnMapping := range mapping.columnMappings {
 			// Check for a discard request on this value
 			if columnMapping.discard {
@@ -607,23 +609,26 @@ func (e *Exporter) queryShowVariables(ch chan<- prometheus.Metric, db *sql.DB) {
 			var val interface{}
 			err := row.Scan(&val)
 			if err != nil {
-				log.Errorln("Error scanning runtime variable:", columnName, err)
+				nonFatalErrors = append(nonFatalErrors, errors.New(fmt.Sprintln("Error scanning runtime variable:", columnName, err)))
 				continue
 			}
 
 			fval, ok := columnMapping.conversion(val)
 			if !ok {
-				e.error.Set(1)
-				log.Errorln("Unexpected error parsing column: ", namespace, columnName, val)
+				nonFatalErrors = append(nonFatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName, val)))
 				continue
 			}
 
 			ch <- prometheus.MustNewConstMetric(columnMapping.desc, columnMapping.vtype, fval)
 		}
 	}
+
+	return nonFatalErrors
 }
 
-func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace string, mapping MetricMapNamespace) error {
+// Query within a namespace mapping and emit metrics. Returns fatal errors if
+// the scrape fails, and a slice of errors if they were non-fatal.
+func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace string, mapping MetricMapNamespace) ([]error, error) {
 	query, er := queryOverrides[namespace]
 	if er == false {
 		query = fmt.Sprintf("SELECT * FROM %s;", namespace)
@@ -632,14 +637,14 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 	// Don't fail on a bad scrape of one metric
 	rows, err := db.Query(query)
 	if err != nil {
-		return errors.New(fmt.Sprintln("Error running query on database: ", namespace, err))
+		return []error{}, errors.New(fmt.Sprintln("Error running query on database: ", namespace, err))
 	}
 	defer rows.Close()
 
 	var columnNames []string
 	columnNames, err = rows.Columns()
 	if err != nil {
-		return errors.New(fmt.Sprintln("Error retrieving column list for: ", namespace, err))
+		return []error{}, errors.New(fmt.Sprintln("Error retrieving column list for: ", namespace, err))
 	}
 
 	// Make a lookup map for the column indices
@@ -654,10 +659,12 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 		scanArgs[i] = &columnData[i]
 	}
 
+	nonfatalErrors := []error{}
+
 	for rows.Next() {
 		err = rows.Scan(scanArgs...)
 		if err != nil {
-			return errors.New(fmt.Sprintln("Error retrieving rows:", namespace, err))
+			return []error{}, errors.New(fmt.Sprintln("Error retrieving rows:", namespace, err))
 		}
 
 		// Get the label values for this row
@@ -678,7 +685,7 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 
 				value, ok := dbToFloat64(columnData[idx])
 				if !ok {
-					log.Errorln("Unexpected error parsing column: ", namespace, columnName, columnData[idx])
+					nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName, columnData[idx])))
 					continue
 				}
 
@@ -692,7 +699,7 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 				// unexpected anyway.
 				value, ok := dbToFloat64(columnData[idx])
 				if !ok {
-					log.Warnln("Unparseable column type - discarding: ", namespace, columnName, err)
+					nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unparseable column type - discarding: ", namespace, columnName, err)))
 					continue
 				}
 
@@ -700,7 +707,32 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 			}
 		}
 	}
-	return nil
+	return nonfatalErrors, nil
+}
+
+// Iterate through all the namespace mappings in the exporter and run their
+// queries.
+func queryNamespaceMappings(ch chan<- prometheus.Metric, db *sql.DB, metricMap map[string]MetricMapNamespace) map[string]error {
+	// Return a map of namespace -> errors
+	namespaceErrors := make(map[string]error)
+
+	for namespace, mapping := range metricMap {
+		log.Debugln("Querying namespace: ", namespace)
+		nonFatalErrors, err := queryNamespaceMapping(ch, db, namespace, mapping)
+		// Serious error - a namespace disappeard
+		if err != nil {
+			namespaceErrors[namespace] = err
+			log.Infoln(err)
+		}
+		// Non-serious errors - likely version or parsing problems.
+		if len(nonFatalErrors) > 0 {
+			for _, err := range nonFatalErrors {
+				log.Infoln(err.Error())
+			}
+		}
+	}
+
+	return namespaceErrors
 }
 
 func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
@@ -734,15 +766,14 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(versionDesc, prometheus.UntypedValue, 1, versionString, shortVersion)
 
 	// Handle querying the show variables
-	e.queryShowVariables(ch, db)
+	nonFatalErrors := queryShowVariables(ch, db, e.variableMap)
+	if len(nonFatalErrors) > 0 {
+		e.error.Set(1)
+	}
 
-	for namespace, mapping := range e.metricMap {
-		log.Debugln("Querying namespace: ", namespace)
-		err = queryNamespaceMapping(ch, db, namespace, mapping)
-		if err != nil {
-			log.Infoln(err)
-			e.error.Set(1)
-		}
+	errMap := queryNamespaceMappings(ch, db, e.metricMap)
+	if len(errMap) > 0 {
+		e.error.Set(1)
 	}
 }
 
