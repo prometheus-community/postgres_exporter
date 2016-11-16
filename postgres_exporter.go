@@ -22,7 +22,7 @@ var Version string = "0.0.1"
 
 var (
 	listenAddress = flag.String(
-		"web.listen-address", ":9113",
+		"web.listen-address", ":9187",
 		"Address to listen on for web interface and telemetry.",
 	)
 	metricPath = flag.String(
