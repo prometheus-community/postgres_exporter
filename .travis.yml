@@ -4,6 +4,13 @@ services:
 language: go
 go:
 - '1.7'
+# Make sure we have p2
+before_install:
+- wget -O /usr/local/bin/p2 https://github.com/wrouesnel/p2cli/releases/download/r4/p2 &&
+  chmod +x /usr/local/bin/p2
+- wget -O /usr/local/bin/docker-compose https://github.com/docker/compose/releases/download/1.9.0-rc4/docker-compose-Linux-x86_64 &&
+  chmod +x /usr/local/bin/docker-compose
+  
 script:
 - make all
 - make docker

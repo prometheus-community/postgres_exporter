@@ -1,12 +1,23 @@
 #!/bin/bash
 # Basic integration tests with postgres. Requires docker to work.
 
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+  DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+done
+DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+cd $DIR
+
 VERSIONS=( \
     9.1 \
     9.2 \
     9.3 \
     9.4 \
     9.5 \
+    9.6 \
 )
 
 smoketest_postgres() {
@@ -17,16 +28,16 @@ smoketest_postgres() {
     
     local CUR_IMAGE=$IMAGE_NAME:$version
     
+    echo "Test standalone cluster..."
     docker run -d --name=$CONTAINER_NAME -e POSTGRES_PASSWORD=password -p 127.0.0.1:55432:5432 $CUR_IMAGE
+
+    trap "docker logs $CONTAINER_NAME ; docker kill $CONTAINER_NAME ; docker rm $CONTAINER_NAME" EXIT INT TERM
 
     local WAIT_START=$(date +%s)
     while ! docker exec $CONTAINER_NAME bash -c "psql -U postgres -c \"select 'running'\" > /dev/null 2>&1 " ; do
         echo "Waiting for postgres to start..."
         if [ $(( $(date +%s) - $WAIT_START )) -gt $TIMEOUT ]; then
             echo "Timed out waiting for postgres!" 1>&2
-            docker logs $CONTAINER_NAME
-            docker kill $CONTAINER_NAME
-            docker rm $CONTAINER_NAME
             exit 1
         fi
         sleep 1
@@ -34,14 +45,12 @@ smoketest_postgres() {
 
     DATA_SOURCE_NAME="postgresql://postgres:password@localhost:55432/?sslmode=disable" ./postgres_exporter &
     exporter_pid=$!
+    trap "docker logs $CONTAINER_NAME ; docker kill $CONTAINER_NAME ; docker rm $CONTAINER_NAME ; kill $exporter_pid" EXIT INT TERM
     local DAEMON_WAIT_START=$(date +%s)
     while ! nc -z localhost 9113 ; do
         echo "Waiting for exporter to start..."
         if [ $(( $(date +%s) - $WAIT_START )) -gt $TIMEOUT ]; then
             echo "Timed out waiting for exporter!" 1>&2
-            docker logs $CONTAINER_NAME
-            docker kill $CONTAINER_NAME
-            docker rm $CONTAINER_NAME
             exit 1            
         fi
         sleep 1
@@ -51,15 +60,77 @@ smoketest_postgres() {
     if [ "$?" != "0" ]; then
         echo "Failed on postgres $version ($DOCKER_IMAGE)" 1>&2
         kill $exporter_pid
-        docker logs $CONTAINER_NAME
-        docker kill $CONTAINER_NAME
-        docker rm $CONTAINER_NAME
         exit 1
     fi
 
     kill $exporter_pid
     docker kill $CONTAINER_NAME
     docker rm $CONTAINER_NAME
+    trap - EXIT INT TERM
+    
+    echo "Test replicated cluster..."
+    postgres_exporter=$(readlink -f ./postgres_exporter)
+    old_pwd=$(pwd)
+    cd docker-postgres-replication
+    
+    VERSION=$version p2 -t Dockerfile.p2 -o Dockerfile
+    if [ "$?" != "0" ]; then
+        echo "Templating failed" 1>&2
+        exit 1
+    fi
+    trap "docker-compose logs; docker-compose down ; docker-compose rm -v" EXIT INT TERM
+    docker-compose up -d --force-recreate --build 
+    
+    master_container=$(docker-compose ps -q pg-master)
+    slave_container=$(docker-compose ps -q pg-slave)
+    master_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $master_container)
+
+    local WAIT_START=$(date +%s)
+    while ! docker exec $master_container bash -c "psql -U postgres -c \"select 'running'\" > /dev/null 2>&1 " ; do
+        echo "Waiting for postgres master to start..."
+        if [ $(( $(date +%s) - $WAIT_START )) -gt $TIMEOUT ]; then
+            echo "Timed out waiting for postgres!" 1>&2
+            exit 1
+        fi
+        sleep 1
+    done
+    
+    local WAIT_START=$(date +%s)
+    while ! docker exec $slave_container bash -c "psql -U postgres -c \"select 'running'\" > /dev/null 2>&1 " ; do
+        echo "Waiting for postgres master to start..."
+        if [ $(( $(date +%s) - $WAIT_START )) -gt $TIMEOUT ]; then
+            echo "Timed out waiting for postgres!" 1>&2
+            exit 1
+        fi
+        sleep 1
+    done
+    
+    DATA_SOURCE_NAME="postgresql://postgres:password@$master_ip:5432/?sslmode=disable" $postgres_exporter &
+    exporter_pid=$!
+    trap "docker-compose logs; docker-compose down ; docker-compose rm -v ; kill $exporter_pid" EXIT INT TERM
+    local DAEMON_WAIT_START=$(date +%s)
+    while ! nc -z localhost 9113 ; do
+        echo "Waiting for exporter to start..."
+        if [ $(( $(date +%s) - $WAIT_START )) -gt $TIMEOUT ]; then
+            echo "Timed out waiting for exporter!" 1>&2
+            exit 1            
+        fi
+        sleep 1
+    done
+
+    wget -q -O - http://localhost:9113/metrics 1> /dev/null
+    if [ "$?" != "0" ]; then
+        echo "Failed on postgres $version ($DOCKER_IMAGE)" 1>&2
+        exit 1
+    fi
+
+    kill $exporter_pid
+    
+    docker-compose down
+    docker-compose rm -v
+    trap - EXIT INT TERM
+    
+    cd $old_pwd
 }
 
 # Start pulling the docker images in advance
