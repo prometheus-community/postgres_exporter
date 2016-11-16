@@ -227,8 +227,7 @@ var queryOverrides = map[string]string{
       ON tmp.mode=tmp2.mode and pg_database.oid = tmp2.database ORDER BY 1`,
 
 	"pg_stat_replication": `
-        SELECT *, pg_current_xlog_location(), pg_xlog_location_diff(pg_current_xlog_location(), replay_location)::float FROM pg_stat_replication
-				INNER JOIN pg_replication_slots ON pg_stat_replication.pid=pg_replication_slots.active_pid`,
+        SELECT *, pg_current_xlog_location(), pg_xlog_location_diff(pg_current_xlog_location(), replay_location)::float FROM pg_stat_replication`,
 
 	"pg_stat_activity": `
       SELECT
