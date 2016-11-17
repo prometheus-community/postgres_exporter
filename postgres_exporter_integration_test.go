@@ -30,7 +30,7 @@ func (s *IntegrationSuite) SetUpSuite(c *C) {
 	dsn := os.Getenv("DATA_SOURCE_NAME")
 	c.Assert(dsn, Not(Equals), "")
 
-	exporter := NewExporter(dsn)
+	exporter := NewExporter(dsn, "")
 	c.Assert(exporter, NotNil)
 	// Assign the exporter to the suite
 	s.e = exporter
