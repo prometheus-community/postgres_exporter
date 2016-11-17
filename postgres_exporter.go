@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	//"io/ioutil"
+	"io/ioutil"
 	"math"
 	"net/http"
 	"os"
@@ -13,7 +13,7 @@ import (
 	"regexp"
 	"errors"
 
-	//"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
@@ -41,10 +41,6 @@ var (
 		"dumpmaps", false,
 		"Do not run, simply dump the maps.",
 	)
-	expectReplicationStats = flag.Bool(
-		"config.expect-replication-stats", false,
-		"The target database has replication configured, log missing replication stats as an error.",
-	)
 )
 
 // Metric name parts.
@@ -70,6 +66,22 @@ var landingPage = []byte(`<html>
 `)
 
 type ColumnUsage int
+
+// Implements the yaml.Unmarshaller interface
+func (this *ColumnUsage) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var value string
+	if err := unmarshal(&value); err != nil {
+		return err
+	}
+
+	columnUsage, err := stringToColumnUsage(value)
+	if err != nil {
+		return err
+	}
+
+	*this = columnUsage
+	return nil
+}
 
 const (
 	DISCARD      ColumnUsage = iota // Ignore this column
@@ -103,10 +115,18 @@ func parseVersion(versionString string) (semver.Version, error) {
 
 // User-friendly representation of a prometheus descriptor map
 type ColumnMapping struct {
-	usage       ColumnUsage
-	description string
-	mapping     map[string]float64 // Optional column mapping for MAPPEDMETRIC
-	supportedVersions semver.Range	// Semantic version ranges which are supported. Unsupported columns are not queried (internally converted to DISCARD).
+	usage       ColumnUsage			`yaml:"usage"`
+	description string				`yaml:"description"`
+	mapping     map[string]float64 	`yaml:"metric_mapping"` // Optional column mapping for MAPPEDMETRIC
+	supportedVersions semver.Range	`yaml:"pg_version"`	// Semantic version ranges which are supported. Unsupported columns are not queried (internally converted to DISCARD).
+}
+
+func (this *ColumnMapping) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type plain ColumnMapping
+	if err := unmarshal((*plain)(this)); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Groups metric maps under a shared set of labels
@@ -364,67 +384,110 @@ func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]
 	return resultMap
 }
 
-// Add queries to the metricMaps and queryOverrides maps
-//func addQueries(queriesPath string) (err error) {
-//	var extra map[string]interface{}
+// Add queries to the metricMaps and queryOverrides maps. Added queries do not
+// respect version requirements, because it is assumed that the user knows
+// what they are doing with their version of postgres.
 //
-//	content, err := ioutil.ReadFile(queriesPath)
-//	if err != nil {
-//		return err
-//	}
-//
-//	err = yaml.Unmarshal(content, &extra)
-//	if err != nil {
-//		return err
-//	}
-//
-//	for metric, specs := range extra {
-//		for key, value := range specs.(map[interface{}]interface{}) {
-//			switch key.(string) {
-//			case "query":
-//				query := value.(string)
-//				queryOverrides[metric] = query
-//
-//			case "metrics":
-//				for _, c := range value.([]interface{}) {
-//					column := c.(map[interface{}]interface{})
-//
-//					for n, a := range column {
-//						var cmap ColumnMapping
-//
-//						metric_map, ok := metricMaps[metric]
-//						if !ok {
-//							metric_map = make(map[string]ColumnMapping)
-//						}
-//
-//						name := n.(string)
-//
-//						for attr_key, attr_val := range a.(map[interface{}]interface{}) {
-//							switch attr_key.(string) {
-//							case "usage":
-//								usage, err := stringToColumnUsage(attr_val.(string))
-//								if err != nil {
-//									return err
-//								}
-//								cmap.usage = usage
-//							case "description":
-//								cmap.description = attr_val.(string)
-//							}
-//						}
-//
-//						cmap.mapping = nil
-//
-//						metric_map[name] = cmap
-//
-//						metricMaps[metric] = metric_map
-//					}
-//				}
-//			}
-//		}
-//	}
-//
-//	return
-//}
+// This function modifies metricMap and queryOverrideMap to contain the new
+// queries.
+// TODO: test code for all this.
+// TODO: use proper struct type system
+// TODO: the YAML this supports is "non-standard" - we should move away from it.
+func addQueries(queriesPath string, pgVersion semver.Version, exporterMap map[string]MetricMapNamespace, queryOverrideMap map[string]string) error {
+	var extra map[string]interface{}
+
+	content, err := ioutil.ReadFile(queriesPath)
+	if err != nil {
+		return err
+	}
+
+	err = yaml.Unmarshal(content, &extra)
+	if err != nil {
+		return err
+	}
+
+	// Stores the loaded map representation
+	metricMaps := make(map[string]map[string]ColumnMapping)
+	newQueryOverrides := make(map[string]string)
+
+	for metric, specs := range extra {
+		log.Debugln("New user metric namespace from YAML:", metric)
+		for key, value := range specs.(map[interface{}]interface{}) {
+			switch key.(string) {
+			case "query":
+				query := value.(string)
+				newQueryOverrides[metric] = query
+
+			case "metrics":
+				for _, c := range value.([]interface{}) {
+					column := c.(map[interface{}]interface{})
+
+					for n, a := range column {
+						var columnMapping ColumnMapping
+
+						// Fetch the metric map we want to work on.
+						metricMap, ok := metricMaps[metric]
+						if !ok {
+							// Namespace for metric not found - add it.
+							metricMap = make(map[string]ColumnMapping)
+							metricMaps[metric] = metricMap
+						}
+
+						// Get name.
+						name := n.(string)
+
+						for attrKey, attrVal := range a.(map[interface{}]interface{}) {
+							switch attrKey.(string) {
+							case "usage":
+								usage, err := stringToColumnUsage(attrVal.(string))
+								if err != nil {
+									return err
+								}
+								columnMapping.usage = usage
+							case "description":
+								columnMapping.description = attrVal.(string)
+							}
+						}
+
+						// TODO: we should support this
+						columnMapping.mapping = nil
+						// Should we support this for users?
+						columnMapping.supportedVersions = nil
+
+						metricMap[name] = columnMapping
+					}
+				}
+			}
+		}
+	}
+
+	// Convert the loaded metric map into exporter representation
+	partialExporterMap := makeDescMap(pgVersion, metricMaps)
+
+	// Merge the two maps (which are now quite flatteend)
+	for k, v := range partialExporterMap {
+		_, found := exporterMap[k]
+		if found {
+			log.Debugln("Overriding metric", k, "from user YAML file.")
+		} else {
+			log.Debugln("Adding new metric", k, "from user YAML file.")
+		}
+		exporterMap[k] = v
+	}
+
+	// Merge the query override map
+	for k, v := range newQueryOverrides {
+		_, found := queryOverrideMap[k]
+		if found {
+			log.Debugln("Overriding query override", k, "from user YAML file.")
+		} else {
+			log.Debugln("Adding new query override", k, "from user YAML file.")
+		}
+		queryOverrideMap[k] = v
+	}
+
+	return nil
+}
 
 // Turn the MetricMap column mapping into a prometheus descriptor mapping.
 func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]ColumnMapping) map[string]MetricMapNamespace {
@@ -619,6 +682,7 @@ func dbToString(t interface{}) (string, bool) {
 // Exporter collects Postgres metrics. It implements prometheus.Collector.
 type Exporter struct {
 	dsn             string
+	userQueriesPath	string
 	duration, error prometheus.Gauge
 	totalScrapes    prometheus.Counter
 
@@ -635,9 +699,10 @@ type Exporter struct {
 }
 
 // NewExporter returns a new PostgreSQL exporter for the provided DSN.
-func NewExporter(dsn string) *Exporter {
+func NewExporter(dsn string, userQueriesPath string) *Exporter {
 	return &Exporter{
 		dsn: dsn,
+		userQueriesPath: userQueriesPath,
 		duration: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: exporter,
@@ -881,6 +946,12 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 		e.queryOverrides = makeQueryOverrideMap(semanticVersion, queryOverrides)
 		e.lastMapVersion = semanticVersion
 
+		if e.userQueriesPath != "" {
+			if err := addQueries(e.userQueriesPath, semanticVersion, e.metricMap, e.queryOverrides) ; err != nil {
+				log.Errorln("Failed to reload user queries:", e.userQueriesPath, err)
+			}
+		}
+
 		e.mappingMtx.Unlock()
 	}
 
@@ -933,14 +1004,6 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 func main() {
 	flag.Parse()
 
-	// TODO: restroe addQueries functionality
-	//if *queriesPath != "" {
-	//	err := addQueries(*queriesPath)
-	//	if err != nil {
-	//		log.Warnln("Unparseable queries file - discarding merge: ", *queriesPath, err)
-	//	}
-	//}
-
 	if *onlyDumpMaps {
 		dumpMaps()
 		return
@@ -951,7 +1014,7 @@ func main() {
 		log.Fatal("couldn't find environment variable DATA_SOURCE_NAME")
 	}
 
-	exporter := NewExporter(dsn)
+	exporter := NewExporter(dsn, *queriesPath)
 	prometheus.MustRegister(exporter)
 
 	http.Handle(*metricPath, prometheus.Handler())
