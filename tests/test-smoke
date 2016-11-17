@@ -12,7 +12,7 @@ DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 # Read the absolute path to the exporter
 postgres_exporter=$(readlink -f $1)
 test_binary=$(readlink -f $2)
-POSTGRES_PASSWORD=postgres
+export POSTGRES_PASSWORD=postgres
 exporter_port=9187
 
 cd $DIR
@@ -26,53 +26,35 @@ VERSIONS=( \
     9.6 \
 )
 
-wait_for_replicated_postgres() {
-    local CONTAINER_NAME=$1
-    if [ -z $CONTAINER_NAME ]; then
-        echo "No container name specified." 1>&2
+wait_for_postgres(){
+    local ip=$1
+    local port=$2
+    if [ -z $ip ]; then
+        echo "No IP specified." 1>&2
         exit 1
     fi
-    local WAIT_START=$(date +%s)
-    echo "Waiting for postgres to initialize..."
-    while ! docker exec $CONTAINER_NAME bash -c "test -e /tmp/.postgres_init_complete" ; do
-        if [ $(( $(date +%s) - $WAIT_START )) -gt $TIMEOUT ]; then
-            echo "Timed out waiting for postgres!" 1>&2
-            exit 1
+    
+    if [ -z $port ]; then
+        echo "No port specified." 1>&2
+        exit 1
+    fi
+    
+    local wait_start=$(date +%s)
+    echo "Waiting for postgres to start listening..."
+    while ! pg_isready --host=$ip --port=$port &> /dev/null; do
+        if [ $(( $(date +%s) - $wait_start )) -gt $TIMEOUT ]; then
+            echo "Timed out waiting for postgres to start!" 1>&2
+            exit 1            
         fi
         sleep 1
     done
-    echo "Waiting for postgres to start..."
-    while ! docker exec $CONTAINER_NAME bash -c "psql -U postgres -c \"select 'running'\" > /dev/null 2>&1 " ; do
-        if [ $(( $(date +%s) - $WAIT_START )) -gt $TIMEOUT ]; then
-            echo "Timed out waiting for postgres!" 1>&2
-            exit 1
-        fi
-        sleep 1
-    done
-}
-
-wait_for_postgres() {
-    local CONTAINER_NAME=$1
-    if [ -z $CONTAINER_NAME ]; then
-        echo "No container name specified." 1>&2
-        exit 1
-    fi
-    local WAIT_START=$(date +%s)
-    echo "Waiting for postgres to start..."
-    while ! docker exec $CONTAINER_NAME bash -c "psql -U postgres -c \"select 'running'\" > /dev/null 2>&1 " ; do
-        if [ $(( $(date +%s) - $WAIT_START )) -gt $TIMEOUT ]; then
-            echo "Timed out waiting for postgres!" 1>&2
-            exit 1
-        fi
-        sleep 1
-    done    
 }
 
 wait_for_exporter() {
-    local DAEMON_WAIT_START=$(date +%s)
+    local wait_start=$(date +%s)
     echo "Waiting for exporter to start..."
     while ! nc -z localhost $exporter_port ; do
-        if [ $(( $(date +%s) - $DAEMON_WAIT_START )) -gt $TIMEOUT ]; then
+        if [ $(( $(date +%s) - $wait_start )) -gt $TIMEOUT ]; then
             echo "Timed out waiting for exporter!" 1>&2
             exit 1            
         fi
@@ -91,12 +73,12 @@ smoketest_postgres() {
     echo "#######################"
     echo "Standalone Postgres $version"
     echo "#######################"
-    local docker_cmd='docker run -d -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD -p 127.0.0.1:55432:5432 $CUR_IMAGE'
+    local docker_cmd="docker run -d -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD -p 127.0.0.1:55432:5432 $CUR_IMAGE"
     echo "Docker Cmd: $docker_cmd"
     
-    CONTAINER_NAME=$(eval $docker_cmd)
+    CONTAINER_NAME=$($docker_cmd)
     trap "docker logs $CONTAINER_NAME ; docker kill $CONTAINER_NAME ; docker rm -v $CONTAINER_NAME; exit 1" EXIT INT TERM
-    wait_for_postgres $CONTAINER_NAME
+    wait_for_postgres localhost 55432
 
     DATA_SOURCE_NAME="postgresql://postgres:$POSTGRES_PASSWORD@localhost:55432/?sslmode=disable" $test_binary --log.level=debug || exit $?
 #    exporter_pid=$!
@@ -112,7 +94,7 @@ smoketest_postgres() {
 #
 #    kill $exporter_pid
     docker kill $CONTAINER_NAME
-    docker rm $CONTAINER_NAME
+    docker rm -v $CONTAINER_NAME
     trap - EXIT INT TERM
     
     echo "#######################"
@@ -134,9 +116,10 @@ smoketest_postgres() {
     master_container=$(docker-compose ps -q pg-master)
     slave_container=$(docker-compose ps -q pg-slave)
     master_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $master_container)
+    slave_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $slave_container)
     echo "Got master IP: $master_ip"
-    wait_for_replicated_postgres $master_container
-    wait_for_replicated_postgres $slave_container
+    wait_for_postgres $master_ip 5432
+    wait_for_postgres $slave_ip 5432
     
     DATA_SOURCE_NAME="postgresql://postgres:$POSTGRES_PASSWORD@$master_ip:5432/?sslmode=disable" $test_binary --log.level=debug || exit $?
 #    exporter_pid=$!
