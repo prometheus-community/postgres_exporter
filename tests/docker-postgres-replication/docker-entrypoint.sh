@@ -131,6 +131,9 @@ if [ "$1" = 'postgres' ]; then
 		echo
 	fi
 
+    # We need this health check so we know when it's started up.
+    touch /tmp/.postgres_init_complete
+
 	exec gosu postgres "$@"
 fi
 

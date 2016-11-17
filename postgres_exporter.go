@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	//"io/ioutil"
 	"math"
 	"net/http"
 	"os"
@@ -13,11 +13,13 @@ import (
 	"regexp"
 	"errors"
 
-	"gopkg.in/yaml.v2"
+	//"gopkg.in/yaml.v2"
 
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
+	"github.com/blang/semver"
+	"github.com/anacrolix/sync"
 )
 
 var Version string = "0.0.1"
@@ -56,10 +58,6 @@ const (
 	staticLabelName = "static"
 )
 
-// Highest version of Postgres we have explicit behavior for. This is the
-// assumed default if the version string does match any known versions.
-const HighestSupportedVersion = "9.6"
-
 // landingPage contains the HTML served at '/'.
 // TODO: Make this nicer and more informative.
 var landingPage = []byte(`<html>
@@ -89,17 +87,18 @@ const (
 )
 
 // Regex used to get the "short-version" from the postgres version field.
-var versionRegex = regexp.MustCompile(`^\w+ (\d+\.\d+)`)
+var versionRegex = regexp.MustCompile(`^\w+ (\d+\.\d+\.\d+)`)
+var lowestSupportedVersion = semver.MustParse("9.1.0")
 
 // Parses the version of postgres into the short version string we can use to
 // match behaviors.
-func parseVersion(versionString string) string {
+func parseVersion(versionString string) (semver.Version, error) {
 	submatches := versionRegex.FindStringSubmatch(versionString)
 	if len(submatches) > 1 {
-		return submatches[1]
+		return semver.Make(submatches[1])
 	}
-	log.Debugln("Could not parse postgres version regex:", versionString)
-	return ""
+	return semver.Version{},
+		errors.New(fmt.Sprintln("Could not find a postgres version in string:", versionString))
 }
 
 // User-friendly representation of a prometheus descriptor map
@@ -107,6 +106,7 @@ type ColumnMapping struct {
 	usage       ColumnUsage
 	description string
 	mapping     map[string]float64 // Optional column mapping for MAPPEDMETRIC
+	supportedVersions semver.Range	// Semantic version ranges which are supported. Unsupported columns are not queried (internally converted to DISCARD).
 }
 
 // Groups metric maps under a shared set of labels
@@ -127,29 +127,33 @@ type MetricMap struct {
 // Metric descriptors for dynamically created metrics.
 var variableMaps = map[string]map[string]ColumnMapping{
 	"pg_runtime_variable": map[string]ColumnMapping{
-		"max_connections":                {GAUGE, "Sets the maximum number of concurrent connections.", nil},
-		"max_files_per_process":          {GAUGE, "Sets the maximum number of simultaneously open files for each server process.", nil},
-		"max_function_args":              {GAUGE, "Shows the maximum number of function arguments.", nil},
-		"max_identifier_length":          {GAUGE, "Shows the maximum identifier length.", nil},
-		"max_index_keys":                 {GAUGE, "Shows the maximum number of index keys.", nil},
-		"max_locks_per_transaction":      {GAUGE, "Sets the maximum number of locks per transaction.", nil},
-		"max_pred_locks_per_transaction": {GAUGE, "Sets the maximum number of predicate locks per transaction.", nil},
-		"max_prepared_transactions":      {GAUGE, "Sets the maximum number of simultaneously prepared transactions.", nil},
+		"max_connections":                {GAUGE, "Sets the maximum number of concurrent connections.", nil, nil},
+		"max_files_per_process":          {GAUGE, "Sets the maximum number of simultaneously open files for each server process.", nil, nil},
+		"max_function_args":              {GAUGE, "Shows the maximum number of function arguments.", nil, nil},
+		"max_identifier_length":          {GAUGE, "Shows the maximum identifier length.", nil, nil},
+		"max_index_keys":                 {GAUGE, "Shows the maximum number of index keys.", nil, nil},
+		"max_locks_per_transaction":      {GAUGE, "Sets the maximum number of locks per transaction.", nil, nil},
+		"max_pred_locks_per_transaction": {GAUGE, "Sets the maximum number of predicate locks per transaction.", nil, nil},
+		"max_prepared_transactions":      {GAUGE, "Sets the maximum number of simultaneously prepared transactions.", nil, nil},
 		//"max_stack_depth" : { GAUGE, "Sets the maximum number of concurrent connections.", nil }, // No dehumanize support yet
-		"max_standby_archive_delay":   {DURATION, "Sets the maximum delay before canceling queries when a hot standby server is processing archived WAL data.", nil},
-		"max_standby_streaming_delay": {DURATION, "Sets the maximum delay before canceling queries when a hot standby server is processing streamed WAL data.", nil},
-		"max_wal_senders":             {GAUGE, "Sets the maximum number of simultaneously running WAL sender processes.", nil},
+		"max_standby_archive_delay":   {DURATION, "Sets the maximum delay before canceling queries when a hot standby server is processing archived WAL data.", nil, nil},
+		"max_standby_streaming_delay": {DURATION, "Sets the maximum delay before canceling queries when a hot standby server is processing streamed WAL data.", nil, nil},
+		"max_wal_senders":             {GAUGE, "Sets the maximum number of simultaneously running WAL sender processes.", nil, nil},
 	},
 }
 
+// TODO: revisit this with the semver system
 func dumpMaps() {
 	for name, cmap := range metricMaps {
 		query, ok := queryOverrides[name]
-		if ok {
-			fmt.Printf("%s: %s\n", name, query)
-		} else {
+		if !ok {
 			fmt.Println(name)
+		} else {
+			for _, queryOverride := range query {
+				fmt.Println(name, queryOverride.versionRange, queryOverride.query)
+			}
 		}
+
 		for column, details := range cmap {
 			fmt.Printf("  %-40s %v\n", column, details)
 		}
@@ -159,188 +163,271 @@ func dumpMaps() {
 
 var metricMaps = map[string]map[string]ColumnMapping{
 	"pg_stat_bgwriter": map[string]ColumnMapping{
-		"checkpoints_timed":     {COUNTER, "Number of scheduled checkpoints that have been performed", nil},
-		"checkpoints_req":       {COUNTER, "Number of requested checkpoints that have been performed", nil},
-		"checkpoint_write_time": {COUNTER, "Total amount of time that has been spent in the portion of checkpoint processing where files are written to disk, in milliseconds", nil},
-		"checkpoint_sync_time":  {COUNTER, "Total amount of time that has been spent in the portion of checkpoint processing where files are synchronized to disk, in milliseconds", nil},
-		"buffers_checkpoint":    {COUNTER, "Number of buffers written during checkpoints", nil},
-		"buffers_clean":         {COUNTER, "Number of buffers written by the background writer", nil},
-		"maxwritten_clean":      {COUNTER, "Number of times the background writer stopped a cleaning scan because it had written too many buffers", nil},
-		"buffers_backend":       {COUNTER, "Number of buffers written directly by a backend", nil},
-		"buffers_backend_fsync": {COUNTER, "Number of times a backend had to execute its own fsync call (normally the background writer handles those even when the backend does its own write)", nil},
-		"buffers_alloc":         {COUNTER, "Number of buffers allocated", nil},
-		"stats_reset":           {COUNTER, "Time at which these statistics were last reset", nil},
+		"checkpoints_timed":     {COUNTER, "Number of scheduled checkpoints that have been performed", nil, nil},
+		"checkpoints_req":       {COUNTER, "Number of requested checkpoints that have been performed", nil, nil},
+		"checkpoint_write_time": {COUNTER, "Total amount of time that has been spent in the portion of checkpoint processing where files are written to disk, in milliseconds", nil, nil},
+		"checkpoint_sync_time":  {COUNTER, "Total amount of time that has been spent in the portion of checkpoint processing where files are synchronized to disk, in milliseconds", nil, nil},
+		"buffers_checkpoint":    {COUNTER, "Number of buffers written during checkpoints", nil, nil},
+		"buffers_clean":         {COUNTER, "Number of buffers written by the background writer", nil, nil},
+		"maxwritten_clean":      {COUNTER, "Number of times the background writer stopped a cleaning scan because it had written too many buffers", nil, nil},
+		"buffers_backend":       {COUNTER, "Number of buffers written directly by a backend", nil, nil},
+		"buffers_backend_fsync": {COUNTER, "Number of times a backend had to execute its own fsync call (normally the background writer handles those even when the backend does its own write)", nil, nil},
+		"buffers_alloc":         {COUNTER, "Number of buffers allocated", nil, nil},
+		"stats_reset":           {COUNTER, "Time at which these statistics were last reset", nil, nil},
 	},
 	"pg_stat_database": map[string]ColumnMapping{
-		"datid":          {LABEL, "OID of a database", nil},
-		"datname":        {LABEL, "Name of this database", nil},
-		"numbackends":    {GAUGE, "Number of backends currently connected to this database. This is the only column in this view that returns a value reflecting current state; all other columns return the accumulated values since the last reset.", nil},
-		"xact_commit":    {COUNTER, "Number of transactions in this database that have been committed", nil},
-		"xact_rollback":  {COUNTER, "Number of transactions in this database that have been rolled back", nil},
-		"blks_read":      {COUNTER, "Number of disk blocks read in this database", nil},
-		"blks_hit":       {COUNTER, "Number of times disk blocks were found already in the buffer cache, so that a read was not necessary (this only includes hits in the PostgreSQL buffer cache, not the operating system's file system cache)", nil},
-		"tup_returned":   {COUNTER, "Number of rows returned by queries in this database", nil},
-		"tup_fetched":    {COUNTER, "Number of rows fetched by queries in this database", nil},
-		"tup_inserted":   {COUNTER, "Number of rows inserted by queries in this database", nil},
-		"tup_updated":    {COUNTER, "Number of rows updated by queries in this database", nil},
-		"tup_deleted":    {COUNTER, "Number of rows deleted by queries in this database", nil},
-		"conflicts":      {COUNTER, "Number of queries canceled due to conflicts with recovery in this database. (Conflicts occur only on standby servers; see pg_stat_database_conflicts for details.)", nil},
-		"temp_files":     {COUNTER, "Number of temporary files created by queries in this database. All temporary files are counted, regardless of why the temporary file was created (e.g., sorting or hashing), and regardless of the log_temp_files setting.", nil},
-		"temp_bytes":     {COUNTER, "Total amount of data written to temporary files by queries in this database. All temporary files are counted, regardless of why the temporary file was created, and regardless of the log_temp_files setting.", nil},
-		"deadlocks":      {COUNTER, "Number of deadlocks detected in this database", nil},
-		"blk_read_time":  {COUNTER, "Time spent reading data file blocks by backends in this database, in milliseconds", nil},
-		"blk_write_time": {COUNTER, "Time spent writing data file blocks by backends in this database, in milliseconds", nil},
-		"stats_reset":    {COUNTER, "Time at which these statistics were last reset", nil},
+		"datid":          {LABEL, "OID of a database", nil, nil},
+		"datname":        {LABEL, "Name of this database", nil, nil},
+		"numbackends":    {GAUGE, "Number of backends currently connected to this database. This is the only column in this view that returns a value reflecting current state; all other columns return the accumulated values since the last reset.", nil, nil},
+		"xact_commit":    {COUNTER, "Number of transactions in this database that have been committed", nil, nil},
+		"xact_rollback":  {COUNTER, "Number of transactions in this database that have been rolled back", nil, nil},
+		"blks_read":      {COUNTER, "Number of disk blocks read in this database", nil, nil},
+		"blks_hit":       {COUNTER, "Number of times disk blocks were found already in the buffer cache, so that a read was not necessary (this only includes hits in the PostgreSQL buffer cache, not the operating system's file system cache)", nil, nil},
+		"tup_returned":   {COUNTER, "Number of rows returned by queries in this database", nil, nil},
+		"tup_fetched":    {COUNTER, "Number of rows fetched by queries in this database", nil, nil},
+		"tup_inserted":   {COUNTER, "Number of rows inserted by queries in this database", nil, nil},
+		"tup_updated":    {COUNTER, "Number of rows updated by queries in this database", nil, nil},
+		"tup_deleted":    {COUNTER, "Number of rows deleted by queries in this database", nil, nil},
+		"conflicts":      {COUNTER, "Number of queries canceled due to conflicts with recovery in this database. (Conflicts occur only on standby servers; see pg_stat_database_conflicts for details.)", nil, nil},
+		"temp_files":     {COUNTER, "Number of temporary files created by queries in this database. All temporary files are counted, regardless of why the temporary file was created (e.g., sorting or hashing), and regardless of the log_temp_files setting.", nil, nil},
+		"temp_bytes":     {COUNTER, "Total amount of data written to temporary files by queries in this database. All temporary files are counted, regardless of why the temporary file was created, and regardless of the log_temp_files setting.", nil, nil},
+		"deadlocks":      {COUNTER, "Number of deadlocks detected in this database", nil, nil},
+		"blk_read_time":  {COUNTER, "Time spent reading data file blocks by backends in this database, in milliseconds", nil, nil},
+		"blk_write_time": {COUNTER, "Time spent writing data file blocks by backends in this database, in milliseconds", nil, nil},
+		"stats_reset":    {COUNTER, "Time at which these statistics were last reset", nil, nil},
 	},
 	"pg_stat_database_conflicts": map[string]ColumnMapping{
-		"datid":            {LABEL, "OID of a database", nil},
-		"datname":          {LABEL, "Name of this database", nil},
-		"confl_tablespace": {COUNTER, "Number of queries in this database that have been canceled due to dropped tablespaces", nil},
-		"confl_lock":       {COUNTER, "Number of queries in this database that have been canceled due to lock timeouts", nil},
-		"confl_snapshot":   {COUNTER, "Number of queries in this database that have been canceled due to old snapshots", nil},
-		"confl_bufferpin":  {COUNTER, "Number of queries in this database that have been canceled due to pinned buffers", nil},
-		"confl_deadlock":   {COUNTER, "Number of queries in this database that have been canceled due to deadlocks", nil},
+		"datid":            {LABEL, "OID of a database", nil, nil},
+		"datname":          {LABEL, "Name of this database", nil, nil},
+		"confl_tablespace": {COUNTER, "Number of queries in this database that have been canceled due to dropped tablespaces", nil, nil},
+		"confl_lock":       {COUNTER, "Number of queries in this database that have been canceled due to lock timeouts", nil, nil},
+		"confl_snapshot":   {COUNTER, "Number of queries in this database that have been canceled due to old snapshots", nil, nil},
+		"confl_bufferpin":  {COUNTER, "Number of queries in this database that have been canceled due to pinned buffers", nil, nil},
+		"confl_deadlock":   {COUNTER, "Number of queries in this database that have been canceled due to deadlocks", nil, nil},
 	},
 	"pg_locks": map[string]ColumnMapping{
-		"datname": {LABEL, "Name of this database", nil},
-		"mode":    {LABEL, "Type of Lock", nil},
-		"count":   {GAUGE, "Number of locks", nil},
+		"datname": {LABEL, "Name of this database", nil, nil},
+		"mode":    {LABEL, "Type of Lock", nil, nil},
+		"count":   {GAUGE, "Number of locks", nil, nil},
 	},
 	"pg_stat_replication": map[string]ColumnMapping{
-		"pid":              {DISCARD, "Process ID of a WAL sender process", nil},
-		"usesysid":         {DISCARD, "OID of the user logged into this WAL sender process", nil},
-		"usename":          {DISCARD, "Name of the user logged into this WAL sender process", nil},
-		"application_name": {DISCARD, "Name of the application that is connected to this WAL sender", nil},
-		"client_addr":      {LABEL, "IP address of the client connected to this WAL sender. If this field is null, it indicates that the client is connected via a Unix socket on the server machine.", nil},
-		"client_hostname":  {DISCARD, "Host name of the connected client, as reported by a reverse DNS lookup of client_addr. This field will only be non-null for IP connections, and only when log_hostname is enabled.", nil},
-		"client_port":      {DISCARD, "TCP port number that the client is using for communication with this WAL sender, or -1 if a Unix socket is used", nil},
-		"backend_start": {DISCARD, "with time zone	Time when this process was started, i.e., when the client connected to this WAL sender", nil},
-		"backend_xmin":             {DISCARD, "The current backend's xmin horizon.", nil},
-		"state":                    {LABEL, "Current WAL sender state", nil},
-		"sent_location":            {DISCARD, "Last transaction log position sent on this connection", nil},
-		"write_location":           {DISCARD, "Last transaction log position written to disk by this standby server", nil},
-		"flush_location":           {DISCARD, "Last transaction log position flushed to disk by this standby server", nil},
-		"replay_location":          {DISCARD, "Last transaction log position replayed into the database on this standby server", nil},
-		"sync_priority":            {DISCARD, "Priority of this standby server for being chosen as the synchronous standby", nil},
-		"sync_state":               {DISCARD, "Synchronous state of this standby server", nil},
-		"slot_name":                {LABEL, "A unique, cluster-wide identifier for the replication slot", nil},
-		"plugin":                   {DISCARD, "The base name of the shared object containing the output plugin this logical slot is using, or null for physical slots", nil},
-		"slot_type":                {DISCARD, "The slot type - physical or logical", nil},
-		"datoid":                   {DISCARD, "The OID of the database this slot is associated with, or null. Only logical slots have an associated database", nil},
-		"database":                 {DISCARD, "The name of the database this slot is associated with, or null. Only logical slots have an associated database", nil},
-		"active":                   {DISCARD, "True if this slot is currently actively being used", nil},
-		"active_pid":               {DISCARD, "Process ID of a WAL sender process", nil},
-		"xmin":                     {DISCARD, "The oldest transaction that this slot needs the database to retain. VACUUM cannot remove tuples deleted by any later transaction", nil},
-		"catalog_xmin":             {DISCARD, "The oldest transaction affecting the system catalogs that this slot needs the database to retain. VACUUM cannot remove catalog tuples deleted by any later transaction", nil},
-		"restart_lsn":              {DISCARD, "The address (LSN) of oldest WAL which still might be required by the consumer of this slot and thus won't be automatically removed during checkpoints", nil},
-		"pg_current_xlog_location": {DISCARD, "pg_current_xlog_location", nil},
-		"pg_xlog_location_diff":    {GAUGE, "Lag in bytes between master and slave", nil},
+		"procpid":			{DISCARD, "Process ID of a WAL sender process", nil, semver.MustParseRange("<9.2.0")},
+		"pid":              {DISCARD, "Process ID of a WAL sender process", nil, semver.MustParseRange(">=9.2.0")},
+		"usesysid":         {DISCARD, "OID of the user logged into this WAL sender process", nil, nil},
+		"usename":          {DISCARD, "Name of the user logged into this WAL sender process", nil, nil},
+		"application_name": {DISCARD, "Name of the application that is connected to this WAL sender", nil, nil},
+		"client_addr":      {LABEL, "IP address of the client connected to this WAL sender. If this field is null, it indicates that the client is connected via a Unix socket on the server machine.", nil, nil},
+		"client_hostname":  {DISCARD, "Host name of the connected client, as reported by a reverse DNS lookup of client_addr. This field will only be non-null for IP connections, and only when log_hostname is enabled.", nil, nil},
+		"client_port":      {DISCARD, "TCP port number that the client is using for communication with this WAL sender, or -1 if a Unix socket is used", nil, nil},
+		"backend_start": {DISCARD, "with time zone	Time when this process was started, i.e., when the client connected to this WAL sender", nil, nil},
+		"backend_xmin":             {DISCARD, "The current backend's xmin horizon.", nil, nil},
+		"state":                    {LABEL, "Current WAL sender state", nil, nil},
+		"sent_location":            {DISCARD, "Last transaction log position sent on this connection", nil, nil},
+		"write_location":           {DISCARD, "Last transaction log position written to disk by this standby server", nil, nil},
+		"flush_location":           {DISCARD, "Last transaction log position flushed to disk by this standby server", nil, nil},
+		"replay_location":          {DISCARD, "Last transaction log position replayed into the database on this standby server", nil, nil},
+		"sync_priority":            {DISCARD, "Priority of this standby server for being chosen as the synchronous standby", nil, nil},
+		"sync_state":               {DISCARD, "Synchronous state of this standby server", nil, nil},
+		"slot_name":                {LABEL, "A unique, cluster-wide identifier for the replication slot", nil, semver.MustParseRange(">=9.2.0")},
+		"plugin":                   {DISCARD, "The base name of the shared object containing the output plugin this logical slot is using, or null for physical slots", nil, nil},
+		"slot_type":                {DISCARD, "The slot type - physical or logical", nil, nil},
+		"datoid":                   {DISCARD, "The OID of the database this slot is associated with, or null. Only logical slots have an associated database", nil, nil},
+		"database":                 {DISCARD, "The name of the database this slot is associated with, or null. Only logical slots have an associated database", nil, nil},
+		"active":                   {DISCARD, "True if this slot is currently actively being used", nil, nil},
+		"active_pid":               {DISCARD, "Process ID of a WAL sender process", nil, nil},
+		"xmin":                     {DISCARD, "The oldest transaction that this slot needs the database to retain. VACUUM cannot remove tuples deleted by any later transaction", nil, nil},
+		"catalog_xmin":             {DISCARD, "The oldest transaction affecting the system catalogs that this slot needs the database to retain. VACUUM cannot remove catalog tuples deleted by any later transaction", nil, nil},
+		"restart_lsn":              {DISCARD, "The address (LSN) of oldest WAL which still might be required by the consumer of this slot and thus won't be automatically removed during checkpoints", nil, nil},
+		"pg_current_xlog_location": {DISCARD, "pg_current_xlog_location", nil, nil},
+		"pg_xlog_location_diff":    {GAUGE, "Lag in bytes between master and slave", nil, semver.MustParseRange(">=9.2.0")},
 	},
 	"pg_stat_activity": map[string]ColumnMapping{
-		"datname":         {LABEL, "Name of this database", nil},
-		"state":           {LABEL, "connection state", nil},
-		"count":           {GAUGE, "number of connections in this state", nil},
-		"max_tx_duration": {GAUGE, "max duration in seconds any active transaction has been running", nil},
+		"datname":         {LABEL, "Name of this database", nil, nil},
+		"state":           {LABEL, "connection state", nil, semver.MustParseRange(">=9.2.0")},
+		"count":           {GAUGE, "number of connections in this state", nil, nil},
+		"max_tx_duration": {GAUGE, "max duration in seconds any active transaction has been running", nil, nil},
 	},
+}
+
+// Override querys are run in-place of simple namespace look ups, and provide
+// advanced functionality. But they have a tendency to postgres version specific.
+// There aren't too many versions, so we simply store customized versions using
+// the semver matching we do for columns.
+type OverrideQuery struct {
+	versionRange semver.Range
+	query string
 }
 
 // Overriding queries for namespaces above.
-var queryOverrides = map[string]string{
-	"pg_locks": `
-        SELECT pg_database.datname,tmp.mode,COALESCE(count,0) as count FROM
-        (VALUES ('accesssharelock'),('rowsharelock'),('rowexclusivelock'),('shareupdateexclusivelock'),('sharelock'),('sharerowexclusivelock'),('exclusivelock'),('accessexclusivelock')) AS tmp(mode) CROSS JOIN pg_database
-        LEFT JOIN
-        (SELECT database, lower(mode) AS mode,count(*) AS count
-        FROM pg_locks WHERE database IS NOT NULL
-        GROUP BY database, lower(mode)
-      ) AS tmp2
-      ON tmp.mode=tmp2.mode and pg_database.oid = tmp2.database ORDER BY 1`,
+// TODO: validate this is a closed set in tests, and there are no overlaps
+var queryOverrides = map[string][]OverrideQuery{
+	"pg_locks": []OverrideQuery{
+		{
+			semver.MustParseRange(">0.0.0"),
+			`SELECT pg_database.datname,tmp.mode,COALESCE(count,0) as count
+			FROM
+				(
+				  VALUES ('accesssharelock'),
+				         ('rowsharelock'),
+				         ('rowexclusivelock'),
+				         ('shareupdateexclusivelock'),
+				         ('sharelock'),
+				         ('sharerowexclusivelock'),
+				         ('exclusivelock'),
+				         ('accessexclusivelock')
+				) AS tmp(mode) CROSS JOIN pg_database
+			LEFT JOIN
+			  (SELECT database, lower(mode) AS mode,count(*) AS count
+			  FROM pg_locks WHERE database IS NOT NULL
+			  GROUP BY database, lower(mode)
+			) AS tmp2
+			ON tmp.mode=tmp2.mode and pg_database.oid = tmp2.database ORDER BY 1`,
+		},
+	},
 
-	"pg_stat_replication": `
-        SELECT *, pg_current_xlog_location(), pg_xlog_location_diff(pg_current_xlog_location(), replay_location)::float FROM pg_stat_replication`,
+	"pg_stat_replication": []OverrideQuery{
+		{
+			semver.MustParseRange(">=9.2.0"),
+			`
+			SELECT *,
+				pg_current_xlog_location(),
+				pg_xlog_location_diff(pg_current_xlog_location(), replay_location)::float
+			FROM pg_stat_replication
+			`,
+		},
+		{
+			semver.MustParseRange("<9.2.0"),
+			`
+			SELECT *,
+				pg_current_xlog_location()
+			FROM pg_stat_replication
+			`,
+		},
+	},
 
-	"pg_stat_activity": `
-      SELECT
-          pg_database.datname,
-          tmp.state,
-          COALESCE(count,0) as count, 
-          COALESCE(max_tx_duration,0) as max_tx_duration
-      FROM
-          (VALUES ('active'),('idle'),('idle in transaction'),('idle in transaction (aborted)'),('fastpath function call'),('disabled')) as tmp(state) CROSS JOIN pg_database
-      LEFT JOIN
-          (SELECT
-              datname,
-              state,
-              count(*) AS count,
-              MAX(EXTRACT(EPOCH FROM now() - xact_start))::float AS max_tx_duration
-          FROM pg_stat_activity GROUP BY datname,state) as tmp2 
-      ON tmp.state = tmp2.state AND pg_database.datname = tmp2.datname`,
+	"pg_stat_activity": []OverrideQuery{
+		// This query only works
+		{
+			semver.MustParseRange(">=9.2.0"),
+			`
+			SELECT
+				pg_database.datname,
+				tmp.state,
+				COALESCE(count,0) as count,
+				COALESCE(max_tx_duration,0) as max_tx_duration
+			FROM
+				(
+				  VALUES ('active'),
+				  		 ('idle'),
+				  		 ('idle in transaction'),
+				  		 ('idle in transaction (aborted)'),
+				  		 ('fastpath function call'),
+				  		 ('disabled')
+				) AS tmp(state) CROSS JOIN pg_database
+			LEFT JOIN
+			(
+				SELECT
+					datname,
+					state,
+					count(*) AS count,
+					MAX(EXTRACT(EPOCH FROM now() - xact_start))::float AS max_tx_duration
+				FROM pg_stat_activity GROUP BY datname,state) AS tmp2
+				ON tmp.state = tmp2.state AND pg_database.datname = tmp2.datname
+			`,
+		},
+		// No query is applicable for 9.1 that gives any sensible data.
+	},
+
 }
 
-// Add queries to the metricMaps and queryOverrides maps
-func addQueries(queriesPath string) (err error) {
-	var extra map[string]interface{}
-
-	content, err := ioutil.ReadFile(queriesPath)
-	if err != nil {
-		return err
-	}
-
-	err = yaml.Unmarshal(content, &extra)
-	if err != nil {
-		return err
-	}
-
-	for metric, specs := range extra {
-		for key, value := range specs.(map[interface{}]interface{}) {
-			switch key.(string) {
-			case "query":
-				query := value.(string)
-				queryOverrides[metric] = query
-
-			case "metrics":
-				for _, c := range value.([]interface{}) {
-					column := c.(map[interface{}]interface{})
-
-					for n, a := range column {
-						var cmap ColumnMapping
-
-						metric_map, ok := metricMaps[metric]
-						if !ok {
-							metric_map = make(map[string]ColumnMapping)
-						}
-
-						name := n.(string)
-
-						for attr_key, attr_val := range a.(map[interface{}]interface{}) {
-							switch attr_key.(string) {
-							case "usage":
-								usage, err := stringToColumnUsage(attr_val.(string))
-								if err != nil {
-									return err
-								}
-								cmap.usage = usage
-							case "description":
-								cmap.description = attr_val.(string)
-							}
-						}
-
-						cmap.mapping = nil
-
-						metric_map[name] = cmap
-
-						metricMaps[metric] = metric_map
-					}
-				}
+// Convert the query override file to the version-specific query override file
+// for the exporter.
+func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]OverrideQuery) map[string]string {
+	resultMap := make(map[string]string)
+	for name, overrideDef := range queryOverrides {
+		// Find a matching semver. We make it an error to have overlapping
+		// ranges at test-time, so only 1 should ever match.
+		matched := false
+		for _, queryDef := range overrideDef {
+			if queryDef.versionRange(pgVersion) {
+				resultMap[name] = queryDef.query
+				matched = true
+				break
 			}
+		}
+		if !matched {
+			log.Warnln("No query matched override for", name, "- disabling metric space.")
+			resultMap[name] = ""
 		}
 	}
 
-	return
+	return resultMap
 }
 
+// Add queries to the metricMaps and queryOverrides maps
+//func addQueries(queriesPath string) (err error) {
+//	var extra map[string]interface{}
+//
+//	content, err := ioutil.ReadFile(queriesPath)
+//	if err != nil {
+//		return err
+//	}
+//
+//	err = yaml.Unmarshal(content, &extra)
+//	if err != nil {
+//		return err
+//	}
+//
+//	for metric, specs := range extra {
+//		for key, value := range specs.(map[interface{}]interface{}) {
+//			switch key.(string) {
+//			case "query":
+//				query := value.(string)
+//				queryOverrides[metric] = query
+//
+//			case "metrics":
+//				for _, c := range value.([]interface{}) {
+//					column := c.(map[interface{}]interface{})
+//
+//					for n, a := range column {
+//						var cmap ColumnMapping
+//
+//						metric_map, ok := metricMaps[metric]
+//						if !ok {
+//							metric_map = make(map[string]ColumnMapping)
+//						}
+//
+//						name := n.(string)
+//
+//						for attr_key, attr_val := range a.(map[interface{}]interface{}) {
+//							switch attr_key.(string) {
+//							case "usage":
+//								usage, err := stringToColumnUsage(attr_val.(string))
+//								if err != nil {
+//									return err
+//								}
+//								cmap.usage = usage
+//							case "description":
+//								cmap.description = attr_val.(string)
+//							}
+//						}
+//
+//						cmap.mapping = nil
+//
+//						metric_map[name] = cmap
+//
+//						metricMaps[metric] = metric_map
+//					}
+//				}
+//			}
+//		}
+//	}
+//
+//	return
+//}
+
 // Turn the MetricMap column mapping into a prometheus descriptor mapping.
-func makeDescMap(metricMaps map[string]map[string]ColumnMapping) map[string]MetricMapNamespace {
+func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]ColumnMapping) map[string]MetricMapNamespace {
 	var metricMap = make(map[string]MetricMapNamespace)
 
 	for namespace, mappings := range metricMaps {
@@ -355,6 +442,21 @@ func makeDescMap(metricMaps map[string]map[string]ColumnMapping) map[string]Metr
 		}
 
 		for columnName, columnMapping := range mappings {
+			// Check column version compatibility for the current map
+			// Force to discard if not compatible.
+			if columnMapping.supportedVersions != nil {
+				if columnMapping.supportedVersions(pgVersion) {
+					thisMap[columnName] = MetricMap{
+						discard: true,
+						conversion: func(in interface{}) (float64, bool) {
+							return math.NaN(), true
+						},
+					}
+					continue
+				}
+			}
+
+			// Determine how to convert the column based on its usage.
 			switch columnMapping.usage {
 			case DISCARD, LABEL:
 				thisMap[columnName] = MetricMap{
@@ -519,8 +621,17 @@ type Exporter struct {
 	dsn             string
 	duration, error prometheus.Gauge
 	totalScrapes    prometheus.Counter
+
+	// Last version used to calculate metric map. If mismatch on scrape,
+	// then maps are recalculated.
+	lastMapVersion	semver.Version
+	// Currently active variable map
 	variableMap     map[string]MetricMapNamespace
+	// Currently active metric map
 	metricMap       map[string]MetricMapNamespace
+	// Currently active query overrides
+	queryOverrides 	map[string]string
+	mappingMtx sync.RWMutex
 }
 
 // NewExporter returns a new PostgreSQL exporter for the provided DSN.
@@ -545,8 +656,9 @@ func NewExporter(dsn string) *Exporter {
 			Name:      "last_scrape_error",
 			Help:      "Whether the last scrape of metrics from PostgreSQL resulted in an error (1 for error, 0 for success).",
 		}),
-		variableMap: makeDescMap(variableMaps),
-		metricMap:   makeDescMap(metricMaps),
+		variableMap: nil,
+		metricMap:   nil,
+		queryOverrides: nil,
 	}
 }
 
@@ -632,10 +744,19 @@ func queryShowVariables(ch chan<- prometheus.Metric, db *sql.DB, variableMap map
 
 // Query within a namespace mapping and emit metrics. Returns fatal errors if
 // the scrape fails, and a slice of errors if they were non-fatal.
-func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace string, mapping MetricMapNamespace) ([]error, error) {
-	query, er := queryOverrides[namespace]
-	if er == false {
+func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace string, mapping MetricMapNamespace, queryOverrides map[string]string) ([]error, error) {
+	// Check for a query override for this namespace
+	query, found := queryOverrides[namespace]
+	if !found {
+		// No query override - do a simple * search.
 		query = fmt.Sprintf("SELECT * FROM %s;", namespace)
+	}
+
+	// Was this query disabled (i.e. nothing sensible can be queried on this
+	// version of PostgreSQL?
+	if query == "" {
+		// Return success (no pertinent data)
+		return []error{}, nil
 	}
 
 	// Don't fail on a bad scrape of one metric
@@ -706,7 +827,7 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 					nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unparseable column type - discarding: ", namespace, columnName, err)))
 					continue
 				}
-
+				log.Debugln(columnName, labels)
 				ch <- prometheus.MustNewConstMetric(desc, prometheus.UntypedValue, value, labels...)
 			}
 		}
@@ -716,13 +837,13 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 
 // Iterate through all the namespace mappings in the exporter and run their
 // queries.
-func queryNamespaceMappings(ch chan<- prometheus.Metric, db *sql.DB, metricMap map[string]MetricMapNamespace) map[string]error {
+func queryNamespaceMappings(ch chan<- prometheus.Metric, db *sql.DB, metricMap map[string]MetricMapNamespace, queryOverrides map[string]string) map[string]error {
 	// Return a map of namespace -> errors
 	namespaceErrors := make(map[string]error)
 
 	for namespace, mapping := range metricMap {
 		log.Debugln("Querying namespace: ", namespace)
-		nonFatalErrors, err := queryNamespaceMapping(ch, db, namespace, mapping)
+		nonFatalErrors, err := queryNamespaceMapping(ch, db, namespace, mapping, queryOverrides)
 		// Serious error - a namespace disappeard
 		if err != nil {
 			namespaceErrors[namespace] = err
@@ -737,6 +858,39 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, db *sql.DB, metricMap m
 	}
 
 	return namespaceErrors
+}
+
+// Check and update the exporters query maps if the version has changed.
+func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) error {
+	log.Debugln("Querying Postgres Version")
+	versionRow := db.QueryRow("SELECT version();")
+	var versionString string
+	err := versionRow.Scan(&versionString)
+	if err != nil {
+		return errors.New(fmt.Sprintln("Error scanning version string:", err))
+	}
+	semanticVersion, err := parseVersion(versionString)
+
+	// Check if semantic version changed and recalculate maps if needed.
+	if semanticVersion.NE(e.lastMapVersion) || e.variableMap == nil || e.metricMap == nil {
+		log.Infoln("Semantic Version Changed:", e.lastMapVersion.String(), "->", semanticVersion.String())
+		e.mappingMtx.Lock()
+
+		e.variableMap = makeDescMap(semanticVersion, variableMaps)
+		e.metricMap = makeDescMap(semanticVersion, metricMaps)
+		e.queryOverrides = makeQueryOverrideMap(semanticVersion, queryOverrides)
+		e.lastMapVersion = semanticVersion
+
+		e.mappingMtx.Unlock()
+	}
+
+	// Output the version as a special metric
+	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
+		"Version string as reported by postgres", []string{"version", "short_version"}, nil)
+
+	ch <- prometheus.MustNewConstMetric(versionDesc,
+		prometheus.UntypedValue, 1, versionString, semanticVersion.String())
+	return nil
 }
 
 func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
@@ -755,27 +909,22 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	}
 	defer db.Close()
 
-	log.Debugln("Querying Postgres Version")
-	versionRow := db.QueryRow("SELECT version();")
-	var versionString string
-	err = versionRow.Scan(&versionString)
-	if err != nil {
-		log.Errorln("Error scanning version string:", err)
+	// Check if map versions need to be updated
+	if err := e.checkMapVersions(ch, db); err != nil {
+		log.Warnln("Postgres version could not be determined. Proceeding with outdated query maps.")
 		e.error.Set(1)
-		return
 	}
-	shortVersion := parseVersion(versionString)
-	// Output the version as a special metric
-	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName), "Version string as reported by postgres", []string{"version", "short_version"}, nil)
-	ch <- prometheus.MustNewConstMetric(versionDesc, prometheus.UntypedValue, 1, versionString, shortVersion)
 
+	// Lock the exporter maps
+	e.mappingMtx.RLock()
+	defer e.mappingMtx.RUnlock()
 	// Handle querying the show variables
 	nonFatalErrors := queryShowVariables(ch, db, e.variableMap)
 	if len(nonFatalErrors) > 0 {
 		e.error.Set(1)
 	}
 
-	errMap := queryNamespaceMappings(ch, db, e.metricMap)
+	errMap := queryNamespaceMappings(ch, db, e.metricMap, e.queryOverrides)
 	if len(errMap) > 0 {
 		e.error.Set(1)
 	}
@@ -784,12 +933,13 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 func main() {
 	flag.Parse()
 
-	if *queriesPath != "" {
-		err := addQueries(*queriesPath)
-		if err != nil {
-			log.Warnln("Unparseable queries file - discarding merge: ", *queriesPath, err)
-		}
-	}
+	// TODO: restroe addQueries functionality
+	//if *queriesPath != "" {
+	//	err := addQueries(*queriesPath)
+	//	if err != nil {
+	//		log.Warnln("Unparseable queries file - discarding merge: ", *queriesPath, err)
+	//	}
+	//}
 
 	if *onlyDumpMaps {
 		dumpMaps()

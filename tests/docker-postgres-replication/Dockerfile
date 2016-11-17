@@ -1,4 +1,4 @@
-FROM postgres:9.2
+FROM postgres:9.1
 MAINTAINER Daniel Dent (https://www.danieldent.com)
 ENV PG_MAX_WAL_SENDERS 8
 ENV PG_WAL_KEEP_SEGMENTS 8

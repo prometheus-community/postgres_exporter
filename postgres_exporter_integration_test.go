@@ -14,6 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"database/sql"
 	_ "github.com/lib/pq"
+	"fmt"
 )
 
 // Hook up gocheck into the "go test" runner.
@@ -37,6 +38,7 @@ func (s *IntegrationSuite) SetUpSuite(c *C) {
 	prometheus.MustRegister(exporter)
 }
 
+// TODO: it would be nice if this didn't mostly just recreate the scrape function
 func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 	// Setup a dummy channel to consume metrics
 	ch := make(chan prometheus.Metric, 100)
@@ -50,11 +52,26 @@ func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Close()
 
+	// Do a version update
+	err = s.e.checkMapVersions(ch, db)
+	c.Assert(err, IsNil)
+
 	// Check the show variables work
 	nonFatalErrors := queryShowVariables(ch, db, s.e.variableMap)
-	c.Check(len(nonFatalErrors), Equals, 0)
+	if !c.Check(len(nonFatalErrors), Equals, 0) {
+		fmt.Println("## NONFATAL ERRORS FOUND")
+		for _, err := range nonFatalErrors {
+			fmt.Println(err)
+		}
+	}
+
 
 	// This should never happen in our test cases.
-	errMap := queryNamespaceMappings(ch, db, s.e.metricMap)
-	c.Check(len(errMap), Equals, 0)
+	errMap := queryNamespaceMappings(ch, db, s.e.metricMap, s.e.queryOverrides)
+	if !c.Check(len(errMap), Equals, 0) {
+		fmt.Println("## NAMESPACE ERRORS FOUND")
+		for namespace, err := range errMap {
+			fmt.Println(namespace, ":", err)
+		}
+	}
 }
