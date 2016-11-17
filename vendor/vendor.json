@@ -13,6 +13,12 @@
 			"revisionTime": "2015-02-23T14:51:52+01:00"
 		},
 		{
+			"checksumSHA1": "Oae/AzW8+W/lPdL6smTcgyhncrc=",
+			"path": "github.com/blang/semver",
+			"revision": "60ec3488bfea7cca02b021d106d9911120d25fe9",
+			"revisionTime": "2016-07-01T05:46:53Z"
+		},
+		{
 			"path": "github.com/golang/protobuf/proto",
 			"revision": "68415e7123da32b07eab49c96d2c4d6158360e9b",
 			"revisionTime": "2015-12-07T15:07:14+11:00"
@@ -67,6 +73,18 @@
 			"path": "github.com/prometheus/procfs",
 			"revision": "406e5b7bfd8201a36e2bb5f7bdae0b03380c2ce8",
 			"revisionTime": "2015-10-29T15:50:50-04:00"
+		},
+		{
+			"checksumSHA1": "aVgPDgwY3/t4J/JOw9H3FVMHqh0=",
+			"path": "golang.org/x/sys/unix",
+			"revision": "c200b10b5d5e122be351b67af224adc6128af5bf",
+			"revisionTime": "2016-10-22T18:22:21Z"
+		},
+		{
+			"checksumSHA1": "I2d7Kn572Fz02mnnlcI4MHXCu0c=",
+			"path": "gopkg.in/check.v1",
+			"revision": "4f90aeace3a26ad7021961c297b22c42160c7b25",
+			"revisionTime": "2016-01-05T16:49:36Z"
 		},
 		{
 			"checksumSHA1": "+OgOXBoiQ+X+C2dsAeiOHwBIEH0=",

@@ -7,7 +7,11 @@ all: vet test postgres_exporter
 
 # Simple go build
 postgres_exporter: $(GO_SRC)
-	CGO_ENABLED=0 go build -a -ldflags "-extldflags '-static' -X main.Version=git:$(shell git rev-parse HEAD)" -o postgres_exporter .
+	CGO_ENABLED=0 go build -a -ldflags "-extldflags '-static' -X main.Version=$(shell git describe --dirty)" -o postgres_exporter .
+
+postgres_exporter_integration_test: $(GO_SRC)
+	CGO_ENABLED=0 go test -c -tags integration \
+	    -a -ldflags "-extldflags '-static' -X main.Version=git:$(shell git describe --dirty)" -o postgres_exporter_integration_test .
 
 # Take a go build and turn it into a minimal container
 docker: postgres_exporter
@@ -19,8 +23,8 @@ vet:
 test:
 	go test -v .
 
-test-integration:
-	tests/test-smoke
+test-integration: postgres_exporter postgres_exporter_integration_test
+	tests/test-smoke ./postgres_exporter ./postgres_exporter_integration_test
 
 # Do a self-contained docker build - we pull the official upstream container
 # and do a self-contained build.

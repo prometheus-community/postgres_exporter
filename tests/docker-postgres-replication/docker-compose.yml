@@ -1,0 +1,32 @@
+
+version: '2'
+
+services:
+  pg-master:
+    build: '.'
+    image: 'danieldent/postgres-replication'
+    restart: 'always'
+    environment:
+      POSTGRES_USER: 'postgres'
+      POSTGRES_PASSWORD: 'postgres'
+      PGDATA: '/var/lib/postgresql/data/pgdata'
+    volumes:
+     - '/var/lib/postgresql/data'
+    expose:
+     - '5432'
+
+  pg-slave:
+    build: '.'
+    image: 'danieldent/postgres-replication'
+    restart: 'always'
+    environment:
+      POSTGRES_USER: 'postgres'
+      POSTGRES_PASSWORD: 'postgres'
+      PGDATA: '/var/lib/postgresql/data/pgdata'
+      REPLICATE_FROM: 'pg-master'
+    volumes:
+     - '/var/lib/postgresql/data'
+    expose:
+     - '5432'
+    links:
+     - 'pg-master'

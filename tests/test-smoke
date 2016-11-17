@@ -1,13 +1,66 @@
 #!/bin/bash
 # Basic integration tests with postgres. Requires docker to work.
 
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+  DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+done
+DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+# Read the absolute path to the exporter
+postgres_exporter=$(readlink -f $1)
+test_binary=$(readlink -f $2)
+export POSTGRES_PASSWORD=postgres
+exporter_port=9187
+
+cd $DIR
+
 VERSIONS=( \
     9.1 \
     9.2 \
     9.3 \
     9.4 \
     9.5 \
+    9.6 \
 )
+
+wait_for_postgres(){
+    local ip=$1
+    local port=$2
+    if [ -z $ip ]; then
+        echo "No IP specified." 1>&2
+        exit 1
+    fi
+    
+    if [ -z $port ]; then
+        echo "No port specified." 1>&2
+        exit 1
+    fi
+    
+    local wait_start=$(date +%s)
+    echo "Waiting for postgres to start listening..."
+    while ! pg_isready --host=$ip --port=$port &> /dev/null; do
+        if [ $(( $(date +%s) - $wait_start )) -gt $TIMEOUT ]; then
+            echo "Timed out waiting for postgres to start!" 1>&2
+            exit 1            
+        fi
+        sleep 1
+    done
+}
+
+wait_for_exporter() {
+    local wait_start=$(date +%s)
+    echo "Waiting for exporter to start..."
+    while ! nc -z localhost $exporter_port ; do
+        if [ $(( $(date +%s) - $wait_start )) -gt $TIMEOUT ]; then
+            echo "Timed out waiting for exporter!" 1>&2
+            exit 1            
+        fi
+        sleep 1
+    done
+}
 
 smoketest_postgres() {
     local version=$1
@@ -17,49 +70,75 @@ smoketest_postgres() {
     
     local CUR_IMAGE=$IMAGE_NAME:$version
     
-    docker run -d --name=$CONTAINER_NAME -e POSTGRES_PASSWORD=password -p 127.0.0.1:55432:5432 $CUR_IMAGE
+    echo "#######################"
+    echo "Standalone Postgres $version"
+    echo "#######################"
+    local docker_cmd="docker run -d -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD -p 127.0.0.1:55432:5432 $CUR_IMAGE"
+    echo "Docker Cmd: $docker_cmd"
+    
+    CONTAINER_NAME=$($docker_cmd)
+    trap "docker logs $CONTAINER_NAME ; docker kill $CONTAINER_NAME ; docker rm -v $CONTAINER_NAME; exit 1" EXIT INT TERM
+    wait_for_postgres localhost 55432
 
-    local WAIT_START=$(date +%s)
-    while ! docker exec $CONTAINER_NAME bash -c "psql -U postgres -c \"select 'running'\" > /dev/null 2>&1 " ; do
-        echo "Waiting for postgres to start..."
-        if [ $(( $(date +%s) - $WAIT_START )) -gt $TIMEOUT ]; then
-            echo "Timed out waiting for postgres!" 1>&2
-            docker logs $CONTAINER_NAME
-            docker kill $CONTAINER_NAME
-            docker rm $CONTAINER_NAME
-            exit 1
-        fi
-        sleep 1
-    done
-
-    DATA_SOURCE_NAME="postgresql://postgres:password@localhost:55432/?sslmode=disable" ./postgres_exporter &
-    exporter_pid=$!
-    local DAEMON_WAIT_START=$(date +%s)
-    while ! nc -z localhost 9113 ; do
-        echo "Waiting for exporter to start..."
-        if [ $(( $(date +%s) - $WAIT_START )) -gt $TIMEOUT ]; then
-            echo "Timed out waiting for exporter!" 1>&2
-            docker logs $CONTAINER_NAME
-            docker kill $CONTAINER_NAME
-            docker rm $CONTAINER_NAME
-            exit 1            
-        fi
-        sleep 1
-    done
-
-    wget -q -O - http://localhost:9113/metrics 1> /dev/null
+    DATA_SOURCE_NAME="postgresql://postgres:$POSTGRES_PASSWORD@localhost:55432/?sslmode=disable" $test_binary --log.level=debug || exit $?
+#    exporter_pid=$!
+#    trap "docker logs $CONTAINER_NAME ; docker kill $CONTAINER_NAME ; docker rm $CONTAINER_NAME ; kill $exporter_pid; exit 1" EXIT INT TERM
+#    wait_for_exporter
+#
+#    wget -q -O - http://localhost:$exporter_port/metrics 1> /dev/null
+#    if [ "$?" != "0" ]; then
+#        echo "Failed on postgres $version ($DOCKER_IMAGE)" 1>&2
+#        kill $exporter_pid
+#        exit 1
+#    fi
+#
+#    kill $exporter_pid
+    docker kill $CONTAINER_NAME
+    docker rm -v $CONTAINER_NAME
+    trap - EXIT INT TERM
+    
+    echo "#######################"
+    echo "Replicated Postgres $version"
+    echo "#######################"
+    old_pwd=$(pwd)
+    cd docker-postgres-replication
+    
+    VERSION=$version p2 -t Dockerfile.p2 -o Dockerfile
     if [ "$?" != "0" ]; then
-        echo "Failed on postgres $version ($DOCKER_IMAGE)" 1>&2
-        kill $exporter_pid
-        docker logs $CONTAINER_NAME
-        docker kill $CONTAINER_NAME
-        docker rm $CONTAINER_NAME
+        echo "Templating failed" 1>&2
         exit 1
     fi
+    trap "docker-compose logs; docker-compose down ; docker-compose rm -v; exit 1" EXIT INT TERM
+    local compose_cmd="POSTGRES_PASSWORD=$POSTGRES_PASSWORD docker-compose up -d --force-recreate --build"
+    echo "Compose Cmd: $compose_cmd"
+    eval $compose_cmd
+    
+    master_container=$(docker-compose ps -q pg-master)
+    slave_container=$(docker-compose ps -q pg-slave)
+    master_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $master_container)
+    slave_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $slave_container)
+    echo "Got master IP: $master_ip"
+    wait_for_postgres $master_ip 5432
+    wait_for_postgres $slave_ip 5432
+    
+    DATA_SOURCE_NAME="postgresql://postgres:$POSTGRES_PASSWORD@$master_ip:5432/?sslmode=disable" $test_binary --log.level=debug || exit $?
+#    exporter_pid=$!
+#    trap "docker-compose logs; docker-compose down ; docker-compose rm -v ; kill $exporter_pid; exit 1" EXIT INT TERM
+#    wait_for_exporter
 
-    kill $exporter_pid
-    docker kill $CONTAINER_NAME
-    docker rm $CONTAINER_NAME
+#    wget -q -O - http://localhost:$exporter_port/metrics 1> /dev/null
+#    if [ "$?" != "0" ]; then
+#        echo "Failed on postgres $version ($DOCKER_IMAGE)" 1>&2
+#        exit 1
+#    fi
+#
+#    kill $exporter_pid
+    
+    docker-compose down
+    docker-compose rm -v
+    trap - EXIT INT TERM
+    
+    cd $old_pwd
 }
 
 # Start pulling the docker images in advance
