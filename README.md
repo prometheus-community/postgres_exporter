@@ -34,10 +34,15 @@ Package vendoring is handled with [`govendor`](https://github.com/kardianos/gove
 
 ### Flags
 
-Name               | Description
--------------------|------------
-web.listen-address | Address to listen on for web interface and telemetry.
-web.telemetry-path | Path under which to expose metrics.
+* `web.listen-address` 
+  Address to listen on for web interface and telemetry.
+
+* `web.telemetry-path`
+  Path under which to expose metrics.
+
+* `config.expect-replication-stats`
+  The target database has replication turned on - log errors when
+  replication stats are missing.
 
 ### Setting the Postgres server's data source name
 

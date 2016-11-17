@@ -39,6 +39,10 @@ var (
 		"dumpmaps", false,
 		"Do not run, simply dump the maps.",
 	)
+	expectReplicationStats = flag.Bool(
+		"config.expect-replication-stats", false,
+		"The target database has replication configured, log missing replication stats as an error.",
+	)
 )
 
 // Metric name parts.
