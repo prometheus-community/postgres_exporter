@@ -12,6 +12,7 @@ import (
 	"time"
 	"regexp"
 	"errors"
+	"sync"
 
 	"gopkg.in/yaml.v2"
 
@@ -19,7 +20,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
 	"github.com/blang/semver"
-	"github.com/anacrolix/sync"
+
 )
 
 var Version string = "0.0.1"
