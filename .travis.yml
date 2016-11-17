@@ -10,15 +10,20 @@ before_install:
   sudo chmod +x /usr/local/bin/p2
 - sudo wget -O /usr/local/bin/docker-compose https://github.com/docker/compose/releases/download/1.9.0-rc4/docker-compose-Linux-x86_64 &&
   sudo chmod +x /usr/local/bin/docker-compose
-- sudo apt-get update && apt-get install postgresql-client-common
+- sudo apt-get update && sudo apt-get install postgresql-client-common
   
 script:
 - make all
 - make docker
 - make test-integration
 after_success:
-- if [ "$TRAVIS_BRANCH" == "master" ]; then docker login -e $DOCKER_EMAIL -u $DOCKER_USER
-  -p $DOCKER_PASS ; docker push wrouesnel/postgres_exporter ; fi
+- docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
+# Push a tagged build if a tag is found.
+- if [ ! -z "$TRAVIS_TAG" ]; then 
+    docker tag wrouesnel/postgres_exporter:latest wrouesnel/postgres_exporter:$TRAVIS_TAG ;
+  fi
+# Push a latest version
+- if [ "$TRAVIS_BRANCH" == "master" ]; then docker push wrouesnel/postgres_exporter ; fi
 env:
   global:
   - secure: RfoWQj5tEB/t3XL2tqJW7u7Qscpz1QBOfF9lMFpB4kAUMTtZU0zBbXfMo1JheGoJQQxD/7NLRHhbUWPT2489o3KKpRTQ7RHn3k8n5U7opH01bWX0+l/EPVmhlsKjSDSLGgmxz80j3I6C8ZV3qDUijSx7r90QUNHGbZtV7g+KtoUTpRV0zir/heK6qq9LHWNHbNsJyHK8qHmd6g1UzWIBaZPJ6a/n/rO2jq4uS1JR0VlIJPRF11HOLH8IjFQvVYpN7YbEslxyNsfQJUSP/7CghSLLVWPSATEjMm8a5GJVLc564+nYghm484psEtiMXkZ3n6ie7AT8aJrKfexWrwh2aCc+cK4PiyXrf4euZehZNYogmFCqWzd1LJKcN2uIkpBSuZQDm3e6c4qkkWGpx+RdFWtAMG8IgZLDbcuryxFNzMwHc2CJ009s9Zsa+g7D57csyR5LCZ8YtNGI3g8FmhwpCKvYkfKa9aijUEWyJMyT4Vhd/w7btMTuwYHgUQ85k4ov4Xjz5SNpAGgemig5G5w7PJj4NhGvIBz9weL154x/BFVjHOZZ6Y/bWgJIPoW1KM15x5K8QylWYEBUHtwiyVyXOxHqt6MOX1vYo1L37jMK88IErrfh/VmlxEhtN9wOghk8IudMfFwQtjIwiWlJf218wxMIzUjoyb5/25tU9f2OJrg=
