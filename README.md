@@ -11,7 +11,7 @@ This package is available for Docker:
 # Start an example database
 docker run --net=host -it --rm -e POSTGRES_PASSWORD=password postgres
 # Connect to it
-docker run -e DATA_SOURCE_NAME="postgresql://postgres:password@localhost:5432/?sslmode=disable" -p 9113:9113 wrouesnel/postgres_exporter
+docker run -e DATA_SOURCE_NAME="postgresql://postgres:password@localhost:5432/?sslmode=disable" -p 9187:9187 wrouesnel/postgres_exporter
 ```
 
 ## Building and running
