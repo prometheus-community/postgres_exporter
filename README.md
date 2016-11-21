@@ -5,11 +5,8 @@ Supported Postgres versions: 9.1 and up.
 
 ## Building and running
 
-    make
-    export DATA_SOURCE_NAME="postgres://postgres:password@localhost/?sslmode=disable"
-    ./postgres_exporter <flags>
-
-Or without make on a mac: `bash -c 'GO_ENABLED=0 GOOS=linux go build .' ` 
+On a mac: `bash -c 'GO_ENABLED=0 GOOS=linux go build .' ` 
+Or using build container: `docker run --rm -v "$PWD":/usr/src/prometheus-postgres-exporter -w /usr/src/prometheus-postgres-exporter golang:1.7.3 bash -c 'go get -d; go build -v -o build/prometheus-postgres-exporter'`
 
 See the [github.com/lib/pq](http://github.com/lib/pq) module for other ways to format the connection string.
 
