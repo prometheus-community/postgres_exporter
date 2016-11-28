@@ -2,25 +2,24 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"math"
 	"net/http"
 	"os"
-	"strconv"
-	"time"
 	"regexp"
-	"errors"
+	"strconv"
 	"sync"
+	"time"
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/blang/semver"
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
-	"github.com/blang/semver"
-
 )
 
 var Version string = "0.0.1"
@@ -116,10 +115,10 @@ func parseVersion(versionString string) (semver.Version, error) {
 
 // User-friendly representation of a prometheus descriptor map
 type ColumnMapping struct {
-	usage       ColumnUsage			`yaml:"usage"`
-	description string				`yaml:"description"`
-	mapping     map[string]float64 	`yaml:"metric_mapping"` // Optional column mapping for MAPPEDMETRIC
-	supportedVersions semver.Range	`yaml:"pg_version"`	// Semantic version ranges which are supported. Unsupported columns are not queried (internally converted to DISCARD).
+	usage             ColumnUsage        `yaml:"usage"`
+	description       string             `yaml:"description"`
+	mapping           map[string]float64 `yaml:"metric_mapping"` // Optional column mapping for MAPPEDMETRIC
+	supportedVersions semver.Range       `yaml:"pg_version"`     // Semantic version ranges which are supported. Unsupported columns are not queried (internally converted to DISCARD).
 }
 
 func (this *ColumnMapping) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -232,7 +231,7 @@ var metricMaps = map[string]map[string]ColumnMapping{
 		"count":   {GAUGE, "Number of locks", nil, nil},
 	},
 	"pg_stat_replication": map[string]ColumnMapping{
-		"procpid":			{DISCARD, "Process ID of a WAL sender process", nil, semver.MustParseRange("<9.2.0")},
+		"procpid":          {DISCARD, "Process ID of a WAL sender process", nil, semver.MustParseRange("<9.2.0")},
 		"pid":              {DISCARD, "Process ID of a WAL sender process", nil, semver.MustParseRange(">=9.2.0")},
 		"usesysid":         {DISCARD, "OID of the user logged into this WAL sender process", nil, nil},
 		"usename":          {DISCARD, "Name of the user logged into this WAL sender process", nil, nil},
@@ -277,7 +276,7 @@ var metricMaps = map[string]map[string]ColumnMapping{
 // the semver matching we do for columns.
 type OverrideQuery struct {
 	versionRange semver.Range
-	query string
+	query        string
 }
 
 // Overriding queries for namespaces above.
@@ -359,7 +358,6 @@ var queryOverrides = map[string][]OverrideQuery{
 		},
 		// No query is applicable for 9.1 that gives any sensible data.
 	},
-
 }
 
 // Convert the query override file to the version-specific query override file
@@ -510,7 +508,10 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 			// Check column version compatibility for the current map
 			// Force to discard if not compatible.
 			if columnMapping.supportedVersions != nil {
-				if columnMapping.supportedVersions(pgVersion) {
+				if !columnMapping.supportedVersions(pgVersion) {
+					// It's very useful to be able to see what columns are being
+					// rejected.
+					log.Debugln(columnName, "is being forced to discard due to version incompatibility.")
 					thisMap[columnName] = MetricMap{
 						discard: true,
 						conversion: func(in interface{}) (float64, bool) {
@@ -684,26 +685,26 @@ func dbToString(t interface{}) (string, bool) {
 // Exporter collects Postgres metrics. It implements prometheus.Collector.
 type Exporter struct {
 	dsn             string
-	userQueriesPath	string
+	userQueriesPath string
 	duration, error prometheus.Gauge
 	totalScrapes    prometheus.Counter
 
 	// Last version used to calculate metric map. If mismatch on scrape,
 	// then maps are recalculated.
-	lastMapVersion	semver.Version
+	lastMapVersion semver.Version
 	// Currently active variable map
-	variableMap     map[string]MetricMapNamespace
+	variableMap map[string]MetricMapNamespace
 	// Currently active metric map
-	metricMap       map[string]MetricMapNamespace
+	metricMap map[string]MetricMapNamespace
 	// Currently active query overrides
-	queryOverrides 	map[string]string
-	mappingMtx sync.RWMutex
+	queryOverrides map[string]string
+	mappingMtx     sync.RWMutex
 }
 
 // NewExporter returns a new PostgreSQL exporter for the provided DSN.
 func NewExporter(dsn string, userQueriesPath string) *Exporter {
 	return &Exporter{
-		dsn: dsn,
+		dsn:             dsn,
 		userQueriesPath: userQueriesPath,
 		duration: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -723,8 +724,8 @@ func NewExporter(dsn string, userQueriesPath string) *Exporter {
 			Name:      "last_scrape_error",
 			Help:      "Whether the last scrape of metrics from PostgreSQL resulted in an error (1 for error, 0 for success).",
 		}),
-		variableMap: nil,
-		metricMap:   nil,
+		variableMap:    nil,
+		metricMap:      nil,
 		queryOverrides: nil,
 	}
 }
@@ -949,7 +950,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 		e.lastMapVersion = semanticVersion
 
 		if e.userQueriesPath != "" {
-			if err := addQueries(e.userQueriesPath, semanticVersion, e.metricMap, e.queryOverrides) ; err != nil {
+			if err := addQueries(e.userQueriesPath, semanticVersion, e.metricMap, e.queryOverrides); err != nil {
 				log.Errorln("Failed to reload user queries:", e.userQueriesPath, err)
 			}
 		}
