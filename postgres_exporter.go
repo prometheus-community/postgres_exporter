@@ -508,6 +508,9 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 			// Force to discard if not compatible.
 			if columnMapping.supportedVersions != nil {
 				if !columnMapping.supportedVersions(pgVersion) {
+					// It's very useful to be able to see what columns are being
+					// rejected.
+					log.Debugln(columnName, "is being forced to discard due to version incompatibility.")
 					thisMap[columnName] = MetricMap{
 						discard: true,
 						conversion: func(in interface{}) (float64, bool) {
