@@ -21,6 +21,7 @@ after_success:
 # Push a tagged build if a tag is found.
 - if [ ! -z "$TRAVIS_TAG" ]; then 
     docker tag wrouesnel/postgres_exporter:latest wrouesnel/postgres_exporter:$TRAVIS_TAG ;
+    docker push wrouesnel/postgres_exporter:$TRAVIS_TAG ;
   fi
 # Push a latest version
 - if [ "$TRAVIS_BRANCH" == "master" ]; then docker push wrouesnel/postgres_exporter ; fi
