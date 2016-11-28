@@ -21,7 +21,7 @@ vet:
 	go vet .
 
 test:
-	go test -v .
+	go test -v -cover .
 
 test-integration: postgres_exporter postgres_exporter_integration_test
 	tests/test-smoke ./postgres_exporter ./postgres_exporter_integration_test
