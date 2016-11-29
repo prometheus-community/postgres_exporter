@@ -984,7 +984,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 
 	// Check if map versions need to be updated
 	if err := e.checkMapVersions(ch, db); err != nil {
-		log.Warnln("Postgres version could not be determined. Proceeding with outdated query maps.")
+		log.Warnln("Proceeding with outdated query maps, as the Postgres version could not be determined:", err)
 		e.error.Set(1)
 	}
 
