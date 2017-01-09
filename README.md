@@ -40,10 +40,6 @@ Package vendoring is handled with [`govendor`](https://github.com/kardianos/gove
 * `web.telemetry-path`
   Path under which to expose metrics.
 
-* `config.expect-replication-stats`
-  The target database has replication turned on - log errors when
-  replication stats are missing.
-
 ### Setting the Postgres server's data source name
 
 The PostgresSQL server's [data source name](http://en.wikipedia.org/wiki/Data_source_name)
