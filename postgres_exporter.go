@@ -41,6 +41,30 @@ var (
 		"dumpmaps", false,
 		"Do not run, simply dump the maps.",
 	)
+	pathpassword = flag.String(
+		"pathpassword", "",
+		"Specifie path to file contain password for postgres Server",
+	)
+	password = flag.String(
+		"password", "none",
+		"Specifie password for postgres Server",
+	)
+	port = flag.String(
+		"port", "5432",
+		"Specifie port for postgres Server",
+	)
+	host = flag.String(
+		"port", "localhost",
+		"Specifie host for postgres Server",
+	)
+	params = flag.String(
+		"params", "?sslmode=disable",
+		"Specifie params for dsn (default: ?sslmode=disable)",
+	)
+	user = flag.String(
+		"user", "postgres",
+		"Specifie the user postgres",
+	)
 )
 
 // Metric name parts.
@@ -729,6 +753,18 @@ func NewExporter(dsn string, userQueriesPath string) *Exporter {
 	}
 }
 
+func check(e error) {
+    if e != nil {
+        panic(e)
+    }
+}
+
+func ReadPassword(pathpass string) string {
+	dat, err := ioutil.ReadFile(pathpass)
+	check(err)
+    return string(dat)
+}
+
 // Describe implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	// We cannot know in advance what metrics the exporter will generate
@@ -1011,9 +1047,14 @@ func main() {
 		return
 	}
 
+	if *password == "none" {
+		*password = ReadPassword(*pathpassword)
+	}
+	
 	dsn := os.Getenv("DATA_SOURCE_NAME")
+	
 	if len(dsn) == 0 {
-		log.Fatal("couldn't find environment variable DATA_SOURCE_NAME")
+		dsn = fmt.Sprintf("postgresql://%s:%s@%s:%s/%s", *user, *password, *host, *port, *params)
 	}
 
 	exporter := NewExporter(dsn, *queriesPath)
