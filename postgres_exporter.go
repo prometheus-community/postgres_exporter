@@ -24,6 +24,8 @@ import (
 
 var Version string = "0.0.1"
 
+var db *sql.DB = nil
+
 var (
 	listenAddress = flag.String(
 		"web.listen-address", ":9187",
@@ -966,6 +968,20 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 	return nil
 }
 
+func getDB(conn string) (*sql.DB, error) {
+	if db == nil {
+		d, err := sql.Open("postgres", conn)
+		if err != nil {
+			return nil, err
+		}
+		d.SetMaxOpenConns(1)
+		d.SetMaxIdleConns(1)
+		db = d
+	}
+
+	return db, nil
+}
+
 func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	defer func(begun time.Time) {
 		e.duration.Set(time.Since(begun).Seconds())
@@ -974,13 +990,12 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	e.error.Set(0)
 	e.totalScrapes.Inc()
 
-	db, err := sql.Open("postgres", e.dsn)
+	db, err := getDB(e.dsn)
 	if err != nil {
 		log.Infoln("Error opening connection to database:", err)
 		e.error.Set(1)
 		return
 	}
-	defer db.Close()
 
 	// Check if map versions need to be updated
 	if err := e.checkMapVersions(ch, db); err != nil {
@@ -1026,4 +1041,7 @@ func main() {
 
 	log.Infof("Starting Server: %s", *listenAddress)
 	log.Fatal(http.ListenAndServe(*listenAddress, nil))
+	if db != nil {
+		defer db.Close()
+	}
 }
