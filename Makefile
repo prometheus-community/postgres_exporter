@@ -5,6 +5,9 @@ CONTAINER_NAME ?= wrouesnel/postgres_exporter:latest
 
 all: vet test postgres_exporter
 
+# Cross compilation (e.g. if you are on a Mac)
+cross: docker-build docker
+
 # Simple go build
 postgres_exporter: $(GO_SRC)
 	CGO_ENABLED=0 go build -a -ldflags "-extldflags '-static' -X main.Version=$(shell git describe --dirty)" -o postgres_exporter .
@@ -37,4 +40,7 @@ docker-build: postgres_exporter
 		/bin/bash -c "make >&2 && chown $$SHELL_UID:$$SHELL_GID ./postgres_exporter"
 	docker build -t $(CONTAINER_NAME) .
 
-.PHONY: docker-build docker test vet
+push:
+	docker push $(CONTAINER_NAME)
+
+.PHONY: docker-build docker test vet push cross
