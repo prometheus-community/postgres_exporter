@@ -974,6 +974,10 @@ func getDB(conn string) (*sql.DB, error) {
 		if err != nil {
 			return nil, err
 		}
+		err = d.Ping()
+		if err != nil {
+			return nil, err
+		}
 		d.SetMaxOpenConns(1)
 		d.SetMaxIdleConns(1)
 		db = d
@@ -992,7 +996,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 
 	db, err := getDB(e.dsn)
 	if err != nil {
-		log.Infoln("Error opening connection to database:", err)
+		log.Infof("Error opening connection to database (%s): %s", e.dsn, err)
 		e.error.Set(1)
 		return
 	}
