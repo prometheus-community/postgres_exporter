@@ -31,7 +31,7 @@ test-integration: postgres_exporter postgres_exporter_integration_test
 
 # Do a self-contained docker build - we pull the official upstream container
 # and do a self-contained build.
-docker-build: postgres_exporter
+docker-build:
 	docker run -v $(shell pwd):/go/src/github.com/wrouesnel/postgres_exporter \
 	    -v $(shell pwd):/real_src \
 	    -e SHELL_UID=$(shell id -u) -e SHELL_GID=$(shell id -g) \
