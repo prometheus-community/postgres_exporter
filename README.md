@@ -108,3 +108,9 @@ AS
 GRANT SELECT ON postgres_exporter.pg_stat_replication TO postgres_exporter;
 GRANT SELECT ON postgres_exporter.pg_stat_activity TO postgres_exporter;
 ```
+
+> **NOTE **
+> <br />Remember to use `postgres` database name in the connection string:
+> ```
+> DATA_SOURCE_NAME=postgresql://postgres_exporter:password@localhost:5432/postgres?sslmode=disable
+> ```
