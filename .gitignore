@@ -6,3 +6,6 @@ postgres_exporter_integration_test
 *-stamp
 .idea
 *.iml
+cover.out
+cover.*.out
+
