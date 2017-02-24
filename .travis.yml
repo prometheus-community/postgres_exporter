@@ -6,6 +6,7 @@ go:
 - '1.7'
 # Make sure we have p2 and the postgres client.
 before_install:
+- go get -v github.com/mattn/goveralls
 - sudo wget -O /usr/local/bin/p2 https://github.com/wrouesnel/p2cli/releases/download/r4/p2 &&
   sudo chmod +x /usr/local/bin/p2
 - sudo wget -O /usr/local/bin/docker-compose https://github.com/docker/compose/releases/download/1.9.0-rc4/docker-compose-Linux-x86_64 &&
@@ -16,6 +17,8 @@ script:
 - make all
 - make docker
 - make test-integration
+- ./concatenate_coverage cover.out cover.test.out cover.integration.out
+- $HOME/gopath/bin/goveralls -coverprofile=cover.out -service=travis-ci
 after_success:
 - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
 # Push a tagged build if a tag is found.
