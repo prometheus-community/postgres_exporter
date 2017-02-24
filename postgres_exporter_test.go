@@ -3,8 +3,8 @@
 package main
 
 import (
-	"testing"
 	. "gopkg.in/check.v1"
+	"testing"
 
 	"github.com/blang/semver"
 )
@@ -12,7 +12,7 @@ import (
 // Hook up gocheck into the "go test" runner.
 func Test(t *testing.T) { TestingT(t) }
 
-type FunctionalSuite struct{
+type FunctionalSuite struct {
 	e *Exporter
 }
 
@@ -24,9 +24,9 @@ func (s *FunctionalSuite) SetUpSuite(c *C) {
 
 func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 	testMetricMap := map[string]map[string]ColumnMapping{
-		"test_namespace" : map[string]ColumnMapping{
-			"metric_which_stays" : {COUNTER, "This metric should not be eliminated", nil, nil},
-			"metric_which_discards" : {COUNTER, "This metric should be forced to DISCARD", nil, nil},
+		"test_namespace": {
+			"metric_which_stays":    {COUNTER, "This metric should not be eliminated", nil, nil},
+			"metric_which_discards": {COUNTER, "This metric should be forced to DISCARD", nil, nil},
 		},
 	}
 
