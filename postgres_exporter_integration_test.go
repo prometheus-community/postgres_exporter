@@ -11,16 +11,16 @@ import (
 
 	. "gopkg.in/check.v1"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"database/sql"
-	_ "github.com/lib/pq"
 	"fmt"
+	_ "github.com/lib/pq"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Hook up gocheck into the "go test" runner.
 func Test(t *testing.T) { TestingT(t) }
 
-type IntegrationSuite struct{
+type IntegrationSuite struct {
 	e *Exporter
 }
 
@@ -43,7 +43,8 @@ func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 	// Setup a dummy channel to consume metrics
 	ch := make(chan prometheus.Metric, 100)
 	go func() {
-		for _ = range ch {}
+		for range ch {
+		}
 	}()
 
 	// Open a database connection
@@ -64,7 +65,6 @@ func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 			fmt.Println(err)
 		}
 	}
-
 
 	// This should never happen in our test cases.
 	errMap := queryNamespaceMappings(ch, db, s.e.metricMap, s.e.queryOverrides)
