@@ -2,10 +2,10 @@
 [![Coverage Status](https://coveralls.io/repos/github/wrouesnel/postgres_exporter/badge.svg?branch=master)](https://coveralls.io/github/wrouesnel/postgres_exporter?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/wrouesnel/postgres_exporter)](https://goreportcard.com/report/github.com/wrouesnel/postgres_exporter)
 
-# PostgresSQL Server Exporter
+# PostgreSQL Server Exporter
 
-Prometheus exporter for PostgresSQL server metrics.
-Supported Postgres versions: 9.1 and up.
+Prometheus exporter for PostgreSQL server metrics.
+Supported PostgreSQL versions: 9.1 and up.
 
 ## Quick Start
 This package is available for Docker:
@@ -42,9 +42,9 @@ Package vendoring is handled with [`govendor`](https://github.com/kardianos/gove
 * `web.telemetry-path`
   Path under which to expose metrics.
 
-### Setting the Postgres server's data source name
+### Setting the PostgreSQL server's data source name
 
-The PostgresSQL server's [data source name](http://en.wikipedia.org/wiki/Data_source_name)
+The PostgreSQL server's [data source name](http://en.wikipedia.org/wiki/Data_source_name)
 must be set via the `DATA_SOURCE_NAME` environment variable.
 
 For running it locally on a default Debian/Ubuntu install, this will work (transpose to init script as appropriate):
@@ -57,7 +57,7 @@ See the [github.com/lib/pq](http://github.com/lib/pq) module for other ways to f
 
 The exporter will attempt to dynamically export additional metrics if they are added in the
 future, but they will be marked as "untyped". Additional metric maps can be easily created
-from Postgres documentation by copying the tables and using the following Python snippet:
+from PostgreSQL documentation by copying the tables and using the following Python snippet:
 
 ```python
 x = """tab separated raw text of a documentation table"""
