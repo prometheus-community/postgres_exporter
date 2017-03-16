@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"strconv"
@@ -996,7 +997,12 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 
 	db, err := getDB(e.dsn)
 	if err != nil {
-		log.Infof("Error opening connection to database (%s): %s", e.dsn, err)
+		loggableDsn := "could not parse DATA_SOURCE_NAME"
+		if pDsn, pErr := url.Parse(e.dsn); pErr != nil {
+			pDsn.User = url.UserPassword(pDsn.User.Username(), "xxx")
+			loggableDsn = pDsn.String()
+		}
+		log.Infof("Error opening connection to database (%s): %s", loggableDsn, err)
 		e.error.Set(1)
 		return
 	}
