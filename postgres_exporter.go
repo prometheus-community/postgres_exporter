@@ -997,11 +997,12 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 
 	db, err := getDB(e.dsn)
 	if err != nil {
-		loggableDatabaseSource := "could not parse DATA_SOURCE_NAME"
+		loggableDsn := "could not parse DATA_SOURCE_NAME"
 		if pDsn, pErr := url.Parse(e.dsn); pErr != nil {
-			loggableDatabaseSource = pDsn.Host
+			pDsn.User = url.UserPassword(pDsn.User.Username(), "xxx")
+			loggableDsn = pDsn.String()
 		}
-		log.Infof("Error opening connection to database (%s): %s", loggableDatabaseSource, err)
+		log.Infof("Error opening connection to database (%s): %s", loggableDsn, err)
 		e.error.Set(1)
 		return
 	}
