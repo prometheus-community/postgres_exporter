@@ -13,6 +13,7 @@ import (
 
 	"database/sql"
 	"fmt"
+
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -57,13 +58,10 @@ func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 	err = s.e.checkMapVersions(ch, db)
 	c.Assert(err, IsNil)
 
-	// Check the show variables work
-	nonFatalErrors := queryShowVariables(ch, db, s.e.variableMap)
-	if !c.Check(len(nonFatalErrors), Equals, 0) {
-		fmt.Println("## NONFATAL ERRORS FOUND")
-		for _, err := range nonFatalErrors {
-			fmt.Println(err)
-		}
+	err = querySettings(ch, db)
+	if !c.Check(err, Equals, nil) {
+		fmt.Println("## ERRORS FOUND")
+		fmt.Println(err)
 	}
 
 	// This should never happen in our test cases.
