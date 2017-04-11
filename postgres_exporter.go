@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"sync"
 	"time"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 
@@ -1022,6 +1023,45 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	}
 }
 
+// try to get the DataSource
+// DATA_SOURCE_NAME always wins so we do not break older versions
+// reading secrets from files wins over secrets in environment variables
+// DATA_SOURCE_NAME > DATA_SOURCE_{USER|FILE}_FILE > DATA_SOURCE_{USER|FILE}
+func getDataSource() string {
+	var dsn string
+
+	dsn = os.Getenv("DATA_SOURCE_NAME")
+	if len(dsn) == 0 {
+		var user string
+		var pass string
+
+		if(len(os.Getenv("DATA_SOURCE_USER_FILE")) != 0) {
+			fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_USER_FILE"))
+			if err != nil {
+				panic(err)
+			}
+			user = strings.TrimSpace(string(fileContents))
+		} else {
+			user = os.Getenv("DATA_SOURCE_USER")
+		}
+
+		if(len(os.Getenv("DATA_SOURCE_PASS_FILE")) != 0) {
+			fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_PASS_FILE"))
+			if err != nil {
+				panic(err)
+			}
+			pass = strings.TrimSpace(string(fileContents))
+		} else {
+			pass = os.Getenv("DATA_SOURCE_PASS")
+		}
+
+		uri := os.Getenv("DATA_SOURCE_URI")
+		dsn = "postgresql://" + user + ":" + pass + "@" + uri
+	}
+
+	return dsn
+}
+
 func main() {
 	flag.Parse()
 
@@ -1030,9 +1070,9 @@ func main() {
 		return
 	}
 
-	dsn := os.Getenv("DATA_SOURCE_NAME")
+	dsn := getDataSource()
 	if len(dsn) == 0 {
-		log.Fatal("couldn't find environment variable DATA_SOURCE_NAME")
+		log.Fatal("couldn't find environment variables describing the datasource to use")
 	}
 
 	exporter := NewExporter(dsn, *queriesPath)
