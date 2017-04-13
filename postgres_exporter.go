@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"strconv"
@@ -23,6 +24,8 @@ import (
 )
 
 var Version string = "0.0.1"
+
+var db *sql.DB = nil
 
 var (
 	listenAddress = flag.String(
@@ -146,7 +149,7 @@ type MetricMap struct {
 
 // Metric descriptors for dynamically created metrics.
 var variableMaps = map[string]map[string]ColumnMapping{
-	"pg_runtime_variable": map[string]ColumnMapping{
+	"pg_runtime_variable": {
 		"max_connections":                {GAUGE, "Sets the maximum number of concurrent connections.", nil, nil},
 		"max_files_per_process":          {GAUGE, "Sets the maximum number of simultaneously open files for each server process.", nil, nil},
 		"max_function_args":              {GAUGE, "Shows the maximum number of function arguments.", nil, nil},
@@ -182,7 +185,7 @@ func dumpMaps() {
 }
 
 var metricMaps = map[string]map[string]ColumnMapping{
-	"pg_stat_bgwriter": map[string]ColumnMapping{
+	"pg_stat_bgwriter": {
 		"checkpoints_timed":     {COUNTER, "Number of scheduled checkpoints that have been performed", nil, nil},
 		"checkpoints_req":       {COUNTER, "Number of requested checkpoints that have been performed", nil, nil},
 		"checkpoint_write_time": {COUNTER, "Total amount of time that has been spent in the portion of checkpoint processing where files are written to disk, in milliseconds", nil, nil},
@@ -195,7 +198,7 @@ var metricMaps = map[string]map[string]ColumnMapping{
 		"buffers_alloc":         {COUNTER, "Number of buffers allocated", nil, nil},
 		"stats_reset":           {COUNTER, "Time at which these statistics were last reset", nil, nil},
 	},
-	"pg_stat_database": map[string]ColumnMapping{
+	"pg_stat_database": {
 		"datid":          {LABEL, "OID of a database", nil, nil},
 		"datname":        {LABEL, "Name of this database", nil, nil},
 		"numbackends":    {GAUGE, "Number of backends currently connected to this database. This is the only column in this view that returns a value reflecting current state; all other columns return the accumulated values since the last reset.", nil, nil},
@@ -216,7 +219,7 @@ var metricMaps = map[string]map[string]ColumnMapping{
 		"blk_write_time": {COUNTER, "Time spent writing data file blocks by backends in this database, in milliseconds", nil, nil},
 		"stats_reset":    {COUNTER, "Time at which these statistics were last reset", nil, nil},
 	},
-	"pg_stat_database_conflicts": map[string]ColumnMapping{
+	"pg_stat_database_conflicts": {
 		"datid":            {LABEL, "OID of a database", nil, nil},
 		"datname":          {LABEL, "Name of this database", nil, nil},
 		"confl_tablespace": {COUNTER, "Number of queries in this database that have been canceled due to dropped tablespaces", nil, nil},
@@ -225,12 +228,12 @@ var metricMaps = map[string]map[string]ColumnMapping{
 		"confl_bufferpin":  {COUNTER, "Number of queries in this database that have been canceled due to pinned buffers", nil, nil},
 		"confl_deadlock":   {COUNTER, "Number of queries in this database that have been canceled due to deadlocks", nil, nil},
 	},
-	"pg_locks": map[string]ColumnMapping{
+	"pg_locks": {
 		"datname": {LABEL, "Name of this database", nil, nil},
 		"mode":    {LABEL, "Type of Lock", nil, nil},
 		"count":   {GAUGE, "Number of locks", nil, nil},
 	},
-	"pg_stat_replication": map[string]ColumnMapping{
+	"pg_stat_replication": {
 		"procpid":          {DISCARD, "Process ID of a WAL sender process", nil, semver.MustParseRange("<9.2.0")},
 		"pid":              {DISCARD, "Process ID of a WAL sender process", nil, semver.MustParseRange(">=9.2.0")},
 		"usesysid":         {DISCARD, "OID of the user logged into this WAL sender process", nil, nil},
@@ -262,7 +265,7 @@ var metricMaps = map[string]map[string]ColumnMapping{
 		"pg_xlog_location_diff":    {GAUGE, "Lag in bytes between master and slave", nil, semver.MustParseRange(">=9.2.0")},
 		"confirmed_flush_lsn":      {DISCARD, "LSN position a consumer of a slot has confirmed flushing the data received", nil, nil},
 	},
-	"pg_stat_activity": map[string]ColumnMapping{
+	"pg_stat_activity": {
 		"datname":         {LABEL, "Name of this database", nil, nil},
 		"state":           {LABEL, "connection state", nil, semver.MustParseRange(">=9.2.0")},
 		"count":           {GAUGE, "number of connections in this state", nil, nil},
@@ -282,7 +285,7 @@ type OverrideQuery struct {
 // Overriding queries for namespaces above.
 // TODO: validate this is a closed set in tests, and there are no overlaps
 var queryOverrides = map[string][]OverrideQuery{
-	"pg_locks": []OverrideQuery{
+	"pg_locks": {
 		{
 			semver.MustParseRange(">0.0.0"),
 			`SELECT pg_database.datname,tmp.mode,COALESCE(count,0) as count
@@ -306,7 +309,7 @@ var queryOverrides = map[string][]OverrideQuery{
 		},
 	},
 
-	"pg_stat_replication": []OverrideQuery{
+	"pg_stat_replication": {
 		{
 			semver.MustParseRange(">=9.2.0"),
 			`
@@ -326,7 +329,7 @@ var queryOverrides = map[string][]OverrideQuery{
 		},
 	},
 
-	"pg_stat_activity": []OverrideQuery{
+	"pg_stat_activity": {
 		// This query only works
 		{
 			semver.MustParseRange(">=9.2.0"),
@@ -967,6 +970,24 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 	return nil
 }
 
+func getDB(conn string) (*sql.DB, error) {
+	if db == nil {
+		d, err := sql.Open("postgres", conn)
+		if err != nil {
+			return nil, err
+		}
+		err = d.Ping()
+		if err != nil {
+			return nil, err
+		}
+		d.SetMaxOpenConns(1)
+		d.SetMaxIdleConns(1)
+		db = d
+	}
+
+	return db, nil
+}
+
 func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	defer func(begun time.Time) {
 		e.duration.Set(time.Since(begun).Seconds())
@@ -975,13 +996,17 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	e.error.Set(0)
 	e.totalScrapes.Inc()
 
-	db, err := sql.Open("postgres", e.dsn)
+	db, err := getDB(e.dsn)
 	if err != nil {
-		log.Infoln("Error opening connection to database:", err)
+		loggableDsn := "could not parse DATA_SOURCE_NAME"
+		if pDsn, pErr := url.Parse(e.dsn); pErr != nil {
+			pDsn.User = url.UserPassword(pDsn.User.Username(), "xxx")
+			loggableDsn = pDsn.String()
+		}
+		log.Infof("Error opening connection to database (%s): %s", loggableDsn, err)
 		e.error.Set(1)
 		return
 	}
-	defer db.Close()
 
 	// Check if map versions need to be updated
 	if err := e.checkMapVersions(ch, db); err != nil {
@@ -1027,4 +1052,7 @@ func main() {
 
 	log.Infof("Starting Server: %s", *listenAddress)
 	log.Fatal(http.ListenAndServe(*listenAddress, nil))
+	if db != nil {
+		defer db.Close()
+	}
 }
