@@ -126,6 +126,22 @@ var fixtures = []fixture{
 	},
 	fixture{
 		p: pgSetting{
+			name:      "rds.rds_superuser_reserved_connections",
+			setting:   "2",
+			unit:      "",
+			shortDesc: "Sets the number of connection slots reserved for rds_superusers.",
+			vartype:   "integer",
+		},
+		n: normalised{
+			val:  2,
+			unit: "",
+			err:  "",
+		},
+		d: "Desc{fqName: \"pg_settings_rds_rds_superuser_reserved_connections\", help: \"Sets the number of connection slots reserved for rds_superusers.\", constLabels: {}, variableLabels: []}",
+		v: 2,
+	},
+	fixture{
+		p: pgSetting{
 			name:      "unknown_unit",
 			setting:   "10",
 			unit:      "nonexistent",
