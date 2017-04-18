@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
@@ -49,7 +50,7 @@ type pgSetting struct {
 func (s *pgSetting) metric() prometheus.Metric {
 	var (
 		err       error
-		name      = s.name
+		name      = strings.Replace(s.name, ".", "_", -1)
 		unit      = s.unit
 		shortDesc = s.shortDesc
 		subsystem = "settings"
