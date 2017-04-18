@@ -12,26 +12,6 @@ pg_postmaster:
         usage: "GAUGE"
         description: "Time at which postmaster started"
 
-pg_settings_shared_buffers:
-  query: "SELECT 8192*setting::int as bytes from pg_settings where name = 'shared_buffers'"
-  metrics:
-    - bytes:
-        usage: "GAUGE"
-        description: "Size of shared_buffers"
-
-pg_settings_checkpoint:
-  query: "select (select setting::int from pg_settings where name = 'checkpoint_segments') as segments, (select setting::int from pg_settings where name = 'checkpoint_timeout') as timeout_seconds, (select setting::float from pg_settings where name = 'checkpoint_completion_target') as completion_target"
-  metrics:
-    - segments:
-        usage: "GAUGE"
-        description: "Number of checkpoint segments"
-    - timeout_seconds:
-        usage: "GAUGE"
-        description: "Checkpoint timeout in seconds"
-    - completion_target:
-        usage: "GAUGE"
-        description: "Checkpoint completion target, ranging from 0 to 1"
-
 pg_stat_user_tables:
   query: "SELECT schemaname, relname, seq_scan, seq_tup_read, idx_scan, idx_tup_fetch, n_tup_ins, n_tup_upd, n_tup_del, n_tup_hot_upd, n_live_tup, n_dead_tup, n_mod_since_analyze, last_vacuum, last_autovacuum, last_analyze, last_autoanalyze, vacuum_count, autovacuum_count, analyze_count, autoanalyze_count FROM pg_stat_user_tables"
   metrics:
