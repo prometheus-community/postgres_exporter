@@ -95,12 +95,6 @@ const (
 	DURATION     ColumnUsage = iota // This column should be interpreted as a text duration (and converted to milliseconds)
 )
 
-// Special case matric mappings
-const (
-	// Which metric mapping should be acquired using "SHOW" queries
-	SHOW_METRIC = "pg_runtime_variables"
-)
-
 // Regex used to get the "short-version" from the postgres version field.
 var versionRegex = regexp.MustCompile(`^\w+ (\d+\.\d+\.\d+)`)
 var lowestSupportedVersion = semver.MustParse("9.1.0")
@@ -145,24 +139,6 @@ type MetricMap struct {
 	vtype      prometheus.ValueType              // Prometheus valuetype
 	desc       *prometheus.Desc                  // Prometheus descriptor
 	conversion func(interface{}) (float64, bool) // Conversion function to turn PG result into float64
-}
-
-// Metric descriptors for dynamically created metrics.
-var variableMaps = map[string]map[string]ColumnMapping{
-	"pg_runtime_variable": {
-		"max_connections":                {GAUGE, "Sets the maximum number of concurrent connections.", nil, nil},
-		"max_files_per_process":          {GAUGE, "Sets the maximum number of simultaneously open files for each server process.", nil, nil},
-		"max_function_args":              {GAUGE, "Shows the maximum number of function arguments.", nil, nil},
-		"max_identifier_length":          {GAUGE, "Shows the maximum identifier length.", nil, nil},
-		"max_index_keys":                 {GAUGE, "Shows the maximum number of index keys.", nil, nil},
-		"max_locks_per_transaction":      {GAUGE, "Sets the maximum number of locks per transaction.", nil, nil},
-		"max_pred_locks_per_transaction": {GAUGE, "Sets the maximum number of predicate locks per transaction.", nil, nil},
-		"max_prepared_transactions":      {GAUGE, "Sets the maximum number of simultaneously prepared transactions.", nil, nil},
-		//"max_stack_depth" : { GAUGE, "Sets the maximum number of concurrent connections.", nil }, // No dehumanize support yet
-		"max_standby_archive_delay":   {DURATION, "Sets the maximum delay before canceling queries when a hot standby server is processing archived WAL data.", nil, nil},
-		"max_standby_streaming_delay": {DURATION, "Sets the maximum delay before canceling queries when a hot standby server is processing streamed WAL data.", nil, nil},
-		"max_wal_senders":             {GAUGE, "Sets the maximum number of simultaneously running WAL sender processes.", nil, nil},
-	},
 }
 
 // TODO: revisit this with the semver system
@@ -695,8 +671,6 @@ type Exporter struct {
 	// Last version used to calculate metric map. If mismatch on scrape,
 	// then maps are recalculated.
 	lastMapVersion semver.Version
-	// Currently active variable map
-	variableMap map[string]MetricMapNamespace
 	// Currently active metric map
 	metricMap map[string]MetricMapNamespace
 	// Currently active query overrides
@@ -727,7 +701,6 @@ func NewExporter(dsn string, userQueriesPath string) *Exporter {
 			Name:      "last_scrape_error",
 			Help:      "Whether the last scrape of metrics from PostgreSQL resulted in an error (1 for error, 0 for success).",
 		}),
-		variableMap:    nil,
 		metricMap:      nil,
 		queryOverrides: nil,
 	}
@@ -775,42 +748,6 @@ func newDesc(subsystem, name, help string) *prometheus.Desc {
 		prometheus.BuildFQName(namespace, subsystem, name),
 		help, nil, nil,
 	)
-}
-
-// Query the SHOW variables from the query map
-// TODO: make this more functional
-func queryShowVariables(ch chan<- prometheus.Metric, db *sql.DB, variableMap map[string]MetricMapNamespace) []error {
-	log.Debugln("Querying SHOW variables")
-	nonFatalErrors := []error{}
-
-	for _, mapping := range variableMap {
-		for columnName, columnMapping := range mapping.columnMappings {
-			// Check for a discard request on this value
-			if columnMapping.discard {
-				continue
-			}
-
-			// Use SHOW to get the value
-			row := db.QueryRow(fmt.Sprintf("SHOW %s;", columnName))
-
-			var val interface{}
-			err := row.Scan(&val)
-			if err != nil {
-				nonFatalErrors = append(nonFatalErrors, errors.New(fmt.Sprintln("Error scanning runtime variable:", columnName, err)))
-				continue
-			}
-
-			fval, ok := columnMapping.conversion(val)
-			if !ok {
-				nonFatalErrors = append(nonFatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName, val)))
-				continue
-			}
-
-			ch <- prometheus.MustNewConstMetric(columnMapping.desc, columnMapping.vtype, fval)
-		}
-	}
-
-	return nonFatalErrors
 }
 
 // Query within a namespace mapping and emit metrics. Returns fatal errors if
@@ -943,11 +880,10 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 	semanticVersion, err := parseVersion(versionString)
 
 	// Check if semantic version changed and recalculate maps if needed.
-	if semanticVersion.NE(e.lastMapVersion) || e.variableMap == nil || e.metricMap == nil {
+	if semanticVersion.NE(e.lastMapVersion) || e.metricMap == nil {
 		log.Infoln("Semantic Version Changed:", e.lastMapVersion.String(), "->", semanticVersion.String())
 		e.mappingMtx.Lock()
 
-		e.variableMap = makeDescMap(semanticVersion, variableMaps)
 		e.metricMap = makeDescMap(semanticVersion, metricMaps)
 		e.queryOverrides = makeQueryOverrideMap(semanticVersion, queryOverrides)
 		e.lastMapVersion = semanticVersion
@@ -1017,9 +953,8 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	// Lock the exporter maps
 	e.mappingMtx.RLock()
 	defer e.mappingMtx.RUnlock()
-	// Handle querying the show variables
-	nonFatalErrors := queryShowVariables(ch, db, e.variableMap)
-	if len(nonFatalErrors) > 0 {
+	if err := querySettings(ch, db); err != nil {
+		log.Infof("Error retrieving settings: %s", err)
 		e.error.Set(1)
 	}
 
