@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -23,6 +24,7 @@ import (
 	"github.com/prometheus/common/log"
 )
 
+// executable version (set at build time by make)
 var Version string = "0.0.1"
 
 var db *sql.DB = nil
@@ -44,6 +46,7 @@ var (
 		"dumpmaps", false,
 		"Do not run, simply dump the maps.",
 	)
+	showVersion = flag.Bool("version", false, "print version")
 )
 
 // Metric name parts.
@@ -966,6 +969,14 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 
 func main() {
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf(
+			"postgres_exporter %s (built with %s)\n",
+			Version, runtime.Version(),
+		)
+		return
+	}
 
 	if *onlyDumpMaps {
 		dumpMaps()
