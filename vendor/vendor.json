@@ -93,5 +93,5 @@
 			"revisionTime": "2016-03-01T20:40:22Z"
 		}
 	],
-	"rootPath": "github.com/wrouesnel/postgres_exporter"
+	"rootPath": "github.com/k8sdb/postgres_exporter"
 }
