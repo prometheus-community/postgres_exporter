@@ -1,6 +1,6 @@
 // +build !integration
 
-package main
+package collector
 
 import (
 	dto "github.com/prometheus/client_model/go"
