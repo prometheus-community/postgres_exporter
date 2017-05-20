@@ -1,41 +1,25 @@
-package main
+package collector
 
 import (
+	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"math"
-	"net/http"
 	"net/url"
 	"os"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"gopkg.in/alecthomas/kingpin.v2"
-	"gopkg.in/yaml.v2"
-
-	"crypto/sha256"
 	"github.com/blang/semver"
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
-)
-
-// Version is set during build to the git describe version
-// (semantic version)-(commitish) form.
-var Version = "0.0.1"
-
-var (
-	listenAddress = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").OverrideDefaultFromEnvar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
-	metricPath    = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").OverrideDefaultFromEnvar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
-	queriesPath   = kingpin.Flag("extend.query-path", "Path to custom queries to run.").Default("").OverrideDefaultFromEnvar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
-	onlyDumpMaps  = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
+	"gopkg.in/yaml.v2"
 )
 
 // Metric name parts.
@@ -124,7 +108,7 @@ type MetricMap struct {
 }
 
 // TODO: revisit this with the semver system
-func dumpMaps() {
+func DumpMaps() {
 	// TODO: make this function part of the exporter
 	for name, cmap := range builtinMetricMaps {
 		query, ok := queryOverrides[name]
@@ -727,6 +711,12 @@ func NewExporter(dsn string, userQueriesPath string) *Exporter {
 	}
 }
 
+func (e *Exporter) Close() {
+	if e.dbConnection != nil {
+		e.dbConnection.Close() // nolint: errcheck
+	}
+}
+
 // Describe implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	// We cannot know in advance what metrics the exporter will generate
@@ -969,12 +959,15 @@ func (e *Exporter) getDB(conn string) (*sql.DB, error) {
 	if e.dbConnection == nil {
 		d, err := sql.Open("postgres", conn)
 		if err != nil {
+			e.psqlUp.Set(0)
 			return nil, err
 		}
 		err = d.Ping()
 		if err != nil {
+			e.psqlUp.Set(0)
 			return nil, err
 		}
+		e.psqlUp.Set(1)
 
 		d.SetMaxOpenConns(1)
 		d.SetMaxIdleConns(1)
@@ -1008,7 +1001,6 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 		}
 		log.Infof("Error opening connection to database (%s): %s", loggableDsn, err)
 		e.error.Set(1)
-		e.psqlUp.Set(0) // Force "up" to 0 here.
 		return
 	}
 
@@ -1036,7 +1028,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 // DATA_SOURCE_NAME always wins so we do not break older versions
 // reading secrets from files wins over secrets in environment variables
 // DATA_SOURCE_NAME > DATA_SOURCE_{USER|FILE}_FILE > DATA_SOURCE_{USER|FILE}
-func getDataSource() string {
+func GetDataSource() string {
 	var dsn = os.Getenv("DATA_SOURCE_NAME")
 	if len(dsn) == 0 {
 		var user string
@@ -1067,49 +1059,4 @@ func getDataSource() string {
 	}
 
 	return dsn
-}
-
-func main() {
-	kingpin.Version(fmt.Sprintf("postgres_exporter %s (built with %s)\n", Version, runtime.Version()))
-	log.AddFlags(kingpin.CommandLine)
-	kingpin.Parse()
-
-	// landingPage contains the HTML served at '/'.
-	// TODO: Make this nicer and more informative.
-	var landingPage = []byte(`<html>
-	<head><title>Postgres exporter</title></head>
-	<body>
-	<h1>Postgres exporter</h1>
-	<p><a href='` + *metricPath + `'>Metrics</a></p>
-	</body>
-	</html>
-	`)
-
-	if *onlyDumpMaps {
-		dumpMaps()
-		return
-	}
-
-	dsn := getDataSource()
-	if len(dsn) == 0 {
-		log.Fatal("couldn't find environment variables describing the datasource to use")
-	}
-
-	exporter := NewExporter(dsn, *queriesPath)
-	defer func() {
-		if exporter.dbConnection != nil {
-			exporter.dbConnection.Close() // nolint: errcheck
-		}
-	}()
-
-	prometheus.MustRegister(exporter)
-
-	http.Handle(*metricPath, promhttp.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "Content-Type:text/plain; charset=UTF-8") // nolint: errcheck
-		w.Write(landingPage)                                                     // nolint: errcheck
-	})
-
-	log.Infof("Starting Server: %s", *listenAddress)
-	log.Fatal(http.ListenAndServe(*listenAddress, nil))
 }

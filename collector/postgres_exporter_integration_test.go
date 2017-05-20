@@ -3,19 +3,17 @@
 // working.
 // +build integration
 
-package main
+package collector
 
 import (
+	"database/sql"
+	"fmt"
 	"os"
 	"testing"
 
-	. "gopkg.in/check.v1"
-
-	"database/sql"
-	"fmt"
-
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
+	. "gopkg.in/check.v1"
 )
 
 // Hook up gocheck into the "go test" runner.
@@ -78,6 +76,8 @@ func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 // the exporter. Related to https://github.com/wrouesnel/postgres_exporter/issues/93
 // although not a replication of the scenario.
 func (s *IntegrationSuite) TestInvalidDsnDoesntCrash(c *C) {
+	queriesPath := os.Getenv("PG_EXPORTER_EXTEND_QUERY_PATH")
+
 	// Setup a dummy channel to consume metrics
 	ch := make(chan prometheus.Metric, 100)
 	go func() {
@@ -86,12 +86,12 @@ func (s *IntegrationSuite) TestInvalidDsnDoesntCrash(c *C) {
 	}()
 
 	// Send a bad DSN
-	exporter := NewExporter("invalid dsn", *queriesPath)
+	exporter := NewExporter("invalid dsn", queriesPath)
 	c.Assert(exporter, NotNil)
 	exporter.scrape(ch)
 
 	// Send a DSN to a non-listening port.
-	exporter = NewExporter("postgresql://nothing:nothing@127.0.0.1:1/nothing", *queriesPath)
+	exporter = NewExporter("postgresql://nothing:nothing@127.0.0.1:1/nothing", queriesPath)
 	c.Assert(exporter, NotNil)
 	exporter.scrape(ch)
 }
