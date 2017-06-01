@@ -289,8 +289,8 @@ var queryOverrides = map[string][]OverrideQuery{
 			semver.MustParseRange(">=9.2.0"),
 			`
 			SELECT *,
-				pg_current_xlog_location(),
-				pg_xlog_location_diff(pg_current_xlog_location(), replay_location)::float
+				(case pg_is_in_recovery() when 't' then null else pg_current_xlog_location() end) AS pg_current_xlog_location,
+				(case pg_is_in_recovery() when 't' then null else pg_xlog_location_diff(pg_current_xlog_location(), replay_location)::float end) AS pg_xlog_location_diff
 			FROM pg_stat_replication
 			`,
 		},
@@ -298,7 +298,7 @@ var queryOverrides = map[string][]OverrideQuery{
 			semver.MustParseRange("<9.2.0"),
 			`
 			SELECT *,
-				pg_current_xlog_location()
+				(case pg_is_in_recovery() when 't' then null else pg_current_xlog_location() end) AS pg_current_xlog_location,
 			FROM pg_stat_replication
 			`,
 		},
