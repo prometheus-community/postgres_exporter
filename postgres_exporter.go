@@ -117,10 +117,7 @@ type ColumnMapping struct {
 
 func (this *ColumnMapping) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type plain ColumnMapping
-	if err := unmarshal((*plain)(this)); err != nil {
-		return err
-	}
-	return nil
+	return unmarshal((*plain)(this))
 }
 
 // Groups metric maps under a shared set of labels
