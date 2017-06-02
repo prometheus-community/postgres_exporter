@@ -13,7 +13,7 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 type FunctionalSuite struct {
-	e *Exporter
+	*Exporter
 }
 
 var _ = Suite(&FunctionalSuite{})

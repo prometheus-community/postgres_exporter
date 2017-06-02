@@ -23,8 +23,6 @@ import (
 	"github.com/prometheus/common/log"
 )
 
-var Version string = "0.0.1"
-
 var db *sql.DB = nil
 
 var (
@@ -97,7 +95,6 @@ const (
 
 // Regex used to get the "short-version" from the postgres version field.
 var versionRegex = regexp.MustCompile(`^\w+ (\d+\.\d+\.\d+)`)
-var lowestSupportedVersion = semver.MustParse("9.1.0")
 
 // Parses the version of postgres into the short version string we can use to
 // match behaviors.
@@ -877,6 +874,9 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 		return errors.New(fmt.Sprintln("Error scanning version string:", err))
 	}
 	semanticVersion, err := parseVersion(versionString)
+	if err != nil {
+		return errors.New(fmt.Sprintln("Error scanning version string:", err))
+	}
 
 	// Check if semantic version changed and recalculate maps if needed.
 	if semanticVersion.NE(e.lastMapVersion) || e.metricMap == nil {
