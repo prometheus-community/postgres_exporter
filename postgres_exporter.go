@@ -881,6 +881,9 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 		return errors.New(fmt.Sprintln("Error scanning version string:", err))
 	}
 	semanticVersion, err := parseVersion(versionString)
+	if semanticVersion.LT(lowestSupportedVersion) {
+		log.Warnln("PostgreSQL version is lower then our lowest supported version! Got", semanticVersion.String(), "minimum supported is", lowestSupportedVersion.String())
+	}
 
 	// Check if semantic version changed and recalculate maps if needed.
 	if semanticVersion.NE(e.lastMapVersion) || e.metricMap == nil {
