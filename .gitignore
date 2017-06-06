@@ -10,4 +10,4 @@ cover.out
 cover.*.out
 .coverage
 *.prom
-
+.metrics.*.*.prom
