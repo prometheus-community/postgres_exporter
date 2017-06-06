@@ -239,6 +239,7 @@ var metricMaps = map[string]map[string]ColumnMapping{
 		"restart_lsn":              {DISCARD, "The address (LSN) of oldest WAL which still might be required by the consumer of this slot and thus won't be automatically removed during checkpoints", nil, nil},
 		"pg_current_xlog_location": {DISCARD, "pg_current_xlog_location", nil, nil},
 		"pg_xlog_location_diff":    {GAUGE, "Lag in bytes between master and slave", nil, semver.MustParseRange(">=9.2.0")},
+		"confirmed_flush_lsn":      {DISCARD, "LSN position a consumer of a slot has confirmed flushing the data received", nil, nil},
 	},
 	"pg_stat_activity": {
 		"datname":         {LABEL, "Name of this database", nil, nil},
