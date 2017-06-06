@@ -22,6 +22,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
+	"github.com/prometheus/common/version"
 )
 
 var db *sql.DB = nil
@@ -31,7 +32,7 @@ var (
 		"web.listen-address", ":9187",
 		"Address to listen on for web interface and telemetry.",
 	)
-	metricPath = flag.String(
+	metricsPath = flag.String(
 		"web.telemetry-path", "/metrics",
 		"Path under which to expose metrics.",
 	)
@@ -42,6 +43,10 @@ var (
 	onlyDumpMaps = flag.Bool(
 		"dumpmaps", false,
 		"Do not run, simply dump the maps.",
+	)
+	showVersion = flag.Bool(
+		"version", false,
+		"Print version information.",
 	)
 )
 
@@ -55,17 +60,6 @@ const (
 	// e.g. version
 	staticLabelName = "static"
 )
-
-// landingPage contains the HTML served at '/'.
-// TODO: Make this nicer and more informative.
-var landingPage = []byte(`<html>
-<head><title>Postgres exporter</title></head>
-<body>
-<h1>Postgres exporter</h1>
-<p><a href='` + *metricPath + `'>Metrics</a></p>
-</body>
-</html>
-`)
 
 type ColumnUsage int
 
@@ -969,6 +963,14 @@ func main() {
 		return
 	}
 
+	if *showVersion {
+		fmt.Fprintln(os.Stdout, version.Print("lustre_exporter"))
+		os.Exit(0)
+	}
+
+	log.Infoln("Starting postgres_exporter", version.Info())
+	log.Infoln("Build context", version.BuildContext())
+
 	dsn := os.Getenv("DATA_SOURCE_NAME")
 	if len(dsn) == 0 {
 		log.Fatal("couldn't find environment variable DATA_SOURCE_NAME")
@@ -977,12 +979,18 @@ func main() {
 	exporter := NewExporter(dsn, *queriesPath)
 	prometheus.MustRegister(exporter)
 
-	http.Handle(*metricPath, promhttp.Handler())
+	http.Handle(*metricsPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(landingPage)
+		w.Write([]byte(`<html>
+			<head><title>Postgres Exporter</title></head>
+			<body>
+			<h1>Postgres Exporter</h1>
+			<p><a href="` + *metricsPath + `">Metrics</a></p>
+			</body>
+			</html>`))
 	})
 
-	log.Infof("Starting Server: %s", *listenAddress)
+	log.Infof("Listening on", *listenAddress)
 	log.Fatal(http.ListenAndServe(*listenAddress, nil))
 	if db != nil {
 		defer db.Close()

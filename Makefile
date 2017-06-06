@@ -3,9 +3,12 @@ GO_SRC         := $(shell find -type f -name '*.go' ! -path '*/vendor/*')
 
 CONTAINER_NAME ?= wrouesnel/postgres_exporter:latest
 MEGACHECK      ?= $(GOPATH)/bin/megacheck
+PROMU          ?= $(GOPATH)/bin/promu
 VERSION        ?= $(shell git describe --dirty)
 pkgs            = $(shell $(GO) list ./... | grep -v /vendor/)
 TARGET         ?= postgres_exporter
+PREFIX         ?= $(shell pwd)
+BIN_DIR        ?= $(shell pwd)
 
 all: fmt vet megacheck test postgres_exporter
 
@@ -13,17 +16,22 @@ all: fmt vet megacheck test postgres_exporter
 cross: docker-build docker
 
 # Simple go build
-postgres_exporter: $(GO_SRC)
+postgres_exporter: $(GO_SRC) $(PROMU)
 	@echo ">> building binaries"
-	@CGO_ENABLED=0;$(GO) build -a -ldflags "-extldflags '-static' -X main.Version=$(VERSION)" -o $(TARGET) .
+	@CGO_ENABLED=0 $(PROMU) build --prefix $(PREFIX)
 
 postgres_exporter_integration_test: $(GO_SRC)
 	@CGO_ENABLED=0;$(GO) test -c -tags integration \
 	    -a -ldflags "-extldflags '-static' -X main.Version=$(VERSION)" -o postgres_exporter_integration_test -cover -covermode count .
 
+tarball: $(PROMU)
+	@echo ">> building release tarball"
+	@$(PROMU) tarball --prefix $(PREFIX) $(BIN_DIR)
+
 # Take a go build and turn it into a minimal container
 docker: postgres_exporter
-	docker build -t $(CONTAINER_NAME) .
+	@echo ">> docker build"
+	@docker build -t $(CONTAINER_NAME) .
 
 vet:
 	@echo ">> vetting code"
@@ -60,16 +68,22 @@ docker-build:
 		/bin/bash -c "make >&2 && chown $$SHELL_UID:$$SHELL_GID ./postgres_exporter"
 	docker build -t $(CONTAINER_NAME) .
 
+$(GOPATH)/bin/promu promu:
+	@GOOS=$(shell uname -s | tr A-Z a-z) \
+		GOARCH=$(subst x86_64,amd64,$(patsubst i%86,386,$(shell uname -m))) \
+		$(GO) get -u github.com/prometheus/promu
+
 $(GOPATH)/bin/megacheck mega:
 	@GOOS=$(shell uname -s | tr A-Z a-z) \
 		GOARCH=$(subst x86_64,amd64,$(patsubst i%86,386,$(shell uname -m))) \
 		$(GO) get -u honnef.co/go/tools/cmd/megacheck
 
 push:
-	docker push $(CONTAINER_NAME)
+	@echo ">> docker build"
+	@docker push $(CONTAINER_NAME)
 
 clean:
 	@echo ">> Cleaning up"
-	@rm -f $(TARGET) *~
+	@rm -f $(TARGET) *~ *.tar.gz
 
-.PHONY: clean docker-build docker test vet push cross $(GOPATH)/bin/megacheck mega
+.PHONY: clean docker-build docker test vet push cross $(GOPATH)/bin/megacheck mega $(GOPATH)/bin/promu promu
