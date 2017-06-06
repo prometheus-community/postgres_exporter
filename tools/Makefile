@@ -30,15 +30,16 @@ tools.deps: $(GO_SRC)
 		echo -e "bin/$$(basename $$pkg): $$GO_SRC\n\t\$$(GO) install -v $$pkg" ; \
 	done > tools.deps
 
-metatools.deps: tools.deps bin/gometalinter $(GO_SRC)
+-include tools.deps
+
+metatools.deps: bin/gometalinter $(GO_SRC)
 	# Generate build patterns for metalinters tools
 	@echo -e "METATOOL_SRCS+=$(shell $(get_metalinters))" > metatools.deps
 	@for pkg in $(shell $(get_metalinters)) ; do \
 		echo -e "bin/$$(basename $$pkg): $$GO_SRC\n\t\$$(GO) install -v $$pkg" ; \
 	done >> metatools.deps
 
-include tools.deps
-include metatools.deps
+-include metatools.deps
 	
 update:
 	# Fetch govendor, then rebuild govendor.
