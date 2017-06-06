@@ -1,10 +1,21 @@
 
-GO_SRC := $(shell find -type f -name '*.go' ! -path '*/vendor/*')
+COVERDIR = .coverage
+TOOLDIR = tools
+
+GO_SRC := $(shell find . -name '*.go' ! -path '*/vendor/*' ! -path 'tools/*' )
+GO_DIRS := $(shell find . -type d -name '*.go' ! -path '*/vendor/*' ! -path 'tools/*' )
+GO_PKGS := $(shell go list ./... | grep -v '/vendor/')
 
 CONTAINER_NAME ?= wrouesnel/postgres_exporter:latest
 VERSION ?= $(shell git describe --dirty)
 
-all: vet test postgres_exporter
+CONCURRENT_LINTERS ?= $(shell cat /proc/cpuinfo | grep processor | wc -l)
+LINTER_DEADLINE ?= 30s
+
+export PATH := $(TOOLDIR)/bin:$(PATH)
+SHELL := env PATH=$(PATH) /bin/bash
+
+all: style lint test postgres_exporter
 
 # Cross compilation (e.g. if you are on a Mac)
 cross: docker-build docker
@@ -21,19 +32,23 @@ postgres_exporter_integration_test: $(GO_SRC)
 docker: postgres_exporter
 	docker build -t $(CONTAINER_NAME) .
 
-vet:
-	go vet
+style: tools
+	gometalinter --disable-all --enable=gofmt --vendor
 
-# Check code conforms to go fmt
-style:
-	! gofmt -s -l $(GO_SRC) 2>&1 | read 2>/dev/null
+lint: tools
+	@echo Using $(CONCURRENT_LINTERS) processes
+	gometalinter -j $(CONCURRENT_LINTERS) --deadline=$(LINTER_DEADLINE) --disable=gotype --disable=gocyclo $(GO_DIRS)
 
-# Format the code
-fmt:
+fmt: tools
 	gofmt -s -w $(GO_SRC)
 
-test:
-	go test -v -covermode count -coverprofile=cover.test.out
+test: tools
+	@rm -rf $(COVERDIR)
+	@mkdir -p $(COVERDIR)
+	for pkg in $(GO_PKGS) ; do \
+		go test -v -covermode count -coverprofile=$(COVERDIR)/$(echo $$pkg | tr '/' '-').out $(pkg) ; \
+	done
+	gocovmerge $(shell find $(COVERDIR) -name '*.out') > cover.out
 
 test-integration: postgres_exporter postgres_exporter_integration_test
 	tests/test-smoke "$(shell pwd)/postgres_exporter" "$(shell pwd)/postgres_exporter_integration_test_script $(shell pwd)/postgres_exporter_integration_test $(shell pwd)/cover.integration.out"
@@ -45,11 +60,17 @@ docker-build:
 	    -v $(shell pwd):/real_src \
 	    -e SHELL_UID=$(shell id -u) -e SHELL_GID=$(shell id -g) \
 	    -w /go/src/github.com/wrouesnel/postgres_exporter \
-		golang:1.7-wheezy \
+		golang:1.8-wheezy \
 		/bin/bash -c "make >&2 && chown $$SHELL_UID:$$SHELL_GID ./postgres_exporter"
 	docker build -t $(CONTAINER_NAME) .
 
 push:
 	docker push $(CONTAINER_NAME)
 
-.PHONY: docker-build docker test vet push cross
+tools:
+	$(MAKE) -C $(TOOLDIR)
+
+clean:
+	rm -f postgres_exporter postgres_exporter_integration_test
+
+.PHONY: tools docker-build docker lint fmt test vet push cross clean

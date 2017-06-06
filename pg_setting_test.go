@@ -12,7 +12,7 @@ type PgSettingSuite struct{}
 var _ = Suite(&PgSettingSuite{})
 
 var fixtures = []fixture{
-	fixture{
+	{
 		p: pgSetting{
 			name:      "seconds_fixture_metric",
 			setting:   "5",
@@ -28,7 +28,7 @@ var fixtures = []fixture{
 		d: "Desc{fqName: \"pg_settings_seconds_fixture_metric_seconds\", help: \"Foo foo foo [Units converted to seconds.]\", constLabels: {}, variableLabels: []}",
 		v: 5,
 	},
-	fixture{
+	{
 		p: pgSetting{
 			name:      "milliseconds_fixture_metric",
 			setting:   "5000",
@@ -44,7 +44,7 @@ var fixtures = []fixture{
 		d: "Desc{fqName: \"pg_settings_milliseconds_fixture_metric_seconds\", help: \"Foo foo foo [Units converted to seconds.]\", constLabels: {}, variableLabels: []}",
 		v: 5,
 	},
-	fixture{
+	{
 		p: pgSetting{
 			name:      "eight_kb_fixture_metric",
 			setting:   "17",
@@ -60,7 +60,7 @@ var fixtures = []fixture{
 		d: "Desc{fqName: \"pg_settings_eight_kb_fixture_metric_bytes\", help: \"Foo foo foo [Units converted to bytes.]\", constLabels: {}, variableLabels: []}",
 		v: 139264,
 	},
-	fixture{
+	{
 		p: pgSetting{
 			name:      "16_mb_real_fixture_metric",
 			setting:   "3.0",
@@ -76,7 +76,7 @@ var fixtures = []fixture{
 		d: "Desc{fqName: \"pg_settings_16_mb_real_fixture_metric_bytes\", help: \"Foo foo foo [Units converted to bytes.]\", constLabels: {}, variableLabels: []}",
 		v: 5.0331648e+07,
 	},
-	fixture{
+	{
 		p: pgSetting{
 			name:      "bool_on_fixture_metric",
 			setting:   "on",
@@ -92,7 +92,7 @@ var fixtures = []fixture{
 		d: "Desc{fqName: \"pg_settings_bool_on_fixture_metric\", help: \"Foo foo foo\", constLabels: {}, variableLabels: []}",
 		v: 1,
 	},
-	fixture{
+	{
 		p: pgSetting{
 			name:      "bool_off_fixture_metric",
 			setting:   "off",
@@ -108,7 +108,7 @@ var fixtures = []fixture{
 		d: "Desc{fqName: \"pg_settings_bool_off_fixture_metric\", help: \"Foo foo foo\", constLabels: {}, variableLabels: []}",
 		v: 0,
 	},
-	fixture{
+	{
 		p: pgSetting{
 			name:      "special_minus_one_value",
 			setting:   "-1",
@@ -124,7 +124,7 @@ var fixtures = []fixture{
 		d: "Desc{fqName: \"pg_settings_special_minus_one_value_seconds\", help: \"foo foo foo [Units converted to seconds.]\", constLabels: {}, variableLabels: []}",
 		v: -1,
 	},
-	fixture{
+	{
 		p: pgSetting{
 			name:      "rds.rds_superuser_reserved_connections",
 			setting:   "2",
@@ -140,7 +140,7 @@ var fixtures = []fixture{
 		d: "Desc{fqName: \"pg_settings_rds_rds_superuser_reserved_connections\", help: \"Sets the number of connection slots reserved for rds_superusers.\", constLabels: {}, variableLabels: []}",
 		v: 2,
 	},
-	fixture{
+	{
 		p: pgSetting{
 			name:      "unknown_unit",
 			setting:   "10",
