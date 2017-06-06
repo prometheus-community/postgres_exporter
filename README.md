@@ -1,6 +1,4 @@
-[![Build Status](https://travis-ci.org/wrouesnel/postgres_exporter.svg?branch=master)](https://travis-ci.org/wrouesnel/postgres_exporter)
-[![Coverage Status](https://coveralls.io/repos/github/wrouesnel/postgres_exporter/badge.svg?branch=master)](https://coveralls.io/github/wrouesnel/postgres_exporter?branch=master)
-[![Go Report Card](https://goreportcard.com/badge/github.com/wrouesnel/postgres_exporter)](https://goreportcard.com/report/github.com/wrouesnel/postgres_exporter)
+[![Go Report Card](https://goreportcard.com/badge/github.com/k8sdb/postgres_exporter)](https://goreportcard.com/report/github.com/k8sdb/postgres_exporter)
 
 # PostgresSQL Server Exporter
 
@@ -13,7 +11,7 @@ This package is available for Docker:
 # Start an example database
 docker run --net=host -it --rm -e POSTGRES_PASSWORD=password postgres
 # Connect to it
-docker run -e DATA_SOURCE_NAME="postgresql://postgres:password@localhost:5432/?sslmode=disable" -p 9187:9187 wrouesnel/postgres_exporter
+docker run -e DATA_SOURCE_NAME="postgresql://postgres:password@localhost:5432/?sslmode=disable" -p 9187:9187 k8sdb/postgres_exporter
 ```
 
 ## Building and running
@@ -24,11 +22,11 @@ export DATA_SOURCE_NAME="postgresql://login:password@hostname:port/dbname"
 ./postgres_exporter <flags>
 ```
 
-To build the dockerfile, run `make docker`. 
+To build the dockerfile, run `make docker`.
 
-This will build the docker image as `wrouesnel/postgres_exporter:latest`. This 
-is a minimal docker image containing *just* postgres_exporter. By default no SSL 
-certificates are included, if you need to use SSL you should either bind-mount 
+This will build the docker image as `k8sdb/postgres_exporter:latest`. This
+is a minimal docker image containing *just* postgres_exporter. By default no SSL
+certificates are included, if you need to use SSL you should either bind-mount
 `/etc/ssl/certs/ca-certificates.crt` or derive a new image containing them.
 
 ### Vendoring
