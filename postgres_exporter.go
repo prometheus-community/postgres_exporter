@@ -304,7 +304,7 @@ var queryOverrides = map[string][]OverrideQuery{
 			semver.MustParseRange("<9.2.0"),
 			`
 			SELECT *,
-				(case pg_is_in_recovery() when 't' then null else pg_current_xlog_location() end) AS pg_current_xlog_location,
+				(case pg_is_in_recovery() when 't' then null else pg_current_xlog_location() end) AS pg_current_xlog_location
 			FROM pg_stat_replication
 			`,
 		},
