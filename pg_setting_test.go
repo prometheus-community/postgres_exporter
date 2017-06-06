@@ -186,7 +186,7 @@ func (s *PgSettingSuite) TestMetric(c *C) {
 	for _, f := range fixtures {
 		d := &dto.Metric{}
 		m := f.p.metric()
-		m.Write(d)
+		m.Write(d) // nolint: errcheck
 
 		c.Check(m.Desc().String(), Equals, f.d)
 		c.Check(d.GetGauge().GetValue(), Equals, f.v)

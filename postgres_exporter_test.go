@@ -47,9 +47,9 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 
 	{
 		// Update the map so the discard metric should be eliminated
-		discardable_metric := testMetricMap["test_namespace"]["metric_which_discards"]
-		discardable_metric.supportedVersions = semver.MustParseRange(">0.0.1")
-		testMetricMap["test_namespace"]["metric_which_discards"] = discardable_metric
+		discardableMetric := testMetricMap["test_namespace"]["metric_which_discards"]
+		discardableMetric.supportedVersions = semver.MustParseRange(">0.0.1")
+		testMetricMap["test_namespace"]["metric_which_discards"] = discardableMetric
 
 		// Discard metric should be discarded
 		resultMap := makeDescMap(semver.MustParse("0.0.1"), testMetricMap)
@@ -67,9 +67,9 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 
 	{
 		// Update the map so the discard metric should be kept but has a version
-		discardable_metric := testMetricMap["test_namespace"]["metric_which_discards"]
-		discardable_metric.supportedVersions = semver.MustParseRange(">0.0.1")
-		testMetricMap["test_namespace"]["metric_which_discards"] = discardable_metric
+		discardableMetric := testMetricMap["test_namespace"]["metric_which_discards"]
+		discardableMetric.supportedVersions = semver.MustParseRange(">0.0.1")
+		testMetricMap["test_namespace"]["metric_which_discards"] = discardableMetric
 
 		// Discard metric should be discarded
 		resultMap := makeDescMap(semver.MustParse("0.0.2"), testMetricMap)
