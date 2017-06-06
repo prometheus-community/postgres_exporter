@@ -25,15 +25,15 @@ GO := GOPATH=$(shell pwd) go
 DEFAULT: all
 
 tools.deps: $(GO_SRC)
-	# Generate build patterns for static tools
-	for pkg in $(TOOL_SRCS); do \
+	@# Generate build patterns for static tools
+	@for pkg in $(TOOL_SRCS); do \
 		echo -e "bin/$$(basename $$pkg): $$GO_SRC\n\t\$$(GO) install -v $$pkg" ; \
 	done > tools.deps
 
 metatools.deps: tools.deps bin/gometalinter $(GO_SRC)
 	# Generate build patterns for metalinters tools
-	echo -e "METATOOL_SRCS+=$(shell $(get_metalinters))" > metatools.deps
-	for pkg in $(shell $(get_metalinters)) ; do \
+	@echo -e "METATOOL_SRCS+=$(shell $(get_metalinters))" > metatools.deps
+	@for pkg in $(shell $(get_metalinters)) ; do \
 		echo -e "bin/$$(basename $$pkg): $$GO_SRC\n\t\$$(GO) install -v $$pkg" ; \
 	done >> metatools.deps
 
