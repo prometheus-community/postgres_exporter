@@ -39,7 +39,7 @@ func (s *IntegrationSuite) SetUpSuite(c *C) {
 	prometheus.MustRegister(exporter)
 }
 
-// TODO: it would be nice if this didn't mostly just recreate the scrape function
+// TODO: it would be nice if cu didn't mostly just recreate the scrape function
 func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 	// Setup a dummy channel to consume metrics
 	ch := make(chan prometheus.Metric, 100)
