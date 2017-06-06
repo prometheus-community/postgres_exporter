@@ -48,10 +48,13 @@ test: tools
 	for pkg in $(GO_PKGS) ; do \
 		go test -v -covermode count -coverprofile=$(COVERDIR)/$$(echo $$pkg | tr '/' '-').out $$pkg ; \
 	done
-	gocovmerge $(shell find $(COVERDIR) -name '*.out') > cover.out
+	gocovmerge $(shell find $(COVERDIR) -name '*.out') > cover.test.out
 
 test-integration: postgres_exporter postgres_exporter_integration_test
 	tests/test-smoke "$(shell pwd)/postgres_exporter" "$(shell pwd)/postgres_exporter_integration_test_script $(shell pwd)/postgres_exporter_integration_test $(shell pwd)/cover.integration.out"
+
+cover.out: tools
+	gocovmerge cover.*.out > cover.out
 
 # Do a self-contained docker build - we pull the official upstream container
 # and do a self-contained build.

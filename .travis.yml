@@ -17,7 +17,7 @@ script:
 - make all
 - make docker
 - make test-integration
-- ./concatenate_coverage cover.out cover.test.out cover.integration.out
+- make cover.out
 - $HOME/gopath/bin/goveralls -coverprofile=cover.out -service=travis-ci
 after_success:
 - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
