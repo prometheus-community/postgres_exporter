@@ -2,9 +2,9 @@
 [![Coverage Status](https://coveralls.io/repos/github/wrouesnel/postgres_exporter/badge.svg?branch=master)](https://coveralls.io/github/wrouesnel/postgres_exporter?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/wrouesnel/postgres_exporter)](https://goreportcard.com/report/github.com/wrouesnel/postgres_exporter)
 
-# PostgresSQL Server Exporter
+# PostgreSQL Server Exporter
 
-Prometheus exporter for PostgresSQL server metrics.
+Prometheus exporter for PostgreSQL server metrics.
 Supported Postgres versions: 9.1 and up.
 
 ## Quick Start
@@ -44,7 +44,7 @@ Package vendoring is handled with [`govendor`](https://github.com/kardianos/gove
 
 ### Setting the Postgres server's data source name
 
-The PostgresSQL server's [data source name](http://en.wikipedia.org/wiki/Data_source_name)
+The PostgreSQL server's [data source name](http://en.wikipedia.org/wiki/Data_source_name)
 must be set via the `DATA_SOURCE_NAME` environment variable.
 
 For running it locally on a default Debian/Ubuntu install, this will work (transpose to init script as appropriate):
