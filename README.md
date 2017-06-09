@@ -81,6 +81,8 @@ To be able to collect metrics from pg_stat_activity and pg_stat_replication as n
 CREATE USER postgres_exporter PASSWORD 'password';
 ALTER USER postgres_exporter SET SEARCH_PATH TO postgres_exporter,pg_catalog;
 
+-- If deploying as non-superuser (for example in AWS RDS)
+-- GRANT postgres_exporter TO :MASTER_USER;
 CREATE SCHEMA postgres_exporter AUTHORIZATION postgres_exporter;
 
 CREATE FUNCTION postgres_exporter.f_select_pg_stat_activity()
