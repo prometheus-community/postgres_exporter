@@ -95,12 +95,13 @@ smoketest_postgres() {
     wait_for_exporter
 
     # Dump the metrics to a file.
-    wget -q -O - http://localhost:$exporter_port/metrics 1> $METRICS_DIR/.metrics.single.$version.prom
-    if [ "$?" != "0" ]; then
-        echo "Failed on postgres $version ($DOCKER_IMAGE)" 1>&2
-        kill $exporter_pid
-        exit 1
-    fi
+    wget -q -O - http://localhost:$exporter_port/metrics \
+         1>$METRICS_DIR/.metrics.single.$version.prom ||
+        {
+            echo "Failed on postgres $version ($DOCKER_IMAGE)" 1>&2 ;
+            kill $exporter_pid ;
+            exit 1 ;
+        }
 
     kill $exporter_pid
     docker kill $CONTAINER_NAME
