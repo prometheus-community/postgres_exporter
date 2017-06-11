@@ -88,14 +88,19 @@ smoketest_postgres() {
     # Extract a raw metric list.
     DATA_SOURCE_NAME="postgresql://postgres:$POSTGRES_PASSWORD@localhost:55432/?sslmode=disable" $postgres_exporter --log.level=debug --web.listen-address=:$exporter_port &
     exporter_pid=$!
-    trap "docker logs $CONTAINER_NAME ; docker kill $CONTAINER_NAME ; docker rm -v $CONTAINER_NAME; kill $exporter_pid; exit 1" EXIT INT TERM
+    trap "docker logs ${CONTAINER_NAME} ; 
+          docker kill ${CONTAINER_NAME} ; 
+          docker rm -v ${CONTAINER_NAME}; 
+          kill ${exporter_pid}; exit 1" EXIT INT TERM
     wait_for_exporter
 
     # Dump the metrics to a file.
-    wget -q -O - http://localhost:$exporter_port/metrics 1> $METRICS_DIR/.metrics.single.$version.prom
-    if [ "$?" != "0" ]; then
-        echo "Failed on postgres $version ($DOCKER_IMAGE)" 1>&2
-        kill $exporter_pid
+    if wget -q -O - \
+            http://localhost:${exporter_port}/metrics \
+            1> "${METRICS_DIR}/.metrics.single.${version}.prom"
+    then
+        echo "Failed on postgres ${version} (${DOCKER_IMAGE})" 1>&2
+        kill ${exporter_pid}
         exit 1
     fi
 
