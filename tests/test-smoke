@@ -89,7 +89,7 @@ smoketest_postgres() {
     DATA_SOURCE_NAME="postgresql://postgres:$POSTGRES_PASSWORD@localhost:55432/?sslmode=disable" $postgres_exporter --log.level=debug --web.listen-address=:$exporter_port &
     exporter_pid=$!
     trap "docker logs ${CONTAINER_NAME} ; 
-          docker kill $CONTAINER_NAME ; docker rm -v $CONTAINER_NAME; kill $exporter_pid; exit 1" EXIT INT TERM
+          docker kill $CONTAINER_NAME ; docker rm -v $CONTAINER_NAME; kill ${exporter_pid}; exit 1" EXIT INT TERM
     wait_for_exporter
 
     # Dump the metrics to a file.
