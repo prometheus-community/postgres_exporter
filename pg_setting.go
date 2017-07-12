@@ -26,7 +26,7 @@ func querySettings(ch chan<- prometheus.Metric, db *sql.DB) error {
 	if err != nil {
 		return errors.New(fmt.Sprintln("Error running query on database: ", namespace, err))
 	}
-	defer rows.Close()
+	defer rows.Close() // nolint: errcheck
 
 	for rows.Next() {
 		s := &pgSetting{}
@@ -51,7 +51,7 @@ func (s *pgSetting) metric() prometheus.Metric {
 	var (
 		err       error
 		name      = strings.Replace(s.name, ".", "_", -1)
-		unit      = s.unit
+		unit      = s.unit // nolint: ineffassign
 		shortDesc = s.shortDesc
 		subsystem = "settings"
 		val       float64
@@ -85,7 +85,7 @@ func (s *pgSetting) metric() prometheus.Metric {
 func (s *pgSetting) normaliseUnit() (val float64, unit string, err error) {
 	val, err = strconv.ParseFloat(s.setting, 64)
 	if err != nil {
-		return val, unit, errors.New(fmt.Sprintf("Error converting setting %q value %q to float: %s", s.name, s.setting, err))
+		return val, unit, fmt.Errorf("Error converting setting %q value %q to float: %s", s.name, s.setting, err)
 	}
 
 	// Units defined in: https://www.postgresql.org/docs/current/static/config-setting.html
@@ -97,7 +97,7 @@ func (s *pgSetting) normaliseUnit() (val float64, unit string, err error) {
 	case "kB", "MB", "GB", "TB", "8kB", "16MB":
 		unit = "bytes"
 	default:
-		err = errors.New(fmt.Sprintf("Unknown unit for runtime variable: %q", s.unit))
+		err = fmt.Errorf("Unknown unit for runtime variable: %q", s.unit)
 		return
 	}
 
