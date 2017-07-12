@@ -2,13 +2,13 @@
 
 ## Max Connections
 
-* Warning when reach 70% of max connections 
-* Critical when reach 90% of max connections
+* Warning when Postgresql reach 70% of max connections 
+* Critical when Postgresql reach 90% of max connections
 * Also trigger when `pg_runtime_variable_max_connections` is empty (it happens when prometheus cannot scrap exporter).
 
 ```
 ALERT PostgresqlTooManyConnections
-  IF sum(pg_runtime_variable_max_connections * 0.7) - sum(pg_stat_activity_count) == 0
+  IF sum(pg_stat_activity_count) >  sum(pg_runtime_variable_max_connections * 0.7 )
   OR absent(pg_runtime_variable_max_connections)
   FOR 5m
   LABELS {
@@ -16,12 +16,12 @@ ALERT PostgresqlTooManyConnections
     severity = "warning",
   }
   ANNOTATIONS {
-    summary = "Postgresql has too many connections",
-    description = "Postgresql reach 70% of the max connections",
+    summary = "Postgresql max client connections",
+    description = "Postgresql reached 70% of the max client connections.",
   }
   
 ALERT PostgresqlTooManyConnections
-  IF sum(pg_runtime_variable_max_connections * 0.9) - sum(pg_stat_activity_count) == 0
+  IF sum(pg_stat_activity_count) >  sum(pg_runtime_variable_max_connections * 0.9 )
   OR absent(pg_runtime_variable_max_connections)
   FOR 5m
   LABELS {
@@ -29,7 +29,7 @@ ALERT PostgresqlTooManyConnections
     severity = "critical",
   }
   ANNOTATIONS {
-    summary = "Postgresql has too many connections",
-    description = "Postgresql reach 90% of the max connections",
+    summary = "Postgresql max client connections",
+    description = "Postgresql reached 90% of the max client connections.",
   }
 ```
