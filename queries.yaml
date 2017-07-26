@@ -78,3 +78,13 @@ pg_stat_user_tables:
     - autoanalyze_count:
         usage: "COUNTER"
         description: "Number of times this table has been analyzed by the autovacuum daemon"
+        
+pg_database:
+  query: " SELECT pg_database.datname, pg_database_size(pg_database.datname) as size FROM pg_database" 
+  metrics:
+    - datname:
+        usage: "LABEL"
+        description: "Name of the database"
+    - size:
+        usage: "GAUGE"
+        description: "Disk space used by the database"
