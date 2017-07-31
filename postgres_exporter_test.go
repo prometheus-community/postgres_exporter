@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"os"
 )
 
 // Hook up gocheck into the "go test" runner.
@@ -83,5 +84,69 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 			Equals,
 			false,
 		)
+	}
+}
+
+func TestEnvironmentSettingWithSecretsFiles(t *testing.T) {
+
+	err := os.Setenv("DATA_SOURCE_USER_FILE", "./tests/username_file")
+	if err != nil {
+		t.Errorf("DATA_SOURCE_USER_FILE could not be set")
+	}
+
+	err = os.Setenv("DATA_SOURCE_PASS_FILE", "./tests/userpass_file")
+	if err != nil {
+		t.Errorf("DATA_SOURCE_PASS_FILE could not be set")
+	}
+
+	err = os.Setenv("DATA_SOURCE_URI", "localhost:5432/?sslmode=disable")
+	if err != nil {
+		t.Errorf("DATA_SOURCE_URI could not be set")
+	}
+
+	var expected = "postgresql://custom_username:custom_password@localhost:5432/?sslmode=disable"
+
+	dsn := getDataSource()
+	if dsn != expected {
+		t.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, expected)
+	}
+}
+
+func TestEnvironmentSettingWithDns(t *testing.T) {
+
+	envDsn := "postgresql://user:password@localhost:5432/?sslmode=enabled"
+	err := os.Setenv("DATA_SOURCE_NAME", envDsn)
+	if err != nil {
+		t.Errorf("DATA_SOURCE_NAME could not be set")
+	}
+
+	dsn := getDataSource()
+	if dsn != envDsn {
+		t.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, envDsn)
+	}
+}
+
+// test DATA_SOURCE_NAME is used even if username and password environment wariables are set
+func TestEnvironmentSettingWithDnsAndSecrets(t *testing.T) {
+
+	envDsn := "postgresql://userDsn:passwordDsn@localhost:55432/?sslmode=disabled"
+	err := os.Setenv("DATA_SOURCE_NAME", envDsn)
+	if err != nil {
+		t.Errorf("DATA_SOURCE_NAME could not be set")
+	}
+
+	err = os.Setenv("DATA_SOURCE_USER_FILE", "./tests/username_file")
+	if err != nil {
+		t.Errorf("DATA_SOURCE_USER_FILE could not be set")
+	}
+
+	err = os.Setenv("DATA_SOURCE_PASS", "envUserPass")
+	if err != nil {
+		t.Errorf("DATA_SOURCE_PASS could not be set")
+	}
+
+	dsn := getDataSource()
+	if dsn != envDsn {
+		t.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, envDsn)
 	}
 }
