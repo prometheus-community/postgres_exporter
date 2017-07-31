@@ -13,9 +13,9 @@ import (
 	"regexp"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
-	"strings"
 
 	"gopkg.in/yaml.v2"
 
@@ -987,14 +987,12 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 // reading secrets from files wins over secrets in environment variables
 // DATA_SOURCE_NAME > DATA_SOURCE_{USER|FILE}_FILE > DATA_SOURCE_{USER|FILE}
 func getDataSource() string {
-	var dsn string
-
-	dsn = os.Getenv("DATA_SOURCE_NAME")
+	var dsn = os.Getenv("DATA_SOURCE_NAME")
 	if len(dsn) == 0 {
 		var user string
 		var pass string
 
-		if(len(os.Getenv("DATA_SOURCE_USER_FILE")) != 0) {
+		if len(os.Getenv("DATA_SOURCE_USER_FILE")) != 0 {
 			fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_USER_FILE"))
 			if err != nil {
 				panic(err)
@@ -1004,7 +1002,7 @@ func getDataSource() string {
 			user = os.Getenv("DATA_SOURCE_USER")
 		}
 
-		if(len(os.Getenv("DATA_SOURCE_PASS_FILE")) != 0) {
+		if len(os.Getenv("DATA_SOURCE_PASS_FILE")) != 0 {
 			fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_PASS_FILE"))
 			if err != nil {
 				panic(err)
