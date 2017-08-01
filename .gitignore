@@ -8,5 +8,6 @@ postgres_exporter_integration_test
 *.iml
 cover.out
 cover.*.out
+.coverage
 *.prom
 .metrics.*.*.prom

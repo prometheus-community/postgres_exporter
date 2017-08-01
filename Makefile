@@ -42,11 +42,14 @@ lint: tools
 fmt: tools
 	gofmt -s -w $(GO_SRC)
 
-test: tools
+run-tests: tools
+	mkdir -p $(COVERDIR)
 	rm -f $(COVERDIR)/*
 	for pkg in $(GO_PKGS) ; do \
 		go test -v -covermode count -coverprofile=$(COVERDIR)/$$(echo $$pkg | tr '/' '-').out $$pkg ; \
 	done
+
+test: run-tests
 	gocovmerge $(shell find $(COVERDIR) -name '*.out') > cover.test.out
 
 test-integration: postgres_exporter postgres_exporter_integration_test
@@ -73,6 +76,6 @@ tools:
 	$(MAKE) -C $(TOOLDIR)
 
 clean:
-	rm -f postgres_exporter postgres_exporter_integration_test
+	rm -rf postgres_exporter postgres_exporter_integration_test $(COVERDIR)
 
 .PHONY: tools docker-build docker lint fmt test vet push cross clean
