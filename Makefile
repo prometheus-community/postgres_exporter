@@ -1,5 +1,5 @@
 
-COVERDIR = /tmp/coverage/
+COVERDIR = .coverage
 TOOLDIR = tools
 
 GO_SRC := $(shell find . -name '*.go' ! -path '*/vendor/*' ! -path 'tools/*' )
@@ -43,7 +43,6 @@ fmt: tools
 	gofmt -s -w $(GO_SRC)
 
 test: tools
-	mkdir -p $(COVERDIR)
 	rm -f $(COVERDIR)/*
 	for pkg in $(GO_PKGS) ; do \
 		go test -v -covermode count -coverprofile=$(COVERDIR)/$$(echo $$pkg | tr '/' '-').out $$pkg ; \
