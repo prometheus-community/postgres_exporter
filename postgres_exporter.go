@@ -965,9 +965,13 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	db, err := e.getDB(e.dsn)
 	if err != nil {
 		loggableDsn := "could not parse DATA_SOURCE_NAME"
-		if pDsn, pErr := url.Parse(e.dsn); pErr != nil {
-			log.Debugln("Blanking password for loggable DSN:", e.dsn)
-			pDsn.User = url.UserPassword(pDsn.User.Username(), "xxx")
+		// If the DSN is parseable, log it with a blanked out password
+		pDsn, pErr := url.Parse(e.dsn)
+		if pErr == nil {
+			// Blank user info if not nil
+			if pDsn.User != nil {
+				pDsn.User = url.UserPassword(pDsn.User.Username(), "PASSWORD_REMOVED")
+			}
 			loggableDsn = pDsn.String()
 		}
 		log.Infof("Error opening connection to database (%s): %s", loggableDsn, err)
@@ -1017,6 +1021,12 @@ func main() {
 	}
 
 	exporter := NewExporter(dsn, *queriesPath)
+	defer func() {
+		if exporter.dbConnection != nil {
+			exporter.dbConnection.Close() // nolint: errcheck
+		}
+	}()
+
 	prometheus.MustRegister(exporter)
 
 	http.Handle(*metricPath, prometheus.Handler())
@@ -1026,7 +1036,4 @@ func main() {
 
 	log.Infof("Starting Server: %s", *listenAddress)
 	log.Fatal(http.ListenAndServe(*listenAddress, nil))
-	if sharedDBConn != nil {
-		defer sharedDBConn.Close() // nolint: errcheck
-	}
 }
