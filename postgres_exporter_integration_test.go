@@ -48,6 +48,7 @@ func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 		}
 	}()
 
+
 	// Open a database connection
 	db, err := sql.Open("postgres", s.e.dsn)
 	c.Assert(db, NotNil)
@@ -72,4 +73,18 @@ func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 			fmt.Println(namespace, ":", err)
 		}
 	}
+}
+
+// TestInvalidDsnDoesntCrash tests that specifying an invalid DSN doesn't crash the exporter.
+// https://github.com/wrouesnel/postgres_exporter/issues/93
+func (s *IntegrationSuite) TestInvalidDsnDoesntCrash(c *C) {
+	// Setup a dummy channel to consume metrics
+	ch := make(chan prometheus.Metric, 100)
+	go func() {
+		for range ch {
+		}
+	}()
+
+	exporter := NewExporter("an invalid dsn", *queriesPath)
+	exporter.scrape(ch)
 }
