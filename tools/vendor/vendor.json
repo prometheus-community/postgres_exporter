@@ -285,10 +285,10 @@
 			"revisionTime": "2017-08-02T23:35:07Z"
 		},
 		{
-			"checksumSHA1": "tuOLCrGa9DjfXheKkMXtHtQu3bs=",
+			"checksumSHA1": "VE/ZFPAtX2obu4EFt1ajO8RydfU=",
 			"path": "github.com/mvdan/unparam/check",
-			"revision": "d647bb803b10a6777ee4c6a176416b91fa14713e",
-			"revisionTime": "2017-05-30T08:59:07Z"
+			"revision": "4f8ea7ae6525529da4e3c90bda033935b80d709a",
+			"revisionTime": "2017-08-02T23:35:07Z"
 		},
 		{
 			"checksumSHA1": "DP8R0Q7TDlHbhz9Livyj8RkRKvU=",
