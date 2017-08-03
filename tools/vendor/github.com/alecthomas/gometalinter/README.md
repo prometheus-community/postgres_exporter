@@ -18,6 +18,7 @@
     - [1. Update to the latest build of gometalinter and all linters](#1-update-to-the-latest-build-of-gometalinter-and-all-linters)
     - [2. Analyse the debug output](#2-analyse-the-debug-output)
     - [3. Report an issue.](#3-report-an-issue)
+  - [How do I filter issues between two git refs?](#how-do-i-filter-issues-between-two-git-refs)
 - [Details](#details)
 - [Checkstyle XML format](#checkstyle-xml-format)
 
@@ -54,7 +55,7 @@ It is intended for use with editor/IDE integration.
 ## Supported linters
 
 - [go vet](https://golang.org/cmd/vet/) - Reports potential errors that otherwise compile.
-- [go vet --shadow](https://golang.org/cmd/vet/#hdr-Shadowed_variables) - Reports variables that may have been unintentionally shadowed.
+- [go tool vet --shadow](https://golang.org/cmd/vet/#hdr-Shadowed_variables) - Reports variables that may have been unintentionally shadowed.
 - [gotype](https://golang.org/x/tools/cmd/gotype) - Syntactic and semantic analysis similar to the Go compiler.
 - [deadcode](https://github.com/tsenart/deadcode) - Finds unused code.
 - [gocyclo](https://github.com/alecthomas/gocyclo) - Computes the cyclomatic complexity of functions.
@@ -63,13 +64,12 @@ It is intended for use with editor/IDE integration.
 - [structcheck](https://github.com/opennota/check) - Find unused struct fields.
 - [aligncheck](https://github.com/opennota/check) - Warn about un-optimally aligned structures.
 - [errcheck](https://github.com/kisielk/errcheck) - Check that error return values are used.
+- [megacheck](https://github.com/dominikh/go-tools/tree/master/cmd/megacheck) - Run staticcheck, gosimple and unused, sharing work.
 - [dupl](https://github.com/mibk/dupl) - Reports potentially duplicated code.
 - [ineffassign](https://github.com/gordonklaus/ineffassign/blob/master/list) - Detect when assignments to *existing* variables are not used.
 - [interfacer](https://github.com/mvdan/interfacer) - Suggest narrower interfaces that can be used.
 - [unconvert](https://github.com/mdempsky/unconvert) - Detect redundant type conversions.
 - [goconst](https://github.com/jgautheron/goconst) - Finds repeated strings that could be replaced by a constant.
-- [gosimple](https://github.com/dominikh/go-tools/tree/master/cmd/gosimple) - Report simplifications in code.
-- [staticcheck](https://github.com/dominikh/go-tools/tree/master/cmd/staticcheck) - Statically detect bugs, both obvious and subtle ones.
 - [gas](https://github.com/GoASTScanner/gas) - Inspects source code for security problems by scanning the Go AST.
 
 Disabled by default (enable with `--enable=<linter>`):
@@ -78,11 +78,13 @@ Disabled by default (enable with `--enable=<linter>`):
 - [test](http://golang.org/pkg/testing/) - Show location of test failures from the stdlib testing module.
 - [gofmt -s](https://golang.org/cmd/gofmt/) - Checks if the code is properly formatted and could not be further simplified.
 - [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports) - Checks missing or unreferenced package imports.
+- [gosimple](https://github.com/dominikh/go-tools/tree/master/cmd/gosimple) - Report simplifications in code.
 - [lll](https://github.com/walle/lll) - Report long lines (see `--line-length=N`).
 - [misspell](https://github.com/client9/misspell) - Finds commonly misspelled English words.
 - [unparam](https://github.com/mvdan/unparam) - Find unused function parameters.
 - [unused](https://github.com/dominikh/go-tools/tree/master/cmd/unused) - Find unused variables.
 - [safesql](https://github.com/stripe/safesql) - Finds potential SQL injection vulnerabilities.
+- [staticcheck](https://github.com/dominikh/go-tools/tree/master/cmd/staticcheck) - Statically detect bugs, both obvious and subtle ones.
 
 Additional linters can be added through the command line with `--linter=NAME:COMMAND:PATTERN` (see [below](#details)).
 
@@ -95,13 +97,13 @@ in `config.go`.
 The configuration file mostly corresponds to command-line flags, with the following exceptions:
 
 - Linters defined in the configuration file will overlay existing definitions, not replace them.
-- "Enable" defines the exact set of linters that will be enabled.
+- "Enable" defines the exact set of linters that will be enabled (default
+  linters are disabled).
 
 Here is an example configuration file:
 
 ```json
 {
-  "DisableAll": true,
   "Enable": ["deadcode", "unconvert"]
 }
 ```
@@ -290,6 +292,21 @@ failing.
 
 Failing all else, if the problem looks like a bug please file an issue and
 include the output of `gometalinter --debug`.
+
+### How do I filter issues between two git refs?
+
+[revgrep](https://github.com/bradleyfalzon/revgrep) can be used to filter the output of `gometalinter`
+to show issues on lines that have changed between two git refs, such as unstaged changes, changes in
+`HEAD` vs `master` and between `master` and `origin/master`. See the project's documentation and `-help`
+usage for more information.
+
+```
+go get -u github.com/bradleyfalzon/revgrep/...
+gometalinter |& revgrep               # If unstaged changes or untracked files, those issues are shown.
+gometalinter |& revgrep               # Else show issues in the last commit.
+gometalinter |& revgrep master        # Show issues between master and HEAD (or any other reference).
+gometalinter |& revgrep origin/master # Show issues that haven't been pushed.
+```
 
 ## Details
 

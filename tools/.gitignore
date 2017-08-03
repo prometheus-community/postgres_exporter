@@ -1,4 +1,4 @@
 /pkg
-bin
-tools.deps
-metatools.deps
+/bin
+/tools.deps
+/metatools.deps

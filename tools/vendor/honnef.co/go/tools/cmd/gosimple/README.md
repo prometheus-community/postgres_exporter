@@ -68,6 +68,7 @@ constructs:
 | S1027 | `return` as the final statement of a func body with no return values        | Functions that don't return anything don't need a final return statement |
 | S1028 | `errors.New(fmt.Sprintf(...))`                                              | `fmt.Errorf(...)`                                                        |
 | S1029 | `for _, r := range []rune(s)`                                               | `for _, r := range s`                                                    |
+| S1030 | `string(buf.Bytes())` or `[]byte(buf.String())`                           | Use the appropriate method of `bytes.Buffer` instead                     |
 
 ## gofmt -r
 

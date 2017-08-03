@@ -24,14 +24,14 @@ func (i *ignoredRange) matches(issue *Issue) bool {
 		return true
 	}
 	for _, l := range i.linters {
-		if l == issue.Linter.Name {
+		if l == issue.Linter {
 			return true
 		}
 	}
 	return false
 }
 
-func (i *ignoredRange) near(col, start, end int) bool {
+func (i *ignoredRange) near(col, start int) bool {
 	return col == i.col && i.end == start-1
 }
 
@@ -42,15 +42,13 @@ func (ir ignoredRanges) Swap(i, j int)      { ir[i], ir[j] = ir[j], ir[i] }
 func (ir ignoredRanges) Less(i, j int) bool { return ir[i].end < ir[j].end }
 
 type directiveParser struct {
-	paths []string
 	lock  sync.Mutex
 	files map[string]ignoredRanges
 	fset  *token.FileSet
 }
 
-func newDirectiveParser(paths []string) *directiveParser {
+func newDirectiveParser() *directiveParser {
 	return &directiveParser{
-		paths: paths,
 		files: map[string]ignoredRanges{},
 		fset:  token.NewFileSet(),
 	}
@@ -92,7 +90,7 @@ func (a *rangeExpander) Visit(node ast.Node) ast.Visitor {
 	found := sort.Search(len(a.ranges), func(i int) bool {
 		return a.ranges[i].end+1 >= start
 	})
-	if found < len(a.ranges) && a.ranges[found].near(startPos.Column, start, end) {
+	if found < len(a.ranges) && a.ranges[found].near(startPos.Column, start) {
 		r := a.ranges[found]
 		if r.start > start {
 			r.start = start
@@ -142,12 +140,6 @@ func extractCommentGroupRange(fset *token.FileSet, comments ...*ast.CommentGroup
 		}
 	}
 	return
-}
-
-func (d *directiveParser) in(n ast.Node, issue *Issue) bool {
-	start := d.fset.Position(n.Pos())
-	end := d.fset.Position(n.End())
-	return issue.Line >= start.Line && issue.Line <= end.Line
 }
 
 func filterIssuesViaDirectives(directives *directiveParser, issues chan *Issue) chan *Issue {

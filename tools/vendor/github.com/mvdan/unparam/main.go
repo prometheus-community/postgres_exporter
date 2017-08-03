@@ -11,11 +11,18 @@ import (
 	"github.com/mvdan/unparam/check"
 )
 
-var tests = flag.Bool("tests", true, "include tests")
+var (
+	tests = flag.Bool("tests", true, "include tests")
+	debug = flag.Bool("debug", false, "debug prints")
+)
 
 func main() {
+	flag.Usage = func() {
+		fmt.Fprintln(os.Stderr, "usage: unparam [flags] [package ...]")
+		flag.PrintDefaults()
+	}
 	flag.Parse()
-	warns, err := check.UnusedParams(*tests, flag.Args()...)
+	warns, err := check.UnusedParams(*tests, *debug, flag.Args()...)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
