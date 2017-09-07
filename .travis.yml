@@ -3,7 +3,7 @@ services:
 - docker
 language: go
 go:
-- '1.8'
+- '1.9'
 # Make sure we have p2 and the postgres client.
 before_install:
 - go get -v github.com/mattn/goveralls

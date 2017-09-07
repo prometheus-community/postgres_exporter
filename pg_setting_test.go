@@ -62,6 +62,22 @@ var fixtures = []fixture{
 	},
 	{
 		p: pgSetting{
+			name:      "16_kb_real_fixture_metric",
+			setting:   "3.0",
+			unit:      "16kB",
+			shortDesc: "Foo foo foo",
+			vartype:   "real",
+		},
+		n: normalised{
+			val:  49152,
+			unit: "bytes",
+			err:  "",
+		},
+		d: "Desc{fqName: \"pg_settings_16_kb_real_fixture_metric_bytes\", help: \"Foo foo foo [Units converted to bytes.]\", constLabels: {}, variableLabels: []}",
+		v: 49152,
+	},
+	{
+		p: pgSetting{
 			name:      "16_mb_real_fixture_metric",
 			setting:   "3.0",
 			unit:      "16MB",
