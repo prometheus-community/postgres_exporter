@@ -99,7 +99,7 @@ Some examples are provided in [queries.yaml](queries.yaml).
 
 ### Running as non-superuser
 
-To be able to collect metrics from pg_stat_activity and pg_stat_replication as non-superuser you have to create functions and views to do so.
+To be able to collect metrics from pg_stat_activity and pg_stat_replication as non-superuser you have to create views as a superuser, and assign permissions separately to those.  In PostgreSQL, views run with the permissions of the user that created them so they can act as security barriers.
 
 ```sql
 CREATE USER postgres_exporter PASSWORD 'password';
@@ -109,32 +109,16 @@ ALTER USER postgres_exporter SET SEARCH_PATH TO postgres_exporter,pg_catalog;
 -- GRANT postgres_exporter TO :MASTER_USER;
 CREATE SCHEMA postgres_exporter AUTHORIZATION postgres_exporter;
 
-CREATE FUNCTION postgres_exporter.f_select_pg_stat_activity()
-RETURNS setof pg_catalog.pg_stat_activity
-LANGUAGE sql
-SECURITY DEFINER
-AS $$
-  SELECT * from pg_catalog.pg_stat_activity;
-$$;
-
-CREATE FUNCTION postgres_exporter.f_select_pg_stat_replication()
-RETURNS setof pg_catalog.pg_stat_replication
-LANGUAGE sql
-SECURITY DEFINER
-AS $$
-  SELECT * from pg_catalog.pg_stat_replication;
-$$;
-
-CREATE VIEW postgres_exporter.pg_stat_replication
-AS
-  SELECT * FROM postgres_exporter.f_select_pg_stat_replication();
-
 CREATE VIEW postgres_exporter.pg_stat_activity
 AS
-  SELECT * FROM postgres_exporter.f_select_pg_stat_activity();
+  SELECT * from pg_catalog.pg_stat_activity;
+  
+GRANT SELECT ON postgres_exporter.pg_stat_activity TO postgres_exporter;
+
+CREATE VIEW postgres_exporter.pg_stat_replication AS
+  SELECT * from pg_catalog.pg_stat_replication;
 
 GRANT SELECT ON postgres_exporter.pg_stat_replication TO postgres_exporter;
-GRANT SELECT ON postgres_exporter.pg_stat_activity TO postgres_exporter;
 ```
 
 > **NOTE**
