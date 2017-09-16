@@ -7,9 +7,9 @@ shift
 output_cov=$1
 shift
 
-echo "mode: count" > $output_cov
+echo "mode: count" > "${output_cov}"
 
 test_cov=$(mktemp)
-$test_binary -test.coverprofile=$test_cov $@
-tail -n +2 $test_cov >> $output_cov
-rm -f $test_cov
+${test_binary} -test.coverprofile="${test_cov}" "$@"
+tail -n +2 "${test_cov}" >> "${output_cov}"
+rm -f "${test_cov}"

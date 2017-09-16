@@ -36,12 +36,12 @@ if [ "$1" = 'postgres' ]; then
 	    if [ "x$REPLICATE_FROM" == "x" ]; then
 		eval "gosu postgres initdb $POSTGRES_INITDB_ARGS"
 	    else
-            	until ping -c 1 -W 1 ${REPLICATE_FROM}
+            	until ping -c 1 -W 1 "${REPLICATE_FROM}"
             	do
                 	echo "Waiting for master to ping..."
                 	sleep 1s
             	done
-            	until gosu postgres pg_basebackup -h ${REPLICATE_FROM} -D ${PGDATA} -U ${POSTGRES_USER} -vP -w
+            	until gosu postgres pg_basebackup -h "${REPLICATE_FROM}" -D "${PGDATA}" -U "${POSTGRES_USER}" -vP -w
             	do
                 	echo "Waiting for master to connect..."
                 	sleep 1s
@@ -84,10 +84,13 @@ if [ "$1" = 'postgres' ]; then
 			-o "-c listen_addresses='localhost'" \
 			-w start
 
+                # shellcheck disable=SC2086
 		: ${POSTGRES_USER:=postgres}
+                # shellcheck disable=SC2086
 		: ${POSTGRES_DB:=$POSTGRES_USER}
 		export POSTGRES_USER POSTGRES_DB
 
+                # shellcheck disable=SC2191
 		psql=( psql -v ON_ERROR_STOP=1 )
 
 		if [ "$POSTGRES_DB" != 'postgres' ]; then
@@ -112,6 +115,7 @@ if [ "$1" = 'postgres' ]; then
 		psql+=( --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" )
 
 		echo
+                # shellcheck disable=SC1090
 		for f in /docker-entrypoint-initdb.d/*; do
 			case "$f" in
 				*.sh)     echo "$0: running $f"; . "$f" ;;
