@@ -14,8 +14,14 @@ LINTER_DEADLINE ?= 30s
 
 export PATH := $(TOOLDIR)/bin:$(PATH)
 SHELL := env PATH=$(PATH) /bin/bash
+# We may want to move shell scripts to have a common *.sh suffix, 
+# allowing us to use 'find *.sh', like we do for GO_SRC.
+hash := \#
+SHELL_SRC := $(shell grep -l '$(hash)!/bin/bash' -r . \
+                          --exclude-dir 'tools' \
+                          --exclude Makefile)
 
-all: style lint test postgres_exporter
+all: style lint shellcheck test postgres_exporter
 
 # Cross compilation (e.g. if you are on a Mac)
 cross: docker-build docker
@@ -34,6 +40,9 @@ docker: postgres_exporter
 
 style: tools
 	gometalinter --disable-all --enable=gofmt --vendor
+
+shellcheck:
+	shellcheck $(SHELL_SRC)
 
 lint: tools
 	@echo Using $(CONCURRENT_LINTERS) processes
@@ -76,4 +85,4 @@ tools:
 clean:
 	rm -f postgres_exporter postgres_exporter_integration_test
 
-.PHONY: tools docker-build docker lint fmt test vet push cross clean
+.PHONY: tools docker-build docker lint shellcheck fmt test vet push cross clean
