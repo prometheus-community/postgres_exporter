@@ -39,10 +39,10 @@
 			"revisionTime": "2015-02-08T22:17:26Z"
 		},
 		{
-			"checksumSHA1": "zCnRL4ozOPngF6cn+bgZ9A4D+xE=",
+			"checksumSHA1": "dGfv3nwAfhSJ+20gR0yYgUwjPVY=",
 			"path": "github.com/alecthomas/gometalinter",
-			"revision": "fed116ef099c86fa41f60754555e85b7be704033",
-			"revisionTime": "2017-05-14T07:52:09Z"
+			"revision": "258ea75208e542b8a18a08e053ec10379a9f50f9",
+			"revisionTime": "2017-08-02T01:03:20Z"
 		},
 		{
 			"checksumSHA1": "fCc3grA7vIxfBru7R3SqjcW+oLI=",
@@ -71,8 +71,8 @@
 		{
 			"checksumSHA1": "YdtKuQqs3pDJhMxOruVxLAD/JSo=",
 			"path": "github.com/client9/misspell/cmd/misspell",
-			"revision": "1d9ab7749ee27131547244ff2f9953d235b591fb",
-			"revisionTime": "2017-05-30T22:15:07Z"
+			"revision": "e1f24e3e0b6b2c8bc98584370d382ae095b13c94",
+			"revisionTime": "2017-06-21T02:16:58Z"
 		},
 		{
 			"checksumSHA1": "ULnk7ggN82JFO0ZdBCmSsQH3Vh8=",
@@ -99,10 +99,10 @@
 			"revisionTime": "2015-01-27T13:39:51Z"
 		},
 		{
-			"checksumSHA1": "ODQ2p8mPWC3Ipa2dFhgjaruOwz0=",
+			"checksumSHA1": "F4OFLBCfPosjmNN+mpLtdbmlg2g=",
 			"path": "github.com/gordonklaus/ineffassign",
-			"revision": "f0c5cfc1817d6dd6011c7e8b8d272f94aeeb12cb",
-			"revisionTime": "2017-03-18T09:36:04Z"
+			"revision": "08cd83b3f513abe575f40d23acf2ae79088128bb",
+			"revisionTime": "2017-06-26T19:28:42Z"
 		},
 		{
 			"checksumSHA1": "DbSCKltce7IrgpDUF8+C7J+z+GU=",
@@ -111,16 +111,16 @@
 			"revisionTime": "2016-05-14T19:25:19Z"
 		},
 		{
-			"checksumSHA1": "bW4FXd6+OJQ4w04u+vJiZTbmJfw=",
+			"checksumSHA1": "0tPXJ5Wul0FXiUDwVWsd/RA3tWg=",
 			"path": "github.com/jgautheron/goconst/cmd/goconst",
-			"revision": "6a7633b712b6fb1d6821d33851d086a1d545dacd",
-			"revisionTime": "2016-05-14T19:25:19Z"
+			"revision": "9740945f5dcb78c2faa8eedcce78c2a04aa6e1e9",
+			"revisionTime": "2017-07-03T17:01:52Z"
 		},
 		{
 			"checksumSHA1": "NKvKUGq0lp/GjLS7Ffp7BAjcoTg=",
 			"path": "github.com/kardianos/govendor",
-			"revision": "c86c10d612bf08e847456ce91d495eb69ad87087",
-			"revisionTime": "2017-05-06T05:20:04Z"
+			"revision": "b6d23590f46ec4816cb726e013bae44954d58972",
+			"revisionTime": "2017-07-28T15:58:28Z"
 		},
 		{
 			"checksumSHA1": "m24kWw3bFoAkKVvTjmxSLsywdHY=",
@@ -213,10 +213,10 @@
 			"revisionTime": "2016-11-30T08:01:11Z"
 		},
 		{
-			"checksumSHA1": "GPZAI/PpSx3m5De6YxataiBWBvQ=",
+			"checksumSHA1": "18oHyXPLzfVDaXtMYIUyK23+slg=",
 			"path": "github.com/mattn/goveralls",
-			"revision": "a2cbbd7cdce4f5e051016fedf639c64bb05ef031",
-			"revisionTime": "2017-05-13T16:02:34Z"
+			"revision": "6efce81852ad1b7567c17ad71b03aeccc9dd9ae0",
+			"revisionTime": "2017-07-18T16:42:45Z"
 		},
 		{
 			"checksumSHA1": "90pFJb64MwgYvN5AmPVaWl87ZyU=",
@@ -269,8 +269,8 @@
 		{
 			"checksumSHA1": "zD/VW+BRbOjxk1xq5bmdigi0cp8=",
 			"path": "github.com/mvdan/interfacer/cmd/interfacer",
-			"revision": "22c51662ff476dfd97944f74db1b263ed920ee83",
-			"revisionTime": "2017-04-06T16:05:15Z"
+			"revision": "0b82697b33395e082e4010e4122abb213eadfb5e",
+			"revisionTime": "2017-08-01T09:14:01Z"
 		},
 		{
 			"checksumSHA1": "18GDIJCo0vo+mmQDIYmyb2JSWqo=",
@@ -279,16 +279,16 @@
 			"revisionTime": "2017-04-06T10:09:31Z"
 		},
 		{
-			"checksumSHA1": "5LiZtu67exUdRJ0/QQvU/epG9no=",
+			"checksumSHA1": "nV5rJzg1w+8RG7lgDtuMXvtgJ6g=",
 			"path": "github.com/mvdan/unparam",
-			"revision": "d647bb803b10a6777ee4c6a176416b91fa14713e",
-			"revisionTime": "2017-05-30T08:59:07Z"
+			"revision": "4f8ea7ae6525529da4e3c90bda033935b80d709a",
+			"revisionTime": "2017-08-02T23:35:07Z"
 		},
 		{
-			"checksumSHA1": "tuOLCrGa9DjfXheKkMXtHtQu3bs=",
+			"checksumSHA1": "VE/ZFPAtX2obu4EFt1ajO8RydfU=",
 			"path": "github.com/mvdan/unparam/check",
-			"revision": "d647bb803b10a6777ee4c6a176416b91fa14713e",
-			"revisionTime": "2017-05-30T08:59:07Z"
+			"revision": "4f8ea7ae6525529da4e3c90bda033935b80d709a",
+			"revisionTime": "2017-08-02T23:35:07Z"
 		},
 		{
 			"checksumSHA1": "DP8R0Q7TDlHbhz9Livyj8RkRKvU=",
@@ -459,16 +459,16 @@
 			"revisionTime": "2017-05-18T06:42:59Z"
 		},
 		{
-			"checksumSHA1": "1MXx7WN0nA5A9v4hOFO8iLcONGo=",
+			"checksumSHA1": "V4M/6A62nVBzPFxPbN+EAatCrVs=",
 			"path": "golang.org/x/tools/cmd/goimports",
-			"revision": "92d42b9ff15f625347a13b6aeafd04a33537ce91",
-			"revisionTime": "2017-06-02T11:28:38Z"
+			"revision": "4e70a1b26a7875f00ca1916637a876b5ffaeec59",
+			"revisionTime": "2017-08-02T20:37:59Z"
 		},
 		{
 			"checksumSHA1": "V6/A1ZOZ2GUOZcRWcXegtci2FoU=",
 			"path": "golang.org/x/tools/cmd/gotype",
-			"revision": "92d42b9ff15f625347a13b6aeafd04a33537ce91",
-			"revisionTime": "2017-06-02T11:28:38Z"
+			"revision": "4e70a1b26a7875f00ca1916637a876b5ffaeec59",
+			"revisionTime": "2017-08-02T20:37:59Z"
 		},
 		{
 			"checksumSHA1": "nD89PLkMqA5CakR8SoDuj3iQz1M=",
@@ -585,22 +585,28 @@
 			"revisionTime": "2017-05-22T19:09:05Z"
 		},
 		{
-			"checksumSHA1": "lHJgGIP4FjVWqWA6t44UGZCmIWU=",
+			"checksumSHA1": "tZUNdNOtkUpEB27J1ob00AFjsW4=",
 			"path": "honnef.co/go/tools/cmd/gosimple",
-			"revision": "e94d1c1a34c6b61d8d06c7793b8f22cd0dfcdd90",
-			"revisionTime": "2017-05-22T19:09:05Z"
+			"revision": "ae0caf6437a82200bc1c349a4f761b4106409f0b",
+			"revisionTime": "2017-07-31T15:06:36Z"
 		},
 		{
-			"checksumSHA1": "z3Hs/ZzkNK8nH655Rkdi5xv9pF8=",
+			"checksumSHA1": "pHczeoSy3ltbM5mEQzrG845aiAk=",
+			"path": "honnef.co/go/tools/cmd/megacheck",
+			"revision": "ae0caf6437a82200bc1c349a4f761b4106409f0b",
+			"revisionTime": "2017-07-31T15:06:36Z"
+		},
+		{
+			"checksumSHA1": "fCBb/czTIH/xy9Ot7sA95uRDPxE=",
 			"path": "honnef.co/go/tools/cmd/staticcheck",
-			"revision": "e94d1c1a34c6b61d8d06c7793b8f22cd0dfcdd90",
-			"revisionTime": "2017-05-22T19:09:05Z"
+			"revision": "ae0caf6437a82200bc1c349a4f761b4106409f0b",
+			"revisionTime": "2017-07-31T15:06:36Z"
 		},
 		{
 			"checksumSHA1": "TXSOAGnX/YpKr2hBk9EiE3OlODI=",
 			"path": "honnef.co/go/tools/cmd/unused",
-			"revision": "e94d1c1a34c6b61d8d06c7793b8f22cd0dfcdd90",
-			"revisionTime": "2017-05-22T19:09:05Z"
+			"revision": "ae0caf6437a82200bc1c349a4f761b4106409f0b",
+			"revisionTime": "2017-07-31T15:06:36Z"
 		},
 		{
 			"checksumSHA1": "3oKDy41034t1Hh/cEp2zvhMTU0w=",

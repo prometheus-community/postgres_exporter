@@ -12,6 +12,7 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -28,14 +29,18 @@ import (
 	"github.com/mvdan/lint"
 )
 
-func UnusedParams(tests bool, args ...string) ([]string, error) {
+func UnusedParams(tests, debug bool, args ...string) ([]string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
 	c := &Checker{
-		wd: wd, tests: tests,
+		wd:               wd,
+		tests:            tests,
 		cachedDeclCounts: make(map[string]map[string]int),
+	}
+	if debug {
+		c.debugLog = os.Stderr
 	}
 	return c.lines(args...)
 }
@@ -46,7 +51,8 @@ type Checker struct {
 
 	wd string
 
-	tests bool
+	tests    bool
+	debugLog io.Writer
 
 	cachedDeclCounts map[string]map[string]int
 }
@@ -101,6 +107,12 @@ func (c *Checker) ProgramSSA(prog *ssa.Program) {
 	c.prog = prog
 }
 
+func (c *Checker) debug(format string, a ...interface{}) {
+	if c.debugLog != nil {
+		fmt.Fprintf(c.debugLog, format, a...)
+	}
+}
+
 func (c *Checker) Check() ([]lint.Issue, error) {
 	wantPkg := make(map[*types.Package]*loader.PackageInfo)
 	for _, info := range c.lprog.InitialPackages() {
@@ -121,7 +133,9 @@ funcLoop:
 		if info == nil { // not part of given pkgs
 			continue
 		}
+		c.debug("func %s\n", fn.String())
 		if dummyImpl(fn.Blocks[0]) { // panic implementation
+			c.debug("  skip - dummy implementation\n")
 			continue
 		}
 		for _, edge := range cg.Nodes[fn].In {
@@ -130,24 +144,29 @@ funcLoop:
 			default:
 				// called via a parameter or field, type
 				// is set in stone.
+				c.debug("  skip - type is required via call\n")
 				continue funcLoop
 			}
 		}
 		if c.multipleImpls(info, fn) {
+			c.debug("  skip - multiple implementations via build tags\n")
 			continue
 		}
 		for i, par := range fn.Params {
 			if i == 0 && fn.Signature.Recv() != nil { // receiver
 				continue
 			}
+			c.debug("%s\n", par.String())
 			switch par.Object().Name() {
 			case "", "_": // unnamed
+				c.debug("  skip - unnamed\n")
 				continue
 			}
 			reason := "is unused"
 			if cv := receivesSameValue(cg.Nodes[fn].In, par, i); cv != nil {
 				reason = fmt.Sprintf("always receives %v", cv)
 			} else if anyRealUse(par, i) {
+				c.debug("  skip - used somewhere in the func body\n")
 				continue
 			}
 			issues = append(issues, Issue{
@@ -158,15 +177,25 @@ funcLoop:
 
 	}
 	// TODO: replace by sort.Slice once we drop Go 1.7 support
-	sort.Sort(byPos(issues))
+	sort.Sort(byNamePos{c.prog.Fset, issues})
 	return issues, nil
 }
 
-type byPos []lint.Issue
+type byNamePos struct {
+	fset *token.FileSet
+	l    []lint.Issue
+}
 
-func (p byPos) Len() int           { return len(p) }
-func (p byPos) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
-func (p byPos) Less(i, j int) bool { return p[i].Pos() < p[j].Pos() }
+func (p byNamePos) Len() int      { return len(p.l) }
+func (p byNamePos) Swap(i, j int) { p.l[i], p.l[j] = p.l[j], p.l[i] }
+func (p byNamePos) Less(i, j int) bool {
+	p1 := p.fset.Position(p.l[i].Pos())
+	p2 := p.fset.Position(p.l[j].Pos())
+	if p1.Filename == p2.Filename {
+		return p1.Offset < p2.Offset
+	}
+	return p1.Filename < p2.Filename
+}
 
 func receivesSameValue(in []*callgraph.Edge, par *ssa.Parameter, pos int) constant.Value {
 	if ast.IsExported(par.Parent().Name()) {
@@ -192,25 +221,45 @@ func receivesSameValue(in []*callgraph.Edge, par *ssa.Parameter, pos int) consta
 func anyRealUse(par *ssa.Parameter, pos int) bool {
 refLoop:
 	for _, ref := range *par.Referrers() {
-		call, ok := ref.(*ssa.Call)
-		if !ok {
+		switch x := ref.(type) {
+		case *ssa.Call:
+			if x.Call.Value != par.Parent() {
+				return true // not a recursive call
+			}
+			for i, arg := range x.Call.Args {
+				if arg != par {
+					continue
+				}
+				if i == pos {
+					// reused directly in a recursive call
+					continue refLoop
+				}
+			}
+			return true
+		case *ssa.Store:
+			if insertedStore(x) {
+				continue // inserted by go/ssa, not from the code
+			}
+			return true
+		default:
 			return true
 		}
-		if call.Call.Value != par.Parent() {
-			return true // not a recursive call
-		}
-		for i, arg := range call.Call.Args {
-			if arg != par {
-				continue
-			}
-			if i == pos {
-				// reused directly in a recursive call
-				continue refLoop
-			}
-		}
-		return true
 	}
 	return false
+}
+
+func insertedStore(instr ssa.Instruction) bool {
+	if instr.Pos() != token.NoPos {
+		return false
+	}
+	store, ok := instr.(*ssa.Store)
+	if !ok {
+		return false
+	}
+	alloc, ok := store.Addr.(*ssa.Alloc)
+	// we want exactly one use of this alloc value for it to be
+	// inserted by ssa and dummy - the alloc instruction itself.
+	return ok && len(*alloc.Referrers()) == 1
 }
 
 var rxHarmlessCall = regexp.MustCompile(`(?i)\b(log(ger)?|errors)\b|\bf?print`)
@@ -221,11 +270,15 @@ var rxHarmlessCall = regexp.MustCompile(`(?i)\b(log(ger)?|errors)\b|\bf?print`)
 func dummyImpl(blk *ssa.BasicBlock) bool {
 	var ops [8]*ssa.Value
 	for _, instr := range blk.Instrs {
+		if insertedStore(instr) {
+			continue // inserted by go/ssa, not from the code
+		}
 		for _, val := range instr.Operands(ops[:0]) {
 			switch x := (*val).(type) {
 			case nil, *ssa.Const, *ssa.ChangeType, *ssa.Alloc,
 				*ssa.MakeInterface, *ssa.Function,
-				*ssa.Global, *ssa.IndexAddr, *ssa.Slice:
+				*ssa.Global, *ssa.IndexAddr, *ssa.Slice,
+				*ssa.UnOp:
 			case *ssa.Call:
 				if rxHarmlessCall.MatchString(x.Call.Value.String()) {
 					continue

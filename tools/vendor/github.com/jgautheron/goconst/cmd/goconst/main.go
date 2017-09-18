@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strconv"
@@ -16,7 +17,7 @@ const usageDoc = `goconst: find repeated strings that could be replaced by a con
 
 Usage:
 
-  goconst ARGS <directory>
+  goconst ARGS <directory> [<directory>...]
 
 Flags:
 
@@ -26,8 +27,8 @@ Flags:
   -min-length        only report strings with the minimum given length (default: 3)
   -match-constant    look for existing constants matching the strings
   -numbers           search also for duplicated numbers
-  -min          	   minimum value, only works with -numbers
-  -max          	   maximum value, only works with -numbers
+  -min               minimum value, only works with -numbers
+  -max               maximum value, only works with -numbers
   -output            output formatting (text or json)
 
 Examples:
@@ -52,17 +53,25 @@ var (
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprint(os.Stderr, usage)
+		usage(os.Stderr)
 	}
 	flag.Parse()
 	log.SetPrefix("goconst: ")
 
 	args := flag.Args()
-	if len(args) != 1 {
-		usage()
+	if len(args) < 1 {
+		usage(os.Stderr)
+		os.Exit(1)
 	}
-	path := args[0]
+	for _, path := range args {
+		if err := run(path); err != nil {
+			log.Println(err)
+			os.Exit(1)
+		}
+	}
+}
 
+func run(path string) error {
 	gco := goconst.New(
 		path,
 		*flagIgnore,
@@ -73,19 +82,17 @@ func main() {
 	)
 	strs, consts, err := gco.ParseTree()
 	if err != nil {
-		log.Println(err)
-		os.Exit(1)
+		return err
 	}
 
-	printOutput(strs, consts, *flagOutput, *flagMinOccurrences, *flagMin, *flagMax)
+	return printOutput(strs, consts, *flagOutput, *flagMinOccurrences, *flagMin, *flagMax)
 }
 
-func usage() {
-	fmt.Fprintf(os.Stderr, usageDoc)
-	os.Exit(1)
+func usage(out io.Writer) {
+	fmt.Fprintf(out, usageDoc)
 }
 
-func printOutput(strs goconst.Strings, consts goconst.Constants, output string, minOccurrences, min, max int) {
+func printOutput(strs goconst.Strings, consts goconst.Constants, output string, minOccurrences, min, max int) error {
 	for str, item := range strs {
 		// Filter out items whose occurrences don't match the min value
 		if len(item) < minOccurrences {
@@ -113,7 +120,7 @@ func printOutput(strs goconst.Strings, consts goconst.Constants, output string, 
 			strs, consts,
 		})
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 	case "text":
 		for str, item := range strs {
@@ -140,8 +147,9 @@ func printOutput(strs goconst.Strings, consts goconst.Constants, output string, 
 			}
 		}
 	default:
-		fmt.Printf(`Unsupported output format: %s`, output)
+		return fmt.Errorf(`Unsupported output format: %s`, output)
 	}
+	return nil
 }
 
 func occurrences(item []goconst.ExtendedPos, current goconst.ExtendedPos) string {
