@@ -53,10 +53,10 @@ For running it locally on a default Debian/Ubuntu install, this will work (trans
 
 See the [github.com/lib/pq](http://github.com/lib/pq) module for other ways to format the connection string.
 
-### Using a CF binding
+### Using a Cloud Foundry binding
 
-The exporter supports CF binding credentials to get a DSN. If there are multiple bindings of postgresql databases,
-it will use the first one.
+The exporter supports CF binding credentials to get a DSN. Multiple postgres bindings are supported by prefixing
+the CF Service Instance name to the metric descriptor name.
 
 ### Adding new metrics
 

@@ -13,7 +13,7 @@ import (
 )
 
 // Query the pg_settings view containing runtime variables
-func querySettings(ch chan<- prometheus.Metric, db *sql.DB) error {
+func querySettings(dbServiceName string, ch chan<- prometheus.Metric, db *sql.DB) error {
 	log.Debugln("Querying pg_setting view")
 
 	// pg_settings docs: https://www.postgresql.org/docs/current/static/view-pg-settings.html
@@ -30,6 +30,7 @@ func querySettings(ch chan<- prometheus.Metric, db *sql.DB) error {
 
 	for rows.Next() {
 		s := &pgSetting{}
+		s.dbServiceName = dbServiceName
 		err = rows.Scan(&s.name, &s.setting, &s.unit, &s.shortDesc, &s.vartype)
 		if err != nil {
 			return errors.New(fmt.Sprintln("Error retrieving rows:", namespace, err))
@@ -44,7 +45,7 @@ func querySettings(ch chan<- prometheus.Metric, db *sql.DB) error {
 // pgSetting is represents a PostgreSQL runtime variable as returned by the
 // pg_settings view.
 type pgSetting struct {
-	name, setting, unit, shortDesc, vartype string
+	dbServiceName, name, setting, unit, shortDesc, vartype string
 }
 
 func (s *pgSetting) metric() prometheus.Metric {
@@ -78,7 +79,7 @@ func (s *pgSetting) metric() prometheus.Metric {
 		panic(fmt.Sprintf("Unsupported vartype %q", s.vartype))
 	}
 
-	desc := newDesc(subsystem, name, shortDesc)
+	desc := newNamedDesc(s.dbServiceName, subsystem, name, shortDesc)
 	return prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, val)
 }
 
