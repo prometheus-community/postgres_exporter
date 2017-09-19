@@ -13,12 +13,14 @@ import (
 	"regexp"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"gopkg.in/yaml.v2"
 
 	"github.com/blang/semver"
+	"github.com/gnhuy91/go-vcap-parser"
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
@@ -999,6 +1001,52 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	}
 }
 
+type cfPostgresService struct {
+	serviceName string
+	dsn         string
+}
+
+func extractCfPostgresServices() ([]cfPostgresService, error) {
+	vcapServicesJSON := os.Getenv("VCAP_SERVICES")
+
+	if vcapServicesJSON == "" {
+		return nil, errors.New("env VCAP_SERVICES not set. Not on CF")
+	}
+
+	vcapServicesMap, err := vcapparser.ParseVcapServices(vcapServicesJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	var services = make([]cfPostgresService, 0)
+
+	for _, vcapServices := range vcapServicesMap {
+		for _, vcapService := range vcapServices {
+			credentials := vcapService.Credentials
+			uri := credentials.URI
+			if uri == "" {
+				// not a services with an uri
+				continue
+			}
+
+			if !strings.HasPrefix(uri, "postgres") {
+				// Not a postgres service
+				continue
+			}
+
+			// Now we know it is a postgres service
+			name := vcapService.Name
+			postgresService := cfPostgresService{name, uri}
+			services = append(services, postgresService)
+		}
+	}
+
+	if len(services) == 0 {
+		return nil, errors.New("No postgres services found")
+	}
+	return services, nil
+}
+
 func main() {
 	flag.Parse()
 
@@ -1017,7 +1065,22 @@ func main() {
 
 	dsn := os.Getenv("DATA_SOURCE_NAME")
 	if len(dsn) == 0 {
-		log.Fatal("couldn't find environment variable DATA_SOURCE_NAME")
+		log.Infoln("No DATA_SOURCE_NAME provided, trying to load from CF env.")
+
+		cfPostgresServices, err := extractCfPostgresServices()
+		if err != nil {
+			log.Fatalln(err)
+			return
+		}
+
+		if len(cfPostgresServices) == 0 {
+			log.Fatalln("No CF Services found.")
+			return
+		}
+
+		// Take first service for now
+		dsn = cfPostgresServices[0].dsn + "?sslmode=disable"
+		*listenAddress = ":8080"
 	}
 
 	exporter := NewExporter(dsn, *queriesPath)
