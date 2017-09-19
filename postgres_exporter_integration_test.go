@@ -58,7 +58,7 @@ func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 	err = s.e.checkMapVersions(ch, db)
 	c.Assert(err, IsNil)
 
-	err = querySettings(ch, db)
+	err = querySettings("", ch, db)
 	if !c.Check(err, Equals, nil) {
 		fmt.Println("## ERRORS FOUND")
 		fmt.Println(err)
