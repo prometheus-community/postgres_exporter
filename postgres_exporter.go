@@ -377,7 +377,7 @@ func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]
 // TODO: test code for all cu.
 // TODO: use proper struct type system
 // TODO: the YAML cu supports is "non-standard" - we should move away from it.
-func addQueries(queriesPath string, pgVersion semver.Version, exporterMap map[string]MetricMapNamespace, queryOverrideMap map[string]string) error {
+func addQueries(dbServiceName string, queriesPath string, pgVersion semver.Version, exporterMap map[string]MetricMapNamespace, queryOverrideMap map[string]string) error {
 	var extra map[string]interface{}
 
 	content, err := ioutil.ReadFile(queriesPath)
@@ -446,7 +446,7 @@ func addQueries(queriesPath string, pgVersion semver.Version, exporterMap map[st
 	}
 
 	// Convert the loaded metric map into exporter representation
-	partialExporterMap := makeDescMap(pgVersion, metricMaps)
+	partialExporterMap := makeDescMap(dbServiceName, pgVersion, metricMaps)
 
 	// Merge the two maps (which are now quite flatteend)
 	for k, v := range partialExporterMap {
@@ -474,12 +474,7 @@ func addQueries(queriesPath string, pgVersion semver.Version, exporterMap map[st
 }
 
 // Turn the MetricMap column mapping into a prometheus descriptor mapping.
-func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]ColumnMapping) map[string]MetricMapNamespace {
-	return makeNamedDescMap("", pgVersion, metricMaps)
-}
-
-// Turn the MetricMap column mapping into a prometheus descriptor mapping.
-func makeNamedDescMap(dbServiceName string, pgVersion semver.Version, metricMaps map[string]map[string]ColumnMapping) map[string]MetricMapNamespace {
+func makeDescMap(dbServiceName string, pgVersion semver.Version, metricMaps map[string]map[string]ColumnMapping) map[string]MetricMapNamespace {
 	var metricMap = make(map[string]MetricMapNamespace)
 
 	for namespace, mappings := range metricMaps {
@@ -489,9 +484,8 @@ func makeNamedDescMap(dbServiceName string, pgVersion semver.Version, metricMaps
 		if dbServiceName == "" {
 			customDescNamespace = namespace
 		} else {
-			customDescNamespace = fmt.Sprintf("%s_%s", dbServiceName, namespace)
+			customDescNamespace = fmt.Sprintf("%s_%s", strings.Replace(dbServiceName, "-", "_", -1), namespace)
 		}
-
 		// Get the constant labels
 		var constLabels []string
 		for columnName, columnMapping := range mappings {
@@ -705,7 +699,7 @@ type Exporter struct {
 func NewNamedExporter(name string, dsn string, userQueriesPath string) *Exporter {
 	var customNamespace string
 	if name != "" {
-		customNamespace = fmt.Sprintf("%s_%s", name, namespace)
+		customNamespace = fmt.Sprintf("%s_%s", strings.Replace(name, "-", "_", -1), namespace)
 	} else {
 		customNamespace = namespace
 	}
@@ -785,7 +779,7 @@ func newNamedDesc(dbServiceName, subsystem, name, help string) *prometheus.Desc 
 	if dbServiceName == "" {
 		customNamespace = namespace
 	} else {
-		customNamespace = fmt.Sprintf("%s_%s", dbServiceName, namespace)
+		customNamespace = fmt.Sprintf("%s_%s", strings.Replace(dbServiceName, "-", "_", -1), namespace)
 	}
 
 	return prometheus.NewDesc(
@@ -940,13 +934,23 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 		log.Infoln("Semantic Version Changed:", e.lastMapVersion.String(), "->", semanticVersion.String())
 		e.mappingMtx.Lock()
 
-		e.metricMap = makeNamedDescMap(e.dbServiceName, semanticVersion, builtinMetricMaps)
+		e.metricMap = makeDescMap(e.dbServiceName, semanticVersion, builtinMetricMaps)
 		e.queryOverrides = makeQueryOverrideMap(semanticVersion, queryOverrides)
 		e.lastMapVersion = semanticVersion
 
 		if e.userQueriesPath != "" {
-			if err := addQueries(e.userQueriesPath, semanticVersion, e.metricMap, e.queryOverrides); err != nil {
+			if err := addQueries(e.dbServiceName, e.userQueriesPath, semanticVersion, e.metricMap, e.queryOverrides); err != nil {
 				log.Errorln("Failed to reload user queries:", e.userQueriesPath, err)
+			}
+		}
+
+		if e.dbServiceName != "" {
+			serviceCustomQueriesPath := e.dbServiceName + ".yml"
+			if _, err := os.Stat(serviceCustomQueriesPath); err == nil {
+				log.Infoln("Custom db service file exists. Try to load it.")
+				if err := addQueries(e.dbServiceName, serviceCustomQueriesPath, semanticVersion, e.metricMap, e.queryOverrides); err != nil {
+					log.Errorln("Failed to relead CF service custom queries:", e.dbServiceName, err)
+				}
 			}
 		}
 
@@ -957,7 +961,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 	if e.dbServiceName == "" {
 		customDescNamespace = namespace
 	} else {
-		customDescNamespace = fmt.Sprintf("%s_%s", e.dbServiceName, namespace)
+		customDescNamespace = fmt.Sprintf("%s_%s", strings.Replace(e.dbServiceName, "-", "_", -1), namespace)
 	}
 
 	// Output the version as a special metric
@@ -1130,8 +1134,6 @@ func main() {
 		for _, cfPostgresService := range cfPostgresServices {
 			dsn = cfPostgresService.dsn + "?sslmode=disable"
 			name := cfPostgresService.serviceName
-
-			name = strings.Replace(name, "-", "_", -1)
 
 			*listenAddress = ":8080"
 			exporter := NewNamedExporter(name, dsn, *queriesPath)
