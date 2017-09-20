@@ -3,8 +3,9 @@
 package main
 
 import (
-	. "gopkg.in/check.v1"
 	"testing"
+
+	. "gopkg.in/check.v1"
 
 	"github.com/blang/semver"
 )
@@ -31,7 +32,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 
 	{
 		// No metrics should be eliminated
-		resultMap := makeDescMap(semver.MustParse("0.0.1"), testMetricMap)
+		resultMap := makeDescMap("", semver.MustParse("0.0.1"), testMetricMap)
 		c.Check(
 			resultMap["test_namespace"].columnMappings["metric_which_stays"].discard,
 			Equals,
@@ -51,7 +52,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 		testMetricMap["test_namespace"]["metric_which_discards"] = discardableMetric
 
 		// Discard metric should be discarded
-		resultMap := makeDescMap(semver.MustParse("0.0.1"), testMetricMap)
+		resultMap := makeDescMap("", semver.MustParse("0.0.1"), testMetricMap)
 		c.Check(
 			resultMap["test_namespace"].columnMappings["metric_which_stays"].discard,
 			Equals,
@@ -71,7 +72,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 		testMetricMap["test_namespace"]["metric_which_discards"] = discardableMetric
 
 		// Discard metric should be discarded
-		resultMap := makeDescMap(semver.MustParse("0.0.2"), testMetricMap)
+		resultMap := makeDescMap("", semver.MustParse("0.0.2"), testMetricMap)
 		c.Check(
 			resultMap["test_namespace"].columnMappings["metric_which_stays"].discard,
 			Equals,

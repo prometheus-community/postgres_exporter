@@ -19,6 +19,12 @@
 			"revisionTime": "2016-07-01T05:46:53Z"
 		},
 		{
+			"checksumSHA1": "bRXf5RCqT6YMfv9B/Cbi6NhwCSo=",
+			"path": "github.com/gnhuy91/go-vcap-parser",
+			"revision": "3620995c699eb5d16d3e60805191995396952b66",
+			"revisionTime": "2016-07-06T07:58:25Z"
+		},
+		{
 			"path": "github.com/golang/protobuf/proto",
 			"revision": "68415e7123da32b07eab49c96d2c4d6158360e9b",
 			"revisionTime": "2015-12-07T15:07:14+11:00"

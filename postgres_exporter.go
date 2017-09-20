@@ -13,12 +13,14 @@ import (
 	"regexp"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"gopkg.in/yaml.v2"
 
 	"github.com/blang/semver"
+	"github.com/gnhuy91/go-vcap-parser"
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
@@ -375,7 +377,7 @@ func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]
 // TODO: test code for all cu.
 // TODO: use proper struct type system
 // TODO: the YAML cu supports is "non-standard" - we should move away from it.
-func addQueries(queriesPath string, pgVersion semver.Version, exporterMap map[string]MetricMapNamespace, queryOverrideMap map[string]string) error {
+func addQueries(dbServiceName string, queriesPath string, pgVersion semver.Version, exporterMap map[string]MetricMapNamespace, queryOverrideMap map[string]string) error {
 	var extra map[string]interface{}
 
 	content, err := ioutil.ReadFile(queriesPath)
@@ -444,7 +446,7 @@ func addQueries(queriesPath string, pgVersion semver.Version, exporterMap map[st
 	}
 
 	// Convert the loaded metric map into exporter representation
-	partialExporterMap := makeDescMap(pgVersion, metricMaps)
+	partialExporterMap := makeDescMap(dbServiceName, pgVersion, metricMaps)
 
 	// Merge the two maps (which are now quite flatteend)
 	for k, v := range partialExporterMap {
@@ -472,12 +474,18 @@ func addQueries(queriesPath string, pgVersion semver.Version, exporterMap map[st
 }
 
 // Turn the MetricMap column mapping into a prometheus descriptor mapping.
-func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]ColumnMapping) map[string]MetricMapNamespace {
+func makeDescMap(dbServiceName string, pgVersion semver.Version, metricMaps map[string]map[string]ColumnMapping) map[string]MetricMapNamespace {
 	var metricMap = make(map[string]MetricMapNamespace)
 
 	for namespace, mappings := range metricMaps {
 		thisMap := make(map[string]MetricMap)
 
+		var customDescNamespace string
+		if dbServiceName == "" {
+			customDescNamespace = namespace
+		} else {
+			customDescNamespace = fmt.Sprintf("%s_%s", strings.Replace(dbServiceName, "-", "_", -1), namespace)
+		}
 		// Get the constant labels
 		var constLabels []string
 		for columnName, columnMapping := range mappings {
@@ -516,7 +524,7 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 			case COUNTER:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.CounterValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, constLabels, nil),
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", customDescNamespace, columnName), columnMapping.description, constLabels, nil),
 					conversion: func(in interface{}) (float64, bool) {
 						return dbToFloat64(in)
 					},
@@ -524,7 +532,7 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 			case GAUGE:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.GaugeValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, constLabels, nil),
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", customDescNamespace, columnName), columnMapping.description, constLabels, nil),
 					conversion: func(in interface{}) (float64, bool) {
 						return dbToFloat64(in)
 					},
@@ -532,7 +540,7 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 			case MAPPEDMETRIC:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.GaugeValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, constLabels, nil),
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", customDescNamespace, columnName), columnMapping.description, constLabels, nil),
 					conversion: func(in interface{}) (float64, bool) {
 						text, ok := in.(string)
 						if !ok {
@@ -549,7 +557,7 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 			case DURATION:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.GaugeValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s_milliseconds", namespace, columnName), columnMapping.description, constLabels, nil),
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s_milliseconds", customDescNamespace, columnName), columnMapping.description, constLabels, nil),
 					conversion: func(in interface{}) (float64, bool) {
 						var durationString string
 						switch t := in.(type) {
@@ -667,6 +675,7 @@ func dbToString(t interface{}) (string, bool) {
 // Exporter collects Postgres metrics. It implements prometheus.Collector.
 type Exporter struct {
 	dsn             string
+	dbServiceName   string
 	userQueriesPath string
 	duration, error prometheus.Gauge
 	totalScrapes    prometheus.Counter
@@ -686,25 +695,33 @@ type Exporter struct {
 	mappingMtx     sync.RWMutex
 }
 
-// NewExporter returns a new PostgreSQL exporter for the provided DSN.
-func NewExporter(dsn string, userQueriesPath string) *Exporter {
+// NewNamedExporter returns a new PostgreSQL exporter for the provided DSN.
+func NewNamedExporter(name string, dsn string, userQueriesPath string) *Exporter {
+	var customNamespace string
+	if name != "" {
+		customNamespace = fmt.Sprintf("%s_%s", strings.Replace(name, "-", "_", -1), namespace)
+	} else {
+		customNamespace = namespace
+	}
+
 	return &Exporter{
 		dsn:             dsn,
+		dbServiceName:   name,
 		userQueriesPath: userQueriesPath,
 		duration: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: namespace,
+			Namespace: customNamespace,
 			Subsystem: exporter,
 			Name:      "last_scrape_duration_seconds",
 			Help:      "Duration of the last scrape of metrics from PostgresSQL.",
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
-			Namespace: namespace,
+			Namespace: customNamespace,
 			Subsystem: exporter,
 			Name:      "scrapes_total",
 			Help:      "Total number of times PostgresSQL was scraped for metrics.",
 		}),
 		error: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: namespace,
+			Namespace: customNamespace,
 			Subsystem: exporter,
 			Name:      "last_scrape_error",
 			Help:      "Whether the last scrape of metrics from PostgreSQL resulted in an error (1 for error, 0 for success).",
@@ -712,6 +729,11 @@ func NewExporter(dsn string, userQueriesPath string) *Exporter {
 		metricMap:      nil,
 		queryOverrides: nil,
 	}
+}
+
+// NewExporter returns a new PostgreSQL exporter for the provided DSN.
+func NewExporter(dsn string, userQueriesPath string) *Exporter {
+	return NewNamedExporter("", dsn, userQueriesPath)
 }
 
 // Describe implements prometheus.Collector.
@@ -751,9 +773,17 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- e.error
 }
 
-func newDesc(subsystem, name, help string) *prometheus.Desc {
+func newNamedDesc(dbServiceName, subsystem, name, help string) *prometheus.Desc {
+
+	var customNamespace string
+	if dbServiceName == "" {
+		customNamespace = namespace
+	} else {
+		customNamespace = fmt.Sprintf("%s_%s", strings.Replace(dbServiceName, "-", "_", -1), namespace)
+	}
+
 	return prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, subsystem, name),
+		prometheus.BuildFQName(customNamespace, subsystem, name),
 		help, nil, nil,
 	)
 }
@@ -904,21 +934,38 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 		log.Infoln("Semantic Version Changed:", e.lastMapVersion.String(), "->", semanticVersion.String())
 		e.mappingMtx.Lock()
 
-		e.metricMap = makeDescMap(semanticVersion, builtinMetricMaps)
+		e.metricMap = makeDescMap(e.dbServiceName, semanticVersion, builtinMetricMaps)
 		e.queryOverrides = makeQueryOverrideMap(semanticVersion, queryOverrides)
 		e.lastMapVersion = semanticVersion
 
 		if e.userQueriesPath != "" {
-			if err := addQueries(e.userQueriesPath, semanticVersion, e.metricMap, e.queryOverrides); err != nil {
+			if err := addQueries(e.dbServiceName, e.userQueriesPath, semanticVersion, e.metricMap, e.queryOverrides); err != nil {
 				log.Errorln("Failed to reload user queries:", e.userQueriesPath, err)
+			}
+		}
+
+		if e.dbServiceName != "" {
+			serviceCustomQueriesPath := e.dbServiceName + ".yml"
+			if _, err := os.Stat(serviceCustomQueriesPath); err == nil {
+				log.Infoln("Custom db service file exists. Try to load it.")
+				if err := addQueries(e.dbServiceName, serviceCustomQueriesPath, semanticVersion, e.metricMap, e.queryOverrides); err != nil {
+					log.Errorln("Failed to relead CF service custom queries:", e.dbServiceName, err)
+				}
 			}
 		}
 
 		e.mappingMtx.Unlock()
 	}
 
+	var customDescNamespace string
+	if e.dbServiceName == "" {
+		customDescNamespace = namespace
+	} else {
+		customDescNamespace = fmt.Sprintf("%s_%s", strings.Replace(e.dbServiceName, "-", "_", -1), namespace)
+	}
+
 	// Output the version as a special metric
-	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
+	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", customDescNamespace, staticLabelName),
 		"Version string as reported by postgres", []string{"version", "short_version"}, nil)
 
 	ch <- prometheus.MustNewConstMetric(versionDesc,
@@ -988,7 +1035,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	// Lock the exporter maps
 	e.mappingMtx.RLock()
 	defer e.mappingMtx.RUnlock()
-	if err := querySettings(ch, db); err != nil {
+	if err := querySettings(e.dbServiceName, ch, db); err != nil {
 		log.Infof("Error retrieving settings: %s", err)
 		e.error.Set(1)
 	}
@@ -997,6 +1044,52 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	if len(errMap) > 0 {
 		e.error.Set(1)
 	}
+}
+
+type cfPostgresService struct {
+	serviceName string
+	dsn         string
+}
+
+func extractCfPostgresServices() ([]cfPostgresService, error) {
+	vcapServicesJSON := os.Getenv("VCAP_SERVICES")
+
+	if vcapServicesJSON == "" {
+		return nil, errors.New("env VCAP_SERVICES not set. Not on CF")
+	}
+
+	vcapServicesMap, err := vcapparser.ParseVcapServices(vcapServicesJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	var services = make([]cfPostgresService, 0)
+
+	for _, vcapServices := range vcapServicesMap {
+		for _, vcapService := range vcapServices {
+			credentials := vcapService.Credentials
+			uri := credentials.URI
+			if uri == "" {
+				// not a services with an uri
+				continue
+			}
+
+			if !strings.HasPrefix(uri, "postgres") {
+				// Not a postgres service
+				continue
+			}
+
+			// Now we know it is a postgres service
+			name := vcapService.Name
+			postgresService := cfPostgresService{name, uri}
+			services = append(services, postgresService)
+		}
+	}
+
+	if len(services) == 0 {
+		return nil, errors.New("No postgres services found")
+	}
+	return services, nil
 }
 
 func main() {
@@ -1016,18 +1109,42 @@ func main() {
 	}
 
 	dsn := os.Getenv("DATA_SOURCE_NAME")
-	if len(dsn) == 0 {
-		log.Fatal("couldn't find environment variable DATA_SOURCE_NAME")
-	}
+	if dsn != "" {
+		exporter := NewExporter(dsn, *queriesPath)
+		prometheus.MustRegister(exporter)
+		defer func() {
+			if exporter.dbConnection != nil {
+				exporter.dbConnection.Close() // nolint: errcheck
+			}
+		}()
+	} else {
+		log.Infoln("No DATA_SOURCE_NAME provided, trying to load from CF env.")
 
-	exporter := NewExporter(dsn, *queriesPath)
-	defer func() {
-		if exporter.dbConnection != nil {
-			exporter.dbConnection.Close() // nolint: errcheck
+		cfPostgresServices, err := extractCfPostgresServices()
+		if err != nil {
+			log.Fatalln(err)
+			return
 		}
-	}()
 
-	prometheus.MustRegister(exporter)
+		if len(cfPostgresServices) == 0 {
+			log.Fatalln("No CF Services found.")
+			return
+		}
+
+		for _, cfPostgresService := range cfPostgresServices {
+			dsn = cfPostgresService.dsn + "?sslmode=disable"
+			name := cfPostgresService.serviceName
+
+			*listenAddress = ":8080"
+			exporter := NewNamedExporter(name, dsn, *queriesPath)
+			prometheus.MustRegister(exporter)
+			defer func() {
+				if exporter.dbConnection != nil {
+					exporter.dbConnection.Close() // nolint: errcheck
+				}
+			}()
+		}
+	}
 
 	http.Handle(*metricPath, prometheus.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
