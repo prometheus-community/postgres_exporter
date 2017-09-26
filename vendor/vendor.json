@@ -19,6 +19,12 @@
 			"revisionTime": "2016-07-01T05:46:53Z"
 		},
 		{
+			"checksumSHA1": "Vh5JzX7oaXqwobRfMSzD1f/h+8o=",
+			"path": "github.com/cloudfoundry-community/go-cfenv",
+			"revision": "f920e9562d5f951cbf11785728f67258c38a10d0",
+			"revisionTime": "2017-03-14T19:22:38Z"
+		},
+		{
 			"path": "github.com/golang/protobuf/proto",
 			"revision": "68415e7123da32b07eab49c96d2c4d6158360e9b",
 			"revisionTime": "2015-12-07T15:07:14+11:00"
@@ -37,6 +43,12 @@
 			"path": "github.com/matttproud/golang_protobuf_extensions/pbutil",
 			"revision": "d0c3fe89de86839aecf2e0579c40ba3bb336a453",
 			"revisionTime": "2015-10-11T12:25:29+02:00"
+		},
+		{
+			"checksumSHA1": "EHjhpHipgm+XGccrRAms9AW3Ewk=",
+			"path": "github.com/mitchellh/mapstructure",
+			"revision": "d0303fe809921458f417bcf828397a65db30a7e4",
+			"revisionTime": "2017-05-23T03:00:23Z"
 		},
 		{
 			"path": "github.com/prometheus/client_golang/prometheus",
