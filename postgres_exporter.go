@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -101,20 +100,7 @@ func (cu *ColumnUsage) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-// Regex used to get the "short-version" from the postgres version field.
-var versionRegex = regexp.MustCompile(`^\w+ (\d+\.\d+\.\d+)`)
 var lowestSupportedVersion = semver.MustParse("9.1.0")
-
-// Parses the version of postgres into the short version string we can use to
-// match behaviors.
-func parseVersion(versionString string) (semver.Version, error) {
-	submatches := versionRegex.FindStringSubmatch(versionString)
-	if len(submatches) > 1 {
-		return semver.Make(submatches[1])
-	}
-	return semver.Version{},
-		errors.New(fmt.Sprintln("Could not find a postgres version in string:", versionString))
-}
 
 // ColumnMapping is the user-friendly representation of a prometheus descriptor map
 type ColumnMapping struct {
@@ -886,13 +872,13 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, db *sql.DB, metricMap m
 // Check and update the exporters query maps if the version has changed.
 func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) error {
 	log.Debugln("Querying Postgres Version")
-	versionRow := db.QueryRow("SELECT version();")
+	versionRow := db.QueryRow("show server_version")
 	var versionString string
 	err := versionRow.Scan(&versionString)
 	if err != nil {
 		return fmt.Errorf("Error scanning version string: %v", err)
 	}
-	semanticVersion, err := parseVersion(versionString)
+	semanticVersion, err := semver.ParseTolerant(versionString)
 	if err != nil {
 		return fmt.Errorf("Error parsing version string: %v", err)
 	}
