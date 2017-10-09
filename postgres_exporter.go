@@ -102,7 +102,7 @@ func (cu *ColumnUsage) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 // Regex used to get the "short-version" from the postgres version field.
-var versionRegex = regexp.MustCompile(`^\w+ (\d+\.\d+\.\d+)`)
+var versionRegex = regexp.MustCompile(`^\w+ ((\d+)(\.\d+)?(\.\d+)?)\s`)
 var lowestSupportedVersion = semver.MustParse("9.1.0")
 
 // Parses the version of postgres into the short version string we can use to
@@ -110,7 +110,7 @@ var lowestSupportedVersion = semver.MustParse("9.1.0")
 func parseVersion(versionString string) (semver.Version, error) {
 	submatches := versionRegex.FindStringSubmatch(versionString)
 	if len(submatches) > 1 {
-		return semver.Make(submatches[1])
+		return semver.ParseTolerant(submatches[1])
 	}
 	return semver.Version{},
 		errors.New(fmt.Sprintln("Could not find a postgres version in string:", versionString))
