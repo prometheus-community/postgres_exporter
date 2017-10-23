@@ -25,7 +25,7 @@ var fixtures = []fixture{
 			unit: "seconds",
 			err:  "",
 		},
-		d: "Desc{fqName: \"pg_settings_seconds_fixture_metric_seconds\", help: \"Foo foo foo [Units converted to seconds.]\", constLabels: {}, variableLabels: []}",
+		d: "Desc{fqName: \"pg_settings_seconds_fixture_metric_seconds\", help: \"seconds_fixture_metric_seconds\", constLabels: {alias=\"\"}, variableLabels: [shortDesc]}",
 		v: 5,
 	},
 	{
@@ -41,7 +41,7 @@ var fixtures = []fixture{
 			unit: "seconds",
 			err:  "",
 		},
-		d: "Desc{fqName: \"pg_settings_milliseconds_fixture_metric_seconds\", help: \"Foo foo foo [Units converted to seconds.]\", constLabels: {}, variableLabels: []}",
+		d: "Desc{fqName: \"pg_settings_milliseconds_fixture_metric_seconds\", help: \"milliseconds_fixture_metric_seconds\", constLabels: {alias=\"\"}, variableLabels: [shortDesc]}",
 		v: 5,
 	},
 	{
@@ -57,7 +57,7 @@ var fixtures = []fixture{
 			unit: "bytes",
 			err:  "",
 		},
-		d: "Desc{fqName: \"pg_settings_eight_kb_fixture_metric_bytes\", help: \"Foo foo foo [Units converted to bytes.]\", constLabels: {}, variableLabels: []}",
+		d: "Desc{fqName: \"pg_settings_eight_kb_fixture_metric_bytes\", help: \"eight_kb_fixture_metric_bytes\", constLabels: {alias=\"\"}, variableLabels: [shortDesc]}",
 		v: 139264,
 	},
 	{
@@ -73,7 +73,7 @@ var fixtures = []fixture{
 			unit: "bytes",
 			err:  "",
 		},
-		d: "Desc{fqName: \"pg_settings_16_kb_real_fixture_metric_bytes\", help: \"Foo foo foo [Units converted to bytes.]\", constLabels: {}, variableLabels: []}",
+		d: "Desc{fqName: \"pg_settings_16_kb_real_fixture_metric_bytes\", help: \"16_kb_real_fixture_metric_bytes\", constLabels: {alias=\"\"}, variableLabels: [shortDesc]}",
 		v: 49152,
 	},
 	{
@@ -89,7 +89,7 @@ var fixtures = []fixture{
 			unit: "bytes",
 			err:  "",
 		},
-		d: "Desc{fqName: \"pg_settings_16_mb_real_fixture_metric_bytes\", help: \"Foo foo foo [Units converted to bytes.]\", constLabels: {}, variableLabels: []}",
+		d: "Desc{fqName: \"pg_settings_16_mb_real_fixture_metric_bytes\", help: \"16_mb_real_fixture_metric_bytes\", constLabels: {alias=\"\"}, variableLabels: [shortDesc]}",
 		v: 5.0331648e+07,
 	},
 	{
@@ -105,7 +105,7 @@ var fixtures = []fixture{
 			unit: "",
 			err:  "",
 		},
-		d: "Desc{fqName: \"pg_settings_bool_on_fixture_metric\", help: \"Foo foo foo\", constLabels: {}, variableLabels: []}",
+		d: "Desc{fqName: \"pg_settings_bool_on_fixture_metric\", help: \"bool_on_fixture_metric\", constLabels: {alias=\"\"}, variableLabels: [shortDesc]}",
 		v: 1,
 	},
 	{
@@ -121,7 +121,7 @@ var fixtures = []fixture{
 			unit: "",
 			err:  "",
 		},
-		d: "Desc{fqName: \"pg_settings_bool_off_fixture_metric\", help: \"Foo foo foo\", constLabels: {}, variableLabels: []}",
+		d: "Desc{fqName: \"pg_settings_bool_off_fixture_metric\", help: \"bool_off_fixture_metric\", constLabels: {alias=\"\"}, variableLabels: [shortDesc]}",
 		v: 0,
 	},
 	{
@@ -137,7 +137,7 @@ var fixtures = []fixture{
 			unit: "seconds",
 			err:  "",
 		},
-		d: "Desc{fqName: \"pg_settings_special_minus_one_value_seconds\", help: \"foo foo foo [Units converted to seconds.]\", constLabels: {}, variableLabels: []}",
+		d: "Desc{fqName: \"pg_settings_special_minus_one_value_seconds\", help: \"special_minus_one_value_seconds\", constLabels: {alias=\"\"}, variableLabels: [shortDesc]}",
 		v: -1,
 	},
 	{
@@ -153,7 +153,7 @@ var fixtures = []fixture{
 			unit: "",
 			err:  "",
 		},
-		d: "Desc{fqName: \"pg_settings_rds_rds_superuser_reserved_connections\", help: \"Sets the number of connection slots reserved for rds_superusers.\", constLabels: {}, variableLabels: []}",
+		d: "Desc{fqName: \"pg_settings_rds_rds_superuser_reserved_connections\", help: \"rds_rds_superuser_reserved_connections\", constLabels: {alias=\"\"}, variableLabels: [shortDesc]}",
 		v: 2,
 	},
 	{

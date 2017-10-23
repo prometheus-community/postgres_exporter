@@ -31,7 +31,7 @@ func (s *IntegrationSuite) SetUpSuite(c *C) {
 	dsn := os.Getenv("DATA_SOURCE_NAME")
 	c.Assert(dsn, Not(Equals), "")
 
-	exporter := NewExporter(dsn, "")
+	exporter := NewExporter("alias", dsn, "")
 	c.Assert(exporter, NotNil)
 	// Assign the exporter to the suite
 	s.e = exporter
@@ -58,7 +58,7 @@ func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 	err = s.e.checkMapVersions(ch, db)
 	c.Assert(err, IsNil)
 
-	err = querySettings(ch, db)
+	err = querySettings("alias", ch, db)
 	if !c.Check(err, Equals, nil) {
 		fmt.Println("## ERRORS FOUND")
 		fmt.Println(err)
@@ -86,12 +86,12 @@ func (s *IntegrationSuite) TestInvalidDsnDoesntCrash(c *C) {
 	}()
 
 	// Send a bad DSN
-	exporter := NewExporter("invalid dsn", *queriesPath)
+	exporter := NewExporter("alias", "invalid dsn", *queriesPath)
 	c.Assert(exporter, NotNil)
 	exporter.scrape(ch)
 
 	// Send a DSN to a non-listening port.
-	exporter = NewExporter("postgresql://nothing:nothing@127.0.0.1:1/nothing", *queriesPath)
+	exporter = NewExporter("alias", "postgresql://nothing:nothing@127.0.0.1:1/nothing", *queriesPath)
 	c.Assert(exporter, NotNil)
 	exporter.scrape(ch)
 }
