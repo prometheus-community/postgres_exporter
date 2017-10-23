@@ -46,7 +46,7 @@ run-tests: tools
 	mkdir -p $(COVERDIR)
 	rm -f $(COVERDIR)/*
 	for pkg in $(GO_PKGS) ; do \
-		go test -v -covermode count -coverprofile=$(COVERDIR)/$$(echo $$pkg | tr '/' '-').out $$pkg ; \
+		go test -v -covermode count -coverprofile=$(COVERDIR)/$$(echo $$pkg | tr '/' '-').out $$pkg || exit 1 ; \
 	done
 
 test: run-tests
@@ -65,7 +65,7 @@ docker-build:
 	    -v $(shell pwd):/real_src \
 	    -e SHELL_UID=$(shell id -u) -e SHELL_GID=$(shell id -g) \
 	    -w /go/src/github.com/wrouesnel/postgres_exporter \
-		golang:1.8-wheezy \
+		golang:1.9-wheezy \
 		/bin/bash -c "make >&2 && chown $$SHELL_UID:$$SHELL_GID ./postgres_exporter"
 	docker build -t $(CONTAINER_NAME) .
 

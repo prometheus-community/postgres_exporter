@@ -26,6 +26,7 @@ VERSIONS=( \
     9.4 \
     9.5 \
     9.6 \
+    10 \
 )
 
 wait_for_postgres(){
@@ -75,18 +76,20 @@ smoketest_postgres() {
     echo "#######################"
     echo "Standalone Postgres $version"
     echo "#######################"
-    local docker_cmd="docker run -d -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD -p 127.0.0.1:55432:5432 $CUR_IMAGE"
+    local docker_cmd="docker run -d -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD $CUR_IMAGE"
     echo "Docker Cmd: $docker_cmd"
     
     CONTAINER_NAME=$($docker_cmd)
+    standalone_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $CONTAINER_NAME)
     trap "docker logs $CONTAINER_NAME ; docker kill $CONTAINER_NAME ; docker rm -v $CONTAINER_NAME; exit 1" EXIT INT TERM
-    wait_for_postgres localhost 55432
+    wait_for_postgres $standalone_ip 5432
+
 
     # Run the test binary.
-    DATA_SOURCE_NAME="postgresql://postgres:$POSTGRES_PASSWORD@localhost:55432/?sslmode=disable" $test_binary --log.level=debug || exit $?
+    DATA_SOURCE_NAME="postgresql://postgres:$POSTGRES_PASSWORD@$standalone_ip:5432/?sslmode=disable" $test_binary --log.level=debug || exit $?
 
     # Extract a raw metric list.
-    DATA_SOURCE_NAME="postgresql://postgres:$POSTGRES_PASSWORD@localhost:55432/?sslmode=disable" $postgres_exporter --log.level=debug --web.listen-address=:$exporter_port &
+    DATA_SOURCE_NAME="postgresql://postgres:$POSTGRES_PASSWORD@$standalone_ip:5432/?sslmode=disable" $postgres_exporter --log.level=debug --web.listen-address=:$exporter_port &
     exporter_pid=$!
     trap "docker logs $CONTAINER_NAME ; docker kill $CONTAINER_NAME ; docker rm -v $CONTAINER_NAME; kill $exporter_pid; exit 1" EXIT INT TERM
     wait_for_exporter

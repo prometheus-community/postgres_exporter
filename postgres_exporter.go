@@ -102,7 +102,7 @@ func (cu *ColumnUsage) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 // Regex used to get the "short-version" from the postgres version field.
-var versionRegex = regexp.MustCompile(`^\w+ (\d+\.\d+\.\d+)`)
+var versionRegex = regexp.MustCompile(`^\w+ ((\d+)(\.\d+)?(\.\d+)?)\s`)
 var lowestSupportedVersion = semver.MustParse("9.1.0")
 
 // Parses the version of postgres into the short version string we can use to
@@ -110,7 +110,7 @@ var lowestSupportedVersion = semver.MustParse("9.1.0")
 func parseVersion(versionString string) (semver.Version, error) {
 	submatches := versionRegex.FindStringSubmatch(versionString)
 	if len(submatches) > 1 {
-		return semver.Make(submatches[1])
+		return semver.ParseTolerant(submatches[1])
 	}
 	return semver.Version{},
 		errors.New(fmt.Sprintln("Could not find a postgres version in string:", versionString))
@@ -225,10 +225,14 @@ var builtinMetricMaps = map[string]map[string]ColumnMapping{
 		"backend_start": {DISCARD, "with time zone	Time when cu process was started, i.e., when the client connected to cu WAL sender", nil, nil},
 		"backend_xmin":             {DISCARD, "The current backend's xmin horizon.", nil, nil},
 		"state":                    {LABEL, "Current WAL sender state", nil, nil},
-		"sent_location":            {DISCARD, "Last transaction log position sent on cu connection", nil, nil},
-		"write_location":           {DISCARD, "Last transaction log position written to disk by cu standby server", nil, nil},
-		"flush_location":           {DISCARD, "Last transaction log position flushed to disk by cu standby server", nil, nil},
-		"replay_location":          {DISCARD, "Last transaction log position replayed into the database on cu standby server", nil, nil},
+		"sent_location":            {DISCARD, "Last transaction log position sent on cu connection", nil, semver.MustParseRange("<10.0.0")},
+		"write_location":           {DISCARD, "Last transaction log position written to disk by cu standby server", nil, semver.MustParseRange("<10.0.0")},
+		"flush_location":           {DISCARD, "Last transaction log position flushed to disk by cu standby server", nil, semver.MustParseRange("<10.0.0")},
+		"replay_location":          {DISCARD, "Last transaction log position replayed into the database on cu standby server", nil, semver.MustParseRange("<10.0.0")},
+		"sent_lsn":                 {DISCARD, "Last transaction log position sent on cu connection", nil, semver.MustParseRange(">=10.0.0")},
+		"write_lsn":                {DISCARD, "Last transaction log position written to disk by cu standby server", nil, semver.MustParseRange(">=10.0.0")},
+		"flush_lsn":                {DISCARD, "Last transaction log position flushed to disk by cu standby server", nil, semver.MustParseRange(">=10.0.0")},
+		"replay_lsn":               {DISCARD, "Last transaction log position replayed into the database on cu standby server", nil, semver.MustParseRange(">=10.0.0")},
 		"sync_priority":            {DISCARD, "Priority of cu standby server for being chosen as the synchronous standby", nil, nil},
 		"sync_state":               {DISCARD, "Synchronous state of cu standby server", nil, nil},
 		"slot_name":                {LABEL, "A unique, cluster-wide identifier for the replication slot", nil, semver.MustParseRange(">=9.2.0")},
@@ -242,8 +246,13 @@ var builtinMetricMaps = map[string]map[string]ColumnMapping{
 		"catalog_xmin":             {DISCARD, "The oldest transaction affecting the system catalogs that cu slot needs the database to retain. VACUUM cannot remove catalog tuples deleted by any later transaction", nil, nil},
 		"restart_lsn":              {DISCARD, "The address (LSN) of oldest WAL which still might be required by the consumer of cu slot and thus won't be automatically removed during checkpoints", nil, nil},
 		"pg_current_xlog_location": {DISCARD, "pg_current_xlog_location", nil, nil},
-		"pg_xlog_location_diff":    {GAUGE, "Lag in bytes between master and slave", nil, semver.MustParseRange(">=9.2.0")},
+		"pg_current_wal_lsn":       {DISCARD, "pg_current_xlog_location", nil, semver.MustParseRange(">=10.0.0")},
+		"pg_xlog_location_diff":    {GAUGE, "Lag in bytes between master and slave", nil, semver.MustParseRange(">=9.2.0 <10.0.0")},
+		"pg_wal_lsn_diff":          {GAUGE, "Lag in bytes between master and slave", nil, semver.MustParseRange(">=10.0.0")},
 		"confirmed_flush_lsn":      {DISCARD, "LSN position a consumer of a slot has confirmed flushing the data received", nil, nil},
+		"write_lag":                {DISCARD, "Time elapsed between flushing recent WAL locally and receiving notification that this standby server has written it (but not yet flushed it or applied it). This can be used to gauge the delay that synchronous_commit level remote_write incurred while committing if this server was configured as a synchronous standby.", nil, semver.MustParseRange(">=10.0.0")},
+		"flush_lag":                {DISCARD, "Time elapsed between flushing recent WAL locally and receiving notification that this standby server has written and flushed it (but not yet applied it). This can be used to gauge the delay that synchronous_commit level remote_flush incurred while committing if this server was configured as a synchronous standby.", nil, semver.MustParseRange(">=10.0.0")},
+		"replay_lag":               {DISCARD, "Time elapsed between flushing recent WAL locally and receiving notification that this standby server has written, flushed and applied it. This can be used to gauge the delay that synchronous_commit level remote_apply incurred while committing if this server was configured as a synchronous standby.", nil, semver.MustParseRange(">=10.0.0")},
 	},
 	"pg_stat_activity": {
 		"datname":         {LABEL, "Name of cu database", nil, nil},
@@ -291,7 +300,16 @@ var queryOverrides = map[string][]OverrideQuery{
 
 	"pg_stat_replication": {
 		{
-			semver.MustParseRange(">=9.2.0"),
+			semver.MustParseRange(">=10.0.0"),
+			`
+			SELECT *,
+				(case pg_is_in_recovery() when 't' then null else pg_current_wal_lsn() end) AS pg_current_wal_lsn,
+				(case pg_is_in_recovery() when 't' then null else pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)::float end) AS pg_wal_lsn_diff
+			FROM pg_stat_replication
+			`,
+		},
+		{
+			semver.MustParseRange(">=9.2.0 <10.0.0"),
 			`
 			SELECT *,
 				(case pg_is_in_recovery() when 't' then null else pg_current_xlog_location() end) AS pg_current_xlog_location,
@@ -627,6 +645,7 @@ func dbToFloat64(t interface{}) (float64, bool) {
 		strV := string(v)
 		result, err := strconv.ParseFloat(strV, 64)
 		if err != nil {
+			log.Infoln("Could not parse []byte:", err)
 			return math.NaN(), false
 		}
 		return result, true
@@ -850,7 +869,6 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 					nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unparseable column type - discarding: ", namespace, columnName, err)))
 					continue
 				}
-				log.Debugln(columnName, labels)
 				ch <- prometheus.MustNewConstMetric(desc, prometheus.UntypedValue, value, labels...)
 			}
 		}
