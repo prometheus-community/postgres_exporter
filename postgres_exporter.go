@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"errors"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -17,11 +16,13 @@ import (
 	"sync"
 	"time"
 
+	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
 
 	"github.com/blang/semver"
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
 )
 
@@ -30,23 +31,10 @@ import (
 var Version = "0.0.1"
 
 var (
-	listenAddress = flag.String(
-		"web.listen-address", ":9187",
-		"Address to listen on for web interface and telemetry.",
-	)
-	metricPath = flag.String(
-		"web.telemetry-path", "/metrics",
-		"Path under which to expose metrics.",
-	)
-	queriesPath = flag.String(
-		"extend.query-path", "",
-		"Path to custom queries to run.",
-	)
-	onlyDumpMaps = flag.Bool(
-		"dumpmaps", false,
-		"Do not run, simply dump the maps.",
-	)
-	showVersion = flag.Bool("version", false, "print version and exit")
+	listenAddress = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").String()
+	metricPath    = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
+	queriesPath   = kingpin.Flag("extend.query-path", "Path to custom queries to run.").Default("").String()
+	onlyDumpMaps  = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
 )
 
 // Metric name parts.
@@ -1056,15 +1044,9 @@ func getDataSource() string {
 }
 
 func main() {
-	flag.Parse()
-
-	if *showVersion {
-		fmt.Printf(
-			"postgres_exporter %s (built with %s)\n",
-			Version, runtime.Version(),
-		)
-		return
-	}
+	kingpin.Version(fmt.Sprintf("postgres_exporter %s (built with %s)\n", Version, runtime.Version()))
+	log.AddFlags(kingpin.CommandLine)
+	kingpin.Parse()
 
 	if *onlyDumpMaps {
 		dumpMaps()
@@ -1085,7 +1067,7 @@ func main() {
 
 	prometheus.MustRegister(exporter)
 
-	http.Handle(*metricPath, prometheus.Handler())
+	http.Handle(*metricPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write(landingPage) // nolint: errcheck
 	})

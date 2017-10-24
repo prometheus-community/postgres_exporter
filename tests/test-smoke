@@ -86,7 +86,7 @@ smoketest_postgres() {
 
 
     # Run the test binary.
-    DATA_SOURCE_NAME="postgresql://postgres:$POSTGRES_PASSWORD@$standalone_ip:5432/?sslmode=disable" $test_binary --log.level=debug || exit $?
+    DATA_SOURCE_NAME="postgresql://postgres:$POSTGRES_PASSWORD@$standalone_ip:5432/?sslmode=disable" $test_binary || exit $?
 
     # Extract a raw metric list.
     DATA_SOURCE_NAME="postgresql://postgres:$POSTGRES_PASSWORD@$standalone_ip:5432/?sslmode=disable" $postgres_exporter --log.level=debug --web.listen-address=:$exporter_port &
@@ -131,7 +131,7 @@ smoketest_postgres() {
     wait_for_postgres $master_ip 5432
     wait_for_postgres $slave_ip 5432
     
-    DATA_SOURCE_NAME="postgresql://postgres:$POSTGRES_PASSWORD@$master_ip:5432/?sslmode=disable" $test_binary --log.level=debug || exit $?
+    DATA_SOURCE_NAME="postgresql://postgres:$POSTGRES_PASSWORD@$master_ip:5432/?sslmode=disable" $test_binary || exit $?
     
     DATA_SOURCE_NAME="postgresql://postgres:$POSTGRES_PASSWORD@$master_ip:5432/?sslmode=disable" $postgres_exporter --log.level=debug --web.listen-address=:$exporter_port &
     exporter_pid=$!
