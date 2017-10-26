@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"os"
 )
 
 // Hook up gocheck into the "go test" runner.
@@ -83,4 +84,68 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 			false,
 		)
 	}
+}
+
+// test read username and password from file
+func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
+
+	err := os.Setenv("DATA_SOURCE_USER_FILE", "./tests/username_file")
+	c.Assert(err, IsNil)
+	defer UnsetEnvironment(c, "DATA_SOURCE_USER_FILE")
+
+	err = os.Setenv("DATA_SOURCE_PASS_FILE", "./tests/userpass_file")
+	c.Assert(err, IsNil)
+	defer UnsetEnvironment(c, "DATA_SOURCE_PASS_FILE")
+
+	err = os.Setenv("DATA_SOURCE_URI", "localhost:5432/?sslmode=disable")
+	c.Assert(err, IsNil)
+	defer UnsetEnvironment(c, "DATA_SOURCE_URI")
+
+	var expected = "postgresql://custom_username:custom_password@localhost:5432/?sslmode=disable"
+
+	dsn := getDataSource()
+	if dsn != expected {
+		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, expected)
+	}
+}
+
+// test read DATA_SOURCE_NAME from environment
+func (s *FunctionalSuite) TestEnvironmentSettingWithDns(c *C) {
+
+	envDsn := "postgresql://user:password@localhost:5432/?sslmode=enabled"
+	err := os.Setenv("DATA_SOURCE_NAME", envDsn)
+	c.Assert(err, IsNil)
+	defer UnsetEnvironment(c, "DATA_SOURCE_NAME")
+
+	dsn := getDataSource()
+	if dsn != envDsn {
+		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, envDsn)
+	}
+}
+
+// test DATA_SOURCE_NAME is used even if username and password environment variables are set
+func (s *FunctionalSuite) TestEnvironmentSettingWithDnsAndSecrets(c *C) {
+
+	envDsn := "postgresql://userDsn:passwordDsn@localhost:55432/?sslmode=disabled"
+	err := os.Setenv("DATA_SOURCE_NAME", envDsn)
+	c.Assert(err, IsNil)
+	defer UnsetEnvironment(c, "DATA_SOURCE_NAME")
+
+	err = os.Setenv("DATA_SOURCE_USER_FILE", "./tests/username_file")
+	c.Assert(err, IsNil)
+	defer UnsetEnvironment(c, "DATA_SOURCE_USER_FILE")
+
+	err = os.Setenv("DATA_SOURCE_PASS", "envUserPass")
+	c.Assert(err, IsNil)
+	defer UnsetEnvironment(c, "DATA_SOURCE_PASS")
+
+	dsn := getDataSource()
+	if dsn != envDsn {
+		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, envDsn)
+	}
+}
+
+func UnsetEnvironment(c *C, d string) {
+	err := os.Unsetenv(d)
+	c.Assert(err, IsNil)
 }

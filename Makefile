@@ -42,12 +42,14 @@ lint: tools
 fmt: tools
 	gofmt -s -w $(GO_SRC)
 
-test: tools
-	@mkdir -p $(COVERDIR)
-	@rm -f $(COVERDIR)/*
+run-tests: tools
+	mkdir -p $(COVERDIR)
+	rm -f $(COVERDIR)/*
 	for pkg in $(GO_PKGS) ; do \
-		go test -v -covermode count -coverprofile=$(COVERDIR)/$$(echo $$pkg | tr '/' '-').out $$pkg ; \
+		go test -v -covermode count -coverprofile=$(COVERDIR)/$$(echo $$pkg | tr '/' '-').out $$pkg || exit 1 ; \
 	done
+
+test: run-tests
 	gocovmerge $(shell find $(COVERDIR) -name '*.out') > cover.test.out
 
 test-integration: postgres_exporter postgres_exporter_integration_test
@@ -63,7 +65,7 @@ docker-build:
 	    -v $(shell pwd):/real_src \
 	    -e SHELL_UID=$(shell id -u) -e SHELL_GID=$(shell id -g) \
 	    -w /go/src/github.com/wrouesnel/postgres_exporter \
-		golang:1.8-wheezy \
+		golang:1.9-wheezy \
 		/bin/bash -c "make >&2 && chown $$SHELL_UID:$$SHELL_GID ./postgres_exporter"
 	docker build -t $(CONTAINER_NAME) .
 
@@ -74,6 +76,6 @@ tools:
 	$(MAKE) -C $(TOOLDIR)
 
 clean:
-	rm -f postgres_exporter postgres_exporter_integration_test
+	rm -rf postgres_exporter postgres_exporter_integration_test $(COVERDIR)
 
 .PHONY: tools docker-build docker lint fmt test vet push cross clean

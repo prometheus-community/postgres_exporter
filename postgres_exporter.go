@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"errors"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -13,14 +12,17 @@ import (
 	"regexp"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
+	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
 
 	"github.com/blang/semver"
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
 )
 
@@ -29,23 +31,10 @@ import (
 var Version = "0.0.1"
 
 var (
-	listenAddress = flag.String(
-		"web.listen-address", ":9187",
-		"Address to listen on for web interface and telemetry.",
-	)
-	metricPath = flag.String(
-		"web.telemetry-path", "/metrics",
-		"Path under which to expose metrics.",
-	)
-	queriesPath = flag.String(
-		"extend.query-path", "",
-		"Path to custom queries to run.",
-	)
-	onlyDumpMaps = flag.Bool(
-		"dumpmaps", false,
-		"Do not run, simply dump the maps.",
-	)
-	showVersion = flag.Bool("version", false, "print version and exit")
+	listenAddress = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").String()
+	metricPath    = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
+	queriesPath   = kingpin.Flag("extend.query-path", "Path to custom queries to run.").Default("").String()
+	onlyDumpMaps  = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
 )
 
 // Metric name parts.
@@ -101,7 +90,7 @@ func (cu *ColumnUsage) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 // Regex used to get the "short-version" from the postgres version field.
-var versionRegex = regexp.MustCompile(`^\w+ (\d+\.\d+\.\d+)`)
+var versionRegex = regexp.MustCompile(`^\w+ ((\d+)(\.\d+)?(\.\d+)?)\s`)
 var lowestSupportedVersion = semver.MustParse("9.1.0")
 
 // Parses the version of postgres into the short version string we can use to
@@ -109,7 +98,7 @@ var lowestSupportedVersion = semver.MustParse("9.1.0")
 func parseVersion(versionString string) (semver.Version, error) {
 	submatches := versionRegex.FindStringSubmatch(versionString)
 	if len(submatches) > 1 {
-		return semver.Make(submatches[1])
+		return semver.ParseTolerant(submatches[1])
 	}
 	return semver.Version{},
 		errors.New(fmt.Sprintln("Could not find a postgres version in string:", versionString))
@@ -224,10 +213,14 @@ var builtinMetricMaps = map[string]map[string]ColumnMapping{
 		"backend_start": {DISCARD, "with time zone	Time when cu process was started, i.e., when the client connected to cu WAL sender", nil, nil},
 		"backend_xmin":             {DISCARD, "The current backend's xmin horizon.", nil, nil},
 		"state":                    {LABEL, "Current WAL sender state", nil, nil},
-		"sent_location":            {DISCARD, "Last transaction log position sent on cu connection", nil, nil},
-		"write_location":           {DISCARD, "Last transaction log position written to disk by cu standby server", nil, nil},
-		"flush_location":           {DISCARD, "Last transaction log position flushed to disk by cu standby server", nil, nil},
-		"replay_location":          {DISCARD, "Last transaction log position replayed into the database on cu standby server", nil, nil},
+		"sent_location":            {DISCARD, "Last transaction log position sent on cu connection", nil, semver.MustParseRange("<10.0.0")},
+		"write_location":           {DISCARD, "Last transaction log position written to disk by cu standby server", nil, semver.MustParseRange("<10.0.0")},
+		"flush_location":           {DISCARD, "Last transaction log position flushed to disk by cu standby server", nil, semver.MustParseRange("<10.0.0")},
+		"replay_location":          {DISCARD, "Last transaction log position replayed into the database on cu standby server", nil, semver.MustParseRange("<10.0.0")},
+		"sent_lsn":                 {DISCARD, "Last transaction log position sent on cu connection", nil, semver.MustParseRange(">=10.0.0")},
+		"write_lsn":                {DISCARD, "Last transaction log position written to disk by cu standby server", nil, semver.MustParseRange(">=10.0.0")},
+		"flush_lsn":                {DISCARD, "Last transaction log position flushed to disk by cu standby server", nil, semver.MustParseRange(">=10.0.0")},
+		"replay_lsn":               {DISCARD, "Last transaction log position replayed into the database on cu standby server", nil, semver.MustParseRange(">=10.0.0")},
 		"sync_priority":            {DISCARD, "Priority of cu standby server for being chosen as the synchronous standby", nil, nil},
 		"sync_state":               {DISCARD, "Synchronous state of cu standby server", nil, nil},
 		"slot_name":                {LABEL, "A unique, cluster-wide identifier for the replication slot", nil, semver.MustParseRange(">=9.2.0")},
@@ -241,8 +234,13 @@ var builtinMetricMaps = map[string]map[string]ColumnMapping{
 		"catalog_xmin":             {DISCARD, "The oldest transaction affecting the system catalogs that cu slot needs the database to retain. VACUUM cannot remove catalog tuples deleted by any later transaction", nil, nil},
 		"restart_lsn":              {DISCARD, "The address (LSN) of oldest WAL which still might be required by the consumer of cu slot and thus won't be automatically removed during checkpoints", nil, nil},
 		"pg_current_xlog_location": {DISCARD, "pg_current_xlog_location", nil, nil},
-		"pg_xlog_location_diff":    {GAUGE, "Lag in bytes between master and slave", nil, semver.MustParseRange(">=9.2.0")},
+		"pg_current_wal_lsn":       {DISCARD, "pg_current_xlog_location", nil, semver.MustParseRange(">=10.0.0")},
+		"pg_xlog_location_diff":    {GAUGE, "Lag in bytes between master and slave", nil, semver.MustParseRange(">=9.2.0 <10.0.0")},
+		"pg_wal_lsn_diff":          {GAUGE, "Lag in bytes between master and slave", nil, semver.MustParseRange(">=10.0.0")},
 		"confirmed_flush_lsn":      {DISCARD, "LSN position a consumer of a slot has confirmed flushing the data received", nil, nil},
+		"write_lag":                {DISCARD, "Time elapsed between flushing recent WAL locally and receiving notification that this standby server has written it (but not yet flushed it or applied it). This can be used to gauge the delay that synchronous_commit level remote_write incurred while committing if this server was configured as a synchronous standby.", nil, semver.MustParseRange(">=10.0.0")},
+		"flush_lag":                {DISCARD, "Time elapsed between flushing recent WAL locally and receiving notification that this standby server has written and flushed it (but not yet applied it). This can be used to gauge the delay that synchronous_commit level remote_flush incurred while committing if this server was configured as a synchronous standby.", nil, semver.MustParseRange(">=10.0.0")},
+		"replay_lag":               {DISCARD, "Time elapsed between flushing recent WAL locally and receiving notification that this standby server has written, flushed and applied it. This can be used to gauge the delay that synchronous_commit level remote_apply incurred while committing if this server was configured as a synchronous standby.", nil, semver.MustParseRange(">=10.0.0")},
 	},
 	"pg_stat_activity": {
 		"datname":         {LABEL, "Name of cu database", nil, nil},
@@ -290,7 +288,16 @@ var queryOverrides = map[string][]OverrideQuery{
 
 	"pg_stat_replication": {
 		{
-			semver.MustParseRange(">=9.2.0"),
+			semver.MustParseRange(">=10.0.0"),
+			`
+			SELECT *,
+				(case pg_is_in_recovery() when 't' then null else pg_current_wal_lsn() end) AS pg_current_wal_lsn,
+				(case pg_is_in_recovery() when 't' then null else pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)::float end) AS pg_wal_lsn_diff
+			FROM pg_stat_replication
+			`,
+		},
+		{
+			semver.MustParseRange(">=9.2.0 <10.0.0"),
 			`
 			SELECT *,
 				(case pg_is_in_recovery() when 't' then null else pg_current_xlog_location() end) AS pg_current_xlog_location,
@@ -626,6 +633,7 @@ func dbToFloat64(t interface{}) (float64, bool) {
 		strV := string(v)
 		result, err := strconv.ParseFloat(strV, 64)
 		if err != nil {
+			log.Infoln("Could not parse []byte:", err)
 			return math.NaN(), false
 		}
 		return result, true
@@ -849,7 +857,6 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 					nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unparseable column type - discarding: ", namespace, columnName, err)))
 					continue
 				}
-				log.Debugln(columnName, labels)
 				ch <- prometheus.MustNewConstMetric(desc, prometheus.UntypedValue, value, labels...)
 			}
 		}
@@ -999,25 +1006,56 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	}
 }
 
-func main() {
-	flag.Parse()
+// try to get the DataSource
+// DATA_SOURCE_NAME always wins so we do not break older versions
+// reading secrets from files wins over secrets in environment variables
+// DATA_SOURCE_NAME > DATA_SOURCE_{USER|FILE}_FILE > DATA_SOURCE_{USER|FILE}
+func getDataSource() string {
+	var dsn = os.Getenv("DATA_SOURCE_NAME")
+	if len(dsn) == 0 {
+		var user string
+		var pass string
 
-	if *showVersion {
-		fmt.Printf(
-			"postgres_exporter %s (built with %s)\n",
-			Version, runtime.Version(),
-		)
-		return
+		if len(os.Getenv("DATA_SOURCE_USER_FILE")) != 0 {
+			fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_USER_FILE"))
+			if err != nil {
+				panic(err)
+			}
+			user = strings.TrimSpace(string(fileContents))
+		} else {
+			user = os.Getenv("DATA_SOURCE_USER")
+		}
+
+		if len(os.Getenv("DATA_SOURCE_PASS_FILE")) != 0 {
+			fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_PASS_FILE"))
+			if err != nil {
+				panic(err)
+			}
+			pass = strings.TrimSpace(string(fileContents))
+		} else {
+			pass = os.Getenv("DATA_SOURCE_PASS")
+		}
+
+		uri := os.Getenv("DATA_SOURCE_URI")
+		dsn = "postgresql://" + user + ":" + pass + "@" + uri
 	}
+
+	return dsn
+}
+
+func main() {
+	kingpin.Version(fmt.Sprintf("postgres_exporter %s (built with %s)\n", Version, runtime.Version()))
+	log.AddFlags(kingpin.CommandLine)
+	kingpin.Parse()
 
 	if *onlyDumpMaps {
 		dumpMaps()
 		return
 	}
 
-	dsn := os.Getenv("DATA_SOURCE_NAME")
+	dsn := getDataSource()
 	if len(dsn) == 0 {
-		log.Fatal("couldn't find environment variable DATA_SOURCE_NAME")
+		log.Fatal("couldn't find environment variables describing the datasource to use")
 	}
 
 	exporter := NewExporter(dsn, *queriesPath)
@@ -1029,7 +1067,7 @@ func main() {
 
 	prometheus.MustRegister(exporter)
 
-	http.Handle(*metricPath, prometheus.Handler())
+	http.Handle(*metricPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write(landingPage) // nolint: errcheck
 	})
