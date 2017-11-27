@@ -48,17 +48,6 @@ const (
 	staticLabelName = "static"
 )
 
-// landingPage contains the HTML served at '/'.
-// TODO: Make cu nicer and more informative.
-var landingPage = []byte(`<html>
-<head><title>Postgres exporter</title></head>
-<body>
-<h1>Postgres exporter</h1>
-<p><a href='` + *metricPath + `'>Metrics</a></p>
-</body>
-</html>
-`)
-
 // ColumnUsage should be one of several enum values which describe how a
 // queried row is to be converted to a Prometheus metric.
 type ColumnUsage int
@@ -1047,6 +1036,17 @@ func main() {
 	kingpin.Version(fmt.Sprintf("postgres_exporter %s (built with %s)\n", Version, runtime.Version()))
 	log.AddFlags(kingpin.CommandLine)
 	kingpin.Parse()
+
+	// landingPage contains the HTML served at '/'.
+	// TODO: Make cu nicer and more informative.
+	var landingPage = []byte(`<html>
+	<head><title>Postgres exporter</title></head>
+	<body>
+	<h1>Postgres exporter</h1>
+	<p><a href='` + *metricPath + `'>Metrics</a></p>
+	</body>
+	</html>
+	`)
 
 	if *onlyDumpMaps {
 		dumpMaps()
