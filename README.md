@@ -126,3 +126,7 @@ GRANT SELECT ON postgres_exporter.pg_stat_replication TO postgres_exporter;
 > ```
 > DATA_SOURCE_NAME=postgresql://postgres_exporter:password@localhost:5432/postgres?sslmode=disable
 > ```
+
+## Alerting 
+
+See [alerts](examples/ALERTS.md) for examples
