@@ -19,6 +19,7 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
 
+	"crypto/sha256"
 	"github.com/blang/semver"
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
@@ -371,15 +372,10 @@ func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]
 // TODO: test code for all cu.
 // TODO: use proper struct type system
 // TODO: the YAML cu supports is "non-standard" - we should move away from it.
-func addQueries(queriesPath string, pgVersion semver.Version, exporterMap map[string]MetricMapNamespace, queryOverrideMap map[string]string) error {
+func addQueries(content []byte, pgVersion semver.Version, exporterMap map[string]MetricMapNamespace, queryOverrideMap map[string]string) error {
 	var extra map[string]interface{}
 
-	content, err := ioutil.ReadFile(queriesPath)
-	if err != nil {
-		return err
-	}
-
-	err = yaml.Unmarshal(content, &extra)
+	err := yaml.Unmarshal(content, &extra)
 	if err != nil {
 		return err
 	}
@@ -663,10 +659,11 @@ func dbToString(t interface{}) (string, bool) {
 
 // Exporter collects Postgres metrics. It implements prometheus.Collector.
 type Exporter struct {
-	dsn             string
-	userQueriesPath string
-	duration, error prometheus.Gauge
-	totalScrapes    prometheus.Counter
+	dsn              string
+	userQueriesPath  string
+	duration, error  prometheus.Gauge
+	userQueriesError *prometheus.GaugeVec
+	totalScrapes     prometheus.Counter
 
 	// dbDsn is the connection string used to establish the dbConnection
 	dbDsn string
@@ -706,6 +703,12 @@ func NewExporter(dsn string, userQueriesPath string) *Exporter {
 			Name:      "last_scrape_error",
 			Help:      "Whether the last scrape of metrics from PostgreSQL resulted in an error (1 for error, 0 for success).",
 		}),
+		userQueriesError: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: exporter,
+			Name:      "user_queries_load_error",
+			Help:      "Whether the user queries file was loaded and parsed successfully (1 for error, 0 for success).",
+		}, []string{"filename", "hashsum"}),
 		metricMap:      nil,
 		queryOverrides: nil,
 	}
@@ -746,6 +749,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- e.duration
 	ch <- e.totalScrapes
 	ch <- e.error
+	e.userQueriesError.Collect(ch)
 }
 
 func newDesc(subsystem, name, help string) *prometheus.Desc {
@@ -906,8 +910,24 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 		e.lastMapVersion = semanticVersion
 
 		if e.userQueriesPath != "" {
-			if err := addQueries(e.userQueriesPath, semanticVersion, e.metricMap, e.queryOverrides); err != nil {
+			// Clear the metric while a reload is happening
+			e.userQueriesError.Reset()
+
+			// Calculate the hashsum of the useQueries
+			userQueriesData, err := ioutil.ReadFile(e.userQueriesPath)
+			if err != nil {
 				log.Errorln("Failed to reload user queries:", e.userQueriesPath, err)
+				e.userQueriesError.WithLabelValues(e.userQueriesPath, "").Set(1)
+			} else {
+				hashsumStr := fmt.Sprintf("%x", sha256.Sum256(userQueriesData))
+
+				if err := addQueries(userQueriesData, semanticVersion, e.metricMap, e.queryOverrides); err != nil {
+					log.Errorln("Failed to reload user queries:", e.userQueriesPath, err)
+					e.userQueriesError.WithLabelValues(e.userQueriesPath, hashsumStr).Set(1)
+				} else {
+					// Mark user queries as successfully loaded
+					e.userQueriesError.WithLabelValues(e.userQueriesPath, hashsumStr).Set(0)
+				}
 			}
 		}
 
