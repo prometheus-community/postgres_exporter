@@ -661,7 +661,9 @@ func dbToString(t interface{}) (string, bool) {
 type Exporter struct {
 	dsn              string
 	userQueriesPath  string
-	duration, error  prometheus.Gauge
+	duration         prometheus.Gauge
+	error            prometheus.Gauge
+	connectionError  prometheus.Gauge
 	userQueriesError *prometheus.GaugeVec
 	totalScrapes     prometheus.Counter
 
@@ -702,6 +704,12 @@ func NewExporter(dsn string, userQueriesPath string) *Exporter {
 			Subsystem: exporter,
 			Name:      "last_scrape_error",
 			Help:      "Whether the last scrape of metrics from PostgreSQL resulted in an error (1 for error, 0 for success).",
+		}),
+		connectionError: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: exporter,
+			Name:      "last_scrape_connection_error",
+			Help:      "Whether the last scrape of metrics from PostgreSQL was able to connect to the server (1 for error, 0 for success).",
 		}),
 		userQueriesError: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -955,12 +963,16 @@ func (e *Exporter) getDB(conn string) (*sql.DB, error) {
 	if e.dbConnection == nil {
 		d, err := sql.Open("postgres", conn)
 		if err != nil {
+			e.connectionError.Set(1)
 			return nil, err
 		}
 		err = d.Ping()
 		if err != nil {
+			e.connectionError.Set(1)
 			return nil, err
 		}
+		e.connectionError.Set(0)
+
 		d.SetMaxOpenConns(1)
 		d.SetMaxIdleConns(1)
 		e.dbConnection = d
