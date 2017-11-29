@@ -45,6 +45,7 @@ var (
 	extraFlags Flags
 	pkg        = flag.String("package", "", "Go package")
 	verbose    = flag.Bool("v", false, "Pass '-v' argument to 'go test' and output to stdout")
+	race       = flag.Bool("race", false, "Pass '-race' argument to 'go test'")
 	debug      = flag.Bool("debug", false, "Enable debug output")
 	coverprof  = flag.String("coverprofile", "", "If supplied, use a go cover profile (comma separated)")
 	covermode  = flag.String("covermode", "count", "sent as covermode argument to go test")
@@ -132,11 +133,17 @@ func getCoverage() ([]*SourceFile, error) {
 		outBuf := new(bytes.Buffer)
 		cmd.Stdout = outBuf
 		cmd.Stderr = outBuf
-
-		args := []string{"go", "test", "-covermode", *covermode, "-coverprofile", f.Name(), coverpkg}
+		coverm := *covermode
+		if *race {
+			coverm = "atomic"
+		}
+		args := []string{"go", "test", "-covermode", coverm, "-coverprofile", f.Name(), coverpkg}
 		if *verbose {
 			args = append(args, "-v")
 			cmd.Stdout = os.Stdout
+		}
+		if *race {
+			args = append(args, "-race")
 		}
 		args = append(args, extraFlags...)
 		args = append(args, line)

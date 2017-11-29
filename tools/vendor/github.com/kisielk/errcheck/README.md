@@ -99,7 +99,7 @@ in the importer.
 
 However, you can use errcheck on packages that depend on those which use cgo. In
 order for this to work you need to `go install` the cgo dependencies before running
-errcheck on the dependant packages.
+errcheck on the dependent packages.
 
 See https://github.com/kisielk/errcheck/issues/16 for more details.
 
