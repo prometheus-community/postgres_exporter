@@ -125,6 +125,7 @@ type MetricMap struct {
 
 // TODO: revisit cu with the semver system
 func dumpMaps() {
+	// TODO: make this function part of the exporter
 	for name, cmap := range builtinMetricMaps {
 		query, ok := queryOverrides[name]
 		if !ok {
@@ -659,6 +660,10 @@ func dbToString(t interface{}) (string, bool) {
 
 // Exporter collects Postgres metrics. It implements prometheus.Collector.
 type Exporter struct {
+	// Holds a reference to the build in column mappings. Currently this is for testing purposes
+	// only, since it just points to the global.
+	builtinMetricMaps map[string]map[string]ColumnMapping
+
 	dsn              string
 	userQueriesPath  string
 	duration         prometheus.Gauge
@@ -685,8 +690,9 @@ type Exporter struct {
 // NewExporter returns a new PostgreSQL exporter for the provided DSN.
 func NewExporter(dsn string, userQueriesPath string) *Exporter {
 	return &Exporter{
-		dsn:             dsn,
-		userQueriesPath: userQueriesPath,
+		builtinMetricMaps: builtinMetricMaps,
+		dsn:               dsn,
+		userQueriesPath:   userQueriesPath,
 		duration: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: exporter,
@@ -913,7 +919,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 		log.Infoln("Semantic Version Changed:", e.lastMapVersion.String(), "->", semanticVersion.String())
 		e.mappingMtx.Lock()
 
-		e.metricMap = makeDescMap(semanticVersion, builtinMetricMaps)
+		e.metricMap = makeDescMap(semanticVersion, e.builtinMetricMaps)
 		e.queryOverrides = makeQueryOverrideMap(semanticVersion, queryOverrides)
 		e.lastMapVersion = semanticVersion
 
