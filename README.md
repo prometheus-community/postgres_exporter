@@ -126,3 +126,11 @@ GRANT SELECT ON postgres_exporter.pg_stat_replication TO postgres_exporter;
 > ```
 > DATA_SOURCE_NAME=postgresql://postgres_exporter:password@localhost:5432/postgres?sslmode=disable
 > ```
+
+# Hacking
+
+* The build system is currently only supported for Linux-like platforms. It
+  depends on GNU Make.
+* To build a copy for your current architecture run `make binary` or just `make`
+  This will create a symlink to the just built binary in the root directory.
+* To build release tar balls run `make release`.

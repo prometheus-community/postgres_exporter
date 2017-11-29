@@ -9,5 +9,7 @@ postgres_exporter_integration_test
 cover.out
 cover.*.out
 .coverage
+bin
+release
 *.prom
 .metrics.*.*.prom

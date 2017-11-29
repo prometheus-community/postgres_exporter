@@ -1,6 +1,8 @@
 FROM scratch
 
-COPY postgres_exporter /postgres_exporter
+ARG binary
+
+COPY $binary /postgres_exporter
 
 EXPOSE 9187
 
