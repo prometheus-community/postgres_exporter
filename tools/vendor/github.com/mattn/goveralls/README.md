@@ -40,7 +40,7 @@ Enable Travis-CI on your github repository settings.
 
 For a **public** github repository put below's `.travis.yml`.
 
-```
+```yml
 language: go
 sudo: false
 go:
@@ -48,14 +48,14 @@ go:
 before_install:
   - go get github.com/mattn/goveralls
 script:
-  - $HOME/gopath/bin/goveralls -service=travis-ci
+  - $GOPATH/bin/goveralls -service=travis-ci
 ```
 
 For a **public** github repository, it is not necessary to define your repository key (`COVERALLS_TOKEN`).
 
 For a **private** github repository put below's `.travis.yml`. If you use **travis pro**, you need to specify `-service=travis-pro` instead of `-service=travis-ci`.
 
-```
+```yml
 language: go
 sudo: false
 go:
@@ -63,7 +63,7 @@ go:
 before_install:
   - go get github.com/mattn/goveralls
 script:
-  - $HOME/gopath/bin/goveralls -service=travis-pro
+  - $GOPATH/bin/goveralls -service=travis-pro
 ```
 
 Store your Coveralls API token in `Environment variables`.
@@ -81,7 +81,7 @@ $ travis encrypt COVERALLS_TOKEN=your_token_goes_here --add env.global
 
 travis will add `env` block as following example:
 
-```
+```yml
 env:
   global:
     secure: xxxxxxxxxxxxx
