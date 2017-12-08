@@ -12,26 +12,36 @@ import (
 	"strings"
 )
 
-var (
-	root            string
-	dontRecurseFlag = flag.Bool("n", false, "don't recursively check paths")
-)
+const invalidArgumentExitCode = 3
+
+var dontRecurseFlag = flag.Bool("n", false, "don't recursively check paths")
 
 func main() {
 	flag.Parse()
-	if len(flag.Args()) != 1 {
+
+	if len(flag.Args()) == 0 {
 		fmt.Println("missing argument: filepath")
-		return
+		os.Exit(invalidArgumentExitCode)
 	}
 
-	var err error
-	root, err = filepath.Abs(flag.Arg(0))
-	if err != nil {
-		fmt.Printf("Error finding absolute path :%s", err)
-		return
+	lintFailed := false
+	for _, path := range flag.Args() {
+		root, err := filepath.Abs(path)
+		if err != nil {
+			fmt.Printf("Error finding absolute path: %s", err)
+			os.Exit(invalidArgumentExitCode)
+		}
+		if walkPath(root) {
+			lintFailed = true
+		}
 	}
+	if lintFailed {
+		os.Exit(1)
+	}
+}
 
-	errors := false
+func walkPath(root string) bool {
+	lintFailed := false
 	filepath.Walk(root, func(path string, fi os.FileInfo, err error) error {
 		if err != nil {
 			fmt.Printf("Error during filesystem walk: %v\n", err)
@@ -51,13 +61,11 @@ func main() {
 		fset, _, ineff := checkPath(path)
 		for _, id := range ineff {
 			fmt.Printf("%s: ineffectual assignment to %s\n", fset.Position(id.Pos()), id.Name)
-			errors = true
+			lintFailed = true
 		}
 		return nil
 	})
-	if errors {
-		os.Exit(1)
-	}
+	return lintFailed
 }
 
 func checkPath(path string) (*token.FileSet, []*ast.CommentGroup, []*ast.Ident) {
@@ -223,15 +231,24 @@ func (bld *builder) Visit(n ast.Node) ast.Visitor {
 		}
 
 	case *ast.AssignStmt:
+		if n.Tok == token.QUO_ASSIGN || n.Tok == token.REM_ASSIGN {
+			bld.maybePanic()
+		}
+
 		for _, x := range n.Rhs {
 			bld.walk(x)
 		}
-		for _, x := range n.Lhs {
+		for i, x := range n.Lhs {
 			if id, ok := ident(x); ok {
 				if n.Tok >= token.ADD_ASSIGN && n.Tok <= token.AND_NOT_ASSIGN {
 					bld.use(id)
 				}
-				bld.assign(id)
+				// Don't treat explicit initialization to zero as assignment; it is often used as shorthand for a bare declaration.
+				if n.Tok == token.DEFINE && i < len(n.Rhs) && isZeroLiteral(n.Rhs[i]) {
+					bld.use(id)
+				} else {
+					bld.assign(id)
+				}
 			} else {
 				bld.walk(x)
 			}
@@ -277,7 +294,21 @@ func (bld *builder) Visit(n ast.Node) ast.Visitor {
 				bld.use(id)
 			}
 		}
+	case *ast.SendStmt:
+		bld.maybePanic()
+		return bld
 
+	case *ast.BinaryExpr:
+		if n.Op == token.EQL || n.Op == token.QUO || n.Op == token.REM {
+			bld.maybePanic()
+		}
+		return bld
+	case *ast.CallExpr:
+		bld.maybePanic()
+		return bld
+	case *ast.IndexExpr:
+		bld.maybePanic()
+		return bld
 	case *ast.UnaryExpr:
 		id, ok := ident(n.X)
 		if ix, isIx := n.X.(*ast.IndexExpr); isIx {
@@ -291,6 +322,7 @@ func (bld *builder) Visit(n ast.Node) ast.Visitor {
 		}
 		return bld
 	case *ast.SelectorExpr:
+		bld.maybePanic()
 		// A method call (possibly delayed via a method value) might implicitly take
 		// the address of its receiver, causing it to escape.
 		// We can't do any better here without knowing the variable's type.
@@ -301,6 +333,7 @@ func (bld *builder) Visit(n ast.Node) ast.Visitor {
 		}
 		return bld
 	case *ast.SliceExpr:
+		bld.maybePanic()
 		// We don't care about slicing into slices, but without type information we can do no better.
 		if id, ok := ident(n.X); ok {
 			if v, ok := bld.vars[id.Obj]; ok {
@@ -308,11 +341,29 @@ func (bld *builder) Visit(n ast.Node) ast.Visitor {
 			}
 		}
 		return bld
+	case *ast.StarExpr:
+		bld.maybePanic()
+		return bld
+	case *ast.TypeAssertExpr:
+		bld.maybePanic()
+		return bld
 
 	default:
 		return bld
 	}
 	return nil
+}
+
+func isZeroLiteral(x ast.Expr) bool {
+	b, ok := x.(*ast.BasicLit)
+	if !ok {
+		return false
+	}
+	switch b.Value {
+	case "0", "0.0", "0.", ".0", `""`:
+		return true
+	}
+	return false
 }
 
 func (bld *builder) fun(typ *ast.FuncType, body *ast.BlockStmt) {
@@ -380,6 +431,22 @@ func (bld *builder) swtch(stmt ast.Stmt, cases []ast.Stmt) {
 	}
 	brek.setDestination(bld.newBlock(exits...))
 	bld.breaks.pop()
+}
+
+// An operation that might panic marks named function results as used.
+func (bld *builder) maybePanic() {
+	if len(bld.results) == 0 {
+		return
+	}
+	res := bld.results[len(bld.results)-1]
+	if res == nil {
+		return
+	}
+	for _, f := range res.List {
+		for _, id := range f.Names {
+			bld.use(id)
+		}
+	}
 }
 
 func (bld *builder) newBlock(parents ...*block) *block {

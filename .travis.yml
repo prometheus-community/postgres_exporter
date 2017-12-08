@@ -18,6 +18,7 @@ script:
 - make docker
 - make test-integration
 - make cover.out
+- make release
 - $HOME/gopath/bin/goveralls -coverprofile=cover.out -service=travis-ci
 after_success:
 - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
@@ -38,7 +39,8 @@ deploy:
   provider: releases
   api_key:
     secure: rwlge/Rs3wnWyfKRhD9fd5GviVe0foYUp20DY3AjKdDjhtwScA1EeR9QHOkB3raze52en0+KkpqlLCWbt3q4CRT7+ku1DNKhd6VWALdTZ1RPJYvNlU6CKJdRnWUJsECmSBsShXlbiYR8axqNVedzFPFGKzS9gYlFN6rr7pez/JZhxqucopZ6I+TkRHMELrFXyQK7/Y2bNRCLC4a+rGsjKeLLtYXbRXCmS0G4BSJEBRk7d69fIRzBApCMfrcLftgHzPuPth616yyUusQSCQYvaZ5tlwrPP8/E0wG3SVJVeDCMuDOSBZ9M6vNzR8W8VR/hxQamegn1OQgC5kNOaLZCTcJ5xguRouqb+FNFBqrd/Zi6vESo7RiVLULawzwxkh9sIPa3WZYDb3VK/Z/cpggUeR7wAu0S5ZYEvJHRefIZpqofZEHzDE3Blqp5yErz05e/zmjpd6HHK3f/UHmRRYfbulkvGT3aL/dlq5GcFvuxVC/vTL2VPvg9cGbqtf7PakC5IhoHpDs35tOyLxifOBLHvkwtGSxEfsCohIG8Hz2XFD83EsxgOiKSXVPLNd6yxjdqZj7OeAKFFU3bzGndnRbDIXaf987IN1imgUtP6wegfImoRStqxN4gEwwIMFsZCF86Ug4eLhlajLbWhudriDxDPBM/F9950aVxLwmWh9l5cRI=
-  file: postgres_exporter
+  file_glob: true
+  file: release/*
   on:
     tags: true
     branch: master

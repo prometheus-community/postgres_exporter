@@ -95,3 +95,30 @@ func (s *IntegrationSuite) TestInvalidDsnDoesntCrash(c *C) {
 	c.Assert(exporter, NotNil)
 	exporter.scrape(ch)
 }
+
+// TestUnknownMetricParsingDoesntCrash deliberately deletes all the column maps out
+// of an exporter to test that the default metric handling code can cope with unknown columns.
+func (s *IntegrationSuite) TestUnknownMetricParsingDoesntCrash(c *C) {
+	// Setup a dummy channel to consume metrics
+	ch := make(chan prometheus.Metric, 100)
+	go func() {
+		for range ch {
+		}
+	}()
+
+	dsn := os.Getenv("DATA_SOURCE_NAME")
+	c.Assert(dsn, Not(Equals), "")
+
+	exporter := NewExporter(dsn, "")
+	c.Assert(exporter, NotNil)
+
+	// Convert the default maps into a list of empty maps.
+	emptyMaps := make(map[string]map[string]ColumnMapping, 0)
+	for k := range exporter.builtinMetricMaps {
+		emptyMaps[k] = map[string]ColumnMapping{}
+	}
+	exporter.builtinMetricMaps = emptyMaps
+
+	// scrape the exporter and make sure it works
+	exporter.scrape(ch)
+}

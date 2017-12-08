@@ -19,6 +19,7 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
 
+	"crypto/sha256"
 	"github.com/blang/semver"
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
@@ -55,11 +56,11 @@ type ColumnUsage int
 
 // nolint: golint
 const (
-	DISCARD      ColumnUsage = iota // Ignore cu column
-	LABEL        ColumnUsage = iota // Use cu column as a label
-	COUNTER      ColumnUsage = iota // Use cu column as a counter
-	GAUGE        ColumnUsage = iota // Use cu column as a gauge
-	MAPPEDMETRIC ColumnUsage = iota // Use cu column with the supplied mapping of text values
+	DISCARD      ColumnUsage = iota // Ignore this column
+	LABEL        ColumnUsage = iota // Use this column as a label
+	COUNTER      ColumnUsage = iota // Use this column as a counter
+	GAUGE        ColumnUsage = iota // Use this column as a gauge
+	MAPPEDMETRIC ColumnUsage = iota // Use this column with the supplied mapping of text values
 	DURATION     ColumnUsage = iota // This column should be interpreted as a text duration (and converted to milliseconds)
 )
 
@@ -118,8 +119,8 @@ func (cm *ColumnMapping) UnmarshalYAML(unmarshal func(interface{}) error) error 
 
 // MetricMapNamespace groups metric maps under a shared set of labels.
 type MetricMapNamespace struct {
-	labels         []string             // Label names for cu namespace
-	columnMappings map[string]MetricMap // Column mappings in cu namespace
+	labels         []string             // Label names for this namespace
+	columnMappings map[string]MetricMap // Column mappings in this namespace
 }
 
 // MetricMap stores the prometheus metric description which a given column will
@@ -131,8 +132,9 @@ type MetricMap struct {
 	conversion func(interface{}) (float64, bool) // Conversion function to turn PG result into float64
 }
 
-// TODO: revisit cu with the semver system
+// TODO: revisit this with the semver system
 func dumpMaps() {
+	// TODO: make this function part of the exporter
 	for name, cmap := range builtinMetricMaps {
 		query, ok := queryOverrides[name]
 		if !ok {
@@ -166,36 +168,36 @@ var builtinMetricMaps = map[string]map[string]ColumnMapping{
 	},
 	"pg_stat_database": {
 		"datid":          {LABEL, "OID of a database", nil, nil},
-		"datname":        {LABEL, "Name of cu database", nil, nil},
-		"numbackends":    {GAUGE, "Number of backends currently connected to cu database. This is the only column in cu view that returns a value reflecting current state; all other columns return the accumulated values since the last reset.", nil, nil},
-		"xact_commit":    {COUNTER, "Number of transactions in cu database that have been committed", nil, nil},
-		"xact_rollback":  {COUNTER, "Number of transactions in cu database that have been rolled back", nil, nil},
-		"blks_read":      {COUNTER, "Number of disk blocks read in cu database", nil, nil},
-		"blks_hit":       {COUNTER, "Number of times disk blocks were found already in the buffer cache, so that a read was not necessary (cu only includes hits in the PostgreSQL buffer cache, not the operating system's file system cache)", nil, nil},
-		"tup_returned":   {COUNTER, "Number of rows returned by queries in cu database", nil, nil},
-		"tup_fetched":    {COUNTER, "Number of rows fetched by queries in cu database", nil, nil},
-		"tup_inserted":   {COUNTER, "Number of rows inserted by queries in cu database", nil, nil},
-		"tup_updated":    {COUNTER, "Number of rows updated by queries in cu database", nil, nil},
-		"tup_deleted":    {COUNTER, "Number of rows deleted by queries in cu database", nil, nil},
-		"conflicts":      {COUNTER, "Number of queries canceled due to conflicts with recovery in cu database. (Conflicts occur only on standby servers; see pg_stat_database_conflicts for details.)", nil, nil},
-		"temp_files":     {COUNTER, "Number of temporary files created by queries in cu database. All temporary files are counted, regardless of why the temporary file was created (e.g., sorting or hashing), and regardless of the log_temp_files setting.", nil, nil},
-		"temp_bytes":     {COUNTER, "Total amount of data written to temporary files by queries in cu database. All temporary files are counted, regardless of why the temporary file was created, and regardless of the log_temp_files setting.", nil, nil},
-		"deadlocks":      {COUNTER, "Number of deadlocks detected in cu database", nil, nil},
-		"blk_read_time":  {COUNTER, "Time spent reading data file blocks by backends in cu database, in milliseconds", nil, nil},
-		"blk_write_time": {COUNTER, "Time spent writing data file blocks by backends in cu database, in milliseconds", nil, nil},
+		"datname":        {LABEL, "Name of this database", nil, nil},
+		"numbackends":    {GAUGE, "Number of backends currently connected to this database. This is the only column in this view that returns a value reflecting current state; all other columns return the accumulated values since the last reset.", nil, nil},
+		"xact_commit":    {COUNTER, "Number of transactions in this database that have been committed", nil, nil},
+		"xact_rollback":  {COUNTER, "Number of transactions in this database that have been rolled back", nil, nil},
+		"blks_read":      {COUNTER, "Number of disk blocks read in this database", nil, nil},
+		"blks_hit":       {COUNTER, "Number of times disk blocks were found already in the buffer cache, so that a read was not necessary (this only includes hits in the PostgreSQL buffer cache, not the operating system's file system cache)", nil, nil},
+		"tup_returned":   {COUNTER, "Number of rows returned by queries in this database", nil, nil},
+		"tup_fetched":    {COUNTER, "Number of rows fetched by queries in this database", nil, nil},
+		"tup_inserted":   {COUNTER, "Number of rows inserted by queries in this database", nil, nil},
+		"tup_updated":    {COUNTER, "Number of rows updated by queries in this database", nil, nil},
+		"tup_deleted":    {COUNTER, "Number of rows deleted by queries in this database", nil, nil},
+		"conflicts":      {COUNTER, "Number of queries canceled due to conflicts with recovery in this database. (Conflicts occur only on standby servers; see pg_stat_database_conflicts for details.)", nil, nil},
+		"temp_files":     {COUNTER, "Number of temporary files created by queries in this database. All temporary files are counted, regardless of why the temporary file was created (e.g., sorting or hashing), and regardless of the log_temp_files setting.", nil, nil},
+		"temp_bytes":     {COUNTER, "Total amount of data written to temporary files by queries in this database. All temporary files are counted, regardless of why the temporary file was created, and regardless of the log_temp_files setting.", nil, nil},
+		"deadlocks":      {COUNTER, "Number of deadlocks detected in this database", nil, nil},
+		"blk_read_time":  {COUNTER, "Time spent reading data file blocks by backends in this database, in milliseconds", nil, nil},
+		"blk_write_time": {COUNTER, "Time spent writing data file blocks by backends in this database, in milliseconds", nil, nil},
 		"stats_reset":    {COUNTER, "Time at which these statistics were last reset", nil, nil},
 	},
 	"pg_stat_database_conflicts": {
 		"datid":            {LABEL, "OID of a database", nil, nil},
-		"datname":          {LABEL, "Name of cu database", nil, nil},
-		"confl_tablespace": {COUNTER, "Number of queries in cu database that have been canceled due to dropped tablespaces", nil, nil},
-		"confl_lock":       {COUNTER, "Number of queries in cu database that have been canceled due to lock timeouts", nil, nil},
-		"confl_snapshot":   {COUNTER, "Number of queries in cu database that have been canceled due to old snapshots", nil, nil},
-		"confl_bufferpin":  {COUNTER, "Number of queries in cu database that have been canceled due to pinned buffers", nil, nil},
-		"confl_deadlock":   {COUNTER, "Number of queries in cu database that have been canceled due to deadlocks", nil, nil},
+		"datname":          {LABEL, "Name of this database", nil, nil},
+		"confl_tablespace": {COUNTER, "Number of queries in this database that have been canceled due to dropped tablespaces", nil, nil},
+		"confl_lock":       {COUNTER, "Number of queries in this database that have been canceled due to lock timeouts", nil, nil},
+		"confl_snapshot":   {COUNTER, "Number of queries in this database that have been canceled due to old snapshots", nil, nil},
+		"confl_bufferpin":  {COUNTER, "Number of queries in this database that have been canceled due to pinned buffers", nil, nil},
+		"confl_deadlock":   {COUNTER, "Number of queries in this database that have been canceled due to deadlocks", nil, nil},
 	},
 	"pg_locks": {
-		"datname": {LABEL, "Name of cu database", nil, nil},
+		"datname": {LABEL, "Name of this database", nil, nil},
 		"mode":    {LABEL, "Type of Lock", nil, nil},
 		"count":   {GAUGE, "Number of locks", nil, nil},
 	},
@@ -211,26 +213,26 @@ var builtinMetricMaps = map[string]map[string]ColumnMapping{
 		"backend_start":            {DISCARD, "with time zone	Time when cu process was started, i.e., when the client connected to cu WAL sender", nil, nil},
 		"backend_xmin":             {DISCARD, "The current backend's xmin horizon.", nil, nil},
 		"state":                    {LABEL, "Current WAL sender state", nil, nil},
-		"sent_location":            {DISCARD, "Last transaction log position sent on cu connection", nil, semver.MustParseRange("<10.0.0")},
-		"write_location":           {DISCARD, "Last transaction log position written to disk by cu standby server", nil, semver.MustParseRange("<10.0.0")},
-		"flush_location":           {DISCARD, "Last transaction log position flushed to disk by cu standby server", nil, semver.MustParseRange("<10.0.0")},
-		"replay_location":          {DISCARD, "Last transaction log position replayed into the database on cu standby server", nil, semver.MustParseRange("<10.0.0")},
-		"sent_lsn":                 {DISCARD, "Last transaction log position sent on cu connection", nil, semver.MustParseRange(">=10.0.0")},
-		"write_lsn":                {DISCARD, "Last transaction log position written to disk by cu standby server", nil, semver.MustParseRange(">=10.0.0")},
-		"flush_lsn":                {DISCARD, "Last transaction log position flushed to disk by cu standby server", nil, semver.MustParseRange(">=10.0.0")},
-		"replay_lsn":               {DISCARD, "Last transaction log position replayed into the database on cu standby server", nil, semver.MustParseRange(">=10.0.0")},
-		"sync_priority":            {DISCARD, "Priority of cu standby server for being chosen as the synchronous standby", nil, nil},
-		"sync_state":               {DISCARD, "Synchronous state of cu standby server", nil, nil},
+		"sent_location":            {DISCARD, "Last transaction log position sent on this connection", nil, semver.MustParseRange("<10.0.0")},
+		"write_location":           {DISCARD, "Last transaction log position written to disk by this standby server", nil, semver.MustParseRange("<10.0.0")},
+		"flush_location":           {DISCARD, "Last transaction log position flushed to disk by this standby server", nil, semver.MustParseRange("<10.0.0")},
+		"replay_location":          {DISCARD, "Last transaction log position replayed into the database on this standby server", nil, semver.MustParseRange("<10.0.0")},
+		"sent_lsn":                 {DISCARD, "Last transaction log position sent on this connection", nil, semver.MustParseRange(">=10.0.0")},
+		"write_lsn":                {DISCARD, "Last transaction log position written to disk by this standby server", nil, semver.MustParseRange(">=10.0.0")},
+		"flush_lsn":                {DISCARD, "Last transaction log position flushed to disk by this standby server", nil, semver.MustParseRange(">=10.0.0")},
+		"replay_lsn":               {DISCARD, "Last transaction log position replayed into the database on this standby server", nil, semver.MustParseRange(">=10.0.0")},
+		"sync_priority":            {DISCARD, "Priority of this standby server for being chosen as the synchronous standby", nil, nil},
+		"sync_state":               {DISCARD, "Synchronous state of this standby server", nil, nil},
 		"slot_name":                {LABEL, "A unique, cluster-wide identifier for the replication slot", nil, semver.MustParseRange(">=9.2.0")},
-		"plugin":                   {DISCARD, "The base name of the shared object containing the output plugin cu logical slot is using, or null for physical slots", nil, nil},
+		"plugin":                   {DISCARD, "The base name of the shared object containing the output plugin this logical slot is using, or null for physical slots", nil, nil},
 		"slot_type":                {DISCARD, "The slot type - physical or logical", nil, nil},
-		"datoid":                   {DISCARD, "The OID of the database cu slot is associated with, or null. Only logical slots have an associated database", nil, nil},
-		"database":                 {DISCARD, "The name of the database cu slot is associated with, or null. Only logical slots have an associated database", nil, nil},
-		"active":                   {DISCARD, "True if cu slot is currently actively being used", nil, nil},
+		"datoid":                   {DISCARD, "The OID of the database this slot is associated with, or null. Only logical slots have an associated database", nil, nil},
+		"database":                 {DISCARD, "The name of the database this slot is associated with, or null. Only logical slots have an associated database", nil, nil},
+		"active":                   {DISCARD, "True if this slot is currently actively being used", nil, nil},
 		"active_pid":               {DISCARD, "Process ID of a WAL sender process", nil, nil},
-		"xmin":                     {DISCARD, "The oldest transaction that cu slot needs the database to retain. VACUUM cannot remove tuples deleted by any later transaction", nil, nil},
-		"catalog_xmin":             {DISCARD, "The oldest transaction affecting the system catalogs that cu slot needs the database to retain. VACUUM cannot remove catalog tuples deleted by any later transaction", nil, nil},
-		"restart_lsn":              {DISCARD, "The address (LSN) of oldest WAL which still might be required by the consumer of cu slot and thus won't be automatically removed during checkpoints", nil, nil},
+		"xmin":                     {DISCARD, "The oldest transaction that this slot needs the database to retain. VACUUM cannot remove tuples deleted by any later transaction", nil, nil},
+		"catalog_xmin":             {DISCARD, "The oldest transaction affecting the system catalogs that this slot needs the database to retain. VACUUM cannot remove catalog tuples deleted by any later transaction", nil, nil},
+		"restart_lsn":              {DISCARD, "The address (LSN) of oldest WAL which still might be required by the consumer of this slot and thus won't be automatically removed during checkpoints", nil, nil},
 		"pg_current_xlog_location": {DISCARD, "pg_current_xlog_location", nil, nil},
 		"pg_current_wal_lsn":       {DISCARD, "pg_current_xlog_location", nil, semver.MustParseRange(">=10.0.0")},
 		"pg_xlog_location_diff":    {GAUGE, "Lag in bytes between master and slave", nil, semver.MustParseRange(">=9.2.0 <10.0.0")},
@@ -241,9 +243,9 @@ var builtinMetricMaps = map[string]map[string]ColumnMapping{
 		"replay_lag":               {DISCARD, "Time elapsed between flushing recent WAL locally and receiving notification that this standby server has written, flushed and applied it. This can be used to gauge the delay that synchronous_commit level remote_apply incurred while committing if this server was configured as a synchronous standby.", nil, semver.MustParseRange(">=10.0.0")},
 	},
 	"pg_stat_activity": {
-		"datname":         {LABEL, "Name of cu database", nil, nil},
+		"datname":         {LABEL, "Name of this database", nil, nil},
 		"state":           {LABEL, "connection state", nil, semver.MustParseRange(">=9.2.0")},
-		"count":           {GAUGE, "number of connections in cu state", nil, nil},
+		"count":           {GAUGE, "number of connections in this state", nil, nil},
 		"max_tx_duration": {GAUGE, "max duration in seconds any active transaction has been running", nil, nil},
 	},
 }
@@ -258,7 +260,7 @@ type OverrideQuery struct {
 }
 
 // Overriding queries for namespaces above.
-// TODO: validate cu is a closed set in tests, and there are no overlaps
+// TODO: validate this is a closed set in tests, and there are no overlaps
 var queryOverrides = map[string][]OverrideQuery{
 	"pg_locks": {
 		{
@@ -379,16 +381,11 @@ func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]
 // queries.
 // TODO: test code for all cu.
 // TODO: use proper struct type system
-// TODO: the YAML cu supports is "non-standard" - we should move away from it.
-func addQueries(queriesPath string, pgVersion semver.Version, exporterMap map[string]MetricMapNamespace, queryOverrideMap map[string]string) error {
+// TODO: the YAML this supports is "non-standard" - we should move away from it.
+func addQueries(content []byte, pgVersion semver.Version, exporterMap map[string]MetricMapNamespace, queryOverrideMap map[string]string) error {
 	var extra map[string]interface{}
 
-	content, err := ioutil.ReadFile(queriesPath)
-	if err != nil {
-		return err
-	}
-
-	err = yaml.Unmarshal(content, &extra)
+	err := yaml.Unmarshal(content, &extra)
 	if err != nil {
 		return err
 	}
@@ -438,7 +435,7 @@ func addQueries(queriesPath string, pgVersion semver.Version, exporterMap map[st
 
 						// TODO: we should support cu
 						columnMapping.mapping = nil
-						// Should we support cu for users?
+						// Should we support this for users?
 						columnMapping.supportedVersions = nil
 
 						metricMap[name] = columnMapping
@@ -673,10 +670,17 @@ func dbToString(t interface{}) (string, bool) {
 
 // Exporter collects Postgres metrics. It implements prometheus.Collector.
 type Exporter struct {
-	dsn             string
-	userQueriesPath string
-	duration, error prometheus.Gauge
-	totalScrapes    prometheus.Counter
+	// Holds a reference to the build in column mappings. Currently this is for testing purposes
+	// only, since it just points to the global.
+	builtinMetricMaps map[string]map[string]ColumnMapping
+
+	dsn              string
+	userQueriesPath  string
+	duration         prometheus.Gauge
+	error            prometheus.Gauge
+	psqlUp           prometheus.Gauge
+	userQueriesError *prometheus.GaugeVec
+	totalScrapes     prometheus.Counter
 
 	// dbDsn is the connection string used to establish the dbConnection
 	dbDsn string
@@ -697,8 +701,9 @@ type Exporter struct {
 func NewExporter(dsn string, userQueriesPath string) *Exporter {
 	metricNamespace := prefixMetric(namespace)
 	return &Exporter{
-		dsn:             dsn,
-		userQueriesPath: userQueriesPath,
+		builtinMetricMaps: builtinMetricMaps,
+		dsn:               dsn,
+		userQueriesPath:   userQueriesPath,
 		duration: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: metricNamespace,
 			Subsystem: exporter,
@@ -717,6 +722,17 @@ func NewExporter(dsn string, userQueriesPath string) *Exporter {
 			Name:      "last_scrape_error",
 			Help:      "Whether the last scrape of metrics from PostgreSQL resulted in an error (1 for error, 0 for success).",
 		}),
+		psqlUp: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "up",
+			Help:      "Whether the last scrape of metrics from PostgreSQL was able to connect to the server (1 for yes, 0 for no).",
+		}),
+		userQueriesError: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: exporter,
+			Name:      "user_queries_load_error",
+			Help:      "Whether the user queries file was loaded and parsed successfully (1 for error, 0 for success).",
+		}, []string{"filename", "hashsum"}),
 		metricMap:      nil,
 		queryOverrides: nil,
 	}
@@ -728,10 +744,10 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	// from Postgres. So we use the poor man's describe method: Run a collect
 	// and send the descriptors of all the collected metrics. The problem
 	// here is that we need to connect to the Postgres DB. If it is currently
-	// unavailable, the descriptors will be incomplete. Since cu is a
+	// unavailable, the descriptors will be incomplete. Since this is a
 	// stand-alone exporter and not used as a library within other code
 	// implementing additional metrics, the worst that can happen is that we
-	// don't detect inconsistent metrics created by cu exporter
+	// don't detect inconsistent metrics created by this exporter
 	// itself. Also, a change in the monitored Postgres instance may change the
 	// exported metrics during the runtime of the exporter.
 
@@ -757,6 +773,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- e.duration
 	ch <- e.totalScrapes
 	ch <- e.error
+	ch <- e.psqlUp
+	e.userQueriesError.Collect(ch)
 }
 
 func newDesc(subsystem, name, help string) *prometheus.Desc {
@@ -769,10 +787,10 @@ func newDesc(subsystem, name, help string) *prometheus.Desc {
 // Query within a namespace mapping and emit metrics. Returns fatal errors if
 // the scrape fails, and a slice of errors if they were non-fatal.
 func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace string, mapping MetricMapNamespace, queryOverrides map[string]string) ([]error, error) {
-	// Check for a query override for cu namespace
+	// Check for a query override for this namespace
 	query, found := queryOverrides[namespace]
 
-	// Was cu query disabled (i.e. nothing sensible can be queried on cu
+	// Was this query disabled (i.e. nothing sensible can be queried on cu
 	// version of PostgreSQL?
 	if query == "" && found {
 		// Return success (no pertinent data)
@@ -822,7 +840,7 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 			return []error{}, errors.New(fmt.Sprintln("Error retrieving rows:", namespace, err))
 		}
 
-		// Get the label values for cu row
+		// Get the label values for this row
 		var labels = make([]string, len(mapping.labels))
 		for idx, columnName := range mapping.labels {
 			labels[idx], _ = dbToString(columnData[columnIdx[columnName]])
@@ -833,7 +851,7 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 		// converted to float64s. NULLs are allowed and treated as NaN.
 		for idx, columnName := range columnNames {
 			if metricMapping, ok := mapping.columnMappings[columnName]; ok {
-				// Is cu a metricy metric?
+				// Is this a metricy metric?
 				if metricMapping.discard {
 					continue
 				}
@@ -848,7 +866,8 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 				ch <- prometheus.MustNewConstMetric(metricMapping.desc, metricMapping.vtype, value, labels...)
 			} else {
 				// Unknown metric. Report as untyped if scan to float64 works, else note an error too.
-				desc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), fmt.Sprintf("Unknown metric from %s", namespace), nil, nil)
+				metricLabel := fmt.Sprintf("%s_%s", namespace, columnName)
+				desc := prometheus.NewDesc(metricLabel, fmt.Sprintf("Unknown metric from %s", namespace), mapping.labels, nil)
 
 				// Its not an error to fail here, since the values are
 				// unexpected anyway.
@@ -911,13 +930,29 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 		log.Infoln("Semantic Version Changed:", e.lastMapVersion.String(), "->", semanticVersion.String())
 		e.mappingMtx.Lock()
 
-		e.metricMap = makeDescMap(semanticVersion, builtinMetricMaps)
+		e.metricMap = makeDescMap(semanticVersion, e.builtinMetricMaps)
 		e.queryOverrides = makeQueryOverrideMap(semanticVersion, queryOverrides)
 		e.lastMapVersion = semanticVersion
 
 		if e.userQueriesPath != "" {
-			if err := addQueries(e.userQueriesPath, semanticVersion, e.metricMap, e.queryOverrides); err != nil {
+			// Clear the metric while a reload is happening
+			e.userQueriesError.Reset()
+
+			// Calculate the hashsum of the useQueries
+			userQueriesData, err := ioutil.ReadFile(e.userQueriesPath)
+			if err != nil {
 				log.Errorln("Failed to reload user queries:", e.userQueriesPath, err)
+				e.userQueriesError.WithLabelValues(e.userQueriesPath, "").Set(1)
+			} else {
+				hashsumStr := fmt.Sprintf("%x", sha256.Sum256(userQueriesData))
+
+				if err := addQueries(userQueriesData, semanticVersion, e.metricMap, e.queryOverrides); err != nil {
+					log.Errorln("Failed to reload user queries:", e.userQueriesPath, err)
+					e.userQueriesError.WithLabelValues(e.userQueriesPath, hashsumStr).Set(1)
+				} else {
+					// Mark user queries as successfully loaded
+					e.userQueriesError.WithLabelValues(e.userQueriesPath, hashsumStr).Set(0)
+				}
 			}
 		}
 
@@ -945,12 +980,16 @@ func (e *Exporter) getDB(conn string) (*sql.DB, error) {
 	if e.dbConnection == nil {
 		d, err := sql.Open("postgres", conn)
 		if err != nil {
+			e.psqlUp.Set(0)
 			return nil, err
 		}
 		err = d.Ping()
 		if err != nil {
+			e.psqlUp.Set(0)
 			return nil, err
 		}
+		e.psqlUp.Set(1)
+
 		d.SetMaxOpenConns(1)
 		d.SetMaxIdleConns(1)
 		e.dbConnection = d
@@ -1049,7 +1088,7 @@ func main() {
 	kingpin.Parse()
 
 	// landingPage contains the HTML served at '/'.
-	// TODO: Make cu nicer and more informative.
+	// TODO: Make this nicer and more informative.
 	var landingPage = []byte(`<html>
 	<head><title>Postgres exporter</title></head>
 	<body>
