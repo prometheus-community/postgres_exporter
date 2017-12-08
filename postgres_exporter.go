@@ -34,6 +34,7 @@ var (
 	listenAddress = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").String()
 	metricPath    = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 	queriesPath   = kingpin.Flag("extend.query-path", "Path to custom queries to run.").Default("").String()
+	metricPrefix  = kingpin.Flag("extend.metric-prefix", "Prefix to be added before metric names.").Default("").String()
 	onlyDumpMaps  = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
 )
 
@@ -61,6 +62,14 @@ const (
 	MAPPEDMETRIC ColumnUsage = iota // Use cu column with the supplied mapping of text values
 	DURATION     ColumnUsage = iota // This column should be interpreted as a text duration (and converted to milliseconds)
 )
+
+func prefixMetric(s string) string {
+	prefix := *metricPrefix
+	if prefix != "" {
+		return prefix + s
+	}
+	return s
+}
 
 // UnmarshalYAML implements the yaml.Unmarshaller interface.
 func (cu *ColumnUsage) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -191,15 +200,15 @@ var builtinMetricMaps = map[string]map[string]ColumnMapping{
 		"count":   {GAUGE, "Number of locks", nil, nil},
 	},
 	"pg_stat_replication": {
-		"procpid":          {DISCARD, "Process ID of a WAL sender process", nil, semver.MustParseRange("<9.2.0")},
-		"pid":              {DISCARD, "Process ID of a WAL sender process", nil, semver.MustParseRange(">=9.2.0")},
-		"usesysid":         {DISCARD, "OID of the user logged into cu WAL sender process", nil, nil},
-		"usename":          {DISCARD, "Name of the user logged into cu WAL sender process", nil, nil},
-		"application_name": {DISCARD, "Name of the application that is connected to cu WAL sender", nil, nil},
-		"client_addr":      {LABEL, "IP address of the client connected to cu WAL sender. If cu field is null, it indicates that the client is connected via a Unix socket on the server machine.", nil, nil},
-		"client_hostname":  {DISCARD, "Host name of the connected client, as reported by a reverse DNS lookup of client_addr. This field will only be non-null for IP connections, and only when log_hostname is enabled.", nil, nil},
-		"client_port":      {DISCARD, "TCP port number that the client is using for communication with cu WAL sender, or -1 if a Unix socket is used", nil, nil},
-		"backend_start": {DISCARD, "with time zone	Time when cu process was started, i.e., when the client connected to cu WAL sender", nil, nil},
+		"procpid":                  {DISCARD, "Process ID of a WAL sender process", nil, semver.MustParseRange("<9.2.0")},
+		"pid":                      {DISCARD, "Process ID of a WAL sender process", nil, semver.MustParseRange(">=9.2.0")},
+		"usesysid":                 {DISCARD, "OID of the user logged into cu WAL sender process", nil, nil},
+		"usename":                  {DISCARD, "Name of the user logged into cu WAL sender process", nil, nil},
+		"application_name":         {DISCARD, "Name of the application that is connected to cu WAL sender", nil, nil},
+		"client_addr":              {LABEL, "IP address of the client connected to cu WAL sender. If cu field is null, it indicates that the client is connected via a Unix socket on the server machine.", nil, nil},
+		"client_hostname":          {DISCARD, "Host name of the connected client, as reported by a reverse DNS lookup of client_addr. This field will only be non-null for IP connections, and only when log_hostname is enabled.", nil, nil},
+		"client_port":              {DISCARD, "TCP port number that the client is using for communication with cu WAL sender, or -1 if a Unix socket is used", nil, nil},
+		"backend_start":            {DISCARD, "with time zone	Time when cu process was started, i.e., when the client connected to cu WAL sender", nil, nil},
 		"backend_xmin":             {DISCARD, "The current backend's xmin horizon.", nil, nil},
 		"state":                    {LABEL, "Current WAL sender state", nil, nil},
 		"sent_location":            {DISCARD, "Last transaction log position sent on cu connection", nil, semver.MustParseRange("<10.0.0")},
@@ -473,6 +482,7 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 
 	for namespace, mappings := range metricMaps {
 		thisMap := make(map[string]MetricMap)
+		metricPrefix := prefixMetric(namespace)
 
 		// Get the constant labels
 		var constLabels []string
@@ -512,7 +522,7 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 			case COUNTER:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.CounterValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, constLabels, nil),
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", metricPrefix, columnName), columnMapping.description, constLabels, nil),
 					conversion: func(in interface{}) (float64, bool) {
 						return dbToFloat64(in)
 					},
@@ -520,7 +530,7 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 			case GAUGE:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.GaugeValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, constLabels, nil),
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", metricPrefix, columnName), columnMapping.description, constLabels, nil),
 					conversion: func(in interface{}) (float64, bool) {
 						return dbToFloat64(in)
 					},
@@ -528,7 +538,7 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 			case MAPPEDMETRIC:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.GaugeValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, constLabels, nil),
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", metricPrefix, columnName), columnMapping.description, constLabels, nil),
 					conversion: func(in interface{}) (float64, bool) {
 						text, ok := in.(string)
 						if !ok {
@@ -545,7 +555,7 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 			case DURATION:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.GaugeValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s_milliseconds", namespace, columnName), columnMapping.description, constLabels, nil),
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s_milliseconds", metricPrefix, columnName), columnMapping.description, constLabels, nil),
 					conversion: func(in interface{}) (float64, bool) {
 						var durationString string
 						switch t := in.(type) {
@@ -685,23 +695,24 @@ type Exporter struct {
 
 // NewExporter returns a new PostgreSQL exporter for the provided DSN.
 func NewExporter(dsn string, userQueriesPath string) *Exporter {
+	metricNamespace := prefixMetric(namespace)
 	return &Exporter{
 		dsn:             dsn,
 		userQueriesPath: userQueriesPath,
 		duration: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: namespace,
+			Namespace: metricNamespace,
 			Subsystem: exporter,
 			Name:      "last_scrape_duration_seconds",
 			Help:      "Duration of the last scrape of metrics from PostgresSQL.",
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
-			Namespace: namespace,
+			Namespace: metricNamespace,
 			Subsystem: exporter,
 			Name:      "scrapes_total",
 			Help:      "Total number of times PostgresSQL was scraped for metrics.",
 		}),
 		error: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: namespace,
+			Namespace: metricNamespace,
 			Subsystem: exporter,
 			Name:      "last_scrape_error",
 			Help:      "Whether the last scrape of metrics from PostgreSQL resulted in an error (1 for error, 0 for success).",
@@ -750,7 +761,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 func newDesc(subsystem, name, help string) *prometheus.Desc {
 	return prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, subsystem, name),
+		prometheus.BuildFQName(prefixMetric(namespace), subsystem, name),
 		help, nil, nil,
 	)
 }
@@ -914,7 +925,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 	}
 
 	// Output the version as a special metric
-	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
+	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", prefixMetric(namespace), staticLabelName),
 		"Version string as reported by postgres", []string{"version", "short_version"}, nil)
 
 	ch <- prometheus.MustNewConstMetric(versionDesc,
