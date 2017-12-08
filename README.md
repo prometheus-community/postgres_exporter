@@ -42,6 +42,9 @@ Package vendoring is handled with [`govendor`](https://github.com/kardianos/gove
 * `web.telemetry-path`
   Path under which to expose metrics.
 
+* `extend.metric-prefix`
+  Prefix to be added before each metric's name. Empty string by default.
+
 ### Environment Variables
 
 The following environment variables configure the exporter:
