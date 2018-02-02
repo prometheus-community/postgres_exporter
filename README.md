@@ -19,16 +19,18 @@ docker run --net=host -e DATA_SOURCE_NAME="postgresql://postgres:password@localh
 ## Building and running
 The default make file behavior is to build the binary:
 ```
+go get github.com/wrouesnel/postgres_exporter
+cd ${GOPATH-$HOME/go}/src/github.com/wrouesnel/postgres_exporter
 make
 export DATA_SOURCE_NAME="postgresql://login:password@hostname:port/dbname"
 ./postgres_exporter <flags>
 ```
 
-To build the dockerfile, run `make docker`. 
+To build the dockerfile, run `make docker`.
 
-This will build the docker image as `wrouesnel/postgres_exporter:latest`. This 
-is a minimal docker image containing *just* postgres_exporter. By default no SSL 
-certificates are included, if you need to use SSL you should either bind-mount 
+This will build the docker image as `wrouesnel/postgres_exporter:latest`. This
+is a minimal docker image containing *just* postgres_exporter. By default no SSL
+certificates are included, if you need to use SSL you should either bind-mount
 `/etc/ssl/certs/ca-certificates.crt` or derive a new image containing them.
 
 ### Vendoring
@@ -36,7 +38,7 @@ Package vendoring is handled with [`govendor`](https://github.com/kardianos/gove
 
 ### Flags
 
-* `web.listen-address` 
+* `web.listen-address`
   Address to listen on for web interface and telemetry.
 
 * `web.telemetry-path`
@@ -112,7 +114,7 @@ CREATE SCHEMA postgres_exporter AUTHORIZATION postgres_exporter;
 CREATE VIEW postgres_exporter.pg_stat_activity
 AS
   SELECT * from pg_catalog.pg_stat_activity;
-  
+
 GRANT SELECT ON postgres_exporter.pg_stat_activity TO postgres_exporter;
 
 CREATE VIEW postgres_exporter.pg_stat_replication AS
