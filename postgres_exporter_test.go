@@ -145,6 +145,34 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDnsAndSecrets(c *C) {
 	}
 }
 
+func (s *FunctionalSuite) TestPostgresVersionParsing(c *C) {
+	type TestCase struct {
+		input    string
+		expected string
+	}
+
+	cases := []TestCase{
+		{
+			input:    "PostgreSQL 10.1 on x86_64-pc-linux-gnu, compiled by gcc (Debian 6.3.0-18) 6.3.0 20170516, 64-bit",
+			expected: "10.1.0",
+		},
+		{
+			input:    "PostgreSQL 9.5.4, compiled by Visual C++ build 1800, 64-bit",
+			expected: "9.5.4",
+		},
+		{
+			input:    "EnterpriseDB 9.6.5.10 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 4.4.7 20120313 (Red Hat 4.4.7-16), 64-bit",
+			expected: "9.6.5",
+		},
+	}
+
+	for _, cs := range cases {
+		ver, err := parseVersion(cs.input)
+		c.Assert(err, IsNil)
+		c.Assert(ver.String(), Equals, cs.expected)
+	}
+}
+
 func UnsetEnvironment(c *C, d string) {
 	err := os.Unsetenv(d)
 	c.Assert(err, IsNil)
