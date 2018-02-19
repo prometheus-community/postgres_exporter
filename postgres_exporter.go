@@ -1108,6 +1108,7 @@ func main() {
 
 	http.Handle(*metricPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+    	w.Header().Set("Content-Type", "Content-Type:text/plain; charset=UTF-8") // nolint: errcheck
 		w.Write(landingPage) // nolint: errcheck
 	})
 
