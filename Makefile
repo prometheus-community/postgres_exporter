@@ -25,17 +25,19 @@ endif
 
 # By default this list is filtered down to some common platforms.
 platforms := $(subst /,-,$(shell go tool dist list | grep -e linux -e windows -e darwin | grep -e 386 -e amd64))
-PLATFORM_BINS := $(patsubst %,$(BINDIR)/$(BINARY)_$(VERSION_SHORT)_%/$(BINARY),$(platforms))
+PLATFORM_BINS_TMP := $(patsubst %,$(BINDIR)/$(BINARY)_$(VERSION_SHORT)_%/$(BINARY),$(platforms))
+PLATFORM_BINS := $(patsubst $(BINDIR)/$(BINARY)_$(VERSION_SHORT)_windows-%/$(BINARY),$(BINDIR)/$(BINARY)_$(VERSION_SHORT)_windows-%/$(BINARY).exe,$(PLATFORM_BINS_TMP))
 PLATFORM_DIRS := $(patsubst %,$(BINDIR)/$(BINARY)_$(VERSION_SHORT)_%,$(platforms))
 PLATFORM_TARS := $(patsubst %,$(RELEASEDIR)/$(BINARY)_$(VERSION_SHORT)_%.tar.gz,$(platforms))
 
 # These are evaluated on use, and so will have the correct values in the build
 # rule (https://vic.demuzere.be/articles/golang-makefile-crosscompile/)
-PLATFORMS_TEMP = $(subst -, ,$(patsubst $(BINDIR)/$(BINARY)_$(VERSION_SHORT)_%/$(BINARY),%,$@))
+PLATFORMS_TEMP = $(subst /, ,$(subst -, ,$(patsubst $(BINDIR)/$(BINARY)_$(VERSION_SHORT)_%,%,$@)))
 GOOS = $(word 1, $(PLATFORMS_TEMP))
 GOARCH = $(word 2, $(PLATFORMS_TEMP))
 
-CURRENT_PLATFORM := $(BINDIR)/$(BINARY)_$(VERSION_SHORT)_$(shell go env GOOS)-$(shell go env GOARCH)/$(BINARY)
+CURRENT_PLATFORM_TMP := $(BINDIR)/$(BINARY)_$(VERSION_SHORT)_$(shell go env GOOS)-$(shell go env GOARCH)/$(BINARY)
+CURRENT_PLATFORM := $(patsubst $(BINDIR)/$(BINARY)_$(VERSION_SHORT)_windows-%/$(BINARY),$(BINDIR)/$(BINARY)_$(VERSION_SHORT)_windows-%/$(BINARY).exe,$(CURRENT_PLATFORM_TMP))
 
 CONCURRENT_LINTERS ?=
 ifeq ($(CONCURRENT_LINTERS),)
