@@ -6,12 +6,18 @@ package main // import "mvdan.cc/interfacer"
 import (
 	"flag"
 	"fmt"
+	"go/build"
 	"os"
+
+	"golang.org/x/tools/go/buildutil"
 
 	"mvdan.cc/interfacer/check"
 )
 
-var _ = flag.Bool("v", false, "print the names of packages as they are checked")
+func init() {
+	flag.Var((*buildutil.TagsFlag)(&build.Default.BuildTags), "tags",
+		buildutil.TagsFlagDoc)
+}
 
 func main() {
 	flag.Parse()
