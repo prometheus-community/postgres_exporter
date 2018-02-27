@@ -102,6 +102,12 @@ rich self-documenting metrics for the exporter.
 The -extend.query-path command-line argument specifies a YAML file containing additional queries to run.
 Some examples are provided in [queries.yaml](queries.yaml).
 
+### Working with non-officially-supported postgres versions
+
+If you want to use this exporter to monitor a postgres installation that is not officially supported (e.g. 8.2.15) or a variant of postgres (e.g. Greenplum). 
+You may try to disable all internal metrics using the  -disable-default-metrics command-line argument, then supply your own set of metrics definitions in 
+an external config file.
+
 ### Running as non-superuser
 
 To be able to collect metrics from pg_stat_activity and pg_stat_replication as non-superuser you have to create views as a superuser, and assign permissions separately to those.  In PostgreSQL, views run with the permissions of the user that created them so they can act as security barriers.

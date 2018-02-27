@@ -33,10 +33,11 @@ import (
 var Version = "0.0.1"
 
 var (
-	listenAddress = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").OverrideDefaultFromEnvar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
-	metricPath    = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").OverrideDefaultFromEnvar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
-	queriesPath   = kingpin.Flag("extend.query-path", "Path to custom queries to run.").Default("").OverrideDefaultFromEnvar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
-	onlyDumpMaps  = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
+	listenAddress         = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").OverrideDefaultFromEnvar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
+	metricPath            = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").OverrideDefaultFromEnvar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
+	disableDefaultMetrics = kingpin.Flag("disable-default-metrics", "Do not include default metrics.").Default("false").OverrideDefaultFromEnvar("PG_EXPORTER_DISABLE_DEFAULT_METRICS").Bool()
+	queriesPath           = kingpin.Flag("extend.query-path", "Path to custom queries to run.").Default("").OverrideDefaultFromEnvar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
+	onlyDumpMaps          = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
 )
 
 // Metric name parts.
@@ -668,13 +669,14 @@ type Exporter struct {
 	// only, since it just points to the global.
 	builtinMetricMaps map[string]map[string]ColumnMapping
 
-	dsn              string
-	userQueriesPath  string
-	duration         prometheus.Gauge
-	error            prometheus.Gauge
-	psqlUp           prometheus.Gauge
-	userQueriesError *prometheus.GaugeVec
-	totalScrapes     prometheus.Counter
+	dsn                   string
+	disableDefaultMetrics bool
+	userQueriesPath       string
+	duration              prometheus.Gauge
+	error                 prometheus.Gauge
+	psqlUp                prometheus.Gauge
+	userQueriesError      *prometheus.GaugeVec
+	totalScrapes          prometheus.Counter
 
 	// dbDsn is the connection string used to establish the dbConnection
 	dbDsn string
@@ -692,11 +694,12 @@ type Exporter struct {
 }
 
 // NewExporter returns a new PostgreSQL exporter for the provided DSN.
-func NewExporter(dsn string, userQueriesPath string) *Exporter {
+func NewExporter(dsn string, disableDefaultMetrics bool, userQueriesPath string) *Exporter {
 	return &Exporter{
 		builtinMetricMaps: builtinMetricMaps,
 		dsn:               dsn,
-		userQueriesPath:   userQueriesPath,
+		disableDefaultMetrics: disableDefaultMetrics,
+		userQueriesPath:       userQueriesPath,
 		duration: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: exporter,
@@ -913,7 +916,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 	if err != nil {
 		return fmt.Errorf("Error parsing version string: %v", err)
 	}
-	if semanticVersion.LT(lowestSupportedVersion) {
+	if !e.disableDefaultMetrics && semanticVersion.LT(lowestSupportedVersion) {
 		log.Warnln("PostgreSQL version is lower then our lowest supported version! Got", semanticVersion.String(), "minimum supported is", lowestSupportedVersion.String())
 	}
 
@@ -922,8 +925,18 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 		log.Infoln("Semantic Version Changed:", e.lastMapVersion.String(), "->", semanticVersion.String())
 		e.mappingMtx.Lock()
 
-		e.metricMap = makeDescMap(semanticVersion, e.builtinMetricMaps)
-		e.queryOverrides = makeQueryOverrideMap(semanticVersion, queryOverrides)
+		if e.disableDefaultMetrics {
+			e.metricMap = make(map[string]MetricMapNamespace)
+		} else {
+			e.metricMap = makeDescMap(semanticVersion, e.builtinMetricMaps)
+		}
+
+		if e.disableDefaultMetrics {
+			e.queryOverrides = make(map[string]string)
+		} else {
+			e.queryOverrides = makeQueryOverrideMap(semanticVersion, queryOverrides)
+		}
+
 		e.lastMapVersion = semanticVersion
 
 		if e.userQueriesPath != "" {
@@ -1106,7 +1119,7 @@ func main() {
 		log.Fatal("couldn't find environment variables describing the datasource to use")
 	}
 
-	exporter := NewExporter(dsn, *queriesPath)
+	exporter := NewExporter(dsn, *disableDefaultMetrics, *queriesPath)
 	defer func() {
 		if exporter.dbConnection != nil {
 			exporter.dbConnection.Close() // nolint: errcheck

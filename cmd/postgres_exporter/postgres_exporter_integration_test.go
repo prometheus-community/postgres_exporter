@@ -31,7 +31,7 @@ func (s *IntegrationSuite) SetUpSuite(c *C) {
 	dsn := os.Getenv("DATA_SOURCE_NAME")
 	c.Assert(dsn, Not(Equals), "")
 
-	exporter := NewExporter(dsn, "")
+	exporter := NewExporter(dsn, false, "")
 	c.Assert(exporter, NotNil)
 	// Assign the exporter to the suite
 	s.e = exporter
@@ -86,12 +86,12 @@ func (s *IntegrationSuite) TestInvalidDsnDoesntCrash(c *C) {
 	}()
 
 	// Send a bad DSN
-	exporter := NewExporter("invalid dsn", *queriesPath)
+	exporter := NewExporter("invalid dsn", false, *queriesPath)
 	c.Assert(exporter, NotNil)
 	exporter.scrape(ch)
 
 	// Send a DSN to a non-listening port.
-	exporter = NewExporter("postgresql://nothing:nothing@127.0.0.1:1/nothing", *queriesPath)
+	exporter = NewExporter("postgresql://nothing:nothing@127.0.0.1:1/nothing", false, *queriesPath)
 	c.Assert(exporter, NotNil)
 	exporter.scrape(ch)
 }
@@ -109,7 +109,7 @@ func (s *IntegrationSuite) TestUnknownMetricParsingDoesntCrash(c *C) {
 	dsn := os.Getenv("DATA_SOURCE_NAME")
 	c.Assert(dsn, Not(Equals), "")
 
-	exporter := NewExporter(dsn, "")
+	exporter := NewExporter(dsn, false, "")
 	c.Assert(exporter, NotNil)
 
 	// Convert the default maps into a list of empty maps.

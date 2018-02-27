@@ -5,6 +5,7 @@
 *.test
 *-stamp
 /.idea
+/.vscode
 *.iml
 /cover.out
 /cover.*.out
