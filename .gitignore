@@ -6,6 +6,7 @@ postgres_exporter_integration_test
 *-stamp
 .idea
 *.iml
+.vscode
 cover.out
 cover.*.out
 .coverage
