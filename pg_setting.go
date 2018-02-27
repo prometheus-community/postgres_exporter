@@ -94,7 +94,7 @@ func (s *pgSetting) normaliseUnit() (val float64, unit string, err error) {
 		return
 	case "ms", "s", "min", "h", "d":
 		unit = "seconds"
-	case "kB", "MB", "GB", "TB", "8kB", "16kB", "16MB":
+	case "kB", "MB", "GB", "TB", "8kB", "16kB", "32kB", "16MB":
 		unit = "bytes"
 	default:
 		err = fmt.Errorf("Unknown unit for runtime variable: %q", s.unit)
@@ -127,6 +127,8 @@ func (s *pgSetting) normaliseUnit() (val float64, unit string, err error) {
 		val *= math.Pow(2, 13)
 	case "16kB":
 		val *= math.Pow(2, 14)
+	case "32kB":
+		val *= math.Pow(2, 15)
 	case "16MB":
 		val *= math.Pow(2, 24)
 	}
