@@ -969,15 +969,12 @@ func (e *Exporter) getDB(conn string) (*sql.DB, error) {
 	if e.dbConnection == nil {
 		d, err := sql.Open("postgres", conn)
 		if err != nil {
-			e.psqlUp.Set(0)
 			return nil, err
 		}
 		err = d.Ping()
 		if err != nil {
-			e.psqlUp.Set(0)
 			return nil, err
 		}
-		e.psqlUp.Set(1)
 
 		d.SetMaxOpenConns(1)
 		d.SetMaxIdleConns(1)
@@ -1011,6 +1008,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 		}
 		log.Infof("Error opening connection to database (%s): %s", loggableDsn, err)
 		e.error.Set(1)
+		e.psqlUp.Set(0) // Force "up" to 0 here.
 		return
 	}
 
