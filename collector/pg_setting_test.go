@@ -1,6 +1,6 @@
 // +build !integration
 
-package main
+package collector
 
 import (
 	dto "github.com/prometheus/client_model/go"
@@ -11,6 +11,7 @@ type PgSettingSuite struct{}
 
 var _ = Suite(&PgSettingSuite{})
 
+// nolint: lll
 var fixtures = []fixture{
 	{
 		p: pgSetting{

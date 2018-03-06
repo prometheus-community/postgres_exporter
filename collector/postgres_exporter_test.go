@@ -1,13 +1,15 @@
 // +build !integration
 
-package main
+package collector
 
 import (
-	. "gopkg.in/check.v1"
 	"testing"
 
-	"github.com/blang/semver"
+	. "gopkg.in/check.v1"
+
 	"os"
+
+	"github.com/blang/semver"
 )
 
 // Hook up gocheck into the "go test" runner.
@@ -45,6 +47,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 		)
 	}
 
+	// nolint: dupl
 	{
 		// Update the map so the discard metric should be eliminated
 		discardableMetric := testMetricMap["test_namespace"]["metric_which_discards"]
@@ -65,6 +68,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 		)
 	}
 
+	// nolint: dupl
 	{
 		// Update the map so the discard metric should be kept but has a version
 		discardableMetric := testMetricMap["test_namespace"]["metric_which_discards"]
@@ -89,11 +93,11 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 // test read username and password from file
 func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
 
-	err := os.Setenv("DATA_SOURCE_USER_FILE", "./tests/username_file")
+	err := os.Setenv("DATA_SOURCE_USER_FILE", "../cmd/postgres_exporter/tests/username_file")
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_USER_FILE")
 
-	err = os.Setenv("DATA_SOURCE_PASS_FILE", "./tests/userpass_file")
+	err = os.Setenv("DATA_SOURCE_PASS_FILE", "../cmd/postgres_exporter/tests/userpass_file")
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_PASS_FILE")
 
@@ -103,7 +107,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
 
 	var expected = "postgresql://custom_username:custom_password@localhost:5432/?sslmode=disable"
 
-	dsn := getDataSource()
+	dsn := GetDataSource()
 	if dsn != expected {
 		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, expected)
 	}
@@ -117,7 +121,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDns(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_NAME")
 
-	dsn := getDataSource()
+	dsn := GetDataSource()
 	if dsn != envDsn {
 		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, envDsn)
 	}
@@ -131,7 +135,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDnsAndSecrets(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_NAME")
 
-	err = os.Setenv("DATA_SOURCE_USER_FILE", "./tests/username_file")
+	err = os.Setenv("DATA_SOURCE_USER_FILE", "../tests/username_file")
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_USER_FILE")
 
@@ -139,7 +143,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDnsAndSecrets(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_PASS")
 
-	dsn := getDataSource()
+	dsn := GetDataSource()
 	if dsn != envDsn {
 		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, envDsn)
 	}
@@ -161,7 +165,7 @@ func (s *FunctionalSuite) TestPostgresVersionParsing(c *C) {
 			expected: "9.5.4",
 		},
 		{
-			input:    "EnterpriseDB 9.6.5.10 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 4.4.7 20120313 (Red Hat 4.4.7-16), 64-bit",
+			input:    "EnterpriseDB 9.6.5.10 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 4.4.7 20120313 (Red Hat 4.4.7-16), 64-bit", // nolint: lll
 			expected: "9.6.5",
 		},
 	}
