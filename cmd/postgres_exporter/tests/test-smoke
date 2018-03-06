@@ -108,6 +108,13 @@ smoketest_postgres() {
         exit 1
     fi
 
+    # HACK test: check pg_up is a 1 - TODO: expand integration tests to include metric consumption
+    if ! grep 'pg_up.* 1' $METRICS_DIR/.metrics.single.$version.prom ; then
+        echo "pg_up metric was not 1 despite exporte and database being up"
+        kill $exporter_pid
+        exit 1
+    fi
+
     kill $exporter_pid
     docker kill $CONTAINER_NAME
     docker rm -v $CONTAINER_NAME

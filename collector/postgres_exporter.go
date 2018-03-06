@@ -959,21 +959,23 @@ func (e *Exporter) getDB(conn string) (*sql.DB, error) {
 	if e.dbConnection == nil {
 		d, err := sql.Open("postgres", conn)
 		if err != nil {
-			e.psqlUp.Set(0)
 			return nil, err
 		}
-		err = d.Ping()
-		if err != nil {
-			e.psqlUp.Set(0)
-			return nil, err
-		}
-		e.psqlUp.Set(1)
 
 		d.SetMaxOpenConns(1)
 		d.SetMaxIdleConns(1)
 		e.dbConnection = d
 		e.dbDsn = e.dsn
 		log.Infoln("Established new database connection.")
+	}
+
+	// Always send a ping and possibly invalidate the connection if it fails
+	if err := e.dbConnection.Ping(); err != nil {
+		cerr := e.dbConnection.Close()
+		log.Infoln("Error while closing non-pinging DB connection:", cerr)
+		e.dbConnection = nil
+		e.psqlUp.Set(0)
+		return nil, err
 	}
 
 	return e.dbConnection, nil
@@ -1000,9 +1002,13 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 			loggableDsn = pDsn.String()
 		}
 		log.Infof("Error opening connection to database (%s): %s", loggableDsn, err)
+		e.psqlUp.Set(0)
 		e.error.Set(1)
 		return
 	}
+
+	// Didn't fail, can mark connection as up for this scrape.
+	e.psqlUp.Set(1)
 
 	// Check if map versions need to be updated
 	if err := e.checkMapVersions(ch, db); err != nil {
