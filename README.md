@@ -17,16 +17,19 @@ docker run --net=host -e DATA_SOURCE_NAME="postgresql://postgres:password@localh
 ```
 
 ## Building and running
+
+The build system is based on [Mage](https://magefile.org)
+
 The default make file behavior is to build the binary:
 ```
-go get github.com/wrouesnel/postgres_exporter
-cd ${GOPATH-$HOME/go}/src/github.com/wrouesnel/postgres_exporter
-make
-export DATA_SOURCE_NAME="postgresql://login:password@hostname:port/dbname"
-./postgres_exporter <flags>
+$ go get github.com/wrouesnel/postgres_exporter
+$ cd ${GOPATH-$HOME/go}/src/github.com/wrouesnel/postgres_exporter
+$ go run mage.go
+$ export DATA_SOURCE_NAME="postgresql://login:password@hostname:port/dbname"
+$ ./postgres_exporter <flags>
 ```
 
-To build the dockerfile, run `make docker`.
+To build the dockerfile, run `go run mage.go docker`.
 
 This will build the docker image as `wrouesnel/postgres_exporter:latest`. This
 is a minimal docker image containing *just* postgres_exporter. By default no SSL
@@ -130,9 +133,6 @@ GRANT SELECT ON postgres_exporter.pg_stat_replication TO postgres_exporter;
 > ```
 
 # Hacking
-
-* The build system is currently only supported for Linux-like platforms. It
-  depends on GNU Make.
-* To build a copy for your current architecture run `make binary` or just `make`
+* To build a copy for your current architecture run `go run mage.go binary` or just `go run mage.go`
   This will create a symlink to the just built binary in the root directory.
-* To build release tar balls run `make release`.
+* To build release tar balls run `go run mage.go release`.

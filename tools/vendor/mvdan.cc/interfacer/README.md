@@ -21,7 +21,7 @@ func ProcessInput(f *os.File) error {
 ```
 
 ```sh
-$ interfacer $(go list ./... | grep -v /vendor/)
+$ interfacer ./...
 foo.go:10:19: f can be io.Reader
 ```
 

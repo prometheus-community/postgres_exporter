@@ -17,21 +17,30 @@ package output
 import (
 	"encoding/csv"
 	"encoding/json"
+	"encoding/xml"
 	htmlTemplate "html/template"
 	"io"
-	"strconv"
 	plainTemplate "text/template"
 
-	gas "github.com/GoASTScanner/gas/core"
+	"github.com/GoASTScanner/gas"
+	"gopkg.in/yaml.v2"
 )
 
-// The output format for reported issues
+// ReportFormat enumrates the output format for reported issues
 type ReportFormat int
 
 const (
+	// ReportText is the default format that writes to stdout
 	ReportText ReportFormat = iota // Plain text format
-	ReportJSON                     // Json format
-	ReportCSV                      // CSV format
+
+	// ReportJSON set the output format to json
+	ReportJSON // Json format
+
+	// ReportCSV set the output format to csv
+	ReportCSV // CSV format
+
+	// ReportJUnitXML set the output format to junit xml
+	ReportJUnitXML // JUnit XML format
 )
 
 var text = `Results:
@@ -48,13 +57,28 @@ Summary:
 
 `
 
-func CreateReport(w io.Writer, format string, data *gas.Analyzer) error {
+type reportInfo struct {
+	Issues []*gas.Issue
+	Stats  *gas.Metrics
+}
+
+// CreateReport generates a report based for the supplied issues and metrics given
+// the specified format. The formats currently accepted are: json, csv, html and text.
+func CreateReport(w io.Writer, format string, issues []*gas.Issue, metrics *gas.Metrics) error {
+	data := &reportInfo{
+		Issues: issues,
+		Stats:  metrics,
+	}
 	var err error
 	switch format {
 	case "json":
 		err = reportJSON(w, data)
+	case "yaml":
+		err = reportYAML(w, data)
 	case "csv":
 		err = reportCSV(w, data)
+	case "junit-xml":
+		err = reportJUnitXML(w, data)
 	case "html":
 		err = reportFromHTMLTemplate(w, html, data)
 	case "text":
@@ -65,7 +89,7 @@ func CreateReport(w io.Writer, format string, data *gas.Analyzer) error {
 	return err
 }
 
-func reportJSON(w io.Writer, data *gas.Analyzer) error {
+func reportJSON(w io.Writer, data *reportInfo) error {
 	raw, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
 		panic(err)
@@ -78,13 +102,22 @@ func reportJSON(w io.Writer, data *gas.Analyzer) error {
 	return err
 }
 
-func reportCSV(w io.Writer, data *gas.Analyzer) error {
+func reportYAML(w io.Writer, data *reportInfo) error {
+	raw, err := yaml.Marshal(data)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(raw)
+	return err
+}
+
+func reportCSV(w io.Writer, data *reportInfo) error {
 	out := csv.NewWriter(w)
 	defer out.Flush()
 	for _, issue := range data.Issues {
 		err := out.Write([]string{
 			issue.File,
-			strconv.Itoa(issue.Line),
+			issue.Line,
 			issue.What,
 			issue.Severity.String(),
 			issue.Confidence.String(),
@@ -97,7 +130,26 @@ func reportCSV(w io.Writer, data *gas.Analyzer) error {
 	return nil
 }
 
-func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, data *gas.Analyzer) error {
+func reportJUnitXML(w io.Writer, data *reportInfo) error {
+	groupedData := groupDataByRules(data)
+	junitXMLStruct := createJUnitXMLStruct(groupedData)
+
+	raw, err := xml.MarshalIndent(junitXMLStruct, "", "\t")
+	if err != nil {
+		return err
+	}
+
+	xmlHeader := []byte("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+	raw = append(xmlHeader, raw...)
+	_, err = w.Write(raw)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, data *reportInfo) error {
 	t, e := plainTemplate.New("gas").Parse(reportTemplate)
 	if e != nil {
 		return e
@@ -106,7 +158,7 @@ func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, data *gas.A
 	return t.Execute(w, data)
 }
 
-func reportFromHTMLTemplate(w io.Writer, reportTemplate string, data *gas.Analyzer) error {
+func reportFromHTMLTemplate(w io.Writer, reportTemplate string, data *reportInfo) error {
 	t, e := htmlTemplate.New("gas").Parse(reportTemplate)
 	if e != nil {
 		return e

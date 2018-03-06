@@ -31,8 +31,8 @@ How does it work?
 -----------------
 
 SafeSQL uses the static analysis utilities in [go/tools][tools] to search for
-all call sites of each of the `query` functions in package [database/sql][sql]
-(i.e., functions which accept a `string` parameter named `query`). It then makes
+all call sites of each of the `query` functions in packages ([database/sql][sql],[github.com/jinzhu/gorm][gorm],[github.com/jmoiron/sqlx][sqlx])
+(i.e., functions which accept a parameter named `query`,`sql`). It then makes
 sure that every such call site uses a query that is a compile-time constant.
 
 The principle behind SafeSQL's safety guarantees is that queries that are
@@ -44,6 +44,8 @@ will not be allowed.
 
 [tools]: https://godoc.org/golang.org/x/tools/go
 [sql]: http://golang.org/pkg/database/sql/
+[sqlx]: https://github.com/jmoiron/sqlx
+[gorm]: https://github.com/jinzhu/gorm
 
 False positives
 ---------------
@@ -66,8 +68,6 @@ a fundamental limitation: SafeSQL could recursively trace the `query` argument
 through every intervening helper function to ensure that its argument is always
 constant, but this code has yet to be written.
 
-If you use a wrapper for `database/sql` (e.g., [`sqlx`][sqlx]), it's likely
-SafeSQL will not work for you because of this.
 
 The second sort of false positive is based on a limitation in the sort of
 analysis SafeSQL performs: there are many safe SQL statements which are not
@@ -76,4 +76,3 @@ static analysis techniques (such as taint analysis) or user-provided safety
 annotations would be able to reduce the number of false positives, but this is
 expected to be a significant undertaking.
 
-[sqlx]: https://github.com/jmoiron/sqlx
