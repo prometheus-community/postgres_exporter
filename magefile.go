@@ -178,23 +178,43 @@ func init() {
 	Log("Concurrency:", concurrency)
 	goSrc = func() []string {
 		results := new([]string)
-		filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+		filepath.Walk(".", func(relpath string, info os.FileInfo, err error) error {
+			// Ensure absolute path so globs work
+			path, err := filepath.Abs(relpath)
+			if err != nil {
+				panic(err)
+			}
+
 			// Look for files
 			if info.IsDir() {
 				return nil
 			}
+
 			// Exclusions
-			if matched, _ := filepath.Match("*/vendor/*", path); matched {
-				return nil
-			} else if matched, _ := filepath.Match(fmt.Sprintf("%s/*", toolDir), path); matched {
-				return nil
-			} else if matched, _ := filepath.Match(fmt.Sprintf("%s/*", binDir), path); matched {
-				return nil
-			} else if matched, _ := filepath.Match(fmt.Sprintf("%s/*", releaseDir), path); matched {
+			for _, exclusion := range []string{toolDir, binDir, releaseDir, coverageDir} {
+				if strings.HasPrefix(path, exclusion) {
+					if info.IsDir() {
+						return filepath.SkipDir
+					}
+					return nil
+				}
+			}
+
+			if strings.Contains(path, "/vendor/") {
+				if info.IsDir() {
+					return filepath.SkipDir
+				}
 				return nil
 			}
 
-			if matched, _ := filepath.Match("*.go", path); !matched {
+			if strings.Contains(path, ".git") {
+				if info.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+
+			if !strings.HasSuffix(path, ".go") {
 				return nil
 			}
 
