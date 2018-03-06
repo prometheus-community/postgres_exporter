@@ -490,7 +490,7 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 					log.Debugln(columnName, "is being forced to discard due to version incompatibility.")
 					thisMap[columnName] = MetricMap{
 						discard: true,
-						conversion: func(in interface{}) (float64, bool) {
+						conversion: func(_ interface{}) (float64, bool) {
 							return math.NaN(), true
 						},
 					}
@@ -499,11 +499,12 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 			}
 
 			// Determine how to convert the column based on its usage.
+			// nolint: dupl
 			switch columnMapping.usage {
 			case DISCARD, LABEL:
 				thisMap[columnName] = MetricMap{
 					discard: true,
-					conversion: func(in interface{}) (float64, bool) {
+					conversion: func(_ interface{}) (float64, bool) {
 						return math.NaN(), true
 					},
 				}
@@ -578,7 +579,9 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 }
 
 // convert a string to the corresponding ColumnUsage
-func stringToColumnUsage(s string) (u ColumnUsage, err error) {
+func stringToColumnUsage(s string) (ColumnUsage, error) {
+	var u ColumnUsage
+	var err error
 	switch s {
 	case "DISCARD":
 		u = DISCARD
@@ -602,7 +605,7 @@ func stringToColumnUsage(s string) (u ColumnUsage, err error) {
 		err = fmt.Errorf("wrong ColumnUsage given : %s", s)
 	}
 
-	return
+	return u, err
 }
 
 // Convert database.sql types to float64s for Prometheus consumption. Null types are mapped to NaN. string and []byte
@@ -794,10 +797,9 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 	if !found {
 		// I've no idea how to avoid this properly at the moment, but this is
 		// an admin tool so you're not injecting SQL right?
-		// nolint: gas
-		rows, err = db.Query(fmt.Sprintf("SELECT * FROM %s;", namespace))
+		rows, err = db.Query(fmt.Sprintf("SELECT * FROM %s;", namespace)) // nolint: gas, safesql
 	} else {
-		rows, err = db.Query(query)
+		rows, err = db.Query(query) // nolint: safesql
 	}
 	if err != nil {
 		return []error{}, errors.New(fmt.Sprintln("Error running query on database: ", namespace, err))
@@ -882,7 +884,7 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, db *sql.DB, metricMap m
 	for namespace, mapping := range metricMap {
 		log.Debugln("Querying namespace: ", namespace)
 		nonFatalErrors, err := queryNamespaceMapping(ch, db, namespace, mapping, queryOverrides)
-		// Serious error - a namespace disappeard
+		// Serious error - a namespace disappeared
 		if err != nil {
 			namespaceErrors[namespace] = err
 			log.Infoln(err)

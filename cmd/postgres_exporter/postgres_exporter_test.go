@@ -47,6 +47,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 		)
 	}
 
+	// nolint: dupl
 	{
 		// Update the map so the discard metric should be eliminated
 		discardableMetric := testMetricMap["test_namespace"]["metric_which_discards"]
@@ -67,6 +68,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 		)
 	}
 
+	// nolint: dupl
 	{
 		// Update the map so the discard metric should be kept but has a version
 		discardableMetric := testMetricMap["test_namespace"]["metric_which_discards"]

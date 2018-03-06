@@ -82,6 +82,8 @@ func (s *pgSetting) metric() prometheus.Metric {
 	return prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, val)
 }
 
+// TODO: fix linter override
+// nolint: nakedret
 func (s *pgSetting) normaliseUnit() (val float64, unit string, err error) {
 	val, err = strconv.ParseFloat(s.setting, 64)
 	if err != nil {
