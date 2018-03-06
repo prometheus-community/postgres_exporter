@@ -20,7 +20,7 @@ func querySettings(ch chan<- prometheus.Metric, db *sql.DB) error {
 	//
 	// NOTE: If you add more vartypes here, you must update the supported
 	// types in normaliseUnit() below
-	query := "SELECT name, setting, COALESCE(unit, ''), short_desc, vartype FROM pg_settings WHERE vartype IN ('bool', 'integer', 'real');"
+	query := "SELECT name, setting, COALESCE(unit, ''), short_desc, vartype FROM pg_settings WHERE vartype IN ('bool', 'integer', 'real');" // nolint: lll
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -82,6 +82,8 @@ func (s *pgSetting) metric() prometheus.Metric {
 	return prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, val)
 }
 
+// TODO: fix this lint problem
+// nolint: nakedret
 func (s *pgSetting) normaliseUnit() (val float64, unit string, err error) {
 	val, err = strconv.ParseFloat(s.setting, 64)
 	if err != nil {

@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // postgres library needs postgres driver
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
 	"gopkg.in/yaml.v2"
@@ -44,7 +44,7 @@ const (
 	COUNTER      ColumnUsage = iota // Use this column as a counter
 	GAUGE        ColumnUsage = iota // Use this column as a gauge
 	MAPPEDMETRIC ColumnUsage = iota // Use this column with the supplied mapping of text values
-	DURATION     ColumnUsage = iota // This column should be interpreted as a text duration (and converted to milliseconds)
+	DURATION     ColumnUsage = iota // Column should be interpreted as a text duration (and converted to milliseconds)
 )
 
 // UnmarshalYAML implements the yaml.Unmarshaller interface.
@@ -80,10 +80,12 @@ func parseVersion(versionString string) (semver.Version, error) {
 
 // ColumnMapping is the user-friendly representation of a prometheus descriptor map
 type ColumnMapping struct {
-	usage             ColumnUsage        `yaml:"usage"`
-	description       string             `yaml:"description"`
-	mapping           map[string]float64 `yaml:"metric_mapping"` // Optional column mapping for MAPPEDMETRIC
-	supportedVersions semver.Range       `yaml:"pg_version"`     // Semantic version ranges which are supported. Unsupported columns are not queried (internally converted to DISCARD).
+	usage       ColumnUsage        `yaml:"usage"`
+	description string             `yaml:"description"`
+	mapping     map[string]float64 `yaml:"metric_mapping"` // Optional column mapping for MAPPEDMETRIC
+	// Semantic version ranges which are supported. Unsupported columns are not queried
+	// (internally converted to DISCARD).
+	supportedVersions semver.Range `yaml:"pg_version"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaller
@@ -107,7 +109,7 @@ type MetricMap struct {
 	conversion func(interface{}) (float64, bool) // Conversion function to turn PG result into float64
 }
 
-// TODO: revisit this with the semver system
+// DumpMaps simply exports the internal metric maps.
 func DumpMaps() {
 	// TODO: make this function part of the exporter
 	for name, cmap := range builtinMetricMaps {
@@ -127,6 +129,7 @@ func DumpMaps() {
 	}
 }
 
+// nolint: lll
 var builtinMetricMaps = map[string]map[string]ColumnMapping{
 	"pg_stat_bgwriter": {
 		"checkpoints_timed":     {COUNTER, "Number of scheduled checkpoints that have been performed", nil, nil},
@@ -236,6 +239,7 @@ type OverrideQuery struct {
 
 // Overriding queries for namespaces above.
 // TODO: validate this is a closed set in tests, and there are no overlaps
+// nolint: lll
 var queryOverrides = map[string][]OverrideQuery{
 	"pg_locks": {
 		{
@@ -357,7 +361,7 @@ func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]
 // TODO: test code for all cu.
 // TODO: use proper struct type system
 // TODO: the YAML this supports is "non-standard" - we should move away from it.
-func addQueries(content []byte, pgVersion semver.Version, exporterMap map[string]MetricMapNamespace, queryOverrideMap map[string]string) error {
+func addQueries(content []byte, pgVersion semver.Version, exporterMap map[string]MetricMapNamespace, queryOverrideMap map[string]string) error { //nolint: lll
 	var extra map[string]interface{}
 
 	err := yaml.Unmarshal(content, &extra)
@@ -449,7 +453,7 @@ func addQueries(content []byte, pgVersion semver.Version, exporterMap map[string
 }
 
 // Turn the MetricMap column mapping into a prometheus descriptor mapping.
-func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]ColumnMapping) map[string]MetricMapNamespace {
+func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]ColumnMapping) map[string]MetricMapNamespace { //nolint: lll
 	var metricMap = make(map[string]MetricMapNamespace)
 
 	for namespace, mappings := range metricMaps {
@@ -473,7 +477,7 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 					log.Debugln(columnName, "is being forced to discard due to version incompatibility.")
 					thisMap[columnName] = MetricMap{
 						discard: true,
-						conversion: func(in interface{}) (float64, bool) {
+						conversion: func(in interface{}) (float64, bool) { // nolint: unparam
 							return math.NaN(), true
 						},
 					}
@@ -482,18 +486,19 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 			}
 
 			// Determine how to convert the column based on its usage.
+			// nolint: dupl
 			switch columnMapping.usage {
 			case DISCARD, LABEL:
 				thisMap[columnName] = MetricMap{
 					discard: true,
-					conversion: func(in interface{}) (float64, bool) {
+					conversion: func(in interface{}) (float64, bool) { // nolint: unparam
 						return math.NaN(), true
 					},
 				}
 			case COUNTER:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.CounterValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, constLabels, nil),
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, constLabels, nil), //nolint: lll
 					conversion: func(in interface{}) (float64, bool) {
 						return dbToFloat64(in)
 					},
@@ -501,7 +506,7 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 			case GAUGE:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.GaugeValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, constLabels, nil),
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, constLabels, nil), //nolint: lll
 					conversion: func(in interface{}) (float64, bool) {
 						return dbToFloat64(in)
 					},
@@ -509,7 +514,7 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 			case MAPPEDMETRIC:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.GaugeValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, constLabels, nil),
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, constLabels, nil), //nolint: lll
 					conversion: func(in interface{}) (float64, bool) {
 						text, ok := in.(string)
 						if !ok {
@@ -526,7 +531,7 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 			case DURATION:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.GaugeValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s_milliseconds", namespace, columnName), columnMapping.description, constLabels, nil),
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s_milliseconds", namespace, columnName), columnMapping.description, constLabels, nil), //nolint: lll
 					conversion: func(in interface{}) (float64, bool) {
 						var durationString string
 						switch t := in.(type) {
@@ -561,6 +566,7 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 }
 
 // convert a string to the corresponding ColumnUsage
+// nolint: nakedret
 func stringToColumnUsage(s string) (u ColumnUsage, err error) {
 	switch s {
 	case "DISCARD":
@@ -693,24 +699,25 @@ func NewExporter(dsn string, userQueriesPath string) *Exporter {
 			Namespace: namespace,
 			Subsystem: exporter,
 			Name:      "last_scrape_error",
-			Help:      "Whether the last scrape of metrics from PostgreSQL resulted in an error (1 for error, 0 for success).",
+			Help:      "Whether the last scrape of metrics from PostgreSQL resulted in an error (1 for error, 0 for success).", //nolint: lll
 		}),
 		psqlUp: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "up",
-			Help:      "Whether the last scrape of metrics from PostgreSQL was able to connect to the server (1 for yes, 0 for no).",
+			Help:      "Whether the last scrape of metrics from PostgreSQL was able to connect to the server (1 for yes, 0 for no).", //nolint: lll
 		}),
 		userQueriesError: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: exporter,
 			Name:      "user_queries_load_error",
-			Help:      "Whether the user queries file was loaded and parsed successfully (1 for error, 0 for success).",
+			Help:      "Whether the user queries file was loaded and parsed successfully (1 for error, 0 for success).", //nolint: lll
 		}, []string{"filename", "hashsum"}),
 		metricMap:      nil,
 		queryOverrides: nil,
 	}
 }
 
+// Close shutdowns any database connection, and should be called before releasing the collector.
 func (e *Exporter) Close() {
 	if e.dbConnection != nil {
 		e.dbConnection.Close() // nolint: errcheck
@@ -765,7 +772,7 @@ func newDesc(subsystem, name, help string) *prometheus.Desc {
 
 // Query within a namespace mapping and emit metrics. Returns fatal errors if
 // the scrape fails, and a slice of errors if they were non-fatal.
-func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace string, mapping MetricMapNamespace, queryOverrides map[string]string) ([]error, error) {
+func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace string, mapping MetricMapNamespace, queryOverrides map[string]string) ([]error, error) { //nolint: lll
 	// Check for a query override for this namespace
 	query, found := queryOverrides[namespace]
 
@@ -783,10 +790,9 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 	if !found {
 		// I've no idea how to avoid this properly at the moment, but this is
 		// an admin tool so you're not injecting SQL right?
-		// nolint: gas
-		rows, err = db.Query(fmt.Sprintf("SELECT * FROM %s;", namespace))
+		rows, err = db.Query(fmt.Sprintf("SELECT * FROM %s;", namespace)) // nolint: gas, safesql
 	} else {
-		rows, err = db.Query(query)
+		rows, err = db.Query(query) // nolint: gas, safesql
 	}
 	if err != nil {
 		return []error{}, errors.New(fmt.Sprintln("Error running query on database: ", namespace, err))
@@ -837,7 +843,7 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 
 				value, ok := dbToFloat64(columnData[idx])
 				if !ok {
-					nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName, columnData[idx])))
+					nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName, columnData[idx]))) // nolint: lll
 					continue
 				}
 
@@ -846,13 +852,13 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 			} else {
 				// Unknown metric. Report as untyped if scan to float64 works, else note an error too.
 				metricLabel := fmt.Sprintf("%s_%s", namespace, columnName)
-				desc := prometheus.NewDesc(metricLabel, fmt.Sprintf("Unknown metric from %s", namespace), mapping.labels, nil)
+				desc := prometheus.NewDesc(metricLabel, fmt.Sprintf("Unknown metric from %s", namespace), mapping.labels, nil) // nolint: lll
 
 				// Its not an error to fail here, since the values are
 				// unexpected anyway.
 				value, ok := dbToFloat64(columnData[idx])
 				if !ok {
-					nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unparseable column type - discarding: ", namespace, columnName, err)))
+					nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unparseable column type - discarding: ", namespace, columnName, err))) // nolint: lll
 					continue
 				}
 				ch <- prometheus.MustNewConstMetric(desc, prometheus.UntypedValue, value, labels...)
@@ -864,14 +870,14 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 
 // Iterate through all the namespace mappings in the exporter and run their
 // queries.
-func queryNamespaceMappings(ch chan<- prometheus.Metric, db *sql.DB, metricMap map[string]MetricMapNamespace, queryOverrides map[string]string) map[string]error {
+func queryNamespaceMappings(ch chan<- prometheus.Metric, db *sql.DB, metricMap map[string]MetricMapNamespace, queryOverrides map[string]string) map[string]error { // nolint: lll
 	// Return a map of namespace -> errors
 	namespaceErrors := make(map[string]error)
 
 	for namespace, mapping := range metricMap {
 		log.Debugln("Querying namespace: ", namespace)
 		nonFatalErrors, err := queryNamespaceMapping(ch, db, namespace, mapping, queryOverrides)
-		// Serious error - a namespace disappeard
+		// Serious error - a namespace disappeared
 		if err != nil {
 			namespaceErrors[namespace] = err
 			log.Infoln(err)
@@ -901,7 +907,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 		return fmt.Errorf("Error parsing version string: %v", err)
 	}
 	if semanticVersion.LT(lowestSupportedVersion) {
-		log.Warnln("PostgreSQL version is lower then our lowest supported version! Got", semanticVersion.String(), "minimum supported is", lowestSupportedVersion.String())
+		log.Warnln("PostgreSQL version is lower then our lowest supported version! Got", semanticVersion.String(), "minimum supported is", lowestSupportedVersion.String()) // nolint: lll
 	}
 
 	// Check if semantic version changed and recalculate maps if needed.
@@ -1030,7 +1036,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	}
 }
 
-// try to get the DataSource
+// GetDataSource tries to read postgres database connection data from the usual environment variables.
 // DATA_SOURCE_NAME always wins so we do not break older versions
 // reading secrets from files wins over secrets in environment variables
 // DATA_SOURCE_NAME > DATA_SOURCE_{USER|FILE}_FILE > DATA_SOURCE_{USER|FILE}

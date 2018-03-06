@@ -11,6 +11,7 @@ type PgSettingSuite struct{}
 
 var _ = Suite(&PgSettingSuite{})
 
+// nolint: lll
 var fixtures = []fixture{
 	{
 		p: pgSetting{

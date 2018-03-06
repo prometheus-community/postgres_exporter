@@ -47,6 +47,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 		)
 	}
 
+	// nolint: dupl
 	{
 		// Update the map so the discard metric should be eliminated
 		discardableMetric := testMetricMap["test_namespace"]["metric_which_discards"]
@@ -67,6 +68,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 		)
 	}
 
+	// nolint: dupl
 	{
 		// Update the map so the discard metric should be kept but has a version
 		discardableMetric := testMetricMap["test_namespace"]["metric_which_discards"]
@@ -163,7 +165,7 @@ func (s *FunctionalSuite) TestPostgresVersionParsing(c *C) {
 			expected: "9.5.4",
 		},
 		{
-			input:    "EnterpriseDB 9.6.5.10 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 4.4.7 20120313 (Red Hat 4.4.7-16), 64-bit",
+			input:    "EnterpriseDB 9.6.5.10 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 4.4.7 20120313 (Red Hat 4.4.7-16), 64-bit", // nolint: lll
 			expected: "9.6.5",
 		},
 	}
