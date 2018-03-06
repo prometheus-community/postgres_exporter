@@ -5,12 +5,14 @@ import (
 	"net/http"
 	"runtime"
 
+	"gopkg.in/alecthomas/kingpin.v2"
+
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
+
 	"github.com/wrouesnel/postgres_exporter/collector"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 // Version is set during build to the git describe version
@@ -18,10 +20,13 @@ import (
 var Version = "0.0.1"
 
 var (
-	listenAddress = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").OverrideDefaultFromEnvar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
-	metricPath    = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").OverrideDefaultFromEnvar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
-	queriesPath   = kingpin.Flag("extend.query-path", "Path to custom queries to run.").Default("").OverrideDefaultFromEnvar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
-	onlyDumpMaps  = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
+	listenAddress = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").
+			Default(":9187").Envar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
+	metricPath = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").
+			Default("/metrics").Envar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
+	queriesPath = kingpin.Flag("extend.query-path", "Path to custom queries to run.").
+			Default("").Envar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
+	onlyDumpMaps = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
 )
 
 func main() {

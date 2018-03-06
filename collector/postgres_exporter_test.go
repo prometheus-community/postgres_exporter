@@ -3,11 +3,13 @@
 package collector
 
 import (
-	. "gopkg.in/check.v1"
 	"testing"
 
-	"github.com/blang/semver"
+	. "gopkg.in/check.v1"
+
 	"os"
+
+	"github.com/blang/semver"
 )
 
 // Hook up gocheck into the "go test" runner.
@@ -89,11 +91,11 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 // test read username and password from file
 func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
 
-	err := os.Setenv("DATA_SOURCE_USER_FILE", "../tests/username_file")
+	err := os.Setenv("DATA_SOURCE_USER_FILE", "../cmd/postgres_exporter/tests/username_file")
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_USER_FILE")
 
-	err = os.Setenv("DATA_SOURCE_PASS_FILE", "../tests/userpass_file")
+	err = os.Setenv("DATA_SOURCE_PASS_FILE", "../cmd/postgres_exporter/tests/userpass_file")
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_PASS_FILE")
 
