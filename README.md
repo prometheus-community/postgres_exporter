@@ -132,6 +132,11 @@ GRANT SELECT ON postgres_exporter.pg_stat_replication TO postgres_exporter;
 > DATA_SOURCE_NAME=postgresql://postgres_exporter:password@localhost:5432/postgres?sslmode=disable
 > ```
 
+# Use as a library
+Although the exporter is now structured to be able to be used as a library, this is highly experimental
+and not supported or considered stable. The interface will stabilize eventually, but at the moment is a
+very rough port of the CLI and should be considered _alpha_ quality.
+
 # Hacking
 * To build a copy for your current architecture run `go run mage.go binary` or just `go run mage.go`
   This will create a symlink to the just built binary in the root directory.
