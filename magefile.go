@@ -454,7 +454,7 @@ func Lint() error {
 	mg.Deps(Tools)
 	args := []string{"-j", fmt.Sprintf("%v", concurrency), fmt.Sprintf("--deadline=%s",
 		linterDeadline.String()), "--enable-all", "--line-length=120",
-		"--disable=gocyclo", "--disable=testify", "--disable=test", "--exclude=assets/bindata.go"}
+		"--disable=gocyclo", "--disable=testify", "--disable=test", "--disable=lll", "--exclude=assets/bindata.go"}
 	return sh.RunV("gometalinter", append(args, goDirs...)...)
 }
 
