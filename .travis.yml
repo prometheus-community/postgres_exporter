@@ -16,7 +16,7 @@ script:
 - "$HOME/gopath/bin/goveralls -coverprofile=cover.out -service=travis-ci"
 - go run mage.go docker
 after_success:
-- docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
+- docker login -u $DOCKER_USER -p $DOCKER_PASS
 - if [ ! -z "$TRAVIS_TAG" ]; then docker tag wrouesnel/postgres_exporter:latest wrouesnel/postgres_exporter:$TRAVIS_TAG
   ; docker push wrouesnel/postgres_exporter:$TRAVIS_TAG ; fi
 - if [ "$TRAVIS_BRANCH" == "master" ]; then docker push wrouesnel/postgres_exporter
@@ -24,7 +24,6 @@ after_success:
 env:
   global:
   - DOCKER_USER=wrouesnel
-  - DOCKER_EMAIL=w.rouesnel@gmail.com
   - secure: f0H5HKL/5f/ZZVGZ7puegWZ6eig0TmruihuSEJCx1+Y6yDZn7l8lH+eETP9KAzH27c3CG1F9ytu/3gnnTOafXnDLlCve3fL5sKF3+pNQRwi3IojsODjdfPW+KEbG+1RD7IgkCn+DSRmvvpLr4zGOmZFEM1ZtLL878u4Hsrv/X5pDbKJgG/cXDRJfsu/EcpviO4WM8zOakBY8QihXhGpZiRtpRDCXWjW49PdCkW9hsfzFaU1yjvih9EJ0cfcH+9CFCRkezwAPlCETbOv288uHXc6bCuEEX1bgJ0ZzEXYAyoO00+12ePbQZEGNikSVT55nfC+jZLLTavQkFi862Hcx/lmJpA/7aeNYOrDcomwWMRRc4Ava2+cod7acVvo45SHRq+Jj9ofDhj9s0T/aZwV+2doc9GwDN9J6aEs9Nham2G955K1H0fmMW9lv0ThSVEZ3XbzCHyR4nPAwJQXrzauqbbihCim/g/YC5gbVs7O/4GkN2Z9LK30IJr1/NtJdIa6fMk3Zdhp6LGbXCvVFRbE0rMiTLbB8O3ll2smCu3aFYv7J9IfvI0ol0ww7kULpyf/vqxkK0NJXsKgoK/Uo1lM9gNpJBHsMt9nWnDvLj2DKZNTqkxzJeG8O98ADrQWEGFhpcsSsbW9pAMsrp6D4LQikN8KoFvh9F8h9lBsYpafzlOA=
 deploy:
   skip_cleanup: true
