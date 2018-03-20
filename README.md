@@ -47,6 +47,24 @@ Package vendoring is handled with [`govendor`](https://github.com/kardianos/gove
 * `web.telemetry-path`
   Path under which to expose metrics.
 
+* `disable-default-metrics`
+  Use only metrics supplied from `queries.yaml` via `--extend.query-path`
+
+* `extend.query-path`
+  Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
+  for examples of the format.
+ 
+* `dumpmaps`
+  Do not run - print the internal representation of the metric maps. Useful when debugging a custom
+  queries file.
+  
+* `log.level`
+  Set logging level: one of `debug`, `info`, `warn`, `error`, `fatal`
+
+* `log.format`
+  Set the log output target and format. e.g. `logger:syslog?appname=bob&local=7` or `logger:stdout?json=true`
+  Defaults to `logger:stderr`.
+
 ### Environment Variables
 
 The following environment variables configure the exporter:
@@ -102,11 +120,11 @@ rich self-documenting metrics for the exporter.
 The -extend.query-path command-line argument specifies a YAML file containing additional queries to run.
 Some examples are provided in [queries.yaml](queries.yaml).
 
-### Working with non-officially-supported postgres versions
-
-If you want to use this exporter to monitor a postgres installation that is not officially supported (e.g. 8.2.15) or a variant of postgres (e.g. Greenplum). 
-You may try to disable all internal metrics using the  -disable-default-metrics command-line argument, then supply your own set of metrics definitions in 
-an external config file.
+### Disabling default metrics
+To work with non-officially-supported postgres versions you can try disabling (e.g. 8.2.15) 
+or a variant of postgres (e.g. Greenplum) you can disable the default metrics with the `--disable-default-metrics`
+flag. This removes all built-in metrics, and uses only metrics defined by queries in the `queries.yaml` file you supply
+(so you must supply one, otherwise the exporter will return nothing but internal statuses and not your database).
 
 ### Running as non-superuser
 
@@ -142,3 +160,5 @@ GRANT SELECT ON postgres_exporter.pg_stat_replication TO postgres_exporter;
 * To build a copy for your current architecture run `go run mage.go binary` or just `go run mage.go`
   This will create a symlink to the just built binary in the root directory.
 * To build release tar balls run `go run mage.go release`.
+* Build system is a bit temperamental at the moment since the conversion to mage - I am working on getting it
+  to be a perfect out of the box experience, but am time-constrained on it at the moment.
