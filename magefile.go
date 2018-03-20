@@ -627,7 +627,7 @@ func makeBuilder(cmd string, platform Platform) func() error {
 
 		fmt.Println("Building", platform.PlatformBin(cmd))
 		return sh.RunWith(map[string]string{"CGO_ENABLED": "0", "GOOS": platform.OS, "GOARCH": platform.Arch},
-			"go", "build", "-a", "-ldflags", fmt.Sprintf("-extldflags '-static' -X version.Version=%s", version),
+			"go", "build", "-a", "-ldflags", fmt.Sprintf("-extldflags '-static' -X main.Version=%s", version),
 			"-o", platform.PlatformBin(cmd), cmdSrc)
 	}
 	return f
