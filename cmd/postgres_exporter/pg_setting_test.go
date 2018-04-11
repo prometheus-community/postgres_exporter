@@ -92,6 +92,38 @@ var fixtures = []fixture{
 		d: "Desc{fqName: \"pg_settings_16_mb_real_fixture_metric_bytes\", help: \"Foo foo foo [Units converted to bytes.]\", constLabels: {}, variableLabels: []}",
 		v: 5.0331648e+07,
 	},
+        {
+		p: pgSetting{
+			name:      "32_mb_real_fixture_metric",
+			setting:   "3.0",
+			unit:      "32MB",
+			shortDesc: "Foo foo foo",
+			vartype:   "real",
+		},
+		n: normalised{
+			val:  1.00663296e+08,
+			unit: "bytes",
+			err:  "",
+		},
+		d: "Desc{fqName: \"pg_settings_32_mb_real_fixture_metric_bytes\", help: \"Foo foo foo [Units converted to bytes.]\", constLabels: {}, variableLabels: []}",
+		v: 1.00663296e+08,
+	},
+        {
+		p: pgSetting{
+			name:      "64_mb_real_fixture_metric",
+			setting:   "3.0",
+			unit:      "64MB",
+			shortDesc: "Foo foo foo",
+			vartype:   "real",
+		},
+		n: normalised{
+			val:  2.01326592e+08,
+			unit: "bytes",
+			err:  "",
+		},
+		d: "Desc{fqName: \"pg_settings_64_mb_real_fixture_metric_bytes\", help: \"Foo foo foo [Units converted to bytes.]\", constLabels: {}, variableLabels: []}",
+		v: 2.01326592e+08,
+	},
 	{
 		p: pgSetting{
 			name:      "bool_on_fixture_metric",
