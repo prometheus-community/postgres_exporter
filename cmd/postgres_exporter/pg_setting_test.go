@@ -92,7 +92,7 @@ var fixtures = []fixture{
 		d: "Desc{fqName: \"pg_settings_16_mb_real_fixture_metric_bytes\", help: \"Foo foo foo [Units converted to bytes.]\", constLabels: {}, variableLabels: []}",
 		v: 5.0331648e+07,
 	},
-        {
+	{
 		p: pgSetting{
 			name:      "32_mb_real_fixture_metric",
 			setting:   "3.0",
@@ -108,7 +108,7 @@ var fixtures = []fixture{
 		d: "Desc{fqName: \"pg_settings_32_mb_real_fixture_metric_bytes\", help: \"Foo foo foo [Units converted to bytes.]\", constLabels: {}, variableLabels: []}",
 		v: 1.00663296e+08,
 	},
-        {
+	{
 		p: pgSetting{
 			name:      "64_mb_real_fixture_metric",
 			setting:   "3.0",
