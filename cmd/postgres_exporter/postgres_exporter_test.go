@@ -105,7 +105,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_URI")
 
-	var expected = "postgresql://custom_username:custom_password@localhost:5432/?sslmode=disable"
+	var expected = "postgresql://custom_username$&+,%2F%3A;=%3F%40:custom_password$&+,%2F%3A;=%3F%40@localhost:5432/?sslmode=disable"
 
 	dsn := getDataSource()
 	if dsn != expected {
