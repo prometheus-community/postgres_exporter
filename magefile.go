@@ -101,6 +101,7 @@ var platforms []Platform = []Platform{
 	{"darwin", "386", ""},
 	{"windows", "amd64", ".exe"},
 	{"windows", "386", ".exe"},
+	{"freebsd", "amd64", ""},
 }
 
 // productName can be overridden by environ product name
