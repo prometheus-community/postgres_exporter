@@ -1086,8 +1086,9 @@ func getDataSource() string {
 			pass = os.Getenv("DATA_SOURCE_PASS")
 		}
 
+		ui := url.UserPassword(user, pass).String()
 		uri := os.Getenv("DATA_SOURCE_URI")
-		dsn = "postgresql://" + user + ":" + pass + "@" + uri
+		dsn = "postgresql://" + ui + "@" + uri
 	}
 
 	return dsn
