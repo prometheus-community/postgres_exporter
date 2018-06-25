@@ -1059,7 +1059,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 // try to get the DataSource
 // DATA_SOURCE_NAME always wins so we do not break older versions
 // reading secrets from files wins over secrets in environment variables
-// DATA_SOURCE_NAME > DATA_SOURCE_{USER|FILE}_FILE > DATA_SOURCE_{USER|FILE}
+// DATA_SOURCE_NAME > DATA_SOURCE_{USER|PASS}_FILE > DATA_SOURCE_{USER|PASS}
 func getDataSource() string {
 	var dsn = os.Getenv("DATA_SOURCE_NAME")
 	if len(dsn) == 0 {
