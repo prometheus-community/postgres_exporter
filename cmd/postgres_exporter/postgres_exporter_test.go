@@ -267,3 +267,39 @@ func UnsetEnvironment(c *C, d string) {
 	err := os.Unsetenv(d)
 	c.Assert(err, IsNil)
 }
+
+// test boolean metric type gets converted to float
+func (s *FunctionalSuite) TestBooleanConversionToValueAndString(c *C) {
+
+	type TestCase struct {
+		input          interface{}
+		expectedString string
+		expectedValue  float64
+		expectedOK     bool
+	}
+
+	cases := []TestCase{
+		{
+			input:          true,
+			expectedString: "true",
+			expectedValue:  1.0,
+			expectedOK:     true,
+		},
+		{
+			input:          false,
+			expectedString: "false",
+			expectedValue:  0.0,
+			expectedOK:     true,
+		},
+	}
+
+	for _, cs := range cases {
+		value, ok := dbToFloat64(cs.input)
+		c.Assert(value, Equals, cs.expectedValue)
+		c.Assert(ok, Equals, cs.expectedOK)
+
+		str, ok := dbToString(cs.input)
+		c.Assert(str, Equals, cs.expectedString)
+		c.Assert(ok, Equals, cs.expectedOK)
+	}
+}
