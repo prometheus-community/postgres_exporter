@@ -647,6 +647,11 @@ func dbToFloat64(t interface{}) (float64, bool) {
 			return math.NaN(), false
 		}
 		return result, true
+	case bool:
+		if v {
+			return 1.0, true
+		}
+		return 0.0, true
 	case nil:
 		return math.NaN(), true
 	default:
@@ -670,6 +675,11 @@ func dbToString(t interface{}) (string, bool) {
 		return string(v), true
 	case string:
 		return v, true
+	case bool:
+		if v {
+			return "true", true
+		}
+		return "false", true
 	default:
 		return "", false
 	}
