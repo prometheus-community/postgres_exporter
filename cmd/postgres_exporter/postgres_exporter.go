@@ -338,7 +338,17 @@ var queryOverrides = map[string][]OverrideQuery{
 				ON tmp.state = tmp2.state AND pg_database.datname = tmp2.datname
 			`,
 		},
-		// No query is applicable for 9.1 that gives any sensible data.
+		{
+			semver.MustParseRange("<9.2.0"),
+			`
+			SELECT
+				datname,
+				'unknown' AS state,
+				COALESCE(count(*),0) AS count,
+				COALESCE(MAX(EXTRACT(EPOCH FROM now() - xact_start))::float,0) AS max_tx_duration
+			FROM pg_stat_activity GROUP BY datname
+			`,
+		},
 	},
 }
 
