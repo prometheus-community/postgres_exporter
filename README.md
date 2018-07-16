@@ -42,10 +42,10 @@ Package vendoring is handled with [`govendor`](https://github.com/kardianos/gove
 ### Flags
 
 * `web.listen-address`
-  Address to listen on for web interface and telemetry.
+  Address to listen on for web interface and telemetry. Default is `:9187`.
 
 * `web.telemetry-path`
-  Path under which to expose metrics.
+  Path under which to expose metrics. Default is `/metrics`.
 
 * `disable-default-metrics`
   Use only metrics supplied from `queries.yaml` via `--extend.query-path`
@@ -88,6 +88,21 @@ The following environment variables configure the exporter:
   the password to connect with.
 * `DATA_SOURCE_PASS_FILE`
   The same as above but reads the password from a file.
+  
+* `PG_EXPORTER_WEB_LISTEN_ADDRESS`
+  Address to listen on for web interface and telemetry. Default is `:9187`.
+
+* `PG_EXPORTER_WEB_TELEMETRY_PATH`
+  Path under which to expose metrics. Default is `/metrics`.
+
+* `PG_EXPORTER_DISABLE_DEFAULT_METRICS`
+  Use only metrics supplied from `queries.yaml`. Value can be `true` or `false`. Default is `false`.
+
+* `PG_EXPORTER_EXTEND_QUERY_PATH`
+  Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
+  for examples of the format.
+  
+Settings set by environment variables starting with `PG_` will be overwritten by the corresponding CLI flag if given.
 
 ### Setting the Postgres server's data source name
 
