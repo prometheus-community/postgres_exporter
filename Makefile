@@ -89,7 +89,7 @@ fmt: tools
 postgres_exporter_integration_test: $(GO_SRC)
 	CGO_ENABLED=0 go test -c -tags integration \
 		-a -ldflags "-extldflags '-static' -X main.Version=$(VERSION)" \
-		-o postgres_exporter_integration_test -cover -covermode count .
+		-o postgres_exporter_integration_test -cover -covermode count ./collector/...
 
 test: tools
 	@mkdir -p $(COVERDIR)
