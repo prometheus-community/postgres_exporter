@@ -1,38 +1,25 @@
-sudo: required
+language: go
+
+go:
+- 1.10.x
+
+env:
+- POSTGRESQL_IMAGE=postgres
+
 services:
 - docker
-language: go
-go:
-- '1.10'
-before_install:
-- go get -v github.com/mattn/goveralls
-- sudo wget -O /usr/local/bin/p2 https://github.com/wrouesnel/p2cli/releases/download/r4/p2
-  && sudo chmod +x /usr/local/bin/p2
-- sudo wget -O /usr/local/bin/docker-compose https://github.com/docker/compose/releases/download/1.9.0-rc4/docker-compose-Linux-x86_64
-  && sudo chmod +x /usr/local/bin/docker-compose
-- sudo apt-get update && sudo apt-get install postgresql-client-common
+
+go_import_path: github.com/percona/postgres_exporter
+
+before_script:
+- sudo service postgresql stop
+- docker --version
+- docker-compose --version
+- docker-compose up -d
+
 script:
-- go run mage.go -v all
-- "$HOME/gopath/bin/goveralls -coverprofile=cover.out -service=travis-ci"
-- go run mage.go docker
-after_success:
-- docker login -u $DOCKER_USER -p $DOCKER_PASS
-- if [ ! -z "$TRAVIS_TAG" ]; then docker tag wrouesnel/postgres_exporter:latest wrouesnel/postgres_exporter:$TRAVIS_TAG
-  ; docker push wrouesnel/postgres_exporter:$TRAVIS_TAG ; fi
-- if [ "$TRAVIS_BRANCH" == "master" ]; then docker push wrouesnel/postgres_exporter
-  ; fi
-env:
-  global:
-  - DOCKER_USER=wrouesnel
-  - secure: f0H5HKL/5f/ZZVGZ7puegWZ6eig0TmruihuSEJCx1+Y6yDZn7l8lH+eETP9KAzH27c3CG1F9ytu/3gnnTOafXnDLlCve3fL5sKF3+pNQRwi3IojsODjdfPW+KEbG+1RD7IgkCn+DSRmvvpLr4zGOmZFEM1ZtLL878u4Hsrv/X5pDbKJgG/cXDRJfsu/EcpviO4WM8zOakBY8QihXhGpZiRtpRDCXWjW49PdCkW9hsfzFaU1yjvih9EJ0cfcH+9CFCRkezwAPlCETbOv288uHXc6bCuEEX1bgJ0ZzEXYAyoO00+12ePbQZEGNikSVT55nfC+jZLLTavQkFi862Hcx/lmJpA/7aeNYOrDcomwWMRRc4Ava2+cod7acVvo45SHRq+Jj9ofDhj9s0T/aZwV+2doc9GwDN9J6aEs9Nham2G955K1H0fmMW9lv0ThSVEZ3XbzCHyR4nPAwJQXrzauqbbihCim/g/YC5gbVs7O/4GkN2Z9LK30IJr1/NtJdIa6fMk3Zdhp6LGbXCvVFRbE0rMiTLbB8O3ll2smCu3aFYv7J9IfvI0ol0ww7kULpyf/vqxkK0NJXsKgoK/Uo1lM9gNpJBHsMt9nWnDvLj2DKZNTqkxzJeG8O98ADrQWEGFhpcsSsbW9pAMsrp6D4LQikN8KoFvh9F8h9lBsYpafzlOA=
-deploy:
-  skip_cleanup: true
-  provider: releases
-  api_key:
-    secure: rwlge/Rs3wnWyfKRhD9fd5GviVe0foYUp20DY3AjKdDjhtwScA1EeR9QHOkB3raze52en0+KkpqlLCWbt3q4CRT7+ku1DNKhd6VWALdTZ1RPJYvNlU6CKJdRnWUJsECmSBsShXlbiYR8axqNVedzFPFGKzS9gYlFN6rr7pez/JZhxqucopZ6I+TkRHMELrFXyQK7/Y2bNRCLC4a+rGsjKeLLtYXbRXCmS0G4BSJEBRk7d69fIRzBApCMfrcLftgHzPuPth616yyUusQSCQYvaZ5tlwrPP8/E0wG3SVJVeDCMuDOSBZ9M6vNzR8W8VR/hxQamegn1OQgC5kNOaLZCTcJ5xguRouqb+FNFBqrd/Zi6vESo7RiVLULawzwxkh9sIPa3WZYDb3VK/Z/cpggUeR7wAu0S5ZYEvJHRefIZpqofZEHzDE3Blqp5yErz05e/zmjpd6HHK3f/UHmRRYfbulkvGT3aL/dlq5GcFvuxVC/vTL2VPvg9cGbqtf7PakC5IhoHpDs35tOyLxifOBLHvkwtGSxEfsCohIG8Hz2XFD83EsxgOiKSXVPLNd6yxjdqZj7OeAKFFU3bzGndnRbDIXaf987IN1imgUtP6wegfImoRStqxN4gEwwIMFsZCF86Ug4eLhlajLbWhudriDxDPBM/F9950aVxLwmWh9l5cRI=
-  file_glob: true
-  file: release/*
-  on:
-    tags: true
-    branch: master
-    repo: wrouesnel/postgres_exporter
+- make
+- make test
+
+notifications:
+  email: false

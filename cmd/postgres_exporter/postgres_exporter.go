@@ -1,43 +1,59 @@
 package main
 
 import (
+	"crypto/sha256"
 	"database/sql"
 	"errors"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"math"
-	"net/http"
 	"net/url"
 	"os"
 	"regexp"
-	"runtime"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
-	"gopkg.in/alecthomas/kingpin.v2"
-	"gopkg.in/yaml.v2"
-
-	"crypto/sha256"
-
 	"github.com/blang/semver"
 	_ "github.com/lib/pq"
+	"gopkg.in/yaml.v2"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
+	"github.com/prometheus/common/version"
+
+	"strings"
+
+	"github.com/percona/exporter_shared"
 )
 
-// Version is set during build to the git describe version
-// (semantic version)-(commitish) form.
-var Version = "0.0.1"
-
 var (
-	listenAddress         = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").OverrideDefaultFromEnvar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
-	metricPath            = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").OverrideDefaultFromEnvar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
-	disableDefaultMetrics = kingpin.Flag("disable-default-metrics", "Do not include default metrics.").Default("false").OverrideDefaultFromEnvar("PG_EXPORTER_DISABLE_DEFAULT_METRICS").Bool()
-	queriesPath           = kingpin.Flag("extend.query-path", "Path to custom queries to run.").Default("").OverrideDefaultFromEnvar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
-	onlyDumpMaps          = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
+	showVersion = flag.Bool(
+		"version", false,
+		"Print version information.",
+	)
+	listenAddress = flag.String(
+		"web.listen-address", getStringEnv("PG_EXPORTER_WEB_LISTEN_ADDRESS", ":9184"),
+		"Address to listen on for web interface and telemetry.",
+	)
+	metricsPath = flag.String(
+		"web.telemetry-path", getStringEnv("PG_EXPORTER_WEB_TELEMETRY_PATH", "/metrics"),
+		"Path under which to expose metrics.",
+	)
+	disableDefaultMetrics = flag.Bool(
+		"disable-default-metrics", getBoolEnv("PG_EXPORTER_DISABLE_DEFAULT_METRICS", false),
+		"Do not include default metrics.",
+	)
+	queriesPath = flag.String(
+		"extend.query-path", getStringEnv("PG_EXPORTER_EXTEND_QUERY_PATH", ""),
+		"Path to custom queries to run.",
+	)
+	onlyDumpMaps = flag.Bool(
+		"dumpmaps", false,
+		"Do not run, simply dump the maps.",
+	)
 )
 
 // Metric name parts.
@@ -50,6 +66,10 @@ const (
 	// e.g. version
 	staticLabelName = "static"
 )
+
+func init() {
+	prometheus.MustRegister(version.NewCollector("postgres_exporter"))
+}
 
 // ColumnUsage should be one of several enum values which describe how a
 // queried row is to be converted to a Prometheus metric.
@@ -1056,10 +1076,6 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	}
 }
 
-// try to get the DataSource
-// DATA_SOURCE_NAME always wins so we do not break older versions
-// reading secrets from files wins over secrets in environment variables
-// DATA_SOURCE_NAME > DATA_SOURCE_{USER|PASS}_FILE > DATA_SOURCE_{USER|PASS}
 func getDataSource() string {
 	var dsn = os.Getenv("DATA_SOURCE_NAME")
 	if len(dsn) == 0 {
@@ -1094,21 +1110,32 @@ func getDataSource() string {
 	return dsn
 }
 
-func main() {
-	kingpin.Version(fmt.Sprintf("postgres_exporter %s (built with %s)\n", Version, runtime.Version()))
-	log.AddFlags(kingpin.CommandLine)
-	kingpin.Parse()
+func getStringEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
+}
 
-	// landingPage contains the HTML served at '/'.
-	// TODO: Make this nicer and more informative.
-	var landingPage = []byte(`<html>
-	<head><title>Postgres exporter</title></head>
-	<body>
-	<h1>Postgres exporter</h1>
-	<p><a href='` + *metricPath + `'>Metrics</a></p>
-	</body>
-	</html>
-	`)
+func getBoolEnv(key string, fallback bool) bool {
+	if value, ok := os.LookupEnv(key); ok {
+		v, _ := strconv.ParseBool(value)
+		return v
+	}
+	return fallback
+}
+
+func main() {
+	// Parse flags.
+	flag.Parse()
+
+	log.Infoln("Starting node_exporter", version.Info())
+	log.Infoln("Build context", version.BuildContext())
+
+	if *showVersion {
+		fmt.Fprintln(os.Stdout, version.Print("postgres_exporter"))
+		os.Exit(0)
+	}
 
 	if *onlyDumpMaps {
 		dumpMaps()
@@ -1129,12 +1156,6 @@ func main() {
 
 	prometheus.MustRegister(exporter)
 
-	http.Handle(*metricPath, promhttp.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "Content-Type:text/plain; charset=UTF-8") // nolint: errcheck
-		w.Write(landingPage)                                                     // nolint: errcheck
-	})
-
-	log.Infof("Starting Server: %s", *listenAddress)
-	log.Fatal(http.ListenAndServe(*listenAddress, nil))
+	// Use our shared code to run server and exit on error. Upstream's code below will not be executed.
+	exporter_shared.RunServer("PostgreSQL", *listenAddress, *metricsPath, promhttp.ContinueOnError)
 }
