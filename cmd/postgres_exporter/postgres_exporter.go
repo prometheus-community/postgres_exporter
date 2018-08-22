@@ -385,7 +385,13 @@ func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]
 // TODO: test code for all cu.
 // TODO: use proper struct type system
 // TODO: the YAML this supports is "non-standard" - we should move away from it.
-func addQueries(content []byte, pgVersion semver.Version, exporterMap map[string]MetricMapNamespace, queryOverrideMap map[string]string) error {
+func addQueries(
+	content []byte,
+	pgVersion semver.Version,
+	exporterMap map[string]MetricMapNamespace,
+	queryOverrideMap map[string]string,
+	cacheDuration map[string]time.Duration,
+) error {
 	var extra map[string]interface{}
 
 	err := yaml.Unmarshal(content, &extra)
@@ -401,6 +407,15 @@ func addQueries(content []byte, pgVersion semver.Version, exporterMap map[string
 		log.Debugln("New user metric namespace from YAML:", metric)
 		for key, value := range specs.(map[interface{}]interface{}) {
 			switch key.(string) {
+			case "cache_seconds":
+				if seconds, ok := value.(int); ok {
+					if seconds > 0 {
+						log.Debugln("Setting cache duration for", metric, "to", seconds, "seconds")
+						cacheDuration[metric] = time.Duration(seconds) * time.Second
+					}
+				} else {
+					log.Warnln("Skipping cache_seconds setting for", metric, "since it is not an int")
+				}
 			case "query":
 				query := value.(string)
 				newQueryOverrides[metric] = query
@@ -701,6 +716,11 @@ type Exporter struct {
 	// Currently active query overrides
 	queryOverrides map[string]string
 	mappingMtx     sync.RWMutex
+
+	lastScrpeMtx  sync.RWMutex
+	cacheDuration map[string]time.Duration
+	lastScrape    map[string]time.Time
+	cachedMetrics map[string][]prometheus.Metric
 }
 
 // NewExporter returns a new PostgreSQL exporter for the provided DSN.
@@ -792,15 +812,17 @@ func newDesc(subsystem, name, help string) *prometheus.Desc {
 
 // Query within a namespace mapping and emit metrics. Returns fatal errors if
 // the scrape fails, and a slice of errors if they were non-fatal.
-func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace string, mapping MetricMapNamespace, queryOverrides map[string]string) ([]error, error) {
+func queryNamespaceMapping(db *sql.DB, namespace string, mapping MetricMapNamespace, queryOverrides map[string]string) ([]prometheus.Metric, []error, error) {
 	// Check for a query override for this namespace
 	query, found := queryOverrides[namespace]
+
+	metrics := make([]prometheus.Metric, 0, 10)
 
 	// Was this query disabled (i.e. nothing sensible can be queried on cu
 	// version of PostgreSQL?
 	if query == "" && found {
 		// Return success (no pertinent data)
-		return []error{}, nil
+		return metrics, []error{}, nil
 	}
 
 	// Don't fail on a bad scrape of one metric
@@ -815,14 +837,14 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 		rows, err = db.Query(query) // nolint: safesql
 	}
 	if err != nil {
-		return []error{}, errors.New(fmt.Sprintln("Error running query on database: ", namespace, err))
+		return metrics, []error{}, errors.New(fmt.Sprintln("Error running query on database: ", namespace, err))
 	}
 	defer rows.Close() // nolint: errcheck
 
 	var columnNames []string
 	columnNames, err = rows.Columns()
 	if err != nil {
-		return []error{}, errors.New(fmt.Sprintln("Error retrieving column list for: ", namespace, err))
+		return metrics, []error{}, errors.New(fmt.Sprintln("Error retrieving column list for: ", namespace, err))
 	}
 
 	// Make a lookup map for the column indices
@@ -842,7 +864,7 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 	for rows.Next() {
 		err = rows.Scan(scanArgs...)
 		if err != nil {
-			return []error{}, errors.New(fmt.Sprintln("Error retrieving rows:", namespace, err))
+			return metrics, []error{}, errors.New(fmt.Sprintln("Error retrieving rows:", namespace, err))
 		}
 
 		// Get the label values for this row
@@ -868,7 +890,7 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 				}
 
 				// Generate the metric
-				ch <- prometheus.MustNewConstMetric(metricMapping.desc, metricMapping.vtype, value, labels...)
+				metrics = append(metrics, prometheus.MustNewConstMetric(metricMapping.desc, metricMapping.vtype, value, labels...))
 			} else {
 				// Unknown metric. Report as untyped if scan to float64 works, else note an error too.
 				metricLabel := fmt.Sprintf("%s_%s", namespace, columnName)
@@ -881,22 +903,51 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 					nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unparseable column type - discarding: ", namespace, columnName, err)))
 					continue
 				}
-				ch <- prometheus.MustNewConstMetric(desc, prometheus.UntypedValue, value, labels...)
+				metrics = append(metrics, prometheus.MustNewConstMetric(desc, prometheus.UntypedValue, value, labels...))
 			}
 		}
 	}
-	return nonfatalErrors, nil
+	return metrics, nonfatalErrors, nil
 }
 
 // Iterate through all the namespace mappings in the exporter and run their
 // queries.
-func queryNamespaceMappings(ch chan<- prometheus.Metric, db *sql.DB, metricMap map[string]MetricMapNamespace, queryOverrides map[string]string) map[string]error {
+func queryNamespaceMappings(
+	ch chan<- prometheus.Metric,
+	db *sql.DB,
+	metricMap map[string]MetricMapNamespace,
+	queryOverrides map[string]string,
+	lastScrape map[string]time.Time,
+	cacheDuration map[string]time.Duration,
+	cachedMetrics map[string][]prometheus.Metric,
+) map[string]error {
 	// Return a map of namespace -> errors
 	namespaceErrors := make(map[string]error)
 
 	for namespace, mapping := range metricMap {
+
+		cache := false
+
+		if duration, ok := cacheDuration[namespace]; ok {
+			if val, ok := lastScrape[namespace]; ok && val.After(time.Now().Add(-duration)) {
+				log.Debugln("Skipping scrape namespace: ", namespace)
+				if metrics, ok := cachedMetrics[namespace]; ok {
+
+					for _, metric := range metrics {
+						ch <- metric
+					}
+
+					continue
+				}
+			}
+			cache = true
+		}
+
+		lastScrape[namespace] = time.Now()
+
 		log.Debugln("Querying namespace: ", namespace)
-		nonFatalErrors, err := queryNamespaceMapping(ch, db, namespace, mapping, queryOverrides)
+
+		metrics, nonFatalErrors, err := queryNamespaceMapping(db, namespace, mapping, queryOverrides)
 		// Serious error - a namespace disappeared
 		if err != nil {
 			namespaceErrors[namespace] = err
@@ -907,6 +958,14 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, db *sql.DB, metricMap m
 			for _, err := range nonFatalErrors {
 				log.Infoln(err.Error())
 			}
+		}
+
+		for _, metric := range metrics {
+			ch <- metric
+		}
+
+		if cache {
+			cachedMetrics[namespace] = metrics
 		}
 	}
 
@@ -949,6 +1008,10 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 
 		e.lastMapVersion = semanticVersion
 
+		e.lastScrape = make(map[string]time.Time)
+		e.cacheDuration = make(map[string]time.Duration)
+		e.cachedMetrics = make(map[string][]prometheus.Metric)
+
 		if e.userQueriesPath != "" {
 			// Clear the metric while a reload is happening
 			e.userQueriesError.Reset()
@@ -961,7 +1024,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 			} else {
 				hashsumStr := fmt.Sprintf("%x", sha256.Sum256(userQueriesData))
 
-				if err := addQueries(userQueriesData, semanticVersion, e.metricMap, e.queryOverrides); err != nil {
+				if err := addQueries(userQueriesData, semanticVersion, e.metricMap, e.queryOverrides, e.cacheDuration); err != nil {
 					log.Errorln("Failed to reload user queries:", e.userQueriesPath, err)
 					e.userQueriesError.WithLabelValues(e.userQueriesPath, hashsumStr).Set(1)
 				} else {
@@ -1060,7 +1123,9 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 		e.error.Set(1)
 	}
 
-	errMap := queryNamespaceMappings(ch, db, e.metricMap, e.queryOverrides)
+	e.lastScrpeMtx.Lock()
+	errMap := queryNamespaceMappings(ch, db, e.metricMap, e.queryOverrides, e.lastScrape, e.cacheDuration, e.cachedMetrics)
+	e.lastScrpeMtx.Unlock()
 	if len(errMap) > 0 {
 		e.error.Set(1)
 	}
