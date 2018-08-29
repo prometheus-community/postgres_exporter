@@ -4,7 +4,13 @@ go:
 - 1.10.x
 
 env:
-- POSTGRESQL_IMAGE=postgres
+- POSTGRESQL_IMAGE=postgres:9.1
+- POSTGRESQL_IMAGE=postgres:9.2
+- POSTGRESQL_IMAGE=postgres:9.3
+- POSTGRESQL_IMAGE=postgres:9.4
+- POSTGRESQL_IMAGE=postgres:9.5
+- POSTGRESQL_IMAGE=postgres:9.6
+- POSTGRESQL_IMAGE=postgres:10
 
 services:
 - docker
