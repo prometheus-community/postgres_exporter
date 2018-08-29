@@ -3,42 +3,35 @@ services:
 - docker
 language: go
 go:
-- '1.9'
-# Make sure we have p2 and the postgres client.
+- '1.10'
 before_install:
 - go get -v github.com/mattn/goveralls
-- sudo wget -O /usr/local/bin/p2 https://github.com/wrouesnel/p2cli/releases/download/r4/p2 &&
-  sudo chmod +x /usr/local/bin/p2
-- sudo wget -O /usr/local/bin/docker-compose https://github.com/docker/compose/releases/download/1.9.0-rc4/docker-compose-Linux-x86_64 &&
-  sudo chmod +x /usr/local/bin/docker-compose
+- sudo wget -O /usr/local/bin/p2 https://github.com/wrouesnel/p2cli/releases/download/r4/p2
+  && sudo chmod +x /usr/local/bin/p2
+- sudo wget -O /usr/local/bin/docker-compose https://github.com/docker/compose/releases/download/1.9.0-rc4/docker-compose-Linux-x86_64
+  && sudo chmod +x /usr/local/bin/docker-compose
 - sudo apt-get update && sudo apt-get install postgresql-client-common
-  
 script:
-- make all
-- make docker
-- make test-integration
-- make cover.out
-- $HOME/gopath/bin/goveralls -coverprofile=cover.out -service=travis-ci
+- go run mage.go -v all
+- "$HOME/gopath/bin/goveralls -coverprofile=cover.out -service=travis-ci"
+- go run mage.go docker
 after_success:
-- docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
-# Push a tagged build if a tag is found.
-- if [ ! -z "$TRAVIS_TAG" ]; then 
-    docker tag wrouesnel/postgres_exporter:latest wrouesnel/postgres_exporter:$TRAVIS_TAG ;
-    docker push wrouesnel/postgres_exporter:$TRAVIS_TAG ;
-  fi
-# Push a latest version
-- if [ "$TRAVIS_BRANCH" == "master" ]; then docker push wrouesnel/postgres_exporter ; fi
+- docker login -u $DOCKER_USER -p $DOCKER_PASS
+- if [ ! -z "$TRAVIS_TAG" ]; then docker tag wrouesnel/postgres_exporter:latest wrouesnel/postgres_exporter:$TRAVIS_TAG
+  ; docker push wrouesnel/postgres_exporter:$TRAVIS_TAG ; fi
+- if [ "$TRAVIS_BRANCH" == "master" ]; then docker push wrouesnel/postgres_exporter
+  ; fi
 env:
   global:
-  - secure: RfoWQj5tEB/t3XL2tqJW7u7Qscpz1QBOfF9lMFpB4kAUMTtZU0zBbXfMo1JheGoJQQxD/7NLRHhbUWPT2489o3KKpRTQ7RHn3k8n5U7opH01bWX0+l/EPVmhlsKjSDSLGgmxz80j3I6C8ZV3qDUijSx7r90QUNHGbZtV7g+KtoUTpRV0zir/heK6qq9LHWNHbNsJyHK8qHmd6g1UzWIBaZPJ6a/n/rO2jq4uS1JR0VlIJPRF11HOLH8IjFQvVYpN7YbEslxyNsfQJUSP/7CghSLLVWPSATEjMm8a5GJVLc564+nYghm484psEtiMXkZ3n6ie7AT8aJrKfexWrwh2aCc+cK4PiyXrf4euZehZNYogmFCqWzd1LJKcN2uIkpBSuZQDm3e6c4qkkWGpx+RdFWtAMG8IgZLDbcuryxFNzMwHc2CJ009s9Zsa+g7D57csyR5LCZ8YtNGI3g8FmhwpCKvYkfKa9aijUEWyJMyT4Vhd/w7btMTuwYHgUQ85k4ov4Xjz5SNpAGgemig5G5w7PJj4NhGvIBz9weL154x/BFVjHOZZ6Y/bWgJIPoW1KM15x5K8QylWYEBUHtwiyVyXOxHqt6MOX1vYo1L37jMK88IErrfh/VmlxEhtN9wOghk8IudMfFwQtjIwiWlJf218wxMIzUjoyb5/25tU9f2OJrg=
-  - secure: WP96T7yshE03XsPVc9ICbwZXZ6nVsQDCQ9NGKnIEQa4T1Swu5uLVzxjGeowHPykKbKphQmT8inMniBxB48OLc3VVqNxVI+00ppLPEf7n79w2wVbwFOEa6TiOdws+0wOphkeSYc0L+o2aSfoMKJHF+rVW9tmM2tszVjofYHhdWjqloc2pqsfOnqbR7icfpmzMWKyezIE20YOIBsiKZJTKXiZ1SaG9ExkNwuZ7L+HRF1yeI0OdAM4VfEzBK1Gwicy2BtrbyHnl4zgcSoIBmuzo+pNuvqyGmBn3C221M6ki7NoDJDfW5brcvDmiMODWGnka7iW0nt5aUbVtURM8BhWZR0uINo30aYjr4j39UBq8y+mqYV0dp/dMEmy2fa1mogr+DuHUNVSg59Au45AZeom8N6FT03nlg+RcG/tV1skvP/mn9n9CKsyfvC4Rf3jp4+LTiJ9JIch74MecRYVwlpKM+i8s6uDftt3mvxeIYdK+NEMcfwKMv8KTwuxRo/3KRhif7z2cOE+oMbT5POWO19bfboRPCs4xiMTcqpx8dJVs41SacY52PPgjFSnyVrKvzAyjn6mePjLhpoPZueHZuJYPNa9QC8JcASMlCI7lf2Eq+2Dmp2JxmndkRs/cIfHgmO4gtiNM7Vb/rlML1D/8LYPWU/Rdp82/yDffC0ugMNovXt0=
-  - secure: RRQH4Tr94OblZoqls50BIoyK1OvK9fALs4pAq1Uk5dksY1NWnomheQzOaHzbVfMfXc4zXAzppZIqxUDGn8GiSLbtJL6pnxsxYNGoCGdS8lMjjKWXbCAs8TBJobi3krOOjqgbhOWTpyluTEShnBcg7CjrRQUa/ChS3uE5kl21/4eIl9Be6Q08Eqm3p1yvMAyAgIL6Y6oPAAtBa6zIsi2MSNlryz3RKHJO7AheilppYx3E8B03A+a/oqvTTcw6w/RwBYxB8MYfSLC0jSssZz5pUSX/byUaklGFhQLnKAzJyhrMOvRyMVcO4PHaLgVi1eAKQz6eLQh7uEiIqKh19cuvTbZHDgu8zMpLDTxOW9U95e4kbjOZ5pWZ7E5QTrb24RZIt42JGbmme7PWOvy3zNbWHwfwiOF1qwYwISUcj2KFCpes8mDGt6iv46LfdlU0uoZdZu3MAiTiW0u2SD5hIeFq4XYesPtkS/TKFoAbB5Tu1qbxdmYu5NqmfvmxsmeNEm4inFJ5ap3fRRCVo668Z6qRMuQ1URcEfOz8iEftP9CnwSOXRuiuMo+W9GgckRuDZcPyQMCftq8+PhB+SjK57zrAd4Kxqf6kVHV16tcWqmFjfJJUFqmL+gpjT/VMEVDY2FOnbOARjkeLTjVC4dADBjxfJ6wmlLrfHdUm4GinbaHq0iA=
+  - DOCKER_USER=wrouesnel
+  - secure: f0H5HKL/5f/ZZVGZ7puegWZ6eig0TmruihuSEJCx1+Y6yDZn7l8lH+eETP9KAzH27c3CG1F9ytu/3gnnTOafXnDLlCve3fL5sKF3+pNQRwi3IojsODjdfPW+KEbG+1RD7IgkCn+DSRmvvpLr4zGOmZFEM1ZtLL878u4Hsrv/X5pDbKJgG/cXDRJfsu/EcpviO4WM8zOakBY8QihXhGpZiRtpRDCXWjW49PdCkW9hsfzFaU1yjvih9EJ0cfcH+9CFCRkezwAPlCETbOv288uHXc6bCuEEX1bgJ0ZzEXYAyoO00+12ePbQZEGNikSVT55nfC+jZLLTavQkFi862Hcx/lmJpA/7aeNYOrDcomwWMRRc4Ava2+cod7acVvo45SHRq+Jj9ofDhj9s0T/aZwV+2doc9GwDN9J6aEs9Nham2G955K1H0fmMW9lv0ThSVEZ3XbzCHyR4nPAwJQXrzauqbbihCim/g/YC5gbVs7O/4GkN2Z9LK30IJr1/NtJdIa6fMk3Zdhp6LGbXCvVFRbE0rMiTLbB8O3ll2smCu3aFYv7J9IfvI0ol0ww7kULpyf/vqxkK0NJXsKgoK/Uo1lM9gNpJBHsMt9nWnDvLj2DKZNTqkxzJeG8O98ADrQWEGFhpcsSsbW9pAMsrp6D4LQikN8KoFvh9F8h9lBsYpafzlOA=
 deploy:
   skip_cleanup: true
   provider: releases
   api_key:
     secure: rwlge/Rs3wnWyfKRhD9fd5GviVe0foYUp20DY3AjKdDjhtwScA1EeR9QHOkB3raze52en0+KkpqlLCWbt3q4CRT7+ku1DNKhd6VWALdTZ1RPJYvNlU6CKJdRnWUJsECmSBsShXlbiYR8axqNVedzFPFGKzS9gYlFN6rr7pez/JZhxqucopZ6I+TkRHMELrFXyQK7/Y2bNRCLC4a+rGsjKeLLtYXbRXCmS0G4BSJEBRk7d69fIRzBApCMfrcLftgHzPuPth616yyUusQSCQYvaZ5tlwrPP8/E0wG3SVJVeDCMuDOSBZ9M6vNzR8W8VR/hxQamegn1OQgC5kNOaLZCTcJ5xguRouqb+FNFBqrd/Zi6vESo7RiVLULawzwxkh9sIPa3WZYDb3VK/Z/cpggUeR7wAu0S5ZYEvJHRefIZpqofZEHzDE3Blqp5yErz05e/zmjpd6HHK3f/UHmRRYfbulkvGT3aL/dlq5GcFvuxVC/vTL2VPvg9cGbqtf7PakC5IhoHpDs35tOyLxifOBLHvkwtGSxEfsCohIG8Hz2XFD83EsxgOiKSXVPLNd6yxjdqZj7OeAKFFU3bzGndnRbDIXaf987IN1imgUtP6wegfImoRStqxN4gEwwIMFsZCF86Ug4eLhlajLbWhudriDxDPBM/F9950aVxLwmWh9l5cRI=
-  file: postgres_exporter
+  file_glob: true
+  file: release/*
   on:
     tags: true
     branch: master

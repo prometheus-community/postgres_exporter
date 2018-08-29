@@ -7,9 +7,12 @@ shift
 output_cov=$1
 shift
 
+echo "Test Binary: $test_binary" 1>&2
+echo "Coverage File: $output_cov" 1>&2
+
 echo "mode: count" > $output_cov
 
 test_cov=$(mktemp)
-$test_binary -test.coverprofile=$test_cov $@
+$test_binary -test.coverprofile=$test_cov $@ || exit 1
 tail -n +2 $test_cov >> $output_cov
 rm -f $test_cov

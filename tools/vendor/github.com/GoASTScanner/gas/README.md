@@ -18,6 +18,10 @@ You may obtain a copy of the License [here](http://www.apache.org/licenses/LICEN
 Gas is still in alpha and accepting feedback from early adopters. We do
 not consider it production ready at this time.
 
+### Install
+
+`$ go get github.com/GoASTScanner/gas/cmd/gas/...`
+
 ### Usage
 
 Gas can be configured to only run a subset of rules, to exclude certain file
@@ -37,6 +41,7 @@ or to specify a set of rules to explicitly exclude using the '-exclude=' flag.
   - G103: Audit the use of unsafe block
   - G104: Audit errors not checked
   - G105: Audit the use of math/big.Int.Exp
+  - G106: Audit the use of ssh.InsecureIgnoreHostKey
   - G201: SQL query construction using format string
   - G202: SQL query construction using string concatenation
   - G203: Use of unescaped data in HTML templates
@@ -64,12 +69,8 @@ $ gas -exclude=G303 ./...
 
 #### Excluding files:
 
-Gas can be told to \ignore paths that match a supplied pattern using the 'skip' command line option. This is
-accomplished via [go-glob](github.com/ryanuber/go-glob). Multiple patterns can be specified as follows:
-
-```
-$ gas -skip=tests* -skip=*_example.go ./...
-```
+Gas will ignore dependencies in your vendor directory any files
+that are not considered build artifacts by the compiler (so test files).
 
 #### Annotating code
 
@@ -104,7 +105,7 @@ $ gas -nosec=true ./...
 
 ### Output formats
 
-Gas currently supports text, json and csv output formats. By default
+Gas currently supports text, json, yaml, csv and JUnit XML output formats. By default
 results will be reported to stdout, but can also be written to an output
 file. The output format is controlled by the '-fmt' flag, and the output file is controlled by the '-out' flag as follows:
 
@@ -112,3 +113,22 @@ file. The output format is controlled by the '-fmt' flag, and the output file is
 # Write output in json format to results.json
 $ gas -fmt=json -out=results.json *.go
 ```
+
+### Generate TLS rule
+
+The configuration of TLS rule can be generated from [Mozilla's TLS ciphers recommendation](https://statics.tls.security.mozilla.org/server-side-tls-conf.json).
+
+
+First you need to install the generator tool:
+
+```
+go get github.com/GoASTScanner/gas/cmd/tlsconfig/...
+```
+
+You can invoke now the `go generate` in the root of the project:
+
+```
+go generate ./...
+```
+
+This will generate the `rules/tls_config.go` file with will contain the current ciphers recommendation from Mozilla.

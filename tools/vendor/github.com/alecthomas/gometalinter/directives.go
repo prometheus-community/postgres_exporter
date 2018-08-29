@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -14,6 +16,7 @@ type ignoredRange struct {
 	col        int
 	start, end int
 	linters    []string
+	matched    bool
 }
 
 func (i *ignoredRange) matches(issue *Issue) bool {
@@ -33,6 +36,14 @@ func (i *ignoredRange) matches(issue *Issue) bool {
 
 func (i *ignoredRange) near(col, start int) bool {
 	return col == i.col && i.end == start-1
+}
+
+func (i *ignoredRange) String() string {
+	linters := strings.Join(i.linters, ",")
+	if len(i.linters) == 0 {
+		linters = "all"
+	}
+	return fmt.Sprintf("%s:%d-%d", linters, i.start, i.end)
 }
 
 type ignoredRanges []*ignoredRange
@@ -57,19 +68,51 @@ func newDirectiveParser() *directiveParser {
 // IsIgnored returns true if the given linter issue is ignored by a linter directive.
 func (d *directiveParser) IsIgnored(issue *Issue) bool {
 	d.lock.Lock()
-	ranges, ok := d.files[issue.Path]
+	path := issue.Path.Relative()
+	ranges, ok := d.files[path]
 	if !ok {
-		ranges = d.parseFile(issue.Path)
+		ranges = d.parseFile(path)
 		sort.Sort(ranges)
-		d.files[issue.Path] = ranges
+		d.files[path] = ranges
 	}
 	d.lock.Unlock()
 	for _, r := range ranges {
 		if r.matches(issue) {
+			debug("nolint: matched %s to issue %s", r, issue)
+			r.matched = true
 			return true
 		}
 	}
 	return false
+}
+
+// Unmatched returns all the ranges which were never used to ignore an issue
+func (d *directiveParser) Unmatched() map[string]ignoredRanges {
+	unmatched := map[string]ignoredRanges{}
+	for path, ranges := range d.files {
+		for _, ignore := range ranges {
+			if !ignore.matched {
+				unmatched[path] = append(unmatched[path], ignore)
+			}
+		}
+	}
+	return unmatched
+}
+
+// LoadFiles from a list of directories
+func (d *directiveParser) LoadFiles(paths []string) error {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	filenames, err := pathsToFileGlobs(paths)
+	if err != nil {
+		return err
+	}
+	for _, filename := range filenames {
+		ranges := d.parseFile(filename)
+		sort.Sort(ranges)
+		d.files[filename] = ranges
+	}
+	return nil
 }
 
 // Takes a set of ignoredRanges, determines if they immediately precede a statement
@@ -150,7 +193,34 @@ func filterIssuesViaDirectives(directives *directiveParser, issues chan *Issue) 
 				out <- issue
 			}
 		}
+
+		if config.WarnUnmatchedDirective {
+			for _, issue := range warnOnUnusedDirective(directives) {
+				out <- issue
+			}
+		}
 		close(out)
 	}()
+	return out
+}
+
+func warnOnUnusedDirective(directives *directiveParser) []*Issue {
+	out := []*Issue{}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		warning("failed to get working directory %s", err)
+	}
+
+	for path, ranges := range directives.Unmatched() {
+		for _, ignore := range ranges {
+			issue, _ := NewIssue("nolint", config.formatTemplate)
+			issue.Path = newIssuePath(cwd, path)
+			issue.Line = ignore.start
+			issue.Col = ignore.col
+			issue.Message = "nolint directive did not match any issue"
+			out = append(out, issue)
+		}
+	}
 	return out
 }

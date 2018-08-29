@@ -40,7 +40,7 @@ Enable Travis-CI on your github repository settings.
 
 For a **public** github repository put below's `.travis.yml`.
 
-```
+```yml
 language: go
 sudo: false
 go:
@@ -48,14 +48,14 @@ go:
 before_install:
   - go get github.com/mattn/goveralls
 script:
-  - $HOME/gopath/bin/goveralls -service=travis-ci
+  - $GOPATH/bin/goveralls -service=travis-ci
 ```
 
 For a **public** github repository, it is not necessary to define your repository key (`COVERALLS_TOKEN`).
 
 For a **private** github repository put below's `.travis.yml`. If you use **travis pro**, you need to specify `-service=travis-pro` instead of `-service=travis-ci`.
 
-```
+```yml
 language: go
 sudo: false
 go:
@@ -63,7 +63,7 @@ go:
 before_install:
   - go get github.com/mattn/goveralls
 script:
-  - $HOME/gopath/bin/goveralls -service=travis-pro
+  - $GOPATH/bin/goveralls -service=travis-pro
 ```
 
 Store your Coveralls API token in `Environment variables`.
@@ -81,7 +81,7 @@ $ travis encrypt COVERALLS_TOKEN=your_token_goes_here --add env.global
 
 travis will add `env` block as following example:
 
-```
+```yml
 env:
   global:
     secure: xxxxxxxxxxxxx
@@ -136,6 +136,32 @@ test:
 ```
 
 For more information, See https://coveralls.zendesk.com/hc/en-us/articles/201342809-Go
+
+## Sempahore
+
+Store your Coveralls API token in `Environment Variables`:
+
+```
+COVERALLS_TOKEN=your_token_goes_here
+```
+
+More instructions on how to do this can be found in the [Semahore documentation](https://semaphoreci.com/docs/exporting-environment-variables.html).
+
+Replace the `go test` line in your `Commands` with these lines:
+
+```
+$ go get github.com/mattn/goveralls
+$ goveralls -service semaphore
+```
+
+`goveralls` automatically use the environment variable `COVERALLS_TOKEN` as the
+default value for `-repotoken`.
+
+You can use the `-v` flag to see verbose output from the test suite:
+
+```
+$ goveralls -v -service semaphore
+```
 
 # Authors
 
