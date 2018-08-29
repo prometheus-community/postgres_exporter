@@ -11,6 +11,7 @@ env:
 - POSTGRESQL_IMAGE=postgres:9.5
 - POSTGRESQL_IMAGE=postgres:9.6
 - POSTGRESQL_IMAGE=postgres:10
+- POSTGRESQL_IMAGE=postgres:11
 
 services:
 - docker
