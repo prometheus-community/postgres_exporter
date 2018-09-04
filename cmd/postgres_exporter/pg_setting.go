@@ -1,8 +1,6 @@
 package main
 
 import (
-	"database/sql"
-	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -13,8 +11,8 @@ import (
 )
 
 // Query the pg_settings view containing runtime variables
-func querySettings(ch chan<- prometheus.Metric, db *sql.DB) error {
-	log.Debugln("Querying pg_setting view")
+func querySettings(ch chan<- prometheus.Metric, server *Server) error {
+	log.Debugf("Querying pg_setting view on %q", server)
 
 	// pg_settings docs: https://www.postgresql.org/docs/current/static/view-pg-settings.html
 	//
@@ -22,9 +20,9 @@ func querySettings(ch chan<- prometheus.Metric, db *sql.DB) error {
 	// types in normaliseUnit() below
 	query := "SELECT name, setting, COALESCE(unit, ''), short_desc, vartype FROM pg_settings WHERE vartype IN ('bool', 'integer', 'real');"
 
-	rows, err := db.Query(query)
+	rows, err := server.db.Query(query)
 	if err != nil {
-		return errors.New(fmt.Sprintln("Error running query on database: ", namespace, err))
+		return fmt.Errorf("Error running query on database %q: %s %v", server, namespace, err)
 	}
 	defer rows.Close() // nolint: errcheck
 
@@ -32,10 +30,10 @@ func querySettings(ch chan<- prometheus.Metric, db *sql.DB) error {
 		s := &pgSetting{}
 		err = rows.Scan(&s.name, &s.setting, &s.unit, &s.shortDesc, &s.vartype)
 		if err != nil {
-			return errors.New(fmt.Sprintln("Error retrieving rows:", namespace, err))
+			return fmt.Errorf("Error retrieving rows on %q: %s %v", server, namespace, err)
 		}
 
-		ch <- s.metric()
+		ch <- s.metric(server.labels)
 	}
 
 	return nil
@@ -47,7 +45,7 @@ type pgSetting struct {
 	name, setting, unit, shortDesc, vartype string
 }
 
-func (s *pgSetting) metric() prometheus.Metric {
+func (s *pgSetting) metric(labels prometheus.Labels) prometheus.Metric {
 	var (
 		err       error
 		name      = strings.Replace(s.name, ".", "_", -1)
@@ -78,7 +76,7 @@ func (s *pgSetting) metric() prometheus.Metric {
 		panic(fmt.Sprintf("Unsupported vartype %q", s.vartype))
 	}
 
-	desc := newDesc(subsystem, name, shortDesc)
+	desc := newDesc(subsystem, name, shortDesc, labels)
 	return prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, val)
 }
 

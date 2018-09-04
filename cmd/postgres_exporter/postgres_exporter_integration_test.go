@@ -7,11 +7,11 @@ package main
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	. "gopkg.in/check.v1"
 
-	"database/sql"
 	"fmt"
 
 	_ "github.com/lib/pq"
@@ -31,7 +31,7 @@ func (s *IntegrationSuite) SetUpSuite(c *C) {
 	dsn := os.Getenv("DATA_SOURCE_NAME")
 	c.Assert(dsn, Not(Equals), "")
 
-	exporter := NewExporter(dsn, false, "")
+	exporter := NewExporter(strings.Split(dsn, ","))
 	c.Assert(exporter, NotNil)
 	// Assign the exporter to the suite
 	s.e = exporter
@@ -48,29 +48,31 @@ func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 		}
 	}()
 
-	// Open a database connection
-	db, err := sql.Open("postgres", s.e.dsn)
-	c.Assert(db, NotNil)
-	c.Assert(err, IsNil)
-	defer db.Close()
+	for _, dsn := range s.e.dsn {
+		// Open a database connection
+		server, err := NewServer(dsn)
+		c.Assert(server, NotNil)
+		c.Assert(err, IsNil)
 
-	// Do a version update
-	err = s.e.checkMapVersions(ch, db)
-	c.Assert(err, IsNil)
+		// Do a version update
+		err = s.e.checkMapVersions(ch, server)
+		c.Assert(err, IsNil)
 
-	err = querySettings(ch, db)
-	if !c.Check(err, Equals, nil) {
-		fmt.Println("## ERRORS FOUND")
-		fmt.Println(err)
-	}
-
-	// This should never happen in our test cases.
-	errMap := queryNamespaceMappings(ch, db, s.e.metricMap, s.e.queryOverrides)
-	if !c.Check(len(errMap), Equals, 0) {
-		fmt.Println("## NAMESPACE ERRORS FOUND")
-		for namespace, err := range errMap {
-			fmt.Println(namespace, ":", err)
+		err = querySettings(ch, server)
+		if !c.Check(err, Equals, nil) {
+			fmt.Println("## ERRORS FOUND")
+			fmt.Println(err)
 		}
+
+		// This should never happen in our test cases.
+		errMap := queryNamespaceMappings(ch, server)
+		if !c.Check(len(errMap), Equals, 0) {
+			fmt.Println("## NAMESPACE ERRORS FOUND")
+			for namespace, err := range errMap {
+				fmt.Println(namespace, ":", err)
+			}
+		}
+		server.Close()
 	}
 }
 
@@ -86,12 +88,12 @@ func (s *IntegrationSuite) TestInvalidDsnDoesntCrash(c *C) {
 	}()
 
 	// Send a bad DSN
-	exporter := NewExporter("invalid dsn", false, *queriesPath)
+	exporter := NewExporter([]string{"invalid dsn"})
 	c.Assert(exporter, NotNil)
 	exporter.scrape(ch)
 
 	// Send a DSN to a non-listening port.
-	exporter = NewExporter("postgresql://nothing:nothing@127.0.0.1:1/nothing", false, *queriesPath)
+	exporter = NewExporter([]string{"postgresql://nothing:nothing@127.0.0.1:1/nothing"})
 	c.Assert(exporter, NotNil)
 	exporter.scrape(ch)
 }
@@ -109,7 +111,7 @@ func (s *IntegrationSuite) TestUnknownMetricParsingDoesntCrash(c *C) {
 	dsn := os.Getenv("DATA_SOURCE_NAME")
 	c.Assert(dsn, Not(Equals), "")
 
-	exporter := NewExporter(dsn, false, "")
+	exporter := NewExporter(strings.Split(dsn, ","))
 	c.Assert(exporter, NotNil)
 
 	// Convert the default maps into a list of empty maps.
