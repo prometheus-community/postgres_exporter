@@ -137,6 +137,32 @@ test:
 
 For more information, See https://coveralls.zendesk.com/hc/en-us/articles/201342809-Go
 
+## Sempahore
+
+Store your Coveralls API token in `Environment Variables`:
+
+```
+COVERALLS_TOKEN=your_token_goes_here
+```
+
+More instructions on how to do this can be found in the [Semahore documentation](https://semaphoreci.com/docs/exporting-environment-variables.html).
+
+Replace the `go test` line in your `Commands` with these lines:
+
+```
+$ go get github.com/mattn/goveralls
+$ goveralls -service semaphore
+```
+
+`goveralls` automatically use the environment variable `COVERALLS_TOKEN` as the
+default value for `-repotoken`.
+
+You can use the `-v` flag to see verbose output from the test suite:
+
+```
+$ goveralls -v -service semaphore
+```
+
 # Authors
 
 * Yasuhiro Matsumoto (a.k.a. mattn)

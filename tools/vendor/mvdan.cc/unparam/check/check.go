@@ -23,6 +23,7 @@ import (
 
 	"golang.org/x/tools/go/callgraph"
 	"golang.org/x/tools/go/callgraph/cha"
+	"golang.org/x/tools/go/callgraph/rta"
 	"golang.org/x/tools/go/loader"
 	"golang.org/x/tools/go/ssa"
 	"golang.org/x/tools/go/ssa/ssautil"
@@ -31,7 +32,7 @@ import (
 	"mvdan.cc/lint"
 )
 
-func UnusedParams(tests, exported, debug bool, args ...string) ([]string, error) {
+func UnusedParams(tests bool, algo string, exported, debug bool, args ...string) ([]string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -39,6 +40,7 @@ func UnusedParams(tests, exported, debug bool, args ...string) ([]string, error)
 	c := &Checker{
 		wd:       wd,
 		tests:    tests,
+		algo:     algo,
 		exported: exported,
 	}
 	if debug {
@@ -54,6 +56,7 @@ type Checker struct {
 	wd string
 
 	tests    bool
+	algo     string
 	exported bool
 	debugLog io.Writer
 
@@ -128,6 +131,13 @@ func generatedDoc(text string) bool {
 		strings.Contains(text, "DO NOT EDIT")
 }
 
+func eqlConsts(v1, v2 constant.Value) bool {
+	if v1 == nil || v2 == nil {
+		return v1 == v2
+	}
+	return constant.Compare(v1, token.EQL, v2)
+}
+
 var stdSizes = types.SizesFor("gc", "amd64")
 
 func (c *Checker) Check() ([]lint.Issue, error) {
@@ -150,15 +160,34 @@ func (c *Checker) Check() ([]lint.Issue, error) {
 			})
 		}
 	}
-	cg := cha.CallGraph(c.prog)
+	var cg *callgraph.Graph
+	switch c.algo {
+	case "cha":
+		cg = cha.CallGraph(c.prog)
+	case "rta":
+		mains, err := mainPackages(c.prog, wantPkg)
+		if err != nil {
+			return nil, err
+		}
+		var roots []*ssa.Function
+		for _, main := range mains {
+			roots = append(roots, main.Func("init"), main.Func("main"))
+		}
+		result := rta.Analyze(roots, true)
+		cg = result.CallGraph
+	default:
+		return nil, fmt.Errorf("unknown call graph construction algorithm: %q", c.algo)
+	}
+	cg.DeleteSyntheticNodes()
 
 	var issues []lint.Issue
-funcLoop:
 	for fn := range ssautil.AllFunctions(c.prog) {
-		if fn.Pkg == nil { // builtin?
+		switch {
+		case fn.Pkg == nil: // builtin?
 			continue
-		}
-		if len(fn.Blocks) == 0 { // stub
+		case fn.Name() == "init":
+			continue
+		case len(fn.Blocks) == 0: // stub
 			continue
 		}
 		info := wantPkg[fn.Pkg.Pkg]
@@ -182,31 +211,13 @@ funcLoop:
 			c.debug("  skip - dummy implementation\n")
 			continue
 		}
-		for _, edge := range cg.Nodes[fn].In {
-			call := edge.Site.Value()
-			if receivesExtractedArgs(fn.Signature, call) {
-				// called via function(results())
-				c.debug("  skip - type is required via call\n")
-				continue funcLoop
-			}
-			caller := edge.Caller.Func
-			switch {
-			case len(caller.FreeVars) == 1 && strings.HasSuffix(caller.Name(), "$bound"):
-				// passing method via someFunc(type.method)
-				fallthrough
-			case len(caller.FreeVars) == 0 && strings.HasSuffix(caller.Name(), "$thunk"):
-				// passing method via someFunc(recv.method)
-				c.debug("  skip - type is required via call\n")
-				continue funcLoop
-			}
-			switch edge.Site.Common().Value.(type) {
-			case *ssa.Function:
-			default:
-				// called via a parameter or field, type
-				// is set in stone.
-				c.debug("  skip - type is required via call\n")
-				continue funcLoop
-			}
+		var calls []*callgraph.Edge
+		if node := cg.Nodes[fn]; node != nil {
+			calls = node.In
+		}
+		if requiredViaCall(fn, calls) {
+			c.debug("  skip - type is required via call\n")
+			continue
 		}
 		if c.multipleImpls(info, fn) {
 			c.debug("  skip - multiple implementations via build tags\n")
@@ -214,7 +225,7 @@ funcLoop:
 		}
 
 		results := fn.Signature.Results()
-		seenConsts := make([]constant.Value, results.Len())
+		seenConsts := make([]*constant.Value, results.Len())
 		seenParams := make([]*ssa.Parameter, results.Len())
 		numRets := 0
 		allRetsExtracting := true
@@ -231,9 +242,9 @@ funcLoop:
 					seenParams[i] = nil
 					switch {
 					case numRets == 0:
-						seenConsts[i] = x.Value
+						seenConsts[i] = &x.Value
 					case seenConsts[i] == nil:
-					case !constant.Compare(seenConsts[i], token.EQL, x.Value):
+					case !eqlConsts(*seenConsts[i], x.Value):
 						seenConsts[i] = nil
 					}
 				case *ssa.Parameter:
@@ -258,7 +269,20 @@ funcLoop:
 			numRets++
 		}
 		for i, val := range seenConsts {
-			if val == nil || numRets < 2 {
+			if val == nil {
+				// no consistent returned constant
+				continue
+			}
+			if *val != nil && numRets == 1 {
+				// just one non-nil return (too many
+				// false positives)
+				continue
+			}
+			valStr := "nil" // always returned untyped nil
+			if *val != nil {
+				valStr = (*val).String()
+			}
+			if calledInReturn(calls) {
 				continue
 			}
 			res := results.At(i)
@@ -266,11 +290,10 @@ funcLoop:
 			issues = append(issues, Issue{
 				pos:   res.Pos(),
 				fname: fn.RelString(fn.Package().Pkg),
-				msg:   fmt.Sprintf("result %s is always %s", name, val.String()),
+				msg:   fmt.Sprintf("result %s is always %s", name, valStr),
 			})
 		}
 
-		callers := cg.Nodes[fn].In
 	resLoop:
 		for i := 0; i < results.Len(); i++ {
 			if allRetsExtracting {
@@ -284,7 +307,7 @@ funcLoop:
 				continue
 			}
 			count := 0
-			for _, edge := range callers {
+			for _, edge := range calls {
 				val := edge.Site.Value()
 				if val == nil { // e.g. go statement
 					count++
@@ -330,7 +353,7 @@ funcLoop:
 				continue
 			}
 			reason := "is unused"
-			if valStr := c.receivesSameValues(cg.Nodes[fn].In, par, i); valStr != "" {
+			if valStr := c.receivesSameValues(calls, par, i); valStr != "" {
 				reason = fmt.Sprintf("always receives %s", valStr)
 			} else if anyRealUse(par, i) {
 				c.debug("  skip - used somewhere in the func body\n")
@@ -353,6 +376,53 @@ funcLoop:
 		return p1.Filename < p2.Filename
 	})
 	return issues, nil
+}
+
+func mainPackages(prog *ssa.Program, wantPkg map[*types.Package]*loader.PackageInfo) ([]*ssa.Package, error) {
+	mains := make([]*ssa.Package, 0, len(wantPkg))
+	for tpkg := range wantPkg {
+		pkg := prog.Package(tpkg)
+		if tpkg.Name() == "main" && pkg.Func("main") != nil {
+			mains = append(mains, pkg)
+		}
+	}
+	if len(mains) == 0 {
+		return nil, fmt.Errorf("no main packages")
+	}
+	return mains, nil
+}
+
+func calledInReturn(calls []*callgraph.Edge) bool {
+	for _, edge := range calls {
+		val := edge.Site.Value()
+		if val == nil { // e.g. go statement
+			continue
+		}
+		refs := *val.Referrers()
+		if len(refs) == 0 { // no use of return values
+			continue
+		}
+		allReturnExtracts := true
+		for _, instr := range refs {
+			switch x := instr.(type) {
+			case *ssa.Return:
+				return true
+			case *ssa.Extract:
+				refs := *x.Referrers()
+				if len(refs) != 1 {
+					allReturnExtracts = false
+					break
+				}
+				if _, ok := refs[0].(*ssa.Return); !ok {
+					allReturnExtracts = false
+				}
+			}
+		}
+		if allReturnExtracts {
+			return true
+		}
+	}
+	return false
 }
 
 func nodeStr(node ast.Node) string {
@@ -395,7 +465,7 @@ func (c *Checker) receivesSameValues(in []*callgraph.Edge, par *ssa.Parameter, p
 			seen = cnst.Value // first constant
 			seenOrig = origArg
 			count = 1
-		} else if !constant.Compare(seen, token.EQL, cnst.Value) {
+		} else if !eqlConsts(seen, cnst.Value) {
 			return "" // different constants
 		} else {
 			count++
@@ -471,8 +541,9 @@ func dummyImpl(blk *ssa.BasicBlock) bool {
 		for _, val := range instr.Operands(ops[:0]) {
 			switch x := (*val).(type) {
 			case nil, *ssa.Const, *ssa.ChangeType, *ssa.Alloc,
-				*ssa.MakeInterface, *ssa.Function,
-				*ssa.Global, *ssa.IndexAddr, *ssa.Slice,
+				*ssa.MakeInterface, *ssa.MakeMap,
+				*ssa.Function, *ssa.Global,
+				*ssa.IndexAddr, *ssa.Slice,
 				*ssa.UnOp, *ssa.Parameter:
 			case *ssa.Call:
 				if rxHarmlessCall.MatchString(x.Call.Value.String()) {
@@ -552,9 +623,6 @@ func (c *Checker) multipleImpls(info *loader.PackageInfo, fn *ssa.Function) bool
 		return false
 	}
 	path := c.prog.Fset.Position(fn.Pos()).Filename
-	if path == "" { // generated func, like init
-		return false
-	}
 	count := c.declCounts(filepath.Dir(path), info.Pkg.Name())
 	name := fn.Name()
 	if fn.Signature.Recv() != nil {
@@ -600,4 +668,21 @@ func paramDesc(i int, v *types.Var) string {
 		return name
 	}
 	return fmt.Sprintf("%d (%s)", i, v.Type().String())
+}
+
+func requiredViaCall(fn *ssa.Function, calls []*callgraph.Edge) bool {
+	for _, edge := range calls {
+		call := edge.Site.Value()
+		if receivesExtractedArgs(fn.Signature, call) {
+			// called via function(results())
+			return true
+		}
+		_, ok := edge.Site.Common().Value.(*ssa.Function)
+		if !ok {
+			// called via a parameter or field, type
+			// is set in stone.
+			return true
+		}
+	}
+	return false
 }
