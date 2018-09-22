@@ -38,6 +38,7 @@ var (
 	disableDefaultMetrics = kingpin.Flag("disable-default-metrics", "Do not include default metrics.").Default("false").OverrideDefaultFromEnvar("PG_EXPORTER_DISABLE_DEFAULT_METRICS").Bool()
 	queriesPath           = kingpin.Flag("extend.query-path", "Path to custom queries to run.").Default("").OverrideDefaultFromEnvar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
 	onlyDumpMaps          = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
+	constantLabelsList    = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,).").Default("").OverrideDefaultFromEnvar("PG_EXPORTER_CONTANT_LABELS").String()
 )
 
 // Metric name parts.
@@ -499,12 +500,14 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 		thisMap := make(map[string]MetricMap)
 
 		// Get the constant labels
-		var constLabels []string
+		var variableLabels []string
 		for columnName, columnMapping := range mappings {
 			if columnMapping.usage == LABEL {
-				constLabels = append(constLabels, columnName)
+				variableLabels = append(variableLabels, columnName)
 			}
 		}
+
+		constLabels := newConstLabels()
 
 		for columnName, columnMapping := range mappings {
 			// Check column version compatibility for the current map
@@ -537,7 +540,7 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 			case COUNTER:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.CounterValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, constLabels, nil),
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, variableLabels, constLabels),
 					conversion: func(in interface{}) (float64, bool) {
 						return dbToFloat64(in)
 					},
@@ -545,7 +548,7 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 			case GAUGE:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.GaugeValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, constLabels, nil),
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, variableLabels, constLabels),
 					conversion: func(in interface{}) (float64, bool) {
 						return dbToFloat64(in)
 					},
@@ -553,7 +556,7 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 			case MAPPEDMETRIC:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.GaugeValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, constLabels, nil),
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, variableLabels, constLabels),
 					conversion: func(in interface{}) (float64, bool) {
 						text, ok := in.(string)
 						if !ok {
@@ -570,7 +573,7 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 			case DURATION:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.GaugeValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s_milliseconds", namespace, columnName), columnMapping.description, constLabels, nil),
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s_milliseconds", namespace, columnName), columnMapping.description, variableLabels, constLabels),
 					conversion: func(in interface{}) (float64, bool) {
 						var durationString string
 						switch t := in.(type) {
@@ -598,7 +601,7 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 			}
 		}
 
-		metricMap[namespace] = MetricMapNamespace{constLabels, thisMap}
+		metricMap[namespace] = MetricMapNamespace{variableLabels, thisMap}
 	}
 
 	return metricMap
@@ -731,33 +734,38 @@ func NewExporter(dsn string, disableDefaultMetrics bool, userQueriesPath string)
 		disableDefaultMetrics: disableDefaultMetrics,
 		userQueriesPath:       userQueriesPath,
 		duration: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: exporter,
-			Name:      "last_scrape_duration_seconds",
-			Help:      "Duration of the last scrape of metrics from PostgresSQL.",
+			Namespace:   namespace,
+			Subsystem:   exporter,
+			Name:        "last_scrape_duration_seconds",
+			Help:        "Duration of the last scrape of metrics from PostgresSQL.",
+			ConstLabels: newConstLabels(),
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
-			Namespace: namespace,
-			Subsystem: exporter,
-			Name:      "scrapes_total",
-			Help:      "Total number of times PostgresSQL was scraped for metrics.",
+			Namespace:   namespace,
+			Subsystem:   exporter,
+			Name:        "scrapes_total",
+			Help:        "Total number of times PostgresSQL was scraped for metrics.",
+			ConstLabels: newConstLabels(),
 		}),
 		error: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: exporter,
-			Name:      "last_scrape_error",
-			Help:      "Whether the last scrape of metrics from PostgreSQL resulted in an error (1 for error, 0 for success).",
+			Namespace:   namespace,
+			Subsystem:   exporter,
+			Name:        "last_scrape_error",
+			Help:        "Whether the last scrape of metrics from PostgreSQL resulted in an error (1 for error, 0 for success).",
+			ConstLabels: newConstLabels(),
 		}),
 		psqlUp: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Name:      "up",
-			Help:      "Whether the last scrape of metrics from PostgreSQL was able to connect to the server (1 for yes, 0 for no).",
+			Namespace:   namespace,
+			Name:        "up",
+			Help:        "Whether the last scrape of metrics from PostgreSQL was able to connect to the server (1 for yes, 0 for no).",
+			ConstLabels: newConstLabels(),
 		}),
 		userQueriesError: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: exporter,
-			Name:      "user_queries_load_error",
-			Help:      "Whether the user queries file was loaded and parsed successfully (1 for error, 0 for success).",
+			Namespace:   namespace,
+			Subsystem:   exporter,
+			Name:        "user_queries_load_error",
+			Help:        "Whether the user queries file was loaded and parsed successfully (1 for error, 0 for success).",
+			ConstLabels: newConstLabels(),
 		}, []string{"filename", "hashsum"}),
 		metricMap:      nil,
 		queryOverrides: nil,
@@ -803,10 +811,32 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.userQueriesError.Collect(ch)
 }
 
+func newConstLabels() prometheus.Labels {
+	if constantLabelsList == nil || *constantLabelsList == "" {
+		return nil
+	}
+
+	var constLabels = make(prometheus.Labels)
+	parts := strings.Split(*constantLabelsList, ",")
+	for _, p := range parts {
+		keyValue := strings.Split(strings.TrimSpace(p), "=")
+		if len(keyValue) != 2 {
+			continue
+		}
+		key := strings.TrimSpace(keyValue[0])
+		value := strings.TrimSpace(keyValue[1])
+		if key == "" || value == "" {
+			continue
+		}
+		constLabels[key] = value
+	}
+	return constLabels
+}
+
 func newDesc(subsystem, name, help string) *prometheus.Desc {
 	return prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, subsystem, name),
-		help, nil, nil,
+		help, nil, newConstLabels(),
 	)
 }
 
@@ -894,7 +924,7 @@ func queryNamespaceMapping(db *sql.DB, namespace string, mapping MetricMapNamesp
 			} else {
 				// Unknown metric. Report as untyped if scan to float64 works, else note an error too.
 				metricLabel := fmt.Sprintf("%s_%s", namespace, columnName)
-				desc := prometheus.NewDesc(metricLabel, fmt.Sprintf("Unknown metric from %s", namespace), mapping.labels, nil)
+				desc := prometheus.NewDesc(metricLabel, fmt.Sprintf("Unknown metric from %s", namespace), mapping.labels, newConstLabels())
 
 				// Its not an error to fail here, since the values are
 				// unexpected anyway.
@@ -1039,7 +1069,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 
 	// Output the version as a special metric
 	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
-		"Version string as reported by postgres", []string{"version", "short_version"}, nil)
+		"Version string as reported by postgres", []string{"version", "short_version"}, newConstLabels())
 
 	ch <- prometheus.MustNewConstMetric(versionDesc,
 		prometheus.UntypedValue, 1, versionString, semanticVersion.String())
