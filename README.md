@@ -101,6 +101,9 @@ The following environment variables configure the exporter:
 * `PG_EXPORTER_DISABLE_DEFAULT_METRICS`
   Use only metrics supplied from `queries.yaml`. Value can be `true` or `false`. Default is `false`.
 
+* `PG_EXPORTER_DISABLE_SETTINGS_METRICS`
+  Disables the exposure of the pg_settings table. Value can be `true` or `false`. Default is `false`.
+
 * `PG_EXPORTER_EXTEND_QUERY_PATH`
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
   for examples of the format.
