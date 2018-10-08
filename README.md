@@ -50,6 +50,9 @@ Package vendoring is handled with [`govendor`](https://github.com/kardianos/gove
 * `disable-default-metrics`
   Use only metrics supplied from `queries.yaml` via `--extend.query-path`
 
+* `disable-settings-metrics`
+  Disables the exposure of the pg_settings table
+
 * `extend.query-path`
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
   for examples of the format.
