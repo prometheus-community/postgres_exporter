@@ -1129,7 +1129,7 @@ func main() {
 	// Parse flags.
 	flag.Parse()
 
-	log.Infoln("Starting node_exporter", version.Info())
+	log.Infoln("Starting postgres_exporter", version.Info())
 	log.Infoln("Build context", version.BuildContext())
 
 	if *showVersion {
