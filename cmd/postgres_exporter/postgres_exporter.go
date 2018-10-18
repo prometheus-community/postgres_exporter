@@ -1085,9 +1085,12 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	// Lock the exporter maps
 	e.mappingMtx.RLock()
 	defer e.mappingMtx.RUnlock()
-	if err := querySettings(ch, db); err != nil {
-		log.Infof("Error retrieving settings: %s", err)
-		e.error.Set(1)
+
+	if !e.disableDefaultMetrics {
+		if err := querySettings(ch, db); err != nil {
+			log.Infof("Error retrieving settings: %s", err)
+			e.error.Set(1)
+		}
 	}
 
 	errMap := queryNamespaceMappings(ch, db, e.metricMap, e.queryOverrides)
