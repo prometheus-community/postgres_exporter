@@ -683,6 +683,7 @@ type Exporter struct {
 	builtinMetricMaps map[string]map[string]ColumnMapping
 
 	dsn                   string
+    disableSettingMetrics bool
 	disableDefaultMetrics bool
 	userQueriesPath       string
 	duration              prometheus.Gauge
@@ -707,10 +708,19 @@ type Exporter struct {
 }
 
 // NewExporter returns a new PostgreSQL exporter for the provided DSN.
-func NewExporter(dsn string, disableDefaultMetrics bool, userQueriesPath string) *Exporter {
+func NewExporter(dsn string, disableDefaultMetrics, disableSettingMetrics bool, userQueriesPath string, instance int) *Exporter {
+    bmm := builtinMetricMaps
+    if instance == 0 {
+        bmm = nil
+    }
+
+    ses := fmt.Sprintf("numbir=%d", instance)
+    constantLabelsList = &ses
+
 	return &Exporter{
-		builtinMetricMaps: builtinMetricMaps,
-		dsn:               dsn,
+        builtinMetricMaps: bmm,
+        dsn:               dsn,
+		disableSettingMetrics: disableSettingMetrics,
 		disableDefaultMetrics: disableDefaultMetrics,
 		userQueriesPath:       userQueriesPath,
 		duration: prometheus.NewGauge(prometheus.GaugeOpts{
@@ -736,6 +746,7 @@ func NewExporter(dsn string, disableDefaultMetrics bool, userQueriesPath string)
 		}),
 		psqlUp: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace:   namespace,
+			Subsystem:   exporter,
 			Name:        "up",
 			Help:        "Whether the last scrape of metrics from PostgreSQL was able to connect to the server (1 for yes, 0 for no).",
 			ConstLabels: newConstLabels(),
@@ -1005,11 +1016,11 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 	}
 
 	// Output the version as a special metric
-	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
-		"Version string as reported by postgres", []string{"version", "short_version"}, newConstLabels())
+	//versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
+		//"Version string as reported by postgres", []string{"version", "short_version"}, newConstLabels())
 
-	ch <- prometheus.MustNewConstMetric(versionDesc,
-		prometheus.UntypedValue, 1, versionString, semanticVersion.String())
+	//ch <- prometheus.MustNewConstMetric(versionDesc,
+		//prometheus.UntypedValue, 1, versionString, semanticVersion.String())
 	return nil
 }
 
@@ -1085,10 +1096,12 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	// Lock the exporter maps
 	e.mappingMtx.RLock()
 	defer e.mappingMtx.RUnlock()
-	if err := querySettings(ch, db); err != nil {
-		log.Infof("Error retrieving settings: %s", err)
-		e.error.Set(1)
-	}
+    if !e.disableSettingMetrics {
+	    if err := querySettings(ch, db); err != nil {
+		    log.Infof("Error retrieving settings: %s", err)
+		    e.error.Set(1)
+	    }
+    }
 
 	errMap := queryNamespaceMappings(ch, db, e.metricMap, e.queryOverrides)
 	if len(errMap) > 0 {
@@ -1100,37 +1113,38 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 // DATA_SOURCE_NAME always wins so we do not break older versions
 // reading secrets from files wins over secrets in environment variables
 // DATA_SOURCE_NAME > DATA_SOURCE_{USER|PASS}_FILE > DATA_SOURCE_{USER|PASS}
-func getDataSource() string {
-	var dsn = os.Getenv("DATA_SOURCE_NAME")
-	if len(dsn) == 0 {
-		var user string
-		var pass string
+func getDataSource() []string {
+	var dsnEnv = os.Getenv("DATA_SOURCE_NAME")
+    // TODO: make multi url adaptation
+    //if len(dsn) == 0 {
+        //var user string
+        //var pass string
 
-		if len(os.Getenv("DATA_SOURCE_USER_FILE")) != 0 {
-			fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_USER_FILE"))
-			if err != nil {
-				panic(err)
-			}
-			user = strings.TrimSpace(string(fileContents))
-		} else {
-			user = os.Getenv("DATA_SOURCE_USER")
-		}
+        //if len(os.Getenv("DATA_SOURCE_USER_FILE")) != 0 {
+            //fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_USER_FILE"))
+            //if err != nil {
+                //panic(err)
+            //}
+            //user = strings.TrimSpace(string(fileContents))
+        //} else {
+            //user = os.Getenv("DATA_SOURCE_USER")
+        //}
 
-		if len(os.Getenv("DATA_SOURCE_PASS_FILE")) != 0 {
-			fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_PASS_FILE"))
-			if err != nil {
-				panic(err)
-			}
-			pass = strings.TrimSpace(string(fileContents))
-		} else {
-			pass = os.Getenv("DATA_SOURCE_PASS")
-		}
+        //if len(os.Getenv("DATA_SOURCE_PASS_FILE")) != 0 {
+            //fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_PASS_FILE"))
+            //if err != nil {
+                //panic(err)
+            //}
+            //pass = strings.TrimSpace(string(fileContents))
+        //} else {
+            //pass = os.Getenv("DATA_SOURCE_PASS")
+        //}
 
-		ui := url.UserPassword(user, pass).String()
-		uri := os.Getenv("DATA_SOURCE_URI")
-		dsn = "postgresql://" + ui + "@" + uri
-	}
-
+        //ui := url.UserPassword(user, pass).String()
+        //uri := os.Getenv("DATA_SOURCE_URI")
+        //dsn = "postgresql://" + ui + "@" + uri
+    //}
+    dsn := strings.Split(dsnEnv, ",")
 	return dsn
 }
 
@@ -1141,14 +1155,14 @@ func main() {
 
 	// landingPage contains the HTML served at '/'.
 	// TODO: Make this nicer and more informative.
-	var landingPage = []byte(`<html>
-	<head><title>Postgres exporter</title></head>
-	<body>
-	<h1>Postgres exporter</h1>
-	<p><a href='` + *metricPath + `'>Metrics</a></p>
-	</body>
-	</html>
-	`)
+    var landingPage = []byte(`<html>
+    <head><title>Postgres exporter</title></head>
+    <body>
+    <h1>Postgres exporter</h1>
+    <p><a href='` + *metricPath + `'>Metrics</a></p>
+    </body>
+    </html>
+    `)
 
 	if *onlyDumpMaps {
 		dumpMaps()
@@ -1160,21 +1174,30 @@ func main() {
 		log.Fatal("couldn't find environment variables describing the datasource to use")
 	}
 
-	exporter := NewExporter(dsn, *disableDefaultMetrics, *queriesPath)
-	defer func() {
-		if exporter.dbConnection != nil {
-			exporter.dbConnection.Close() // nolint: errcheck
-		}
-	}()
+    for i, currDsn := range dsn {
+        disableSettingMetrics := true
+        if i != 0 {
+            *disableDefaultMetrics = false
+            disableSettingMetrics = false
+        }
+        exporter := NewExporter(currDsn, *disableDefaultMetrics, disableSettingMetrics, *queriesPath, i)
+        defer func() {
+            if exporter.dbConnection != nil {
+                exporter.dbConnection.Close() // nolint: errcheck
+            }
+        }()
 
-	prometheus.MustRegister(exporter)
+        prometheus.MustRegister(exporter)
 
-	http.Handle(*metricPath, promhttp.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "Content-Type:text/plain; charset=UTF-8") // nolint: errcheck
-		w.Write(landingPage)                                                     // nolint: errcheck
-	})
+        // This is for removing same default metrics
+    }
 
-	log.Infof("Starting Server: %s", *listenAddress)
-	log.Fatal(http.ListenAndServe(*listenAddress, nil))
+    http.Handle(*metricPath, promhttp.Handler())
+    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Content-Type", "Content-Type:text/plain; charset=UTF-8") // nolint: errcheck
+        w.Write(landingPage)                                                     // nolint: errcheck
+    })
+
+    log.Infof("Starting Server: %s", *listenAddress)
+    log.Fatal(http.ListenAndServe(*listenAddress, nil))
 }

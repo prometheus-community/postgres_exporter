@@ -107,7 +107,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
 
 	var expected = "postgresql://custom_username$&+,%2F%3A;=%3F%40:custom_password$&+,%2F%3A;=%3F%40@localhost:5432/?sslmode=disable"
 
-	dsn := getDataSource()
+	dsn := getDataSource()[0]
 	if dsn != expected {
 		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, expected)
 	}
@@ -121,7 +121,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDns(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_NAME")
 
-	dsn := getDataSource()
+	dsn := getDataSource()[0]
 	if dsn != envDsn {
 		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, envDsn)
 	}
@@ -143,7 +143,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDnsAndSecrets(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_PASS")
 
-	dsn := getDataSource()
+	dsn := getDataSource()[0]
 	if dsn != envDsn {
 		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, envDsn)
 	}
