@@ -1096,37 +1096,57 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 // reading secrets from files wins over secrets in environment variables
 // DATA_SOURCE_NAME > DATA_SOURCE_{USER|PASS}_FILE > DATA_SOURCE_{USER|PASS}
 func getDataSource() []string {
-	var dsnEnv = os.Getenv("DATA_SOURCE_NAME")
-    // TODO: make multi url adaptation
-    //if len(dsn) == 0 {
-        //var user string
-        //var pass string
+    dsn := make([]string, 10)
+    dsnEnv := os.Getenv("DATA_SOURCE_NAME")
+    if len(dsn) == 0 {
+        var user, pass []string
+        var tmp string
 
-        //if len(os.Getenv("DATA_SOURCE_USER_FILE")) != 0 {
-            //fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_USER_FILE"))
-            //if err != nil {
-                //panic(err)
-            //}
-            //user = strings.TrimSpace(string(fileContents))
-        //} else {
-            //user = os.Getenv("DATA_SOURCE_USER")
-        //}
+        if len(os.Getenv("DATA_SOURCE_USER_FILE")) != 0 {
+            fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_USER_FILE"))
+            if err != nil {
+                panic(err)
+            }
+            tmp = strings.TrimSpace(string(fileContents))
+        } else {
+            tmp = os.Getenv("DATA_SOURCE_USER")
+        }
+        user = strings.Split(tmp, ",")
 
-        //if len(os.Getenv("DATA_SOURCE_PASS_FILE")) != 0 {
-            //fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_PASS_FILE"))
-            //if err != nil {
-                //panic(err)
-            //}
-            //pass = strings.TrimSpace(string(fileContents))
-        //} else {
-            //pass = os.Getenv("DATA_SOURCE_PASS")
-        //}
+        if len(os.Getenv("DATA_SOURCE_PASS_FILE")) != 0 {
+            fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_PASS_FILE"))
+            if err != nil {
+                panic(err)
+            }
+            tmp = strings.TrimSpace(string(fileContents))
+        } else {
+            tmp = os.Getenv("DATA_SOURCE_PASS")
+        }
+        pass = strings.Split(tmp, ",")
 
-        //ui := url.UserPassword(user, pass).String()
-        //uri := os.Getenv("DATA_SOURCE_URI")
-        //dsn = "postgresql://" + ui + "@" + uri
-    //}
-    dsn := strings.Split(dsnEnv, ",")
+        if len(user) != 1 && len(user) < len(pass) {
+            panic("Not enough usernames")
+        } else if len(pass) != 1 && len(user) > len(pass) {
+            panic("Not enough passwords")
+        }
+
+        tmp = os.Getenv("DATA_SOURCE_URI")
+        uris := strings.Split(tmp, ",")
+
+        if len(uris) < len(user) || len(uris) < len(pass) {
+            panic("Not enough uri's")
+        }
+
+        for i, uri := range uris {
+            currUser := user[0]
+            currPass := pass[0]
+            if len(user) > 1 { currUser = user[i] }
+            if len(user) > 1 { currPass = pass[i] }
+            ui := url.UserPassword(currUser, currPass).String()
+            dsn = append(dsn, "postgresql://" + ui + "@" + uri)
+        }
+    }
+    dsn = strings.Split(dsnEnv, ",")
 	return dsn
 }
 
