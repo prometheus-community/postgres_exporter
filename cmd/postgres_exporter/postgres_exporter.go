@@ -36,6 +36,7 @@ var (
 	listenAddress         = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").OverrideDefaultFromEnvar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
 	metricPath            = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").OverrideDefaultFromEnvar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
 	disableDefaultMetrics = kingpin.Flag("disable-default-metrics", "Do not include default metrics.").Default("false").OverrideDefaultFromEnvar("PG_EXPORTER_DISABLE_DEFAULT_METRICS").Bool()
+	disableSettingMetrics = kingpin.Flag("disable-setting-metrics", "Do not include setting metrics.").Default("false").OverrideDefaultFromEnvar("PG_EXPORTER_DISABLE_SETTING_METRICS").Bool()
 	queriesPath           = kingpin.Flag("extend.query-path", "Path to custom queries to run.").Default("").OverrideDefaultFromEnvar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
 	onlyDumpMaps          = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
 	constantLabelsList    = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,).").Default("").OverrideDefaultFromEnvar("PG_EXPORTER_CONTANT_LABELS").String()
@@ -386,7 +387,7 @@ func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]
 // TODO: test code for all cu.
 // TODO: use proper struct type system
 // TODO: the YAML this supports is "non-standard" - we should move away from it.
-func addQueries(content []byte, pgVersion semver.Version, exporterMap map[string]MetricMapNamespace, queryOverrideMap map[string]string) error {
+func addQueries(content []byte, pgVersion semver.Version, exporterMap map[string]MetricMapNamespace, queryOverrideMap map[string]string, constLabels prometheus.Labels) error {
 	var extra map[string]interface{}
 
 	err := yaml.Unmarshal(content, &extra)
@@ -450,7 +451,7 @@ func addQueries(content []byte, pgVersion semver.Version, exporterMap map[string
 	}
 
 	// Convert the loaded metric map into exporter representation
-	partialExporterMap := makeDescMap(pgVersion, metricMaps)
+	partialExporterMap := makeDescMap(pgVersion, metricMaps, constLabels)
 
 	// Merge the two maps (which are now quite flatteend)
 	for k, v := range partialExporterMap {
@@ -478,7 +479,7 @@ func addQueries(content []byte, pgVersion semver.Version, exporterMap map[string
 }
 
 // Turn the MetricMap column mapping into a prometheus descriptor mapping.
-func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]ColumnMapping) map[string]MetricMapNamespace {
+func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]ColumnMapping, constLabels prometheus.Labels) map[string]MetricMapNamespace {
 	var metricMap = make(map[string]MetricMapNamespace)
 
 	for namespace, mappings := range metricMaps {
@@ -491,8 +492,6 @@ func makeDescMap(pgVersion semver.Version, metricMaps map[string]map[string]Colu
 				variableLabels = append(variableLabels, columnName)
 			}
 		}
-
-		constLabels := newConstLabels()
 
 		for columnName, columnMapping := range mappings {
 			// Check column version compatibility for the current map
@@ -685,6 +684,7 @@ type Exporter struct {
 	dsn                   string
     disableSettingMetrics bool
 	disableDefaultMetrics bool
+    constLabels           prometheus.Labels
 	userQueriesPath       string
 	duration              prometheus.Gauge
 	error                 prometheus.Gauge
@@ -708,55 +708,48 @@ type Exporter struct {
 }
 
 // NewExporter returns a new PostgreSQL exporter for the provided DSN.
-func NewExporter(dsn string, disableDefaultMetrics, disableSettingMetrics bool, userQueriesPath string, instance int) *Exporter {
-    bmm := builtinMetricMaps
-    if instance == 0 {
-        bmm = nil
-    }
-
-    ses := fmt.Sprintf("numbir=%d", instance)
-    constantLabelsList = &ses
-
+func NewExporter(dsn string, disableDefaultMetrics, disableSettingMetrics bool, userQueriesPath string, constLabels prometheus.Labels) *Exporter {
 	return &Exporter{
-        builtinMetricMaps: bmm,
+        builtinMetricMaps: builtinMetricMaps,
         dsn:               dsn,
 		disableSettingMetrics: disableSettingMetrics,
 		disableDefaultMetrics: disableDefaultMetrics,
 		userQueriesPath:       userQueriesPath,
+        constLabels:           constLabels,
 		duration: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Subsystem:   exporter,
 			Name:        "last_scrape_duration_seconds",
 			Help:        "Duration of the last scrape of metrics from PostgresSQL.",
-			ConstLabels: newConstLabels(),
+			ConstLabels: constLabels,
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace:   namespace,
 			Subsystem:   exporter,
 			Name:        "scrapes_total",
 			Help:        "Total number of times PostgresSQL was scraped for metrics.",
-			ConstLabels: newConstLabels(),
+			ConstLabels: constLabels,
 		}),
 		error: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Subsystem:   exporter,
 			Name:        "last_scrape_error",
 			Help:        "Whether the last scrape of metrics from PostgreSQL resulted in an error (1 for error, 0 for success).",
-			ConstLabels: newConstLabels(),
+			ConstLabels: constLabels,
 		}),
 		psqlUp: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Subsystem:   exporter,
 			Name:        "up",
 			Help:        "Whether the last scrape of metrics from PostgreSQL was able to connect to the server (1 for yes, 0 for no).",
-			ConstLabels: newConstLabels(),
+			ConstLabels: constLabels,
 		}),
 		userQueriesError: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Subsystem:   exporter,
 			Name:        "user_queries_load_error",
 			Help:        "Whether the user queries file was loaded and parsed successfully (1 for error, 0 for success).",
-			ConstLabels: newConstLabels(),
+			ConstLabels: constLabels,
 		}, []string{"filename", "hashsum"}),
 		metricMap:      nil,
 		queryOverrides: nil,
@@ -802,13 +795,13 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.userQueriesError.Collect(ch)
 }
 
-func newConstLabels() prometheus.Labels {
-	if constantLabelsList == nil || *constantLabelsList == "" {
+func newConstLabels(constantLabelsList string) prometheus.Labels {
+	if constantLabelsList == "" {
 		return nil
 	}
 
 	var constLabels = make(prometheus.Labels)
-	parts := strings.Split(*constantLabelsList, ",")
+	parts := strings.Split(constantLabelsList, ",")
 	for _, p := range parts {
 		keyValue := strings.Split(strings.TrimSpace(p), "=")
 		if len(keyValue) != 2 {
@@ -824,16 +817,9 @@ func newConstLabels() prometheus.Labels {
 	return constLabels
 }
 
-func newDesc(subsystem, name, help string) *prometheus.Desc {
-	return prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, subsystem, name),
-		help, nil, newConstLabels(),
-	)
-}
-
 // Query within a namespace mapping and emit metrics. Returns fatal errors if
 // the scrape fails, and a slice of errors if they were non-fatal.
-func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace string, mapping MetricMapNamespace, queryOverrides map[string]string) ([]error, error) {
+func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace string, mapping MetricMapNamespace, queryOverrides map[string]string, constLabels prometheus.Labels) ([]error, error) {
 	// Check for a query override for this namespace
 	query, found := queryOverrides[namespace]
 
@@ -913,7 +899,7 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 			} else {
 				// Unknown metric. Report as untyped if scan to float64 works, else note an error too.
 				metricLabel := fmt.Sprintf("%s_%s", namespace, columnName)
-				desc := prometheus.NewDesc(metricLabel, fmt.Sprintf("Unknown metric from %s", namespace), mapping.labels, newConstLabels())
+				desc := prometheus.NewDesc(metricLabel, fmt.Sprintf("Unknown metric from %s", namespace), mapping.labels, constLabels)
 
 				// Its not an error to fail here, since the values are
 				// unexpected anyway.
@@ -931,13 +917,13 @@ func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace st
 
 // Iterate through all the namespace mappings in the exporter and run their
 // queries.
-func queryNamespaceMappings(ch chan<- prometheus.Metric, db *sql.DB, metricMap map[string]MetricMapNamespace, queryOverrides map[string]string) map[string]error {
+func queryNamespaceMappings(ch chan<- prometheus.Metric, db *sql.DB, metricMap map[string]MetricMapNamespace, queryOverrides map[string]string, constLabels prometheus.Labels) map[string]error {
 	// Return a map of namespace -> errors
 	namespaceErrors := make(map[string]error)
 
 	for namespace, mapping := range metricMap {
 		log.Debugln("Querying namespace: ", namespace)
-		nonFatalErrors, err := queryNamespaceMapping(ch, db, namespace, mapping, queryOverrides)
+		nonFatalErrors, err := queryNamespaceMapping(ch, db, namespace, mapping, queryOverrides, constLabels)
 		// Serious error - a namespace disappeared
 		if err != nil {
 			namespaceErrors[namespace] = err
@@ -978,13 +964,9 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 
 		if e.disableDefaultMetrics {
 			e.metricMap = make(map[string]MetricMapNamespace)
-		} else {
-			e.metricMap = makeDescMap(semanticVersion, e.builtinMetricMaps)
-		}
-
-		if e.disableDefaultMetrics {
 			e.queryOverrides = make(map[string]string)
 		} else {
+			e.metricMap = makeDescMap(semanticVersion, e.builtinMetricMaps, e.constLabels)
 			e.queryOverrides = makeQueryOverrideMap(semanticVersion, queryOverrides)
 		}
 
@@ -1002,7 +984,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 			} else {
 				hashsumStr := fmt.Sprintf("%x", sha256.Sum256(userQueriesData))
 
-				if err := addQueries(userQueriesData, semanticVersion, e.metricMap, e.queryOverrides); err != nil {
+				if err := addQueries(userQueriesData, semanticVersion, e.metricMap, e.queryOverrides, e.constLabels); err != nil {
 					log.Errorln("Failed to reload user queries:", e.userQueriesPath, err)
 					e.userQueriesError.WithLabelValues(e.userQueriesPath, hashsumStr).Set(1)
 				} else {
@@ -1016,11 +998,11 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, db *sql.DB) err
 	}
 
 	// Output the version as a special metric
-	//versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
-		//"Version string as reported by postgres", []string{"version", "short_version"}, newConstLabels())
+	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
+		"Version string as reported by postgres", []string{"version", "short_version"}, e.constLabels)
 
-	//ch <- prometheus.MustNewConstMetric(versionDesc,
-		//prometheus.UntypedValue, 1, versionString, semanticVersion.String())
+	ch <- prometheus.MustNewConstMetric(versionDesc,
+		prometheus.UntypedValue, 1, versionString, semanticVersion.String())
 	return nil
 }
 
@@ -1097,13 +1079,13 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	e.mappingMtx.RLock()
 	defer e.mappingMtx.RUnlock()
     if !e.disableSettingMetrics {
-	    if err := querySettings(ch, db); err != nil {
+	    if err := querySettings(ch, db, e.constLabels); err != nil {
 		    log.Infof("Error retrieving settings: %s", err)
 		    e.error.Set(1)
 	    }
     }
 
-	errMap := queryNamespaceMappings(ch, db, e.metricMap, e.queryOverrides)
+	errMap := queryNamespaceMappings(ch, db, e.metricMap, e.queryOverrides, e.constLabels)
 	if len(errMap) > 0 {
 		e.error.Set(1)
 	}
@@ -1175,12 +1157,19 @@ func main() {
 	}
 
     for i, currDsn := range dsn {
-        disableSettingMetrics := true
+        // This is for avoid duplicating metrics
         if i != 0 {
             *disableDefaultMetrics = false
-            disableSettingMetrics = false
+            *disableSettingMetrics = false
         }
-        exporter := NewExporter(currDsn, *disableDefaultMetrics, disableSettingMetrics, *queriesPath, i)
+        // This is need for differing exporters
+        constExporterLabels := fmt.Sprintf("exporter=%d", i)
+        if len(*constantLabelsList) > 0 {
+            constExporterLabels = *constantLabelsList + "," + constExporterLabels
+        }
+        convertedConstLabels := newConstLabels(constExporterLabels)
+
+        exporter := NewExporter(currDsn, *disableDefaultMetrics, *disableSettingMetrics, *queriesPath, convertedConstLabels)
         defer func() {
             if exporter.dbConnection != nil {
                 exporter.dbConnection.Close() // nolint: errcheck
