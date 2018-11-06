@@ -35,9 +35,6 @@ func querySettings(ch chan<- prometheus.Metric, db *sql.DB, constLabels promethe
 			return errors.New(fmt.Sprintln("Error retrieving rows:", namespace, err))
 		}
 
-        // Avoid errors like: "is not a valid metric name" by prometheus
-        s.name = strings.Replace(s.name, ".", "_", -1)
-
         s.constLabels = constLabels
 		ch <- s.metric()
 	}
@@ -83,8 +80,7 @@ func (s *pgSetting) metric() prometheus.Metric {
 		panic(fmt.Sprintf("Unsupported vartype %q", s.vartype))
 	}
 
-    fqName := prometheus.BuildFQName(namespace, subsystem, s.name)
-	desc := prometheus.NewDesc(fqName, s.shortDesc, nil, s.constLabels, )
+	desc := newDesc(subsystem, name, shortDesc, s.constLabels)
     return prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, val)
 }
 

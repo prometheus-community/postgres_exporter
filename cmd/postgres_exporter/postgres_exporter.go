@@ -817,6 +817,13 @@ func newConstLabels(constantLabelsList string) prometheus.Labels {
 	return constLabels
 }
 
+func newDesc(subsystem, name, help string, constLabels prometheus.Labels) *prometheus.Desc {
+	return prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, subsystem, name),
+		help, nil, constLabels,
+	)
+}
+
 // Query within a namespace mapping and emit metrics. Returns fatal errors if
 // the scrape fails, and a slice of errors if they were non-fatal.
 func queryNamespaceMapping(ch chan<- prometheus.Metric, db *sql.DB, namespace string, mapping MetricMapNamespace, queryOverrides map[string]string, constLabels prometheus.Labels) ([]error, error) {
