@@ -1103,9 +1103,9 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 // reading secrets from files wins over secrets in environment variables
 // DATA_SOURCE_NAME > DATA_SOURCE_{USER|PASS}_FILE > DATA_SOURCE_{USER|PASS}
 func getDataSource() []string {
-    dsn := make([]string, 10)
+    var dsn []string
     dsnEnv := os.Getenv("DATA_SOURCE_NAME")
-    if len(dsn) == 0 {
+    if len(dsnEnv) == 0 {
         var user, pass []string
         var tmp string
 
@@ -1152,6 +1152,8 @@ func getDataSource() []string {
             ui := url.UserPassword(currUser, currPass).String()
             dsn = append(dsn, "postgresql://" + ui + "@" + uri)
         }
+
+        return dsn
     }
     dsn = strings.Split(dsnEnv, ",")
 	return dsn

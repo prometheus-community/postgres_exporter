@@ -34,7 +34,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 
 	{
 		// No metrics should be eliminated
-		resultMap := makeDescMap(semver.MustParse("0.0.1"), testMetricMap)
+		resultMap := makeDescMap(semver.MustParse("0.0.1"), testMetricMap, nil)
 		c.Check(
 			resultMap["test_namespace"].columnMappings["metric_which_stays"].discard,
 			Equals,
@@ -55,7 +55,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 		testMetricMap["test_namespace"]["metric_which_discards"] = discardableMetric
 
 		// Discard metric should be discarded
-		resultMap := makeDescMap(semver.MustParse("0.0.1"), testMetricMap)
+		resultMap := makeDescMap(semver.MustParse("0.0.1"), testMetricMap, nil)
 		c.Check(
 			resultMap["test_namespace"].columnMappings["metric_which_stays"].discard,
 			Equals,
@@ -76,7 +76,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 		testMetricMap["test_namespace"]["metric_which_discards"] = discardableMetric
 
 		// Discard metric should be discarded
-		resultMap := makeDescMap(semver.MustParse("0.0.2"), testMetricMap)
+		resultMap := makeDescMap(semver.MustParse("0.0.2"), testMetricMap, nil)
 		c.Check(
 			resultMap["test_namespace"].columnMappings["metric_which_stays"].discard,
 			Equals,
@@ -105,7 +105,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_URI")
 
-	var expected = "postgresql://custom_username$&+,%2F%3A;=%3F%40:custom_password$&+,%2F%3A;=%3F%40@localhost:5432/?sslmode=disable"
+	var expected = "postgresql://custom_username$&+%2F%3A;=%3F%40:custom_password$&+%2F%3A;=%3F%40@localhost:5432/?sslmode=disable"
 
 	dsn := getDataSource()[0]
 	if dsn != expected {
