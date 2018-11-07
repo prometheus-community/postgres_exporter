@@ -1098,6 +1098,20 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	}
 }
 
+func getDataFromEnv(file string) (dataList []string) {
+    fileContents, err := ioutil.ReadFile(os.Getenv(file))
+    if err != nil {
+        panic(err)
+    }
+    tmp := strings.TrimSpace(string(fileContents))
+    if strings.Index(tmp, ",") != -1 {
+        dataList = strings.Split(tmp, ",")
+    } else {
+        dataList = strings.Split(tmp, "\n")
+    }
+    return
+}
+
 // try to get the DataSource
 // DATA_SOURCE_NAME always wins so we do not break older versions
 // reading secrets from files wins over secrets in environment variables
@@ -1107,29 +1121,20 @@ func getDataSource() []string {
     dsnEnv := os.Getenv("DATA_SOURCE_NAME")
     if len(dsnEnv) == 0 {
         var user, pass []string
-        var tmp string
 
         if len(os.Getenv("DATA_SOURCE_USER_FILE")) != 0 {
-            fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_USER_FILE"))
-            if err != nil {
-                panic(err)
-            }
-            tmp = strings.TrimSpace(string(fileContents))
+            user = getDataFromEnv("DATA_SOURCE_USER_FILE")
         } else {
-            tmp = os.Getenv("DATA_SOURCE_USER")
+            tmp := os.Getenv("DATA_SOURCE_USER")
+            user = strings.Split(tmp, ",")
         }
-        user = strings.Split(tmp, ",")
 
         if len(os.Getenv("DATA_SOURCE_PASS_FILE")) != 0 {
-            fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_PASS_FILE"))
-            if err != nil {
-                panic(err)
-            }
-            tmp = strings.TrimSpace(string(fileContents))
+            pass = getDataFromEnv("DATA_SOURCE_PASS_FILE")
         } else {
-            tmp = os.Getenv("DATA_SOURCE_PASS")
+            tmp := os.Getenv("DATA_SOURCE_PASS")
+            pass = strings.Split(tmp, ",")
         }
-        pass = strings.Split(tmp, ",")
 
         if len(user) != 1 && len(user) < len(pass) {
             panic("Not enough usernames")
@@ -1137,7 +1142,7 @@ func getDataSource() []string {
             panic("Not enough passwords")
         }
 
-        tmp = os.Getenv("DATA_SOURCE_URI")
+        tmp := os.Getenv("DATA_SOURCE_URI")
         uris := strings.Split(tmp, ",")
 
         if len(uris) < len(user) || len(uris) < len(pass) {
@@ -1148,11 +1153,10 @@ func getDataSource() []string {
             currUser := user[0]
             currPass := pass[0]
             if len(user) > 1 { currUser = user[i] }
-            if len(user) > 1 { currPass = pass[i] }
+            if len(pass) > 1 { currPass = pass[i] }
             ui := url.UserPassword(currUser, currPass).String()
             dsn = append(dsn, "postgresql://" + ui + "@" + uri)
         }
-
         return dsn
     }
     dsn = strings.Split(dsnEnv, ",")

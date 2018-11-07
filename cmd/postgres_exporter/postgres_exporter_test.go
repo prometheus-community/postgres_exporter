@@ -8,6 +8,7 @@ import (
 	. "gopkg.in/check.v1"
 
 	"os"
+    "strings"
 
 	"github.com/blang/semver"
 )
@@ -113,6 +114,36 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
 	}
 }
 
+// test multiple read username and password from file with lines
+func (s *FunctionalSuite) TestEnvironmentSettingWithMultiSecretsFiles(c *C) {
+
+	err := os.Setenv("DATA_SOURCE_USER_FILE", "./tests/multi_username_file")
+	c.Assert(err, IsNil)
+	defer UnsetEnvironment(c, "DATA_SOURCE_USER_FILE")
+
+	err = os.Setenv("DATA_SOURCE_PASS_FILE", "./tests/multi_userpass_file")
+	c.Assert(err, IsNil)
+	defer UnsetEnvironment(c, "DATA_SOURCE_PASS_FILE")
+
+    err = os.Setenv("DATA_SOURCE_URI", "localhost:5432/?sslmode=disable,localhost:1337/?sslmode=enable,localhost:5651/test,localhost:5432/test?sslmode=disable")
+	c.Assert(err, IsNil)
+	defer UnsetEnvironment(c, "DATA_SOURCE_URI")
+
+    expected := []string {
+        "postgresql://custom_username1%20:custom_password1@localhost:5432/?sslmode=disable",
+        "postgresql://custom_username2:custom_password2@localhost:1337/?sslmode=enable",
+        "postgresql://custom_username3%20:custom_password3@localhost:5651/test",
+        "postgresql://custom_username4:custom_password4@localhost:5432/test?sslmode=disable",
+    }
+
+	multiDsn := getDataSource()
+    for i, dsn := range multiDsn {
+        if dsn != expected[i] {
+            c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, expected[i])
+        }
+    }
+}
+
 // test read DATA_SOURCE_NAME from environment
 func (s *FunctionalSuite) TestEnvironmentSettingWithDns(c *C) {
 
@@ -125,6 +156,23 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDns(c *C) {
 	if dsn != envDsn {
 		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, envDsn)
 	}
+}
+
+// test read multiple DATA_SOURCE_NAME from environment
+func (s *FunctionalSuite) TestEnvironmentSettingWithMultiDns(c *C) {
+
+	envDsn := "postgresql://user:password@localhost:5432/?sslmode=enabled,postgresql://user:password@localhost:5432/?sslmode=enabled"
+    expectedDsn := strings.Split(envDsn, ",")
+	err := os.Setenv("DATA_SOURCE_NAME", envDsn)
+	c.Assert(err, IsNil)
+	defer UnsetEnvironment(c, "DATA_SOURCE_NAME")
+
+	multiDsn := getDataSource()
+    for i, dsn := range multiDsn {
+        if dsn != expectedDsn[i] {
+            c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, envDsn)
+        }
+    }
 }
 
 // test DATA_SOURCE_NAME is used even if username and password environment variables are set
