@@ -14,6 +14,8 @@ This package is available for Docker:
 docker run --net=host -it --rm -e POSTGRES_PASSWORD=password postgres
 # Connect to it
 docker run --net=host -e DATA_SOURCE_NAME="postgresql://postgres:password@localhost:5432/?sslmode=disable" wrouesnel/postgres_exporter
+# Connect to multiple databases (separate by comma)
+docker run --net=host -e DATA_SOURCE_NAME="postgresql://postgres:password@localhost:5432/?sslmode=disable,postgresql://postgres:password@localhost:5432/test_db?sslmode=disable" wrouesnel/postgres_exporter
 ```
 
 ## Building and running
@@ -49,6 +51,9 @@ Package vendoring is handled with [`govendor`](https://github.com/kardianos/gove
 
 * `disable-default-metrics`
   Use only metrics supplied from `queries.yaml` via `--extend.query-path`
+
+* `disable-setting-metrics`
+  Removes metrics like pg_setting
 
 * `extend.query-path`
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
