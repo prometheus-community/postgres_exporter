@@ -35,7 +35,7 @@ func querySettings(ch chan<- prometheus.Metric, db *sql.DB, constLabels promethe
 			return errors.New(fmt.Sprintln("Error retrieving rows:", namespace, err))
 		}
 
-        s.constLabels = constLabels
+		s.constLabels = constLabels
 		ch <- s.metric()
 	}
 
@@ -46,7 +46,7 @@ func querySettings(ch chan<- prometheus.Metric, db *sql.DB, constLabels promethe
 // pg_settings view.
 type pgSetting struct {
 	name, setting, unit, shortDesc, vartype string
-    constLabels prometheus.Labels
+	constLabels                             prometheus.Labels
 }
 
 func (s *pgSetting) metric() prometheus.Metric {
@@ -81,7 +81,7 @@ func (s *pgSetting) metric() prometheus.Metric {
 	}
 
 	desc := newDesc(subsystem, name, shortDesc, s.constLabels)
-    return prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, val)
+	return prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, val)
 }
 
 // TODO: fix linter override

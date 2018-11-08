@@ -682,9 +682,9 @@ type Exporter struct {
 	builtinMetricMaps map[string]map[string]ColumnMapping
 
 	dsn                   string
-    disableSettingMetrics bool
+	disableSettingMetrics bool
 	disableDefaultMetrics bool
-    constLabels           prometheus.Labels
+	constLabels           prometheus.Labels
 	userQueriesPath       string
 	duration              prometheus.Gauge
 	error                 prometheus.Gauge
@@ -710,12 +710,12 @@ type Exporter struct {
 // NewExporter returns a new PostgreSQL exporter for the provided DSN.
 func NewExporter(dsn string, disableDefaultMetrics, disableSettingMetrics bool, userQueriesPath string, constLabels prometheus.Labels) *Exporter {
 	return &Exporter{
-        builtinMetricMaps: builtinMetricMaps,
-        dsn:               dsn,
+		builtinMetricMaps:     builtinMetricMaps,
+		dsn:                   dsn,
 		disableSettingMetrics: disableSettingMetrics,
 		disableDefaultMetrics: disableDefaultMetrics,
 		userQueriesPath:       userQueriesPath,
-        constLabels:           constLabels,
+		constLabels:           constLabels,
 		duration: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Subsystem:   exporter,
@@ -1085,12 +1085,12 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	// Lock the exporter maps
 	e.mappingMtx.RLock()
 	defer e.mappingMtx.RUnlock()
-    if !e.disableSettingMetrics {
-	    if err := querySettings(ch, db, e.constLabels); err != nil {
-		    log.Infof("Error retrieving settings: %s", err)
-		    e.error.Set(1)
-	    }
-    }
+	if !e.disableSettingMetrics {
+		if err := querySettings(ch, db, e.constLabels); err != nil {
+			log.Infof("Error retrieving settings: %s", err)
+			e.error.Set(1)
+		}
+	}
 
 	errMap := queryNamespaceMappings(ch, db, e.metricMap, e.queryOverrides, e.constLabels)
 	if len(errMap) > 0 {
@@ -1099,17 +1099,17 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 }
 
 func getDataFromEnv(file string) (dataList []string) {
-    fileContents, err := ioutil.ReadFile(os.Getenv(file))
-    if err != nil {
-        panic(err)
-    }
-    tmp := strings.TrimSpace(string(fileContents))
-    if strings.Index(tmp, ",") != -1 {
-        dataList = strings.Split(tmp, ",")
-    } else {
-        dataList = strings.Split(tmp, "\n")
-    }
-    return
+	fileContents, err := ioutil.ReadFile(os.Getenv(file))
+	if err != nil {
+		panic(err)
+	}
+	tmp := strings.TrimSpace(string(fileContents))
+	if strings.Contains(tmp, ",") {
+		dataList = strings.Split(tmp, ",")
+	} else {
+		dataList = strings.Split(tmp, "\n")
+	}
+	return dataList
 }
 
 // try to get the DataSource
@@ -1117,49 +1117,53 @@ func getDataFromEnv(file string) (dataList []string) {
 // reading secrets from files wins over secrets in environment variables
 // DATA_SOURCE_NAME > DATA_SOURCE_{USER|PASS}_FILE > DATA_SOURCE_{USER|PASS}
 func getDataSource() []string {
-    var dsn []string
-    dsnEnv := os.Getenv("DATA_SOURCE_NAME")
-    if len(dsnEnv) == 0 {
-        var user, pass []string
+	var dsn []string
+	dsnEnv := os.Getenv("DATA_SOURCE_NAME")
+	if len(dsnEnv) == 0 {
+		var user, pass []string
 
-        if len(os.Getenv("DATA_SOURCE_USER_FILE")) != 0 {
-            user = getDataFromEnv("DATA_SOURCE_USER_FILE")
-        } else {
-            tmp := os.Getenv("DATA_SOURCE_USER")
-            user = strings.Split(tmp, ",")
-        }
+		if len(os.Getenv("DATA_SOURCE_USER_FILE")) != 0 {
+			user = getDataFromEnv("DATA_SOURCE_USER_FILE")
+		} else {
+			tmp := os.Getenv("DATA_SOURCE_USER")
+			user = strings.Split(tmp, ",")
+		}
 
-        if len(os.Getenv("DATA_SOURCE_PASS_FILE")) != 0 {
-            pass = getDataFromEnv("DATA_SOURCE_PASS_FILE")
-        } else {
-            tmp := os.Getenv("DATA_SOURCE_PASS")
-            pass = strings.Split(tmp, ",")
-        }
+		if len(os.Getenv("DATA_SOURCE_PASS_FILE")) != 0 {
+			pass = getDataFromEnv("DATA_SOURCE_PASS_FILE")
+		} else {
+			tmp := os.Getenv("DATA_SOURCE_PASS")
+			pass = strings.Split(tmp, ",")
+		}
 
-        if len(user) != 1 && len(user) < len(pass) {
-            panic("Not enough usernames")
-        } else if len(pass) != 1 && len(user) > len(pass) {
-            panic("Not enough passwords")
-        }
+		if len(user) != 1 && len(user) < len(pass) {
+			panic("Not enough usernames")
+		} else if len(pass) != 1 && len(user) > len(pass) {
+			panic("Not enough passwords")
+		}
 
-        tmp := os.Getenv("DATA_SOURCE_URI")
-        uris := strings.Split(tmp, ",")
+		tmp := os.Getenv("DATA_SOURCE_URI")
+		uris := strings.Split(tmp, ",")
 
-        if len(uris) < len(user) || len(uris) < len(pass) {
-            panic("Not enough uri's")
-        }
+		if len(uris) < len(user) || len(uris) < len(pass) {
+			panic("Not enough uri's")
+		}
 
-        for i, uri := range uris {
-            currUser := user[0]
-            currPass := pass[0]
-            if len(user) > 1 { currUser = user[i] }
-            if len(pass) > 1 { currPass = pass[i] }
-            ui := url.UserPassword(currUser, currPass).String()
-            dsn = append(dsn, "postgresql://" + ui + "@" + uri)
-        }
-        return dsn
-    }
-    dsn = strings.Split(dsnEnv, ",")
+		for i, uri := range uris {
+			currUser := user[0]
+			currPass := pass[0]
+			if len(user) > 1 {
+				currUser = user[i]
+			}
+			if len(pass) > 1 {
+				currPass = pass[i]
+			}
+			ui := url.UserPassword(currUser, currPass).String()
+			dsn = append(dsn, "postgresql://"+ui+"@"+uri)
+		}
+		return dsn
+	}
+	dsn = strings.Split(dsnEnv, ",")
 	return dsn
 }
 
@@ -1170,7 +1174,7 @@ func main() {
 
 	// landingPage contains the HTML served at '/'.
 	// TODO: Make this nicer and more informative.
-    var landingPage = []byte(`<html>
+	var landingPage = []byte(`<html>
     <head><title>Postgres exporter</title></head>
     <body>
     <h1>Postgres exporter</h1>
@@ -1189,45 +1193,45 @@ func main() {
 		log.Fatal("couldn't find environment variables describing the datasource to use")
 	}
 
-    var prevPort string
-    portFind, _ := regexp.Compile(":[0-9]+/")
-    for i, currDsn := range dsn {
-        // This is for avoid duplicating metrics
-        currDsnDisableDefaultMetrics := *disableDefaultMetrics
-        currDsnDisableSettingMetrics := *disableSettingMetrics
+	var prevPort string
+	portFind, _ := regexp.Compile(":[0-9]+/")
+	for i, currDsn := range dsn {
+		// This is for avoid duplicating metrics
+		currDsnDisableDefaultMetrics := *disableDefaultMetrics
+		currDsnDisableSettingMetrics := *disableSettingMetrics
 
-        currPort := portFind.FindString(currDsn)
-        if currPort != prevPort {
-            prevPort = currPort
-        } else {
-            currDsnDisableDefaultMetrics = true
-            currDsnDisableSettingMetrics = true
-        }
-        // This is need for differing exporters
-        constExporterLabels := fmt.Sprintf("exporter=%d", i)
-        if len(*constantLabelsList) > 0 {
-            constExporterLabels = *constantLabelsList + "," + constExporterLabels
-        }
-        convertedConstLabels := newConstLabels(constExporterLabels)
+		currPort := portFind.FindString(currDsn)
+		if currPort != prevPort {
+			prevPort = currPort
+		} else {
+			currDsnDisableDefaultMetrics = true
+			currDsnDisableSettingMetrics = true
+		}
+		// This is need for differing exporters
+		constExporterLabels := fmt.Sprintf("exporter=%d", i)
+		if len(*constantLabelsList) > 0 {
+			constExporterLabels = *constantLabelsList + "," + constExporterLabels
+		}
+		convertedConstLabels := newConstLabels(constExporterLabels)
 
-        exporter := NewExporter(currDsn, currDsnDisableDefaultMetrics, currDsnDisableSettingMetrics, *queriesPath, convertedConstLabels)
-        defer func() {
-            if exporter.dbConnection != nil {
-                exporter.dbConnection.Close() // nolint: errcheck
-            }
-        }()
+		exporter := NewExporter(currDsn, currDsnDisableDefaultMetrics, currDsnDisableSettingMetrics, *queriesPath, convertedConstLabels)
+		defer func() {
+			if exporter.dbConnection != nil {
+				exporter.dbConnection.Close() // nolint: errcheck
+			}
+		}()
 
-        prometheus.MustRegister(exporter)
+		prometheus.MustRegister(exporter)
 
-        // This is for removing same default metrics
-    }
+		// This is for removing same default metrics
+	}
 
-    http.Handle(*metricPath, promhttp.Handler())
-    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        w.Header().Set("Content-Type", "Content-Type:text/plain; charset=UTF-8") // nolint: errcheck
-        w.Write(landingPage)                                                     // nolint: errcheck
-    })
+	http.Handle(*metricPath, promhttp.Handler())
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "Content-Type:text/plain; charset=UTF-8") // nolint: errcheck
+		w.Write(landingPage)                                                     // nolint: errcheck
+	})
 
-    log.Infof("Starting Server: %s", *listenAddress)
-    log.Fatal(http.ListenAndServe(*listenAddress, nil))
+	log.Infof("Starting Server: %s", *listenAddress)
+	log.Fatal(http.ListenAndServe(*listenAddress, nil))
 }
