@@ -1189,11 +1189,19 @@ func main() {
 		log.Fatal("couldn't find environment variables describing the datasource to use")
 	}
 
+    var prevPort string
+    portFind, _ := regexp.Compile(":[0-9]+/")
     for i, currDsn := range dsn {
         // This is for avoid duplicating metrics
-        if i != 0 {
-            *disableDefaultMetrics = false
-            *disableSettingMetrics = false
+        currDsnDisableDefaultMetrics := *disableDefaultMetrics
+        currDsnDisableSettingMetrics := *disableSettingMetrics
+
+        currPort := portFind.FindString(currDsn)
+        if currPort != prevPort {
+            prevPort = currPort
+        } else {
+            currDsnDisableDefaultMetrics = true
+            currDsnDisableSettingMetrics = true
         }
         // This is need for differing exporters
         constExporterLabels := fmt.Sprintf("exporter=%d", i)
@@ -1202,7 +1210,7 @@ func main() {
         }
         convertedConstLabels := newConstLabels(constExporterLabels)
 
-        exporter := NewExporter(currDsn, *disableDefaultMetrics, *disableSettingMetrics, *queriesPath, convertedConstLabels)
+        exporter := NewExporter(currDsn, currDsnDisableDefaultMetrics, currDsnDisableSettingMetrics, *queriesPath, convertedConstLabels)
         defer func() {
             if exporter.dbConnection != nil {
                 exporter.dbConnection.Close() // nolint: errcheck
