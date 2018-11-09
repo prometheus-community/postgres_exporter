@@ -88,6 +88,10 @@ type MetricMap struct {
 
 // Metric descriptors for dynamically created metrics.
 var metricMaps = map[NamespaceAndQuery]map[string]ColumnMapping{
+	{"pg_database", "select datname,age(datfrozenxid) as xid_age from pg_database"}: map[string]ColumnMapping{
+                "datname":      {LABEL, "OID of a database", nil},
+                "xid_age":      {COUNTER, "Age of maximum frozen xid", nil},
+        },
 	{"pg_stat_bgwriter", "select * from pg_stat_bgwriter"}: map[string]ColumnMapping{
 		"checkpoints_timed":     {COUNTER, "Number of scheduled checkpoints that have been performed", nil},
 		"checkpoints_req":       {COUNTER, "Number of requested checkpoints that have been performed", nil},
