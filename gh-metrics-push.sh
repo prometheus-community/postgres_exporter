@@ -16,17 +16,13 @@ mkdir -p "$METRICS_DIR/"
 # Remove old files so we spot deletions
 rm -f "$METRICS_DIR/.*.unique"
 
-ls -la
-
 # Copy new files
 cp -f -t "$METRICS_DIR/" ./.metrics.*.prom.unique || exit 1
 
 # Enter the assets dir and push.
 cd "$ASSETS_DIR" || exit 1
 
-ls -laR
-
-git add "$METRICS_DIR" || exit 1
+git add "metriclists" || exit 1
 git commit -m "Added unique metrics for build from $version" || exit 1
 git push origin "$GIT_ASSETS_BRANCH" || exit 1
 
