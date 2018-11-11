@@ -7,10 +7,9 @@
 
 for raw_prom in $(echo .*.prom) ; do
     # Strip, sort and deduplicate the label names
-    cat $raw_prom | grep -v '#' | \
+    grep -v "#" "${raw_prom}" | \
         rev | cut -d' ' -f2- | \
         rev | cut -d'{' -f1 | \
         sort | \
-        uniq > ${raw_prom}.unique
-    
+        uniq > "${raw_prom}.unique"
 done

@@ -7,5 +7,5 @@ version=$2
 old_version=$3
 new_version=$4
 
-comm -23 $old_version $new_version > .metrics.${type}.${version}.removed
-comm -13 $old_version $new_version > .metrics.${type}.${version}.added
+comm -23 "${old_version}" "${new_version}" > ".metrics.${type}.${version}.removed"
+comm -13 "${old_version}" "${new_version}" > ".metrics.${type}.${version}.added"
