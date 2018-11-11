@@ -17,7 +17,7 @@ mkdir -p "$METRICS_DIR/"
 rm -f "$METRICS_DIR/*.unique"
 
 # Copy new files
-cp -f -t "$METRICS_DIR/" ./*.unique || exit 1
+cp -f -t "$METRICS_DIR/" ./.metrics.*.prom.unique || exit 1
 
 # Enter the assets dir and push.
 cd "$ASSETS_DIR" || exit 1
