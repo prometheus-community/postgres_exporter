@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 # Script to setup the assets clone of the repository using GIT_ASSETS_BRANCH and
 # GIT_API_KEY.
 
