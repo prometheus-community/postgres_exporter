@@ -2,8 +2,8 @@
 # Script to setup the assets clone of the repository using GIT_ASSETS_BRANCH and
 # GIT_API_KEY.
 
-[ -z "$GIT_ASSETS_BRANCH" ] || exit 1
-[ -z "$GIT_API_KEY" ] || exit 1
+[ ! -z "$GIT_ASSETS_BRANCH" ] || exit 1
+[ ! -z "$GIT_API_KEY" ] || exit 1
 
 setup_git() {
   git config --global user.email "travis@travis-ci.org" || exit 1

@@ -22,6 +22,8 @@ after_success:
   ; docker push wrouesnel/postgres_exporter:$TRAVIS_TAG ; fi
 - if [ "$TRAVIS_BRANCH" == "master" ]; then docker push wrouesnel/postgres_exporter
   ; fi
+- ./postgres-metrics-get-changes.sh
+- if [ "$TRAVIS_BRANCH" == "support_shell_fixes" ]; then ./gh-metrics-push.sh ; fi
 env:
   global:
   - DOCKER_USER=wrouesnel
