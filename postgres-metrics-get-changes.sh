@@ -11,14 +11,18 @@ function generate_add_removed() {
     old_version="$3"
     new_version="$4"
     
+    if [ ! -e "$old_version" ] ; then
+        touch "$old_version"
+    fi
+
     comm -23 "$old_version" "$new_version" > ".metrics.${type}.${pg_version}.removed"
     comm -13 "$old_version" "$new_version" > ".metrics.${type}.${pg_version}.added"   
 }
 
 for raw_prom in $(echo .*.prom) ; do
     # Get the type and version
-    type=$(cut -d'.' -f3)
-    pg_version=$(cut -d'.' -f4)
+    type=$(echo "$raw_prom" | cut -d'.' -f3)
+    pg_version=$(echo "$raw_prom" | cut -d'.' -f4- | sed 's/\.prom$//g')
 
     unique_file="${raw_prom}.unique"
     old_unique_file="$old_src/$unique_file"

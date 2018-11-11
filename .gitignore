@@ -15,3 +15,6 @@
 /*.prom
 /.metrics.*.*.prom
 /.metrics.*.*.prom.unique
+/.assets-branch
+/.metrics.*.added
+/.metrics.*.removed
