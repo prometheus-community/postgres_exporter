@@ -13,7 +13,7 @@ This package is available for Docker:
 # Start an example database
 docker run --net=host -it --rm -e POSTGRES_PASSWORD=password postgres
 # Connect to it
-docker run --net=host -e DATA_SOURCE_NAME="postgresql://postgres:password@localhost:5432/?sslmode=disable" wrouesnel/postgres_exporter
+docker run --net=host -e DATA_SOURCE_NAME="postgresql://postgres:password@localhost:5432/postgres?sslmode=disable" wrouesnel/postgres_exporter
 ```
 
 ## Building and running
@@ -65,6 +65,9 @@ Package vendoring is handled with [`govendor`](https://github.com/kardianos/gove
   Set the log output target and format. e.g. `logger:syslog?appname=bob&local=7` or `logger:stdout?json=true`
   Defaults to `logger:stderr`.
 
+* `constantLabels`
+  Labels to set in all metrics. A list of `label=value` pairs, separated by commas.
+
 ### Environment Variables
 
 The following environment variables configure the exporter:
@@ -101,6 +104,9 @@ The following environment variables configure the exporter:
 * `PG_EXPORTER_EXTEND_QUERY_PATH`
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
   for examples of the format.
+
+* `PG_EXPORTER_CONTANT_LABELS`
+  Labels to set in all metrics. A list of `label=value` pairs, separated by commas.
   
 Settings set by environment variables starting with `PG_` will be overwritten by the corresponding CLI flag if given.
 
