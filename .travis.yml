@@ -3,7 +3,7 @@ services:
 - docker
 language: go
 go:
-- '1.10'
+- '1.11'
 before_install:
 - go get -v github.com/mattn/goveralls
 - sudo wget -O /usr/local/bin/p2 https://github.com/wrouesnel/p2cli/releases/download/r4/p2
