@@ -12,6 +12,7 @@ before_install:
   && sudo chmod +x /usr/local/bin/docker-compose
 - sudo apt-get update && sudo apt-get install postgresql-client-common
 script:
+- ./gh-assets-clone.sh
 - go run mage.go -v all
 - "$HOME/gopath/bin/goveralls -coverprofile=cover.out -service=travis-ci"
 - go run mage.go docker

@@ -2,10 +2,11 @@
 # Script to determine added and removed metrics.
 # Not currently used in CI but useful for inspecting complicated changes.
 
+# valid types: single or replicated
 type="$1"
-version="$2"
+pg_version="$2"
 old_version="$3"
 new_version="$4"
 
-comm -23 "$old_version" "$new_version" > ".metrics.${type}.${version}.removed"
-comm -13 "$old_version" "$new_version" > ".metrics.${type}.${version}.added"
+comm -23 "$old_version" "$new_version" > ".metrics.${type}.${pg_version}.removed"
+comm -13 "$old_version" "$new_version" > ".metrics.${type}.${pg_version}.added"

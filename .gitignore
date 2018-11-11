@@ -14,3 +14,4 @@
 /release
 /*.prom
 /.metrics.*.*.prom
+/.metrics.*.*.prom.unique
