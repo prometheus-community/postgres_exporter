@@ -3,7 +3,9 @@
 # output by the exporter and then build lists of added/removed metrics.
 
 old_src="$1"
-[ ! -e "$old_src" ] && exit 1
+if [ ! -d "$old_src" ] ; then
+    mkdir -p "$old_src"
+fi
 
 function generate_add_removed() {
     type="$1"
