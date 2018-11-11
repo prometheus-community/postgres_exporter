@@ -5,7 +5,8 @@
 # PostgreSQL Server Exporter
 
 Prometheus exporter for PostgreSQL server metrics.
-Supported Postgres versions: 9.1 and up.
+
+CI Tested PostgreSQL versions: `9.1`, `9.2`, `9.3`, `9.4`, `9.5`, `9.6`, `10`, `11`
 
 ## Quick Start
 This package is available for Docker:
@@ -105,7 +106,7 @@ The following environment variables configure the exporter:
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
   for examples of the format.
 
-* `PG_EXPORTER_CONTANT_LABELS`
+* `PG_EXPORTER_CONSTANT_LABELS`
   Labels to set in all metrics. A list of `label=value` pairs, separated by commas.
   
 Settings set by environment variables starting with `PG_` will be overwritten by the corresponding CLI flag if given.
@@ -149,14 +150,20 @@ flag. This removes all built-in metrics, and uses only metrics defined by querie
 
 ### Running as non-superuser
 
-To be able to collect metrics from pg_stat_activity and pg_stat_replication as non-superuser you have to create views as a superuser, and assign permissions separately to those.  In PostgreSQL, views run with the permissions of the user that created them so they can act as security barriers.
+To be able to collect metrics from `pg_stat_activity` and `pg_stat_replication` 
+as  non-superuser you have to create views as a superuser, and assign permissions 
+separately to those.  
+
+In PostgreSQL, views run with the permissions of the user that created them so 
+they can act as security barriers.
 
 ```sql
 CREATE USER postgres_exporter PASSWORD 'password';
 ALTER USER postgres_exporter SET SEARCH_PATH TO postgres_exporter,pg_catalog;
 
--- If deploying as non-superuser (for example in AWS RDS)
--- GRANT postgres_exporter TO :MASTER_USER;
+-- If deploying as non-superuser (for example in AWS RDS), uncomment the GRANT
+-- line below and replace <MASTER_USER> with your root user.
+-- GRANT postgres_exporter TO <MASTER_USER>
 CREATE SCHEMA postgres_exporter AUTHORIZATION postgres_exporter;
 
 CREATE VIEW postgres_exporter.pg_stat_activity
