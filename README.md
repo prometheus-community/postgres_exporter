@@ -5,7 +5,8 @@
 # PostgreSQL Server Exporter
 
 Prometheus exporter for PostgreSQL server metrics.
-Supported Postgres versions: 9.1 and up.
+
+CI Tested PostgreSQL versions: `9.1`, `9.2`, `9.3`, `9.4`, `9.5`, `9.6`, `10`, `11`
 
 ## Quick Start
 This package is available for Docker:
@@ -16,6 +17,7 @@ docker run --net=host -it --rm -e POSTGRES_PASSWORD=password postgres
 docker run --net=host -e DATA_SOURCE_NAME="postgresql://postgres:password@localhost:5432/?sslmode=disable" wrouesnel/postgres_exporter
 # Connect to multiple databases (separate by comma)
 docker run --net=host -e DATA_SOURCE_NAME="postgresql://postgres:password@localhost:5432/?sslmode=disable,postgresql://postgres:password@localhost:5432/test_db?sslmode=disable" wrouesnel/postgres_exporter
+
 ```
 
 ## Building and running
@@ -70,6 +72,9 @@ Package vendoring is handled with [`govendor`](https://github.com/kardianos/gove
   Set the log output target and format. e.g. `logger:syslog?appname=bob&local=7` or `logger:stdout?json=true`
   Defaults to `logger:stderr`.
 
+* `constantLabels`
+  Labels to set in all metrics. A list of `label=value` pairs, separated by commas.
+
 ### Environment Variables
 
 The following environment variables configure the exporter:
@@ -106,6 +111,9 @@ The following environment variables configure the exporter:
 * `PG_EXPORTER_EXTEND_QUERY_PATH`
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
   for examples of the format.
+
+* `PG_EXPORTER_CONSTANT_LABELS`
+  Labels to set in all metrics. A list of `label=value` pairs, separated by commas.
   
 Settings set by environment variables starting with `PG_` will be overwritten by the corresponding CLI flag if given.
 
@@ -148,14 +156,20 @@ flag. This removes all built-in metrics, and uses only metrics defined by querie
 
 ### Running as non-superuser
 
-To be able to collect metrics from pg_stat_activity and pg_stat_replication as non-superuser you have to create views as a superuser, and assign permissions separately to those.  In PostgreSQL, views run with the permissions of the user that created them so they can act as security barriers.
+To be able to collect metrics from `pg_stat_activity` and `pg_stat_replication` 
+as  non-superuser you have to create views as a superuser, and assign permissions 
+separately to those.  
+
+In PostgreSQL, views run with the permissions of the user that created them so 
+they can act as security barriers.
 
 ```sql
 CREATE USER postgres_exporter PASSWORD 'password';
 ALTER USER postgres_exporter SET SEARCH_PATH TO postgres_exporter,pg_catalog;
 
--- If deploying as non-superuser (for example in AWS RDS)
--- GRANT postgres_exporter TO :MASTER_USER;
+-- If deploying as non-superuser (for example in AWS RDS), uncomment the GRANT
+-- line below and replace <MASTER_USER> with your root user.
+-- GRANT postgres_exporter TO <MASTER_USER>
 CREATE SCHEMA postgres_exporter AUTHORIZATION postgres_exporter;
 
 CREATE VIEW postgres_exporter.pg_stat_activity

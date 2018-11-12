@@ -3,7 +3,7 @@ services:
 - docker
 language: go
 go:
-- '1.10'
+- '1.11'
 before_install:
 - go get -v github.com/mattn/goveralls
 - sudo wget -O /usr/local/bin/p2 https://github.com/wrouesnel/p2cli/releases/download/r4/p2
@@ -12,6 +12,7 @@ before_install:
   && sudo chmod +x /usr/local/bin/docker-compose
 - sudo apt-get update && sudo apt-get install postgresql-client-common
 script:
+- ./gh-assets-clone.sh
 - go run mage.go -v all
 - "$HOME/gopath/bin/goveralls -coverprofile=cover.out -service=travis-ci"
 - go run mage.go docker
@@ -21,10 +22,17 @@ after_success:
   ; docker push wrouesnel/postgres_exporter:$TRAVIS_TAG ; fi
 - if [ "$TRAVIS_BRANCH" == "master" ]; then docker push wrouesnel/postgres_exporter
   ; fi
+- ./postgres-metrics-get-changes.sh .assets-branch/metriclists
+- if [ "$TRAVIS_BRANCH" == "master" ]; then ./gh-metrics-push.sh ; fi
 env:
   global:
   - DOCKER_USER=wrouesnel
   - secure: f0H5HKL/5f/ZZVGZ7puegWZ6eig0TmruihuSEJCx1+Y6yDZn7l8lH+eETP9KAzH27c3CG1F9ytu/3gnnTOafXnDLlCve3fL5sKF3+pNQRwi3IojsODjdfPW+KEbG+1RD7IgkCn+DSRmvvpLr4zGOmZFEM1ZtLL878u4Hsrv/X5pDbKJgG/cXDRJfsu/EcpviO4WM8zOakBY8QihXhGpZiRtpRDCXWjW49PdCkW9hsfzFaU1yjvih9EJ0cfcH+9CFCRkezwAPlCETbOv288uHXc6bCuEEX1bgJ0ZzEXYAyoO00+12ePbQZEGNikSVT55nfC+jZLLTavQkFi862Hcx/lmJpA/7aeNYOrDcomwWMRRc4Ava2+cod7acVvo45SHRq+Jj9ofDhj9s0T/aZwV+2doc9GwDN9J6aEs9Nham2G955K1H0fmMW9lv0ThSVEZ3XbzCHyR4nPAwJQXrzauqbbihCim/g/YC5gbVs7O/4GkN2Z9LK30IJr1/NtJdIa6fMk3Zdhp6LGbXCvVFRbE0rMiTLbB8O3ll2smCu3aFYv7J9IfvI0ol0ww7kULpyf/vqxkK0NJXsKgoK/Uo1lM9gNpJBHsMt9nWnDvLj2DKZNTqkxzJeG8O98ADrQWEGFhpcsSsbW9pAMsrp6D4LQikN8KoFvh9F8h9lBsYpafzlOA=
+  - GIT_ASSETS_BRANCH=assets
+  - secure: 04rZWNM20asC0CHqgSa9OwU5d0Zl8sTPXdaHwm3mR75xWcoQwLiNpIzQpdrtH21VPqj78CdwBXvt1ZAcl4SZaNxEFbvblSz2CZ/3dAeM3uj+LShn/wMgQGdCALzF1hlpnDOQsFpdY5GqKS28rYF14EZDT4ZGf+uBamwCq9QNPdApypAqQCfJml8TYeUbJfgvTWoVNMfy5eIiWjYAUriXE258UY4z6ErWqs00A3cmLadkjQaDaNowcjTiFA2qRUcJckLZmbo+3mqa0N2DST0uXflvwOMmPJzjVNXkzs6hX7GVrIjfK0ttud0SV6iatuB7LdAYBlNvMrPJHAEchdR/xhfXv0obx/CdWBSo55sWy/DPNGh0BNgdohX/IcGaVX2318ca81+jD4IEJ//0DCVpmfhi+xM7N2Tmpstus6ToBJy2ZWwP9xOuchrSqU5+NPb+xJarRnDclBydQNJpJm+WIZo9nPawggLaDkpoHxppgg3e+f4Mc/bVM5H/v/Qi36Gk2gH4m2ZHDjEJdyHf066L2avKvsIPiW9xobNmUPkCGzDVmCB9vGCn8BNnm3mdHMBcYxaIUOFcSyLi8c0xk9gLvVcDMKn0jDNuegQ5HAfw4zTER4VdRVx4e4iF4NUgj+LmvLXNdJlEAXUu5m4cJDlWfgftMPLTtn3rncq5IgNrVO0=
+branches:
+  except:
+  - assets
 deploy:
   skip_cleanup: true
   provider: releases
