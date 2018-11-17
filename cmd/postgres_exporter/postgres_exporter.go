@@ -709,8 +709,8 @@ type Exporter struct {
 // NewExporter returns a new PostgreSQL exporter for the provided DSN.
 func NewExporter(dsn string, disableDefaultMetrics bool, userQueriesPath string) *Exporter {
 	return &Exporter{
-		builtinMetricMaps: builtinMetricMaps,
-		dsn:               dsn,
+		builtinMetricMaps:     builtinMetricMaps,
+		dsn:                   dsn,
 		disableDefaultMetrics: disableDefaultMetrics,
 		userQueriesPath:       userQueriesPath,
 		duration: prometheus.NewGauge(prometheus.GaugeOpts{
