@@ -3,6 +3,7 @@
 # GIT_API_KEY.
 
 [ ! -z "$GIT_ASSETS_BRANCH" ] || exit 1
+[ ! -z "$GIT_API_KEY" ] || exit 0
 
 setup_git() {
   git config --global user.email "travis@travis-ci.org" || exit 1
@@ -15,4 +16,3 @@ ASSETS_DIR=".assets-branch"
 # Clone the assets branch with the correct credentials
 git clone --single-branch -b "$GIT_ASSETS_BRANCH" \
     "https://${GIT_API_KEY}@github.com/${TRAVIS_REPO_SLUG}.git" "$ASSETS_DIR" || exit 1
-
