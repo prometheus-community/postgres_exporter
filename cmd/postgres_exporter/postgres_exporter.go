@@ -33,12 +33,13 @@ import (
 var Version = "0.0.1"
 
 var (
-	listenAddress         = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").OverrideDefaultFromEnvar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
-	metricPath            = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").OverrideDefaultFromEnvar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
-	disableDefaultMetrics = kingpin.Flag("disable-default-metrics", "Do not include default metrics.").Default("false").OverrideDefaultFromEnvar("PG_EXPORTER_DISABLE_DEFAULT_METRICS").Bool()
-	queriesPath           = kingpin.Flag("extend.query-path", "Path to custom queries to run.").Default("").OverrideDefaultFromEnvar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
-	onlyDumpMaps          = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
-	constantLabelsList    = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,).").Default("").OverrideDefaultFromEnvar("PG_EXPORTER_CONTANT_LABELS").String()
+	listenAddress          = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").OverrideDefaultFromEnvar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
+	metricPath             = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").OverrideDefaultFromEnvar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
+	collectSettingsMetrics = kingpin.Flag("collect-settings-metrics", "Do not include setting metrics.").Default("true").OverrideDefaultFromEnvar("PG_EXPORTER_COLLECT_SETTINGS_METRICS").Bool()
+	disableDefaultMetrics  = kingpin.Flag("disable-default-metrics", "Do not include default metrics.").Default("false").OverrideDefaultFromEnvar("PG_EXPORTER_DISABLE_DEFAULT_METRICS").Bool()
+	queriesPath            = kingpin.Flag("extend.query-path", "Path to custom queries to run.").Default("").OverrideDefaultFromEnvar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
+	onlyDumpMaps           = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
+	constantLabelsList     = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,).").Default("").OverrideDefaultFromEnvar("PG_EXPORTER_CONTANT_LABELS").String()
 )
 
 // Metric name parts.
@@ -682,14 +683,15 @@ type Exporter struct {
 	// only, since it just points to the global.
 	builtinMetricMaps map[string]map[string]ColumnMapping
 
-	dsn                   string
-	disableDefaultMetrics bool
-	userQueriesPath       string
-	duration              prometheus.Gauge
-	error                 prometheus.Gauge
-	psqlUp                prometheus.Gauge
-	userQueriesError      *prometheus.GaugeVec
-	totalScrapes          prometheus.Counter
+	dsn                    string
+	collectSettingsMetrics bool
+	disableDefaultMetrics  bool
+	userQueriesPath        string
+	duration               prometheus.Gauge
+	error                  prometheus.Gauge
+	psqlUp                 prometheus.Gauge
+	userQueriesError       *prometheus.GaugeVec
+	totalScrapes           prometheus.Counter
 
 	// dbDsn is the connection string used to establish the dbConnection
 	dbDsn string
@@ -707,12 +709,13 @@ type Exporter struct {
 }
 
 // NewExporter returns a new PostgreSQL exporter for the provided DSN.
-func NewExporter(dsn string, disableDefaultMetrics bool, userQueriesPath string) *Exporter {
+func NewExporter(dsn string, collectSettingsMetrics bool, disableDefaultMetrics bool, userQueriesPath string) *Exporter {
 	return &Exporter{
-		builtinMetricMaps:     builtinMetricMaps,
-		dsn:                   dsn,
-		disableDefaultMetrics: disableDefaultMetrics,
-		userQueriesPath:       userQueriesPath,
+		builtinMetricMaps:      builtinMetricMaps,
+		dsn:                    dsn,
+		collectSettingsMetrics: collectSettingsMetrics,
+		disableDefaultMetrics:  disableDefaultMetrics,
+		userQueriesPath:        userQueriesPath,
 		duration: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Subsystem:   exporter,
@@ -1085,9 +1088,12 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	// Lock the exporter maps
 	e.mappingMtx.RLock()
 	defer e.mappingMtx.RUnlock()
-	if err := querySettings(ch, db); err != nil {
-		log.Infof("Error retrieving settings: %s", err)
-		e.error.Set(1)
+
+	if e.collectSettingsMetrics {
+		if err := querySettings(ch, db); err != nil {
+			log.Infof("Error retrieving settings: %s", err)
+			e.error.Set(1)
+		}
 	}
 
 	errMap := queryNamespaceMappings(ch, db, e.metricMap, e.queryOverrides)
@@ -1160,7 +1166,7 @@ func main() {
 		log.Fatal("couldn't find environment variables describing the datasource to use")
 	}
 
-	exporter := NewExporter(dsn, *disableDefaultMetrics, *queriesPath)
+	exporter := NewExporter(dsn, *collectSettingsMetrics, *disableDefaultMetrics, *queriesPath)
 	defer func() {
 		if exporter.dbConnection != nil {
 			exporter.dbConnection.Close() // nolint: errcheck

@@ -47,6 +47,9 @@ Package vendoring is handled with [`govendor`](https://github.com/kardianos/gove
 
 * `web.telemetry-path`
   Path under which to expose metrics. Default is `/metrics`.
+  
+* `collect-settings-metrics`
+  Collect Metrics from pg_settings table.  Default is `true`.  You may disable this collection via `--collect-settings-metrics=false`.
 
 * `disable-default-metrics`
   Use only metrics supplied from `queries.yaml` via `--extend.query-path`
@@ -98,6 +101,9 @@ The following environment variables configure the exporter:
 
 * `PG_EXPORTER_WEB_TELEMETRY_PATH`
   Path under which to expose metrics. Default is `/metrics`.
+  
+* `PG_EXPORTER_COLLECT_SETTINGS_METRICS`
+  Collect metrics supplied from pg_settings. Value can be `true` or `false`. Default is `true`.
 
 * `PG_EXPORTER_DISABLE_DEFAULT_METRICS`
   Use only metrics supplied from `queries.yaml`. Value can be `true` or `false`. Default is `false`.
