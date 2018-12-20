@@ -39,7 +39,7 @@ var (
 	disableSettingsMetrics = kingpin.Flag("disable-settings-metrics", "Do not include pg_settings metrics.").Default("false").OverrideDefaultFromEnvar("PG_EXPORTER_DISABLE_SETTINGS_METRICS").Bool()
 	queriesPath            = kingpin.Flag("extend.query-path", "Path to custom queries to run.").Default("").OverrideDefaultFromEnvar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
 	onlyDumpMaps           = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
-	constantLabelsList     = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,).").Default("").OverrideDefaultFromEnvar("PG_EXPORTER_CONTANT_LABELS").String()
+	constantLabelsList     = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,).").Default("").OverrideDefaultFromEnvar("PG_EXPORTER_CONSTANT_LABELS").String()
 )
 
 // Metric name parts.
@@ -926,6 +926,11 @@ func WithConstantLabels(s string) ExporterOpt {
 
 func parseConstLabels(s string) prometheus.Labels {
 	labels := make(prometheus.Labels)
+
+	s = strings.TrimSpace(s)
+	if len(s) == 0 {
+		return labels
+	}
 
 	parts := strings.Split(s, ",")
 	for _, p := range parts {
