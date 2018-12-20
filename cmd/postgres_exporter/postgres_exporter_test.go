@@ -3,6 +3,7 @@
 package main
 
 import (
+	"reflect"
 	"testing"
 
 	. "gopkg.in/check.v1"
@@ -181,6 +182,80 @@ func (s *FunctionalSuite) TestPostgresVersionParsing(c *C) {
 		ver, err := parseVersion(cs.input)
 		c.Assert(err, IsNil)
 		c.Assert(ver.String(), Equals, cs.expected)
+	}
+}
+
+func (s *FunctionalSuite) TestParseFingerprint(c *C) {
+	cases := []struct {
+		url         string
+		fingerprint string
+		err         string
+	}{
+		{
+			url:         "postgresql://userDsn:passwordDsn@localhost:55432/?sslmode=disabled",
+			fingerprint: "localhost:55432",
+		},
+		{
+			url:         "port=1234",
+			fingerprint: "localhost:1234",
+		},
+		{
+			url:         "host=example",
+			fingerprint: "example:5432",
+		},
+		{
+			url: "xyz",
+			err: "malformed dsn \"xyz\"",
+		},
+	}
+
+	for _, cs := range cases {
+		f, err := parseFingerprint(cs.url)
+		if cs.err == "" {
+			c.Assert(err, IsNil)
+		} else {
+			c.Assert(err, NotNil)
+			c.Assert(err.Error(), Equals, cs.err)
+		}
+		c.Assert(f, Equals, cs.fingerprint)
+	}
+}
+
+func (s *FunctionalSuite) TestParseConstLabels(c *C) {
+	cases := []struct {
+		s      string
+		labels prometheus.Labels
+	}{
+		{
+			s: "a=b",
+			labels: prometheus.Labels{
+				"a": "b",
+			},
+		},
+		{
+			s:      "",
+			labels: prometheus.Labels{},
+		},
+		{
+			s: "a=b, c=d",
+			labels: prometheus.Labels{
+				"a": "b",
+				"c": "d",
+			},
+		},
+		{
+			s: "a=b, xyz",
+			labels: prometheus.Labels{
+				"a": "b",
+			},
+		},
+	}
+
+	for _, cs := range cases {
+		labels := parseConstLabels(cs.s)
+		if !reflect.DeepEqual(labels, cs.labels) {
+			c.Fatalf("labels not equal (%v -> %v)", labels, cs.labels)
+		}
 	}
 }
 
