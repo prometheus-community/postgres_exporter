@@ -587,13 +587,13 @@ func Release() error {
 
 		if platform.OS == "windows" {
 			// build a zip binary as well
-			err := archiver.Zip.Make(fmt.Sprintf("%s.zip", platform.ReleaseBase()), []string{platform.ArchiveDir()})
+			err := archiver.Archive([]string{platform.ArchiveDir()}, fmt.Sprintf("%s.zip", platform.ReleaseBase()))
 			if err != nil {
 				return err
 			}
 		}
 		// build tar gz
-		err := archiver.TarGz.Make(fmt.Sprintf("%s.tar.gz", platform.ReleaseBase()), []string{platform.ArchiveDir()})
+		err := archiver.Archive([]string{platform.ArchiveDir()}, fmt.Sprintf("%s.tar.gz", platform.ReleaseBase()))
 		if err != nil {
 			return err
 		}
