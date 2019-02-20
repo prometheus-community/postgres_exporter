@@ -67,6 +67,7 @@ pg_settings_cpu_operator_cost
 pg_settings_cpu_tuple_cost
 pg_settings_cursor_tuple_fraction
 pg_settings_data_checksums
+pg_settings_data_sync_retry
 pg_settings_db_user_namespace
 pg_settings_deadlock_timeout_seconds
 pg_settings_debug_assertions
