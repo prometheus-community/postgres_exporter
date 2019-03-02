@@ -782,21 +782,15 @@ func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 
 // Close disconnects from Postgres.
 func (s *Server) Close() error {
-	if s.db != nil {
-		err := s.db.Close()
-		s.db = nil
-		return err
-	}
-	return nil
+	return s.db.Close()
 }
 
 // Ping checks connection availability and possibly invalidates the connection if it fails.
 func (s *Server) Ping() error {
 	if err := s.db.Ping(); err != nil {
-		if cerr := s.db.Close(); cerr != nil {
-			log.Infof("Error while closing non-pinging DB connection to %q: %v", s, cerr)
+		if cerr := s.Close(); cerr != nil {
+			log.Errorf("Error while closing non-pinging DB connection to %q: %v", s, cerr)
 		}
-		s.db = nil
 		return err
 	}
 	return nil
@@ -814,7 +808,7 @@ func (s *Server) Scrape(ch chan<- prometheus.Metric, errGauge prometheus.Gauge, 
 
 	if !disableSettingsMetrics {
 		if err := querySettings(ch, s); err != nil {
-			log.Infof("Error retrieving settings: %s", err)
+			log.Errorf("Error retrieving settings: %s", err)
 			errGauge.Inc()
 		}
 	}
@@ -1252,29 +1246,32 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	e.totalScrapes.Inc()
 
 	for _, dsn := range e.dsn {
-		server, err := e.servers.GetServer(dsn)
-		if err != nil {
-			loggableDSN := "could not parse DATA_SOURCE_NAME"
-			pDSN, pErr := parseDSN(dsn)
-			if pErr == nil {
-				loggableDSN = pDSN.String()
-			}
-			log.Infof("Error opening connection to database (%s): %v", loggableDSN, err)
-			e.error.Inc()
-			continue
-		}
-
-		// Didn't fail, can mark connection as up for this scrape.
-		e.psqlUp.Inc()
-
-		// Check if map versions need to be updated
-		if err := e.checkMapVersions(ch, server); err != nil {
-			log.Warnln("Proceeding with outdated query maps, as the Postgres version could not be determined:", err)
-			e.error.Inc()
-		}
-
-		server.Scrape(ch, e.error, e.disableSettingsMetrics)
+		e.scrapeDSN(ch, dsn)
 	}
+}
+
+func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) {
+	server, err := e.servers.GetServer(dsn)
+	if err != nil {
+		loggableDSN := "could not parse DATA_SOURCE_NAME"
+		if pDSN, pErr := parseDSN(dsn); pErr == nil {
+			loggableDSN = pDSN.String()
+		}
+		log.Errorf("Error opening connection to database (%s): %v", loggableDSN, err)
+		e.error.Inc()
+		return
+	}
+
+	// Didn't fail, can mark connection as up for this scrape.
+	e.psqlUp.Inc()
+
+	// Check if map versions need to be updated
+	if err := e.checkMapVersions(ch, server); err != nil {
+		log.Warnln("Proceeding with outdated query maps, as the Postgres version could not be determined:", err)
+		e.error.Inc()
+	}
+
+	server.Scrape(ch, e.error, e.disableSettingsMetrics)
 }
 
 // try to get the DataSource
