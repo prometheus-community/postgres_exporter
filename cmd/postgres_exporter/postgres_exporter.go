@@ -914,6 +914,7 @@ func DisableSettingsMetrics(b bool) ExporterOpt {
 	}
 }
 
+// AutoDiscoverDatabases allows scraping all databases on a database server.
 func AutoDiscoverDatabases(b bool) ExporterOpt {
 	return func(e *Exporter) {
 		e.autoDiscoverDatabases = b
