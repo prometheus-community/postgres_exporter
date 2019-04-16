@@ -161,6 +161,11 @@ or a variant of postgres (e.g. Greenplum) you can disable the default metrics wi
 flag. This removes all built-in metrics, and uses only metrics defined by queries in the `queries.yaml` file you supply
 (so you must supply one, otherwise the exporter will return nothing but internal statuses and not your database).
 
+### Automatically discover databases
+To scrape metrics from all databases on a database server, the database DSN's can be dynamically discovered via the 
+`--auto-discover-databases` flag. When true, `SELECT datname FROM pg_database` is run for all configured DSN's. From the 
+result a new set of DSN's is created for which the metrics are scraped.
+
 ### Running as non-superuser
 
 To be able to collect metrics from `pg_stat_activity` and `pg_stat_replication`
