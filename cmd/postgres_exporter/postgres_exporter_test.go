@@ -3,15 +3,13 @@
 package main
 
 import (
+	"os"
 	"reflect"
 	"testing"
 
-	. "gopkg.in/check.v1"
-
-	"os"
-
 	"github.com/blang/semver"
 	"github.com/prometheus/client_golang/prometheus"
+	. "gopkg.in/check.v1"
 )
 
 // Hook up gocheck into the "go test" runner.
