@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -16,16 +17,13 @@ import (
 	"sync"
 	"time"
 
-	"gopkg.in/alecthomas/kingpin.v2"
-	"gopkg.in/yaml.v2"
-
-	"crypto/sha256"
-
 	"github.com/blang/semver"
 	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
+	"gopkg.in/alecthomas/kingpin.v2"
+	"gopkg.in/yaml.v2"
 )
 
 // Version is set during build to the git describe version
