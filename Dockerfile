@@ -1,9 +1,9 @@
+FROM golang AS build
+COPY . /src
+WORKDIR /src
+RUN CGO_ENABLED=0 GOFLAGS=-mod=vendor GOPROXY=off go build
+
 FROM scratch
-
-ARG binary
-
-COPY $binary /postgres_exporter
-
+COPY --from=build /src/postgres_exporter /postgres_exporter
 EXPOSE 9187
-
-ENTRYPOINT [ "/postgres_exporter" ]
+ENTRYPOINT ["/postgres_exporter"]

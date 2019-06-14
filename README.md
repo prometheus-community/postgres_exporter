@@ -6,39 +6,20 @@
 
 Prometheus exporter for PostgreSQL server metrics.
 
-CI Tested PostgreSQL versions: `9.1`, `9.2`, `9.3`, `9.4`, `9.5`, `9.6`, `10`, `11`
-
-## Quick Start
-This package is available for Docker:
-```
-# Start an example database
-docker run --net=host -it --rm -e POSTGRES_PASSWORD=password postgres
-# Connect to it
-docker run --net=host -e DATA_SOURCE_NAME="postgresql://postgres:password@localhost:5432/postgres?sslmode=disable" wrouesnel/postgres_exporter
-```
+Tested PostgreSQL versions: `9.1`, `9.2`, `9.3`, `9.4`, `9.5`, `9.6`, `10`, `11`, `12`.
 
 ## Building and running
 
-The build system is based on [Mage](https://magefile.org)
-
-The default make file behavior is to build the binary:
 ```
-$ go get github.com/wrouesnel/postgres_exporter
-$ cd ${GOPATH-$HOME/go}/src/github.com/wrouesnel/postgres_exporter
-$ go run mage.go
-$ export DATA_SOURCE_NAME="postgresql://login:password@hostname:port/dbname"
-$ ./postgres_exporter <flags>
+$ go build
+$ DATA_SOURCE_NAME="postgresql://login:password@hostname:port/dbname" ./postgres_exporter <flags>
 ```
 
-To build the dockerfile, run `go run mage.go docker`.
+## Testing
 
-This will build the docker image as `wrouesnel/postgres_exporter:latest`. This
-is a minimal docker image containing *just* postgres_exporter. By default no SSL
-certificates are included, if you need to use SSL you should either bind-mount
-`/etc/ssl/certs/ca-certificates.crt` or derive a new image containing them.
-
-### Vendoring
-Package vendoring is handled with [`govendor`](https://github.com/kardianos/govendor)
+```
+$ docker-compose up --exit-code-from postgres_exporter
+```
 
 ### Flags
 
@@ -211,10 +192,3 @@ GRANT SELECT ON postgres_exporter.pg_stat_replication TO postgres_exporter;
 > ```
 > DATA_SOURCE_NAME=postgresql://postgres_exporter:password@localhost:5432/postgres?sslmode=disable
 > ```
-
-# Hacking
-* To build a copy for your current architecture run `go run mage.go binary` or just `go run mage.go`
-  This will create a symlink to the just built binary in the root directory.
-* To build release tar balls run `go run mage.go release`.
-* Build system is a bit temperamental at the moment since the conversion to mage - I am working on getting it
-  to be a perfect out of the box experience, but am time-constrained on it at the moment.

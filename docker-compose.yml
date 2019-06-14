@@ -1,0 +1,63 @@
+version: '3'
+services:
+  postgres_exporter:
+    image: golang:latest
+    volumes:
+      - .:/src
+    working_dir: /src
+    command: bash -c 'set -e; export GOPROXY=off; export GOFLAGS=-mod=vendor; for v in 91 92 93 94 95 96 10 11 12; do DATA_SOURCE_NAME=postgres://postgres:postgres@postgres$${v}:$${v}25/postgres?sslmode=disable go test -race -cover; done'
+    links:
+      - postgres91
+      - postgres92
+      - postgres93
+      - postgres94
+      - postgres95
+      - postgres96
+      - postgres10
+      - postgres11
+      - postgres12
+
+  postgres91:
+    image: postgres:9.1
+    ports:
+      - "9125:5432"
+
+  postgres92:
+    image: postgres:9.2
+    ports:
+      - "9225:5432"
+
+  postgres93:
+    image: postgres:9.3
+    ports:
+      - "9325:5432"
+
+  postgres94:
+    image: postgres:9.4
+    ports:
+      - "9425:5432"
+
+  postgres95:
+    image: postgres:9.5
+    ports:
+      - "9525:5432"
+
+  postgres96:
+    image: postgres:9.6
+    ports:
+      - "9625:5432"
+
+  postgres10:
+    image: postgres:10
+    ports:
+      - "1025:5432"
+
+  postgres11:
+    image: postgres:11
+    ports:
+      - "1125:5432"
+
+  postgres12:
+    image: postgres:12
+    ports:
+      - "1225:5432"
