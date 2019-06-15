@@ -26,9 +26,6 @@ echo "Test Binary: $test_binary" 1>&2
 cd "$DIR" || exit 1
 
 VERSIONS=( \
-    9.1 \
-    9.2 \
-    9.3 \
     9.4 \
     9.5 \
     9.6 \
