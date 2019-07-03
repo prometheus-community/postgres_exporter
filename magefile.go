@@ -587,30 +587,13 @@ func Release() error {
 
 		if platform.OS == "windows" {
 			// build a zip binary as well
-
-			// creates a Zip configuration
-			z := archiver.Zip{
-								CompressionLevel:       3,
-								MkdirAll:               true,
-								SelectiveCompression:   true,
-								ContinueOnError:        false,
-								OverwriteExisting:      false,
-								ImplicitTopLevelFolder: false,
-			}
-
-			err := z.Archive([]string{platform.ArchiveDir()}, fmt.Sprintf("%s.zip", platform.ReleaseBase()))
+			err := archiver.Zip.Make(fmt.Sprintf("%s.zip", platform.ReleaseBase()), []string{platform.ArchiveDir()})
 			if err != nil {
 				return err
 			}
 		}
 		// build tar gz
-
-		//creates TarGz configuration
-		t := archiver.TarGz{
-							CompressionLevel:					3,
-		}
-
-		err := t.Archive([]string{platform.ArchiveDir()}, fmt.Sprintf("%s.tar.gz", platform.ReleaseBase()))
+		err := archiver.TarGz.Make(fmt.Sprintf("%s.tar.gz", platform.ReleaseBase()), []string{platform.ArchiveDir()})
 		if err != nil {
 			return err
 		}
