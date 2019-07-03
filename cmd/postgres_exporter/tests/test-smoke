@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 # Basic integration tests with postgres. Requires docker to work.
 
 SOURCE="${BASH_SOURCE[0]}"
@@ -34,8 +34,9 @@ VERSIONS=( \
 )
 
 wait_for_postgres(){
-    local ip=$1
-    local port=$2
+    local container=$1
+    local ip=$2
+    local port=$3
     if [ -z "$ip" ]; then
         echo "No IP specified." 1>&2
         exit 1
@@ -49,7 +50,7 @@ wait_for_postgres(){
     local wait_start
     wait_start=$(date +%s) || exit 1
     echo "Waiting for postgres to start listening..."
-    while ! pg_isready --host="$ip" --port="$port" &> /dev/null; do
+    while ! docker exec "$container" pg_isready --host="$ip" --port="$port" &> /dev/null; do
         if [ $(( $(date +%s) - wait_start )) -gt "$TIMEOUT" ]; then
             echo "Timed out waiting for postgres to start!" 1>&2
             exit 1            
@@ -91,7 +92,7 @@ smoketest_postgres() {
     standalone_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $CONTAINER_NAME)
     # shellcheck disable=SC2064
     trap "docker logs $CONTAINER_NAME ; docker kill $CONTAINER_NAME ; docker rm -v $CONTAINER_NAME; exit 1" EXIT INT TERM
-    wait_for_postgres "$standalone_ip" 5432
+    wait_for_postgres "$CONTAINER_NAME" "$standalone_ip" 5432
 
     # Run the test binary.
     DATA_SOURCE_NAME="postgresql://postgres:$POSTGRES_PASSWORD@$standalone_ip:5432/?sslmode=disable" $test_binary || exit $?
@@ -143,8 +144,8 @@ smoketest_postgres() {
     master_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$master_container")
     slave_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$slave_container")
     echo "Got master IP: $master_ip"
-    wait_for_postgres "$master_ip" 5432
-    wait_for_postgres "$slave_ip" 5432
+    wait_for_postgres "$master_container" "$master_ip" 5432
+    wait_for_postgres "$slave_container" "$slave_ip" 5432
     
     DATA_SOURCE_NAME="postgresql://postgres:$POSTGRES_PASSWORD@$master_ip:5432/?sslmode=disable" $test_binary || exit $?
     
