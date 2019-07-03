@@ -26,7 +26,7 @@ The default make file behavior is to build the binary:
 ```
 $ go get github.com/wrouesnel/postgres_exporter
 $ cd ${GOPATH-$HOME/go}/src/github.com/wrouesnel/postgres_exporter
-$ go run mage.go
+$ go run mage.go binary
 $ export DATA_SOURCE_NAME="postgresql://login:password@hostname:port/dbname"
 $ ./postgres_exporter <flags>
 ```
