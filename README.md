@@ -1,12 +1,13 @@
 [![Build Status](https://travis-ci.org/wrouesnel/postgres_exporter.svg?branch=master)](https://travis-ci.org/wrouesnel/postgres_exporter)
 [![Coverage Status](https://coveralls.io/repos/github/wrouesnel/postgres_exporter/badge.svg?branch=master)](https://coveralls.io/github/wrouesnel/postgres_exporter?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/wrouesnel/postgres_exporter)](https://goreportcard.com/report/github.com/wrouesnel/postgres_exporter)
+[![Docker Pulls](https://img.shields.io/docker/pulls/wrouesnel/postgres_exporter.svg)](https://hub.docker.com/r/wrouesnel/postgres_exporter/tags)
 
 # PostgreSQL Server Exporter
 
 Prometheus exporter for PostgreSQL server metrics.
 
-CI Tested PostgreSQL versions: `9.1`, `9.2`, `9.3`, `9.4`, `9.5`, `9.6`, `10`, `11`
+CI Tested PostgreSQL versions: `9.4`, `9.5`, `9.6`, `10`, `11`
 
 ## Quick Start
 This package is available for Docker:
@@ -177,8 +178,8 @@ ALTER USER postgres_exporter SET SEARCH_PATH TO postgres_exporter,pg_catalog;
 
 -- If deploying as non-superuser (for example in AWS RDS), uncomment the GRANT
 -- line below and replace <MASTER_USER> with your root user.
--- GRANT postgres_exporter TO <MASTER_USER>
-CREATE SCHEMA postgres_exporter;
+-- GRANT postgres_exporter TO <MASTER_USER>;
+CREATE SCHEMA IF NOT EXISTS postgres_exporter;
 GRANT USAGE ON SCHEMA postgres_exporter TO postgres_exporter;
 
 CREATE FUNCTION get_pg_stat_activity() RETURNS SETOF pg_stat_activity AS
@@ -187,19 +188,19 @@ LANGUAGE sql
 VOLATILE
 SECURITY DEFINER;
 
-CREATE VIEW postgres_exporter.pg_stat_activity
+CREATE OR REPLACE VIEW postgres_exporter.pg_stat_activity
 AS
   SELECT * from get_pg_stat_activity();
 
 GRANT SELECT ON postgres_exporter.pg_stat_activity TO postgres_exporter;
 
-CREATE FUNCTION get_pg_stat_replication() RETURNS SETOF pg_stat_replication AS
+CREATE OR REPLACE FUNCTION get_pg_stat_replication() RETURNS SETOF pg_stat_replication AS
 $$ SELECT * FROM pg_catalog.pg_stat_replication; $$
 LANGUAGE sql
 VOLATILE
 SECURITY DEFINER;
 
-CREATE VIEW postgres_exporter.pg_stat_replication
+CREATE OR REPLACE VIEW postgres_exporter.pg_stat_replication
 AS
   SELECT * FROM get_pg_stat_replication();
 
