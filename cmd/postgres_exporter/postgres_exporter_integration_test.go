@@ -6,16 +6,14 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
 
-	. "gopkg.in/check.v1"
-
-	"fmt"
-
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
+	. "gopkg.in/check.v1"
 )
 
 // Hook up gocheck into the "go test" runner.

@@ -1,6 +1,7 @@
 [![Build Status](https://travis-ci.org/wrouesnel/postgres_exporter.svg?branch=master)](https://travis-ci.org/wrouesnel/postgres_exporter)
 [![Coverage Status](https://coveralls.io/repos/github/wrouesnel/postgres_exporter/badge.svg?branch=master)](https://coveralls.io/github/wrouesnel/postgres_exporter?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/wrouesnel/postgres_exporter)](https://goreportcard.com/report/github.com/wrouesnel/postgres_exporter)
+[![Docker Pulls](https://img.shields.io/docker/pulls/wrouesnel/postgres_exporter.svg)](https://hub.docker.com/r/wrouesnel/postgres_exporter/tags)
 
 # PostgreSQL Server Exporter
 
@@ -160,6 +161,11 @@ or a variant of postgres (e.g. Greenplum) you can disable the default metrics wi
 flag. This removes all built-in metrics, and uses only metrics defined by queries in the `queries.yaml` file you supply
 (so you must supply one, otherwise the exporter will return nothing but internal statuses and not your database).
 
+### Automatically discover databases
+To scrape metrics from all databases on a database server, the database DSN's can be dynamically discovered via the 
+`--auto-discover-databases` flag. When true, `SELECT datname FROM pg_database` is run for all configured DSN's. From the 
+result a new set of DSN's is created for which the metrics are scraped.
+
 ### Running as non-superuser
 
 To be able to collect metrics from `pg_stat_activity` and `pg_stat_replication`
@@ -178,7 +184,7 @@ ALTER USER postgres_exporter SET SEARCH_PATH TO postgres_exporter,pg_catalog;
 -- If deploying as non-superuser (for example in AWS RDS), uncomment the GRANT
 -- line below and replace <MASTER_USER> with your root user.
 -- GRANT postgres_exporter TO <MASTER_USER>;
-CREATE SCHEMA postgres_exporter;
+CREATE SCHEMA IF NOT EXISTS postgres_exporter;
 GRANT USAGE ON SCHEMA postgres_exporter TO postgres_exporter;
 
 CREATE FUNCTION get_pg_stat_activity() RETURNS SETOF pg_stat_activity AS
@@ -187,19 +193,19 @@ LANGUAGE sql
 VOLATILE
 SECURITY DEFINER;
 
-CREATE VIEW postgres_exporter.pg_stat_activity
+CREATE OR REPLACE VIEW postgres_exporter.pg_stat_activity
 AS
   SELECT * from get_pg_stat_activity();
 
 GRANT SELECT ON postgres_exporter.pg_stat_activity TO postgres_exporter;
 
-CREATE FUNCTION get_pg_stat_replication() RETURNS SETOF pg_stat_replication AS
+CREATE OR REPLACE FUNCTION get_pg_stat_replication() RETURNS SETOF pg_stat_replication AS
 $$ SELECT * FROM pg_catalog.pg_stat_replication; $$
 LANGUAGE sql
 VOLATILE
 SECURITY DEFINER;
 
-CREATE VIEW postgres_exporter.pg_stat_replication
+CREATE OR REPLACE VIEW postgres_exporter.pg_stat_replication
 AS
   SELECT * FROM get_pg_stat_replication();
 

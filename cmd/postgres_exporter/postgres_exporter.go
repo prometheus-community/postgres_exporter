@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -16,16 +17,13 @@ import (
 	"sync"
 	"time"
 
-	"gopkg.in/alecthomas/kingpin.v2"
-	"gopkg.in/yaml.v2"
-
-	"crypto/sha256"
-
 	"github.com/blang/semver"
 	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
+	"gopkg.in/alecthomas/kingpin.v2"
+	"gopkg.in/yaml.v2"
 )
 
 // Version is set during build to the git describe version
@@ -33,13 +31,14 @@ import (
 var Version = "0.0.1"
 
 var (
-	listenAddress          = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").OverrideDefaultFromEnvar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
-	metricPath             = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").OverrideDefaultFromEnvar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
-	disableDefaultMetrics  = kingpin.Flag("disable-default-metrics", "Do not include default metrics.").Default("false").OverrideDefaultFromEnvar("PG_EXPORTER_DISABLE_DEFAULT_METRICS").Bool()
-	disableSettingsMetrics = kingpin.Flag("disable-settings-metrics", "Do not include pg_settings metrics.").Default("false").OverrideDefaultFromEnvar("PG_EXPORTER_DISABLE_SETTINGS_METRICS").Bool()
-	queriesPath            = kingpin.Flag("extend.query-path", "Path to custom queries to run.").Default("").OverrideDefaultFromEnvar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
+	listenAddress          = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").Envar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
+	metricPath             = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").Envar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
+	disableDefaultMetrics  = kingpin.Flag("disable-default-metrics", "Do not include default metrics.").Default("false").Envar("PG_EXPORTER_DISABLE_DEFAULT_METRICS").Bool()
+	disableSettingsMetrics = kingpin.Flag("disable-settings-metrics", "Do not include pg_settings metrics.").Default("false").Envar("PG_EXPORTER_DISABLE_SETTINGS_METRICS").Bool()
+	autoDiscoverDatabases  = kingpin.Flag("auto-discover-databases", "Whether to discover the databases on a server dynamically.").Default("false").Envar("PG_EXPORTER_AUTO_DISCOVER_DATABASES").Bool()
+	queriesPath            = kingpin.Flag("extend.query-path", "Path to custom queries to run.").Default("").Envar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
 	onlyDumpMaps           = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
-	constantLabelsList     = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,).").Default("").OverrideDefaultFromEnvar("PG_EXPORTER_CONSTANT_LABELS").String()
+	constantLabelsList     = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,).").Default("").Envar("PG_EXPORTER_CONSTANT_LABELS").String()
 )
 
 // Metric name parts.
@@ -649,6 +648,11 @@ func dbToFloat64(t interface{}) (float64, bool) {
 			return math.NaN(), false
 		}
 		return result, true
+	case bool:
+		if v {
+			return 1.0, true
+		}
+		return 0.0, true
 	case nil:
 		return math.NaN(), true
 	default:
@@ -672,6 +676,11 @@ func dbToString(t interface{}) (string, bool) {
 		return string(v), true
 	case string:
 		return v, true
+	case bool:
+		if v {
+			return "true", true
+		}
+		return "false", true
 	default:
 		return "", false
 	}
@@ -710,16 +719,17 @@ func parseFingerprint(url string) (string, error) {
 	return fingerprint, nil
 }
 
-func parseDSN(dsn string) (*url.URL, error) {
+func loggableDSN(dsn string) string {
 	pDSN, err := url.Parse(dsn)
 	if err != nil {
-		return nil, err
+		return "could not parse DATA_SOURCE_NAME"
 	}
 	// Blank user info if not nil
 	if pDSN.User != nil {
 		pDSN.User = url.UserPassword(pDSN.User.Username(), "PASSWORD_REMOVED")
 	}
-	return pDSN, nil
+
+	return pDSN.String()
 }
 
 // Server describes a connection to Postgres.
@@ -871,7 +881,7 @@ type Exporter struct {
 	// only, since it just points to the global.
 	builtinMetricMaps map[string]map[string]ColumnMapping
 
-	disableDefaultMetrics, disableSettingsMetrics bool
+	disableDefaultMetrics, disableSettingsMetrics, autoDiscoverDatabases bool
 
 	dsn              []string
 	userQueriesPath  string
@@ -901,6 +911,13 @@ func DisableDefaultMetrics(b bool) ExporterOpt {
 func DisableSettingsMetrics(b bool) ExporterOpt {
 	return func(e *Exporter) {
 		e.disableSettingsMetrics = b
+	}
+}
+
+// AutoDiscoverDatabases allows scraping all databases on a database server.
+func AutoDiscoverDatabases(b bool) ExporterOpt {
+	return func(e *Exporter) {
+		e.autoDiscoverDatabases = b
 	}
 }
 
@@ -1045,6 +1062,26 @@ func newDesc(subsystem, name, help string, labels prometheus.Labels) *prometheus
 		prometheus.BuildFQName(namespace, subsystem, name),
 		help, nil, labels,
 	)
+}
+
+func queryDatabases(server *Server) ([]string, error) {
+	rows, err := server.db.Query("SELECT datname FROM pg_database") // nolint: safesql
+	if err != nil {
+		return nil, fmt.Errorf("Error retrieving databases: %v", err)
+	}
+	defer rows.Close() // nolint: errcheck
+
+	var databaseName string
+	result := make([]string, 0)
+	for rows.Next() {
+		err = rows.Scan(&databaseName)
+		if err != nil {
+			return nil, errors.New(fmt.Sprintln("Error retrieving rows:", err))
+		}
+		result = append(result, databaseName)
+	}
+
+	return result, nil
 }
 
 // Query within a namespace mapping and emit metrics. Returns fatal errors if
@@ -1231,8 +1268,10 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
 		"Version string as reported by postgres", []string{"version", "short_version"}, server.labels)
 
-	ch <- prometheus.MustNewConstMetric(versionDesc,
-		prometheus.UntypedValue, 1, versionString, semanticVersion.String())
+	if !e.disableDefaultMetrics {
+		ch <- prometheus.MustNewConstMetric(versionDesc,
+			prometheus.UntypedValue, 1, versionString, semanticVersion.String())
+	}
 	return nil
 }
 
@@ -1245,19 +1284,56 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	e.psqlUp.Set(0)
 	e.totalScrapes.Inc()
 
-	for _, dsn := range e.dsn {
+	dsns := e.dsn
+	if e.autoDiscoverDatabases {
+		dsns = e.discoverDatabaseDSNs()
+	}
+	for _, dsn := range dsns {
 		e.scrapeDSN(ch, dsn)
 	}
+}
+
+func (e *Exporter) discoverDatabaseDSNs() []string {
+	dsns := make(map[string]struct{})
+	for _, dsn := range e.dsn {
+		parsedDSN, err := url.Parse(dsn)
+		if err != nil {
+			log.Errorf("Unable to parse DSN (%s): %v", loggableDSN(dsn), err)
+			continue
+		}
+
+		dsns[dsn] = struct{}{}
+		server, err := e.servers.GetServer(dsn)
+		if err != nil {
+			log.Errorf("Error opening connection to database (%s): %v", loggableDSN(dsn), err)
+			continue
+		}
+
+		databaseNames, err := queryDatabases(server)
+		if err != nil {
+			log.Errorf("Error querying databases (%s): %v", loggableDSN(dsn), err)
+			continue
+		}
+		for _, databaseName := range databaseNames {
+			parsedDSN.Path = databaseName
+			dsns[parsedDSN.String()] = struct{}{}
+		}
+	}
+
+	result := make([]string, len(dsns))
+	index := 0
+	for dsn := range dsns {
+		result[index] = dsn
+		index++
+	}
+
+	return result
 }
 
 func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) {
 	server, err := e.servers.GetServer(dsn)
 	if err != nil {
-		loggableDSN := "could not parse DATA_SOURCE_NAME"
-		if pDSN, pErr := parseDSN(dsn); pErr == nil {
-			loggableDSN = pDSN.String()
-		}
-		log.Errorf("Error opening connection to database (%s): %v", loggableDSN, err)
+		log.Errorf("Error opening connection to database (%s): %v", loggableDSN(dsn), err)
 		e.error.Inc()
 		return
 	}
@@ -1342,6 +1418,7 @@ func main() {
 	exporter := NewExporter(dsn,
 		DisableDefaultMetrics(*disableDefaultMetrics),
 		DisableSettingsMetrics(*disableSettingsMetrics),
+		AutoDiscoverDatabases(*autoDiscoverDatabases),
 		WithUserQueriesPath(*queriesPath),
 		WithConstantLabels(*constantLabelsList),
 	)
