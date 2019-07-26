@@ -128,6 +128,16 @@ type MetricMap struct {
 	conversion func(interface{}) (float64, bool) // Conversion function to turn PG result into float64
 }
 
+// ErrorConnectToServer is a connection to PgSQL server error
+type ErrorConnectToServer struct {
+	Msg string
+}
+
+// Error returns error
+func (e *ErrorConnectToServer) Error() string {
+	return e.Msg
+}
+
 // TODO: revisit this with the semver system
 func dumpMaps() {
 	// TODO: make this function part of the exporter
@@ -812,21 +822,24 @@ func (s *Server) String() string {
 }
 
 // Scrape loads metrics.
-func (s *Server) Scrape(ch chan<- prometheus.Metric, errGauge prometheus.Gauge, disableSettingsMetrics bool) {
+func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool) error {
 	s.mappingMtx.RLock()
 	defer s.mappingMtx.RUnlock()
 
+	var err error
+
 	if !disableSettingsMetrics {
 		if err := querySettings(ch, s); err != nil {
-			log.Errorf("Error retrieving settings: %s", err)
-			errGauge.Inc()
+			err = fmt.Errorf("error retrieving settings: %s", err)
 		}
 	}
 
 	errMap := queryNamespaceMappings(ch, s)
 	if len(errMap) > 0 {
-		errGauge.Inc()
+		err = fmt.Errorf("queryNamespaceMappings returned %d errors")
 	}
+
+	return err
 }
 
 // Servers contains a collection of servers to Postgres.
@@ -1280,16 +1293,42 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 		e.duration.Set(time.Since(begun).Seconds())
 	}(time.Now())
 
-	e.error.Set(0)
-	e.psqlUp.Set(0)
 	e.totalScrapes.Inc()
 
 	dsns := e.dsn
 	if e.autoDiscoverDatabases {
 		dsns = e.discoverDatabaseDSNs()
 	}
+
+	var errorsCount int
+	var hasConnectionErrors bool
+
 	for _, dsn := range dsns {
-		e.scrapeDSN(ch, dsn)
+		err := e.scrapeDSN(ch, dsn)
+
+		if err != nil {
+			errorsCount++
+
+			log.Errorf(err.Error())
+
+			if _, ok := err.(*ErrorConnectToServer); ok {
+				hasConnectionErrors = true
+			}
+		}
+	}
+
+	switch hasConnectionErrors {
+	case true:
+		e.psqlUp.Set(1)
+	default:
+		e.psqlUp.Set(0) // Didn't fail, can mark connection as up for this scrape.
+	}
+
+	switch errorsCount {
+	case 0:
+		e.error.Set(0)
+	default:
+		e.error.Set(1)
 	}
 }
 
@@ -1330,24 +1369,18 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 	return result
 }
 
-func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) {
+func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 	server, err := e.servers.GetServer(dsn)
 	if err != nil {
-		log.Errorf("Error opening connection to database (%s): %v", loggableDSN(dsn), err)
-		e.error.Inc()
-		return
+		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %v", loggableDSN(dsn), err)}
 	}
-
-	// Didn't fail, can mark connection as up for this scrape.
-	e.psqlUp.Inc()
 
 	// Check if map versions need to be updated
 	if err := e.checkMapVersions(ch, server); err != nil {
 		log.Warnln("Proceeding with outdated query maps, as the Postgres version could not be determined:", err)
-		e.error.Inc()
 	}
 
-	server.Scrape(ch, e.error, e.disableSettingsMetrics)
+	return server.Scrape(ch, e.disableSettingsMetrics)
 }
 
 // try to get the DataSource
