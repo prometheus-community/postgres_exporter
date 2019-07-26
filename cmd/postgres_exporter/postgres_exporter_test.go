@@ -3,13 +3,13 @@
 package main
 
 import (
+	"os"
+	"reflect"
 	"testing"
 
-	. "gopkg.in/check.v1"
-
-	"os"
-
 	"github.com/blang/semver"
+	"github.com/prometheus/client_golang/prometheus"
+	. "gopkg.in/check.v1"
 )
 
 // Hook up gocheck into the "go test" runner.
@@ -34,7 +34,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 
 	{
 		// No metrics should be eliminated
-		resultMap := makeDescMap(semver.MustParse("0.0.1"), testMetricMap)
+		resultMap := makeDescMap(semver.MustParse("0.0.1"), prometheus.Labels{}, testMetricMap)
 		c.Check(
 			resultMap["test_namespace"].columnMappings["metric_which_stays"].discard,
 			Equals,
@@ -55,7 +55,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 		testMetricMap["test_namespace"]["metric_which_discards"] = discardableMetric
 
 		// Discard metric should be discarded
-		resultMap := makeDescMap(semver.MustParse("0.0.1"), testMetricMap)
+		resultMap := makeDescMap(semver.MustParse("0.0.1"), prometheus.Labels{}, testMetricMap)
 		c.Check(
 			resultMap["test_namespace"].columnMappings["metric_which_stays"].discard,
 			Equals,
@@ -76,7 +76,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 		testMetricMap["test_namespace"]["metric_which_discards"] = discardableMetric
 
 		// Discard metric should be discarded
-		resultMap := makeDescMap(semver.MustParse("0.0.2"), testMetricMap)
+		resultMap := makeDescMap(semver.MustParse("0.0.2"), prometheus.Labels{}, testMetricMap)
 		c.Check(
 			resultMap["test_namespace"].columnMappings["metric_which_stays"].discard,
 			Equals,
@@ -92,7 +92,6 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 
 // test read username and password from file
 func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
-
 	err := os.Setenv("DATA_SOURCE_USER_FILE", "./tests/username_file")
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_USER_FILE")
@@ -107,29 +106,33 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
 
 	var expected = "postgresql://custom_username$&+,%2F%3A;=%3F%40:custom_password$&+,%2F%3A;=%3F%40@localhost:5432/?sslmode=disable"
 
-	dsn := getDataSource()
-	if dsn != expected {
-		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, expected)
+	dsn := getDataSources()
+	if len(dsn) == 0 {
+		c.Errorf("Expected one data source, zero found")
+	}
+	if dsn[0] != expected {
+		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn[0], expected)
 	}
 }
 
 // test read DATA_SOURCE_NAME from environment
 func (s *FunctionalSuite) TestEnvironmentSettingWithDns(c *C) {
-
 	envDsn := "postgresql://user:password@localhost:5432/?sslmode=enabled"
 	err := os.Setenv("DATA_SOURCE_NAME", envDsn)
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_NAME")
 
-	dsn := getDataSource()
-	if dsn != envDsn {
-		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, envDsn)
+	dsn := getDataSources()
+	if len(dsn) == 0 {
+		c.Errorf("Expected one data source, zero found")
+	}
+	if dsn[0] != envDsn {
+		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn[0], envDsn)
 	}
 }
 
 // test DATA_SOURCE_NAME is used even if username and password environment variables are set
 func (s *FunctionalSuite) TestEnvironmentSettingWithDnsAndSecrets(c *C) {
-
 	envDsn := "postgresql://userDsn:passwordDsn@localhost:55432/?sslmode=disabled"
 	err := os.Setenv("DATA_SOURCE_NAME", envDsn)
 	c.Assert(err, IsNil)
@@ -143,9 +146,12 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDnsAndSecrets(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_PASS")
 
-	dsn := getDataSource()
-	if dsn != envDsn {
-		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, envDsn)
+	dsn := getDataSources()
+	if len(dsn) == 0 {
+		c.Errorf("Expected one data source, zero found")
+	}
+	if dsn[0] != envDsn {
+		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn[0], envDsn)
 	}
 }
 
@@ -177,7 +183,121 @@ func (s *FunctionalSuite) TestPostgresVersionParsing(c *C) {
 	}
 }
 
+func (s *FunctionalSuite) TestParseFingerprint(c *C) {
+	cases := []struct {
+		url         string
+		fingerprint string
+		err         string
+	}{
+		{
+			url:         "postgresql://userDsn:passwordDsn@localhost:55432/?sslmode=disabled",
+			fingerprint: "localhost:55432",
+		},
+		{
+			url:         "port=1234",
+			fingerprint: "localhost:1234",
+		},
+		{
+			url:         "host=example",
+			fingerprint: "example:5432",
+		},
+		{
+			url: "xyz",
+			err: "malformed dsn \"xyz\"",
+		},
+	}
+
+	for _, cs := range cases {
+		f, err := parseFingerprint(cs.url)
+		if cs.err == "" {
+			c.Assert(err, IsNil)
+		} else {
+			c.Assert(err, NotNil)
+			c.Assert(err.Error(), Equals, cs.err)
+		}
+		c.Assert(f, Equals, cs.fingerprint)
+	}
+}
+
+func (s *FunctionalSuite) TestParseConstLabels(c *C) {
+	cases := []struct {
+		s      string
+		labels prometheus.Labels
+	}{
+		{
+			s: "a=b",
+			labels: prometheus.Labels{
+				"a": "b",
+			},
+		},
+		{
+			s:      "",
+			labels: prometheus.Labels{},
+		},
+		{
+			s: "a=b, c=d",
+			labels: prometheus.Labels{
+				"a": "b",
+				"c": "d",
+			},
+		},
+		{
+			s: "a=b, xyz",
+			labels: prometheus.Labels{
+				"a": "b",
+			},
+		},
+		{
+			s:      "a=",
+			labels: prometheus.Labels{},
+		},
+	}
+
+	for _, cs := range cases {
+		labels := parseConstLabels(cs.s)
+		if !reflect.DeepEqual(labels, cs.labels) {
+			c.Fatalf("labels not equal (%v -> %v)", labels, cs.labels)
+		}
+	}
+}
+
 func UnsetEnvironment(c *C, d string) {
 	err := os.Unsetenv(d)
 	c.Assert(err, IsNil)
+}
+
+// test boolean metric type gets converted to float
+func (s *FunctionalSuite) TestBooleanConversionToValueAndString(c *C) {
+
+	type TestCase struct {
+		input          interface{}
+		expectedString string
+		expectedValue  float64
+		expectedOK     bool
+	}
+
+	cases := []TestCase{
+		{
+			input:          true,
+			expectedString: "true",
+			expectedValue:  1.0,
+			expectedOK:     true,
+		},
+		{
+			input:          false,
+			expectedString: "false",
+			expectedValue:  0.0,
+			expectedOK:     true,
+		},
+	}
+
+	for _, cs := range cases {
+		value, ok := dbToFloat64(cs.input)
+		c.Assert(value, Equals, cs.expectedValue)
+		c.Assert(ok, Equals, cs.expectedOK)
+
+		str, ok := dbToString(cs.input)
+		c.Assert(str, Equals, cs.expectedString)
+		c.Assert(ok, Equals, cs.expectedOK)
+	}
 }
