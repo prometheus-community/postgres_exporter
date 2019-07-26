@@ -829,14 +829,14 @@ func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool
 	var err error
 
 	if !disableSettingsMetrics {
-		if err := querySettings(ch, s); err != nil {
+		if err = querySettings(ch, s); err != nil {
 			err = fmt.Errorf("error retrieving settings: %s", err)
 		}
 	}
 
 	errMap := queryNamespaceMappings(ch, s)
 	if len(errMap) > 0 {
-		err = fmt.Errorf("queryNamespaceMappings returned %d errors")
+		err = fmt.Errorf("queryNamespaceMappings returned %d errors", len(errMap))
 	}
 
 	return err
@@ -1301,27 +1301,25 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	}
 
 	var errorsCount int
-	var hasConnectionErrors bool
+	var connectionErrorsCount int
 
 	for _, dsn := range dsns {
-		err := e.scrapeDSN(ch, dsn)
-
-		if err != nil {
+		if err := e.scrapeDSN(ch, dsn); err != nil {
 			errorsCount++
 
 			log.Errorf(err.Error())
 
 			if _, ok := err.(*ErrorConnectToServer); ok {
-				hasConnectionErrors = true
+				connectionErrorsCount++
 			}
 		}
 	}
 
-	switch hasConnectionErrors {
-	case true:
-		e.psqlUp.Set(1)
+	switch {
+	case connectionErrorsCount >= len(dsns):
+		e.psqlUp.Set(0)
 	default:
-		e.psqlUp.Set(0) // Didn't fail, can mark connection as up for this scrape.
+		e.psqlUp.Set(1) // Didn't fail, can mark connection as up for this scrape.
 	}
 
 	switch errorsCount {
