@@ -1370,7 +1370,7 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 	server, err := e.servers.GetServer(dsn)
 	if err != nil {
-		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %v", loggableDSN(dsn), err)}
+		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), err)}
 	}
 
 	// Check if map versions need to be updated
