@@ -1,0 +1,101 @@
+{
+	"comment": "",
+	"ignore": "",
+	"package": [
+		{
+			"checksumSHA1": "n3p7NusAulvAHrIq/RKupyYu5NY=",
+			"path": "github.com/google/go-cmp/cmp",
+			"revision": "1b316004397f1f336546ca058ddb5b95c41a8772",
+			"revisionTime": "2019-06-06T18:30:24Z"
+		},
+		{
+			"checksumSHA1": "5WXYCBOFugvKioakQVCzHDpQ9UI=",
+			"path": "github.com/google/go-cmp/cmp/cmpopts",
+			"revision": "1b316004397f1f336546ca058ddb5b95c41a8772",
+			"revisionTime": "2019-06-06T18:30:24Z"
+		},
+		{
+			"checksumSHA1": "pWz4PNfrztQm9aa06/sVKkhZfIA=",
+			"path": "github.com/google/go-cmp/cmp/internal/diff",
+			"revision": "1b316004397f1f336546ca058ddb5b95c41a8772",
+			"revisionTime": "2019-06-06T18:30:24Z"
+		},
+		{
+			"checksumSHA1": "nR8EJ8i8lqxxmtLPnXI7WlYANiE=",
+			"path": "github.com/google/go-cmp/cmp/internal/flags",
+			"revision": "1b316004397f1f336546ca058ddb5b95c41a8772",
+			"revisionTime": "2019-06-06T18:30:24Z"
+		},
+		{
+			"checksumSHA1": "jhv22Pa2Mn8aNerLBT5eLZfILqs=",
+			"path": "github.com/google/go-cmp/cmp/internal/function",
+			"revision": "1b316004397f1f336546ca058ddb5b95c41a8772",
+			"revisionTime": "2019-06-06T18:30:24Z"
+		},
+		{
+			"checksumSHA1": "Itk+/f1ovltPyypbROriCBPBeJ0=",
+			"path": "github.com/google/go-cmp/cmp/internal/testprotos",
+			"revision": "1b316004397f1f336546ca058ddb5b95c41a8772",
+			"revisionTime": "2019-06-06T18:30:24Z"
+		},
+		{
+			"checksumSHA1": "tvL+eRWuf50vUaVaY8B/s6DMj70=",
+			"path": "github.com/google/go-cmp/cmp/internal/teststructs",
+			"revision": "1b316004397f1f336546ca058ddb5b95c41a8772",
+			"revisionTime": "2019-06-06T18:30:24Z"
+		},
+		{
+			"checksumSHA1": "F2DJ2xHTaFHceKwAlpYu9lSJD60=",
+			"path": "github.com/google/go-cmp/cmp/internal/value",
+			"revision": "1b316004397f1f336546ca058ddb5b95c41a8772",
+			"revisionTime": "2019-06-06T18:30:24Z"
+		},
+		{
+			"checksumSHA1": "ksh0Q428Kdncvf35jAoCbg4MxtI=",
+			"path": "github.com/percona/exporter_shared",
+			"revision": "ffa14cdb344417f2b7c14f05b4e2fce818100be9",
+			"revisionTime": "2019-06-20T12:15:16Z"
+		},
+		{
+			"path": "github.com/prometheus/*",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "EwirZZBhvlkC6hKkCFRZt5SML30=",
+			"path": "github.com/prometheus/client_golang/prometheus",
+			"revision": "ff1d4e21c12e4c0b190a166d96507786c8f989d6",
+			"revisionTime": "2019-07-09T20:55:12Z"
+		},
+		{
+			"checksumSHA1": "UBqhkyjCz47+S19MVTigxJ2VjVQ=",
+			"path": "github.com/prometheus/client_golang/prometheus/internal",
+			"revision": "ff1d4e21c12e4c0b190a166d96507786c8f989d6",
+			"revisionTime": "2019-07-09T20:55:12Z"
+		},
+		{
+			"checksumSHA1": "xFe3VccuLr3rkDm9UrPdD2/Ym8s=",
+			"path": "github.com/prometheus/client_golang/prometheus/promhttp",
+			"revision": "ff1d4e21c12e4c0b190a166d96507786c8f989d6",
+			"revisionTime": "2019-07-09T20:55:12Z"
+		},
+		{
+			"checksumSHA1": "2WmLgBtzVMv/47niSLNRtrdwy+k=",
+			"path": "github.com/prometheus/procfs",
+			"revision": "8f55e607908ea781ad9d08521730d73e047d9ac4",
+			"revisionTime": "2019-07-02T18:35:19Z"
+		},
+		{
+			"checksumSHA1": "mbsbyZq2tXPG8ZoVra6enBVgjKk=",
+			"path": "github.com/prometheus/procfs/internal/fs",
+			"revision": "8f55e607908ea781ad9d08521730d73e047d9ac4",
+			"revisionTime": "2019-07-02T18:35:19Z"
+		},
+		{
+			"checksumSHA1": "dzvYylLPt8WhhFIXUsDfdx4WpMI=",
+			"path": "github.com/prometheus/procfs/internal/util",
+			"revision": "8f55e607908ea781ad9d08521730d73e047d9ac4",
+			"revisionTime": "2019-07-02T18:35:19Z"
+		}
+	],
+	"rootPath": "github.com/percona/postgres_exporter"
+}

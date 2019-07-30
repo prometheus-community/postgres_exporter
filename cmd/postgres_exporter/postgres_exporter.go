@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
+	"net/http"
 	"net/url"
 	"os"
 	"regexp"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/lib/pq"
+	"github.com/percona/exporter_shared"
 	"gopkg.in/yaml.v2"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -25,8 +27,6 @@ import (
 	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
-
-	"github.com/percona/exporter_shared"
 )
 
 // Version is set during build to the git describe version
@@ -1425,8 +1425,84 @@ func main() {
 		exporter.servers.Close()
 	}()
 
-	prometheus.MustRegister(exporter)
+	exporter_shared.RunServer("PostgreSQL", *listenAddress, *metricPath, newHandler(map[string]prometheus.Collector{
+		"exporter": exporter,
+	}))
+}
 
-	// Use our shared code to run server and exit on error. Upstream's code below will not be executed.
-	exporter_shared.RunServer("PostgreSQL", *listenAddress, *metricPath, promhttp.ContinueOnError)
+// handler wraps an unfiltered http.Handler but uses a filtered handler,
+// created on the fly, if filtering is requested. Create instances with
+// newHandler. It used for collectors filtering.
+type handler struct {
+	unfilteredHandler http.Handler
+	collectors        map[string]prometheus.Collector
+}
+
+func newHandler(collectors map[string]prometheus.Collector) *handler {
+	h := &handler{collectors: collectors}
+
+	innerHandler, err := h.innerHandler()
+	if err != nil {
+		log.Fatalf("Couldn't create metrics handler: %s", err)
+	}
+
+	h.unfilteredHandler = innerHandler
+	return h
+}
+
+// ServeHTTP implements http.Handler.
+func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	filters := r.URL.Query()["collect[]"]
+	log.Debugln("collect query:", filters)
+
+	if len(filters) == 0 {
+		// No filters, use the prepared unfiltered handler.
+		h.unfilteredHandler.ServeHTTP(w, r)
+		return
+	}
+
+	filteredHandler, err := h.innerHandler(filters...)
+	if err != nil {
+		log.Warnln("Couldn't create filtered metrics handler:", err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(fmt.Sprintf("Couldn't create filtered metrics handler: %s", err)))
+		return
+	}
+	filteredHandler.ServeHTTP(w, r)
+}
+
+func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
+	registry := prometheus.NewRegistry()
+	registry.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+	registry.MustRegister(prometheus.NewGoCollector())
+
+	// register all collectors by default.
+	if len(filters) == 0 {
+		for name, c := range h.collectors {
+			if err := registry.Register(c); err != nil {
+				return nil, err
+			}
+			log.Debugf("Collector %q was registered", name)
+		}
+	}
+
+	// register only filtered collectors.
+	for _, name := range filters {
+		if c, ok := h.collectors[name]; ok {
+			if err := registry.Register(c); err != nil {
+				return nil, err
+			}
+			log.Debugf("Collector %q was registered", name)
+		}
+	}
+
+	handler := promhttp.HandlerFor(
+		registry,
+		promhttp.HandlerOpts{
+			ErrorLog:      log.NewErrorLogger(),
+			ErrorHandling: promhttp.ContinueOnError,
+		},
+	)
+
+	return handler, nil
 }
