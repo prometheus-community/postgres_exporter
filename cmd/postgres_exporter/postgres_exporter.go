@@ -1425,8 +1425,13 @@ func main() {
 		exporter.servers.Close()
 	}()
 
+	psCollector := prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{})
+	goCollector := prometheus.NewGoCollector()
+
 	exporter_shared.RunServer("PostgreSQL", *listenAddress, *metricPath, newHandler(map[string]prometheus.Collector{
-		"exporter": exporter,
+		"exporter":         exporter,
+		"standard.process": psCollector,
+		"standard.go":      goCollector,
 	}))
 }
 
@@ -1473,8 +1478,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
-	registry.MustRegister(prometheus.NewGoCollector())
 
 	// register all collectors by default.
 	if len(filters) == 0 {
