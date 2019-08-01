@@ -1,6 +1,9 @@
 pg_replication:
-  query: "SELECT EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())) as lag"
+  query: "SELECT pg_is_in_recovery()::int as is_in_recovery, EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())) as lag"
   metrics:
+    - is_in_recovery:
+        usage: "GAUGE"
+        description: "Is server in recovery mode (1 for yes, 0 for no)"
     - lag:
         usage: "GAUGE"
         description: "Replication lag behind master in seconds"
