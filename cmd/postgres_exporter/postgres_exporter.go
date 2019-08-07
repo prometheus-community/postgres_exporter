@@ -39,6 +39,8 @@ var (
 	queriesPath            = kingpin.Flag("extend.query-path", "Path to custom queries to run.").Default("").Envar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
 	onlyDumpMaps           = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
 	constantLabelsList     = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,).").Default("").Envar("PG_EXPORTER_CONSTANT_LABELS").String()
+	excludeDatabases       = kingpin.Flag("exclude-databases", "A list of databases to remove when autoDiscoverDatabases is enabled").Default("").Envar("PG_EXPORTER_EXCLUDE_DATABASES").String()
+
 )
 
 // Metric name parts.
@@ -883,6 +885,7 @@ type Exporter struct {
 
 	disableDefaultMetrics, disableSettingsMetrics, autoDiscoverDatabases bool
 
+	excludeDatabases []string
 	dsn              []string
 	userQueriesPath  string
 	constantLabels   prometheus.Labels
@@ -918,6 +921,12 @@ func DisableSettingsMetrics(b bool) ExporterOpt {
 func AutoDiscoverDatabases(b bool) ExporterOpt {
 	return func(e *Exporter) {
 		e.autoDiscoverDatabases = b
+	}
+}
+
+func ExcludeDatabases(s string) ExporterOpt {
+	return func(e *Exporter) {
+		e.excludeDatabases = strings.Split(s, ",")
 	}
 }
 
@@ -1315,6 +1324,9 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			continue
 		}
 		for _, databaseName := range databaseNames {
+			if Contains(e.excludeDatabases, databaseName) {
+				continue
+			}
 			parsedDSN.Path = databaseName
 			dsns[parsedDSN.String()] = struct{}{}
 		}
@@ -1389,6 +1401,15 @@ func getDataSources() []string {
 	return strings.Split(dsn, ",")
 }
 
+func Contains(a []string, x string) bool {
+        for _, n := range a {
+                if x == n {
+                        return true
+                }
+        }
+        return false
+}
+
 func main() {
 	kingpin.Version(fmt.Sprintf("postgres_exporter %s (built with %s)\n", Version, runtime.Version()))
 	log.AddFlags(kingpin.CommandLine)
@@ -1421,6 +1442,7 @@ func main() {
 		AutoDiscoverDatabases(*autoDiscoverDatabases),
 		WithUserQueriesPath(*queriesPath),
 		WithConstantLabels(*constantLabelsList),
+		ExcludeDatabases(*excludeDatabases),
 	)
 	defer func() {
 		exporter.servers.Close()
