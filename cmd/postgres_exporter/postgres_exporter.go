@@ -40,7 +40,6 @@ var (
 	onlyDumpMaps           = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
 	constantLabelsList     = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,).").Default("").Envar("PG_EXPORTER_CONSTANT_LABELS").String()
 	excludeDatabases       = kingpin.Flag("exclude-databases", "A list of databases to remove when autoDiscoverDatabases is enabled").Default("").Envar("PG_EXPORTER_EXCLUDE_DATABASES").String()
-
 )
 
 // Metric name parts.
@@ -1403,12 +1402,12 @@ func getDataSources() []string {
 }
 
 func contains(a []string, x string) bool {
-        for _, n := range a {
-                if x == n {
-                        return true
-                }
-        }
-        return false
+	for _, n := range a {
+		if x == n {
+			return true
+		}
+	}
+	return false
 }
 
 func main() {
