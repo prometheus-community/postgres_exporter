@@ -924,6 +924,7 @@ func AutoDiscoverDatabases(b bool) ExporterOpt {
 	}
 }
 
+// ExcludeDatabases allows to filter out result from AutoDiscoverDatabases
 func ExcludeDatabases(s string) ExporterOpt {
 	return func(e *Exporter) {
 		e.excludeDatabases = strings.Split(s, ",")
@@ -1324,7 +1325,7 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			continue
 		}
 		for _, databaseName := range databaseNames {
-			if Contains(e.excludeDatabases, databaseName) {
+			if contains(e.excludeDatabases, databaseName) {
 				continue
 			}
 			parsedDSN.Path = databaseName
@@ -1401,7 +1402,7 @@ func getDataSources() []string {
 	return strings.Split(dsn, ",")
 }
 
-func Contains(a []string, x string) bool {
+func contains(a []string, x string) bool {
         for _, n := range a {
                 if x == n {
                         return true
