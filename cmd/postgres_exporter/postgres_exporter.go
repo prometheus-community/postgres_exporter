@@ -103,7 +103,7 @@ type UserQuery struct {
 }
 
 // nolint: golint
-type UserNamespaces map[string]UserQuery
+type UserQueries map[string]UserQuery
 
 // Regex used to get the "short-version" from the postgres version field.
 var versionRegex = regexp.MustCompile(`^\w+ ((\d+)(\.\d+)?(\.\d+)?)`)
@@ -410,10 +410,10 @@ func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]
 	return resultMap
 }
 
-func parseUserNamespaces(content []byte) (map[string]map[string]ColumnMapping, map[string]string, error) {
-	var userNs UserNamespaces
+func parseUserQueries(content []byte) (map[string]map[string]ColumnMapping, map[string]string, error) {
+	var userQueries UserQueries
 
-	err := yaml.Unmarshal(content, &userNs)
+	err := yaml.Unmarshal(content, &userQueries)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -422,7 +422,7 @@ func parseUserNamespaces(content []byte) (map[string]map[string]ColumnMapping, m
 	metricMaps := make(map[string]map[string]ColumnMapping)
 	newQueryOverrides := make(map[string]string)
 
-	for metric, specs := range userNs {
+	for metric, specs := range userQueries {
 		log.Debugln("New user metric namespace from YAML:", metric)
 		newQueryOverrides[metric] = specs.Query
 		metricMap, ok := metricMaps[metric]
@@ -458,7 +458,7 @@ func parseUserNamespaces(content []byte) (map[string]map[string]ColumnMapping, m
 // TODO: test code for all cu.
 // TODO: the YAML this supports is "non-standard" - we should move away from it.
 func addQueries(content []byte, pgVersion semver.Version, server *Server) error {
-	metricMaps, newQueryOverrides, err := parseUserNamespaces(content)
+	metricMaps, newQueryOverrides, err := parseUserQueries(content)
 	if err != nil {
 		return nil
 	}
