@@ -85,6 +85,26 @@ func (cu *ColumnUsage) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
+// MappingOptions is a copy of ColumnMapping used only for parsing
+type MappingOptions struct {
+	Usage             string             `yaml:"usage"`
+	Description       string             `yaml:"description"`
+	Mapping           map[string]float64 `yaml:"metric_mapping"` // Optional column mapping for MAPPEDMETRIC
+	SupportedVersions semver.Range       `yaml:"pg_version"`     // Semantic version ranges which are supported. Unsupported columns are not queried (internally converted to DISCARD).
+}
+
+// nolint: golint
+type Mapping map[string]ColumnMapping
+
+// nolint: golint
+type UserQuery struct {
+	Query   string    `yaml:"query"`
+	Metrics []Mapping `yaml:"metrics"`
+}
+
+// nolint: golint
+type UserNamespaces map[string]UserQuery
+
 // Regex used to get the "short-version" from the postgres version field.
 var versionRegex = regexp.MustCompile(`^\w+ ((\d+)(\.\d+)?(\.\d+)?)`)
 var lowestSupportedVersion = semver.MustParse("9.1.0")
@@ -397,12 +417,11 @@ func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]
 // This function modifies metricMap and queryOverrideMap to contain the new
 // queries.
 // TODO: test code for all cu.
-// TODO: use proper struct type system
 // TODO: the YAML this supports is "non-standard" - we should move away from it.
 func addQueries(content []byte, pgVersion semver.Version, server *Server) error {
-	var extra map[string]interface{}
+	var userNs UserNamespaces
 
-	err := yaml.Unmarshal(content, &extra)
+	err := yaml.Unmarshal(content, &userNs)
 	if err != nil {
 		return err
 	}
@@ -411,53 +430,27 @@ func addQueries(content []byte, pgVersion semver.Version, server *Server) error 
 	metricMaps := make(map[string]map[string]ColumnMapping)
 	newQueryOverrides := make(map[string]string)
 
-	for metric, specs := range extra {
+	for metric, specs := range userNs {
 		log.Debugln("New user metric namespace from YAML:", metric)
-		for key, value := range specs.(map[interface{}]interface{}) {
-			switch key.(string) {
-			case "query":
-				query := value.(string)
-				newQueryOverrides[metric] = query
+		newQueryOverrides[metric] = specs.Query
+		metricMap, ok := metricMaps[metric]
+		if !ok {
+			// Namespace for metric not found - add it.
+			metricMap = make(map[string]ColumnMapping)
+			metricMaps[metric] = metricMap
+		}
+		for _, metric := range specs.Metrics {
+			for name, mappingOption := range metric {
+				var columnMapping ColumnMapping
+				tmpUsage, _ := stringToColumnUsage(mappingOption.Usage)
+				columnMapping.usage = tmpUsage
+				columnMapping.description = mappingOption.Description
 
-			case "metrics":
-				for _, c := range value.([]interface{}) {
-					column := c.(map[interface{}]interface{})
-
-					for n, a := range column {
-						var columnMapping ColumnMapping
-
-						// Fetch the metric map we want to work on.
-						metricMap, ok := metricMaps[metric]
-						if !ok {
-							// Namespace for metric not found - add it.
-							metricMap = make(map[string]ColumnMapping)
-							metricMaps[metric] = metricMap
-						}
-
-						// Get name.
-						name := n.(string)
-
-						for attrKey, attrVal := range a.(map[interface{}]interface{}) {
-							switch attrKey.(string) {
-							case "usage":
-								usage, err := stringToColumnUsage(attrVal.(string))
-								if err != nil {
-									return err
-								}
-								columnMapping.usage = usage
-							case "description":
-								columnMapping.description = attrVal.(string)
-							}
-						}
-
-						// TODO: we should support cu
-						columnMapping.mapping = nil
-						// Should we support this for users?
-						columnMapping.supportedVersions = nil
-
-						metricMap[name] = columnMapping
-					}
-				}
+				// TODO: we should support cu
+				columnMapping.mapping = nil
+				// Should we support this for users?
+				columnMapping.supportedVersions = nil
+				metricMap[name] = columnMapping
 			}
 		}
 	}
@@ -486,7 +479,6 @@ func addQueries(content []byte, pgVersion semver.Version, server *Server) error 
 		}
 		server.queryOverrides[k] = v
 	}
-
 	return nil
 }
 
