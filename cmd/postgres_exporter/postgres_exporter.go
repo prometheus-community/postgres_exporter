@@ -410,20 +410,12 @@ func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]
 	return resultMap
 }
 
-// Add queries to the builtinMetricMaps and queryOverrides maps. Added queries do not
-// respect version requirements, because it is assumed that the user knows
-// what they are doing with their version of postgres.
-//
-// This function modifies metricMap and queryOverrideMap to contain the new
-// queries.
-// TODO: test code for all cu.
-// TODO: the YAML this supports is "non-standard" - we should move away from it.
-func addQueries(content []byte, pgVersion semver.Version, server *Server) error {
+func parseUserNamespaces(content []byte) (map[string]map[string]ColumnMapping, map[string]string, error) {
 	var userNs UserNamespaces
 
 	err := yaml.Unmarshal(content, &userNs)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	// Stores the loaded map representation
@@ -454,7 +446,22 @@ func addQueries(content []byte, pgVersion semver.Version, server *Server) error 
 			}
 		}
 	}
+	return metricMaps, newQueryOverrides, nil
+}
 
+// Add queries to the builtinMetricMaps and queryOverrides maps. Added queries do not
+// respect version requirements, because it is assumed that the user knows
+// what they are doing with their version of postgres.
+//
+// This function modifies metricMap and queryOverrideMap to contain the new
+// queries.
+// TODO: test code for all cu.
+// TODO: the YAML this supports is "non-standard" - we should move away from it.
+func addQueries(content []byte, pgVersion semver.Version, server *Server) error {
+	metricMaps, newQueryOverrides, err := parseUserNamespaces(content)
+	if err != nil {
+		return nil
+	}
 	// Convert the loaded metric map into exporter representation
 	partialExporterMap := makeDescMap(pgVersion, server.labels, metricMaps)
 
