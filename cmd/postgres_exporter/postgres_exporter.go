@@ -94,7 +94,7 @@ type MappingOptions struct {
 }
 
 // nolint: golint
-type Mapping map[string]ColumnMapping
+type Mapping map[string]MappingOptions
 
 // nolint: golint
 type UserQuery struct {
