@@ -166,6 +166,8 @@ To scrape metrics from all databases on a database server, the database DSN's ca
 `--auto-discover-databases` flag. When true, `SELECT datname FROM pg_database` is run for all configured DSN's. From the 
 result a new set of DSN's is created for which the metrics are scraped.
 
+In addition, the option `--exclude-databases` adds the possibily to filter the result from the auto discovery to discard databases you do not need.
+
 ### Running as non-superuser
 
 To be able to collect metrics from `pg_stat_activity` and `pg_stat_replication`
