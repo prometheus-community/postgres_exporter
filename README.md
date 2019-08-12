@@ -163,7 +163,7 @@ flag. This removes all built-in metrics, and uses only metrics defined by querie
 
 ### Automatically discover databases
 To scrape metrics from all databases on a database server, the database DSN's can be dynamically discovered via the 
-`--auto-discover-databases` flag. When true, `SELECT datname FROM pg_database` is run for all configured DSN's. From the 
+`--auto-discover-databases` flag. When true, `SELECT datname FROM pg_database WHERE datallowconn = true AND datistemplate = false` is run for all configured DSN's. From the 
 result a new set of DSN's is created for which the metrics are scraped.
 
 In addition, the option `--exclude-databases` adds the possibily to filter the result from the auto discovery to discard databases you do not need.
