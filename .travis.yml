@@ -1,17 +1,16 @@
+dist: bionic
 language: go
 
 go:
 - 1.12.x
 
 env:
-- POSTGRESQL_IMAGE=postgres:9.1
-- POSTGRESQL_IMAGE=postgres:9.2
-- POSTGRESQL_IMAGE=postgres:9.3
 - POSTGRESQL_IMAGE=postgres:9.4
 - POSTGRESQL_IMAGE=postgres:9.5
 - POSTGRESQL_IMAGE=postgres:9.6
 - POSTGRESQL_IMAGE=postgres:10
 - POSTGRESQL_IMAGE=postgres:11
+- POSTGRESQL_IMAGE=postgres:12
 
 services:
 - docker
@@ -19,7 +18,11 @@ services:
 go_import_path: github.com/percona/postgres_exporter
 
 before_script:
-- sudo service postgresql stop
+# use the same uid as in container
+- sudo usermod -u 999 postgres
+- sudo chown postgres:postgres testdata/ssl/*
+- sudo chmod 0600 testdata/ssl/*
+
 - docker --version
 - docker-compose --version
 - docker-compose up -d
@@ -27,6 +30,12 @@ before_script:
 script:
 - make
 - make test
+
+after_failure:
+- docker-compose logs
+#- docker exec postgres_exporter_postgresql cat /etc/passwd
+#- ls -l testdata/ssl
+#- sudo cat /etc/passwd
 
 notifications:
   email: false

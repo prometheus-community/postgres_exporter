@@ -3,6 +3,7 @@
 package main
 
 import (
+	"database/sql"
 	"os"
 	"reflect"
 	"testing"
@@ -155,6 +156,55 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDnsAndSecrets(c *C) {
 	}
 }
 
+// test DSN including SSL enabled
+func (s *FunctionalSuite) TestSSL(c *C) {
+	// Thr driver doesn't support sslmode=prefer
+	envDsn := "postgresql://root:root@localhost:5433/?sslmode=require"
+	err := os.Setenv("DATA_SOURCE_NAME", envDsn)
+	c.Assert(err, IsNil)
+	defer UnsetEnvironment(c, "DATA_SOURCE_NAME")
+
+	server, err := NewServer(envDsn)
+	c.Assert(err, IsNil)
+	c.Assert(server, NotNil)
+
+	// Just to check getDataSources can handle ssl options
+	dsn := getDataSources()
+	if len(dsn) == 0 {
+		c.Errorf("Expected one data source, zero found")
+	}
+	if dsn[0] != envDsn {
+		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn[0], envDsn)
+	}
+
+	type row struct {
+		Pid         int    // pid
+		Ssl         bool   // ssl
+		Version     string // version
+		Cipher      string // cipher
+		Bits        int    // bits
+		Compression bool   // compression
+		Clientdn    string // clientdn
+	}
+	res := row{}
+
+	db, err := sql.Open("postgres", dsn[0])
+	c.Assert(err, IsNil)
+	//v95 := semver.MustParse("9.5.0")
+	version, err := postgresVersion(db)
+	c.Assert(err, IsNil)
+	if version < 90500 {
+		c.Skip("This test needs PostgreSQL 9.5+")
+	}
+
+	// This query returns information about the current connection. Ssl field should be true
+	sqlstr := "SELECT pid, ssl, version, cipher, bits, compression FROM pg_stat_ssl WHERE pid=pg_backend_pid()"
+	err = db.QueryRow(sqlstr).Scan(&res.Pid, &res.Ssl, &res.Version, &res.Cipher, &res.Bits, &res.Compression)
+	c.Assert(err, IsNil)
+	c.Assert(res.Ssl, Equals, true)
+	c.Assert(db.Close(), IsNil)
+}
+
 func (s *FunctionalSuite) TestPostgresVersionParsing(c *C) {
 	type TestCase struct {
 		input    string
@@ -300,4 +350,10 @@ func (s *FunctionalSuite) TestBooleanConversionToValueAndString(c *C) {
 		c.Assert(str, Equals, cs.expectedString)
 		c.Assert(ok, Equals, cs.expectedOK)
 	}
+}
+
+func postgresVersion(db *sql.DB) (int, error) {
+	version := 0
+	err := db.QueryRow("SHOW server_version_num").Scan(&version)
+	return version, err
 }
