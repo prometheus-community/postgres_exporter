@@ -1,0 +1,7 @@
+## Custom query example.
+#pg_replication:
+#  query: "SELECT EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())) as lag"
+#  metrics:
+#    - lag:
+#        usage: "GAUGE"
+#        description: "Replication lag behind master in seconds"
