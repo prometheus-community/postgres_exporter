@@ -112,9 +112,9 @@ pg_statio_user_tables:
     - tidx_blks_hit:
         usage: "COUNTER"
         description: "Number of buffer hits in this table's TOAST table indexes (if any)"
-        
+
 pg_database:
-  query: " SELECT pg_database.datname, pg_database_size(pg_database.datname) as size FROM pg_database" 
+  query: " SELECT pg_database.datname, pg_database_size(pg_database.datname) as size FROM pg_database"
   metrics:
     - datname:
         usage: "LABEL"
