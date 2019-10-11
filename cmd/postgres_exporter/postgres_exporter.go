@@ -831,7 +831,7 @@ func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool
 
 	var err error
 
-	if !disableSettingsMetrics && s.master {
+	if (!disableSettingsMetrics && !*autoDiscoverDatabases) || (!disableSettingsMetrics && *autoDiscoverDatabases && s.master) {
 		if err = querySettings(ch, s); err != nil {
 			err = fmt.Errorf("error retrieving settings: %s", err)
 		}
@@ -1233,7 +1233,7 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 
 // Check and update the exporters query maps if the version has changed.
 func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server) error {
-
+	log.Debugf("Querying Postgres Version on %q", server)
 	versionRow := server.db.QueryRow("SELECT version();")
 	var versionString string
 	err := versionRow.Scan(&versionString)
@@ -1253,7 +1253,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 		log.Infof("Semantic Version Changed on %q: %s -> %s", server, server.lastMapVersion, semanticVersion)
 		server.mappingMtx.Lock()
 
-		if e.disableDefaultMetrics || !server.master {
+		if e.disableDefaultMetrics || (!e.disableDefaultMetrics && e.autoDiscoverDatabases && !server.master) {
 			server.metricMap = make(map[string]MetricMapNamespace)
 			server.queryOverrides = make(map[string]string)
 		} else {
