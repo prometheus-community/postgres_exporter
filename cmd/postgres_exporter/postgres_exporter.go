@@ -1292,7 +1292,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
 		"Version string as reported by postgres", []string{"version", "short_version"}, server.labels)
 
-	if !e.disableDefaultMetrics && server.master {
+	if !e.disableDefaultMetrics && (server.master && e.autoDiscoverDatabases) {
 		ch <- prometheus.MustNewConstMetric(versionDesc,
 			prometheus.UntypedValue, 1, versionString, semanticVersion.String())
 	}
