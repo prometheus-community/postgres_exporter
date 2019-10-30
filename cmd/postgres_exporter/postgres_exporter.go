@@ -863,17 +863,29 @@ func (s *Servers) GetServer(dsn string) (*Server, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	var err error
-	server, ok := s.servers[dsn]
-	if !ok {
-		server, err = NewServer(dsn, s.opts...)
-		if err != nil {
+	var ok bool
+	errCount := 0 // start at zero because we increment before doing work
+	retries := 3
+	var server *Server
+	for {
+		if errCount++; errCount > retries {
 			return nil, err
 		}
-		s.servers[dsn] = server
-	}
-	if err = server.Ping(); err != nil {
-		delete(s.servers, dsn)
-		return nil, err
+		server, ok = s.servers[dsn]
+		if !ok {
+			server, err = NewServer(dsn, s.opts...)
+			if err != nil {
+				time.Sleep(time.Duration(errCount) * time.Second)
+				continue
+			}
+			s.servers[dsn] = server
+		}
+		if err = server.Ping(); err != nil {
+			delete(s.servers, dsn)
+			time.Sleep(time.Duration(errCount) * time.Second)
+			continue
+		}
+		break
 	}
 	return server, nil
 }
