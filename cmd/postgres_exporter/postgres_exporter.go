@@ -1495,8 +1495,8 @@ func main() {
 
 	http.Handle(*metricPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "Content-Type:text/plain; charset=UTF-8") // nolint: errcheck
-		w.Write(landingPage)                                                     // nolint: errcheck
+		w.Header().Set("Content-Type", "text/html; charset=UTF-8") // nolint: errcheck
+		w.Write(landingPage)                                       // nolint: errcheck
 	})
 
 	log.Infof("Starting Server: %s", *listenAddress)
