@@ -262,6 +262,7 @@ var builtinMetricMaps = map[string]map[string]ColumnMapping{
 		"restart_lsn":              {DISCARD, "The address (LSN) of oldest WAL which still might be required by the consumer of this slot and thus won't be automatically removed during checkpoints", nil, nil},
 		"pg_current_xlog_location": {DISCARD, "pg_current_xlog_location", nil, nil},
 		"pg_current_wal_lsn":       {DISCARD, "pg_current_xlog_location", nil, semver.MustParseRange(">=10.0.0")},
+		"pg_current_wal_lsn_bytes": {GAUGE, "WAL position in bytes", nil, semver.MustParseRange(">=10.0.0")},
 		"pg_xlog_location_diff":    {GAUGE, "Lag in bytes between master and slave", nil, semver.MustParseRange(">=9.2.0 <10.0.0")},
 		"pg_wal_lsn_diff":          {GAUGE, "Lag in bytes between master and slave", nil, semver.MustParseRange(">=10.0.0")},
 		"confirmed_flush_lsn":      {DISCARD, "LSN position a consumer of a slot has confirmed flushing the data received", nil, nil},
@@ -319,6 +320,7 @@ var queryOverrides = map[string][]OverrideQuery{
 			`
 			SELECT *,
 				(case pg_is_in_recovery() when 't' then null else pg_current_wal_lsn() end) AS pg_current_wal_lsn,
+				(case pg_is_in_recovery() when 't' then null else pg_wal_lsn_diff(pg_current_wal_lsn(), pg_lsn('0/0'))::float end) AS pg_current_wal_lsn_bytes,
 				(case pg_is_in_recovery() when 't' then null else pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)::float end) AS pg_wal_lsn_diff
 			FROM pg_stat_replication
 			`,
@@ -862,17 +864,29 @@ func (s *Servers) GetServer(dsn string) (*Server, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	var err error
-	server, ok := s.servers[dsn]
-	if !ok {
-		server, err = NewServer(dsn, s.opts...)
-		if err != nil {
+	var ok bool
+	errCount := 0 // start at zero because we increment before doing work
+	retries := 3
+	var server *Server
+	for {
+		if errCount++; errCount > retries {
 			return nil, err
 		}
-		s.servers[dsn] = server
-	}
-	if err = server.Ping(); err != nil {
-		delete(s.servers, dsn)
-		return nil, err
+		server, ok = s.servers[dsn]
+		if !ok {
+			server, err = NewServer(dsn, s.opts...)
+			if err != nil {
+				time.Sleep(time.Duration(errCount) * time.Second)
+				continue
+			}
+			s.servers[dsn] = server
+		}
+		if err = server.Ping(); err != nil {
+			delete(s.servers, dsn)
+			time.Sleep(time.Duration(errCount) * time.Second)
+			continue
+		}
+		break
 	}
 	return server, nil
 }
@@ -1482,8 +1496,8 @@ func main() {
 
 	http.Handle(*metricPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "Content-Type:text/plain; charset=UTF-8") // nolint: errcheck
-		w.Write(landingPage)                                                     // nolint: errcheck
+		w.Header().Set("Content-Type", "text/html; charset=UTF-8") // nolint: errcheck
+		w.Write(landingPage)                                       // nolint: errcheck
 	})
 
 	log.Infof("Starting Server: %s", *listenAddress)
