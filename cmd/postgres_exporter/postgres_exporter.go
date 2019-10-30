@@ -39,6 +39,7 @@ var (
 	queriesPath            = kingpin.Flag("extend.query-path", "Path to custom queries to run.").Default("").Envar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
 	onlyDumpMaps           = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
 	constantLabelsList     = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,).").Default("").Envar("PG_EXPORTER_CONSTANT_LABELS").String()
+	excludeDatabases       = kingpin.Flag("exclude-databases", "A list of databases to remove when autoDiscoverDatabases is enabled").Default("").Envar("PG_EXPORTER_EXCLUDE_DATABASES").String()
 )
 
 // Metric name parts.
@@ -126,6 +127,16 @@ type MetricMap struct {
 	vtype      prometheus.ValueType              // Prometheus valuetype
 	desc       *prometheus.Desc                  // Prometheus descriptor
 	conversion func(interface{}) (float64, bool) // Conversion function to turn PG result into float64
+}
+
+// ErrorConnectToServer is a connection to PgSQL server error
+type ErrorConnectToServer struct {
+	Msg string
+}
+
+// Error returns error
+func (e *ErrorConnectToServer) Error() string {
+	return e.Msg
 }
 
 // TODO: revisit this with the semver system
@@ -231,6 +242,7 @@ var builtinMetricMaps = map[string]map[string]ColumnMapping{
 		"restart_lsn":              {DISCARD, "The address (LSN) of oldest WAL which still might be required by the consumer of this slot and thus won't be automatically removed during checkpoints", nil, nil},
 		"pg_current_xlog_location": {DISCARD, "pg_current_xlog_location", nil, nil},
 		"pg_current_wal_lsn":       {DISCARD, "pg_current_xlog_location", nil, semver.MustParseRange(">=10.0.0")},
+		"pg_current_wal_lsn_bytes": {GAUGE, "WAL position in bytes", nil, semver.MustParseRange(">=10.0.0")},
 		"pg_xlog_location_diff":    {GAUGE, "Lag in bytes between master and slave", nil, semver.MustParseRange(">=9.2.0 <10.0.0")},
 		"pg_wal_lsn_diff":          {GAUGE, "Lag in bytes between master and slave", nil, semver.MustParseRange(">=10.0.0")},
 		"confirmed_flush_lsn":      {DISCARD, "LSN position a consumer of a slot has confirmed flushing the data received", nil, nil},
@@ -288,6 +300,7 @@ var queryOverrides = map[string][]OverrideQuery{
 			`
 			SELECT *,
 				(case pg_is_in_recovery() when 't' then null else pg_current_wal_lsn() end) AS pg_current_wal_lsn,
+				(case pg_is_in_recovery() when 't' then null else pg_wal_lsn_diff(pg_current_wal_lsn(), pg_lsn('0/0'))::float end) AS pg_current_wal_lsn_bytes,
 				(case pg_is_in_recovery() when 't' then null else pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)::float end) AS pg_wal_lsn_diff
 			FROM pg_stat_replication
 			`,
@@ -812,21 +825,24 @@ func (s *Server) String() string {
 }
 
 // Scrape loads metrics.
-func (s *Server) Scrape(ch chan<- prometheus.Metric, errGauge prometheus.Gauge, disableSettingsMetrics bool) {
+func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool) error {
 	s.mappingMtx.RLock()
 	defer s.mappingMtx.RUnlock()
 
+	var err error
+
 	if !disableSettingsMetrics {
-		if err := querySettings(ch, s); err != nil {
-			log.Errorf("Error retrieving settings: %s", err)
-			errGauge.Inc()
+		if err = querySettings(ch, s); err != nil {
+			err = fmt.Errorf("error retrieving settings: %s", err)
 		}
 	}
 
 	errMap := queryNamespaceMappings(ch, s)
 	if len(errMap) > 0 {
-		errGauge.Inc()
+		err = fmt.Errorf("queryNamespaceMappings returned %d errors", len(errMap))
 	}
+
+	return err
 }
 
 // Servers contains a collection of servers to Postgres.
@@ -849,17 +865,29 @@ func (s *Servers) GetServer(dsn string) (*Server, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	var err error
-	server, ok := s.servers[dsn]
-	if !ok {
-		server, err = NewServer(dsn, s.opts...)
-		if err != nil {
+	var ok bool
+	errCount := 0 // start at zero because we increment before doing work
+	retries := 3
+	var server *Server
+	for {
+		if errCount++; errCount > retries {
 			return nil, err
 		}
-		s.servers[dsn] = server
-	}
-	if err = server.Ping(); err != nil {
-		delete(s.servers, dsn)
-		return nil, err
+		server, ok = s.servers[dsn]
+		if !ok {
+			server, err = NewServer(dsn, s.opts...)
+			if err != nil {
+				time.Sleep(time.Duration(errCount) * time.Second)
+				continue
+			}
+			s.servers[dsn] = server
+		}
+		if err = server.Ping(); err != nil {
+			delete(s.servers, dsn)
+			time.Sleep(time.Duration(errCount) * time.Second)
+			continue
+		}
+		break
 	}
 	return server, nil
 }
@@ -883,6 +911,7 @@ type Exporter struct {
 
 	disableDefaultMetrics, disableSettingsMetrics, autoDiscoverDatabases bool
 
+	excludeDatabases []string
 	dsn              []string
 	userQueriesPath  string
 	constantLabels   prometheus.Labels
@@ -918,6 +947,13 @@ func DisableSettingsMetrics(b bool) ExporterOpt {
 func AutoDiscoverDatabases(b bool) ExporterOpt {
 	return func(e *Exporter) {
 		e.autoDiscoverDatabases = b
+	}
+}
+
+// ExcludeDatabases allows to filter out result from AutoDiscoverDatabases
+func ExcludeDatabases(s string) ExporterOpt {
+	return func(e *Exporter) {
+		e.excludeDatabases = strings.Split(s, ",")
 	}
 }
 
@@ -1065,7 +1101,7 @@ func newDesc(subsystem, name, help string, labels prometheus.Labels) *prometheus
 }
 
 func queryDatabases(server *Server) ([]string, error) {
-	rows, err := server.db.Query("SELECT datname FROM pg_database") // nolint: safesql
+	rows, err := server.db.Query("SELECT datname FROM pg_database WHERE datallowconn = true AND datistemplate = false") // nolint: safesql
 	if err != nil {
 		return nil, fmt.Errorf("Error retrieving databases: %v", err)
 	}
@@ -1280,16 +1316,40 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 		e.duration.Set(time.Since(begun).Seconds())
 	}(time.Now())
 
-	e.error.Set(0)
-	e.psqlUp.Set(0)
 	e.totalScrapes.Inc()
 
 	dsns := e.dsn
 	if e.autoDiscoverDatabases {
 		dsns = e.discoverDatabaseDSNs()
 	}
+
+	var errorsCount int
+	var connectionErrorsCount int
+
 	for _, dsn := range dsns {
-		e.scrapeDSN(ch, dsn)
+		if err := e.scrapeDSN(ch, dsn); err != nil {
+			errorsCount++
+
+			log.Errorf(err.Error())
+
+			if _, ok := err.(*ErrorConnectToServer); ok {
+				connectionErrorsCount++
+			}
+		}
+	}
+
+	switch {
+	case connectionErrorsCount >= len(dsns):
+		e.psqlUp.Set(0)
+	default:
+		e.psqlUp.Set(1) // Didn't fail, can mark connection as up for this scrape.
+	}
+
+	switch errorsCount {
+	case 0:
+		e.error.Set(0)
+	default:
+		e.error.Set(1)
 	}
 }
 
@@ -1315,6 +1375,9 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			continue
 		}
 		for _, databaseName := range databaseNames {
+			if contains(e.excludeDatabases, databaseName) {
+				continue
+			}
 			parsedDSN.Path = databaseName
 			dsns[parsedDSN.String()] = struct{}{}
 		}
@@ -1330,24 +1393,18 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 	return result
 }
 
-func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) {
+func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 	server, err := e.servers.GetServer(dsn)
 	if err != nil {
-		log.Errorf("Error opening connection to database (%s): %v", loggableDSN(dsn), err)
-		e.error.Inc()
-		return
+		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), err)}
 	}
-
-	// Didn't fail, can mark connection as up for this scrape.
-	e.psqlUp.Inc()
 
 	// Check if map versions need to be updated
 	if err := e.checkMapVersions(ch, server); err != nil {
 		log.Warnln("Proceeding with outdated query maps, as the Postgres version could not be determined:", err)
-		e.error.Inc()
 	}
 
-	server.Scrape(ch, e.error, e.disableSettingsMetrics)
+	return server.Scrape(ch, e.disableSettingsMetrics)
 }
 
 // try to get the DataSource
@@ -1389,6 +1446,15 @@ func getDataSources() []string {
 	return strings.Split(dsn, ",")
 }
 
+func contains(a []string, x string) bool {
+	for _, n := range a {
+		if x == n {
+			return true
+		}
+	}
+	return false
+}
+
 func main() {
 	kingpin.Version(fmt.Sprintf("postgres_exporter %s (built with %s)\n", Version, runtime.Version()))
 	log.AddFlags(kingpin.CommandLine)
@@ -1421,6 +1487,7 @@ func main() {
 		AutoDiscoverDatabases(*autoDiscoverDatabases),
 		WithUserQueriesPath(*queriesPath),
 		WithConstantLabels(*constantLabelsList),
+		ExcludeDatabases(*excludeDatabases),
 	)
 	defer func() {
 		exporter.servers.Close()
@@ -1430,8 +1497,8 @@ func main() {
 
 	http.Handle(*metricPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "Content-Type:text/plain; charset=UTF-8") // nolint: errcheck
-		w.Write(landingPage)                                                     // nolint: errcheck
+		w.Header().Set("Content-Type", "text/html; charset=UTF-8") // nolint: errcheck
+		w.Write(landingPage)                                       // nolint: errcheck
 	})
 
 	log.Infof("Starting Server: %s", *listenAddress)
