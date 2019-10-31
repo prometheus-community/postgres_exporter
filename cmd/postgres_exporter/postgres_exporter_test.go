@@ -26,10 +26,13 @@ func (s *FunctionalSuite) SetUpSuite(c *C) {
 }
 
 func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
-	testMetricMap := map[string]map[string]ColumnMapping{
+	testMetricMap := map[string]intermediateMetricMap{
 		"test_namespace": {
-			"metric_which_stays":    {COUNTER, "This metric should not be eliminated", nil, nil},
-			"metric_which_discards": {COUNTER, "This metric should be forced to DISCARD", nil, nil},
+			map[string]ColumnMapping{
+				"metric_which_stays":    {COUNTER, "This metric should not be eliminated", nil, nil},
+				"metric_which_discards": {COUNTER, "This metric should be forced to DISCARD", nil, nil},
+			},
+			0,
 		},
 	}
 
@@ -51,9 +54,9 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 	// nolint: dupl
 	{
 		// Update the map so the discard metric should be eliminated
-		discardableMetric := testMetricMap["test_namespace"]["metric_which_discards"]
+		discardableMetric := testMetricMap["test_namespace"].columnMappings["metric_which_discards"]
 		discardableMetric.supportedVersions = semver.MustParseRange(">0.0.1")
-		testMetricMap["test_namespace"]["metric_which_discards"] = discardableMetric
+		testMetricMap["test_namespace"].columnMappings["metric_which_discards"] = discardableMetric
 
 		// Discard metric should be discarded
 		resultMap := makeDescMap(semver.MustParse("0.0.1"), prometheus.Labels{}, testMetricMap)
@@ -72,9 +75,9 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 	// nolint: dupl
 	{
 		// Update the map so the discard metric should be kept but has a version
-		discardableMetric := testMetricMap["test_namespace"]["metric_which_discards"]
+		discardableMetric := testMetricMap["test_namespace"].columnMappings["metric_which_discards"]
 		discardableMetric.supportedVersions = semver.MustParseRange(">0.0.1")
-		testMetricMap["test_namespace"]["metric_which_discards"] = discardableMetric
+		testMetricMap["test_namespace"].columnMappings["metric_which_discards"] = discardableMetric
 
 		// Discard metric should be discarded
 		resultMap := makeDescMap(semver.MustParse("0.0.2"), prometheus.Labels{}, testMetricMap)

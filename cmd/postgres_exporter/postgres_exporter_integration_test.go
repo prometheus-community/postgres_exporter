@@ -113,9 +113,12 @@ func (s *IntegrationSuite) TestUnknownMetricParsingDoesntCrash(c *C) {
 	c.Assert(exporter, NotNil)
 
 	// Convert the default maps into a list of empty maps.
-	emptyMaps := make(map[string]map[string]ColumnMapping, 0)
+	emptyMaps := make(map[string]intermediateMetricMap, 0)
 	for k := range exporter.builtinMetricMaps {
-		emptyMaps[k] = map[string]ColumnMapping{}
+		emptyMaps[k] = intermediateMetricMap{
+			map[string]ColumnMapping{},
+			0,
+		}
 	}
 	exporter.builtinMetricMaps = emptyMaps
 
