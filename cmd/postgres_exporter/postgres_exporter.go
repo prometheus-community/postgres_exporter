@@ -749,6 +749,7 @@ func loggableDSN(dsn string) string {
 type Server struct {
 	db     *sql.DB
 	labels prometheus.Labels
+	master bool
 
 	// Last version used to calculate metric map. If mismatch on scrape,
 	// then maps are recalculated.
@@ -789,7 +790,8 @@ func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 	log.Infof("Established new database connection to %q.", fingerprint)
 
 	s := &Server{
-		db: db,
+		db:     db,
+		master: false,
 		labels: prometheus.Labels{
 			serverLabelName: fingerprint,
 		},
@@ -830,7 +832,7 @@ func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool
 
 	var err error
 
-	if !disableSettingsMetrics {
+	if (!disableSettingsMetrics && !*autoDiscoverDatabases) || (!disableSettingsMetrics && *autoDiscoverDatabases && s.master) {
 		if err = querySettings(ch, s); err != nil {
 			err = fmt.Errorf("error retrieving settings: %s", err)
 		}
@@ -1100,7 +1102,7 @@ func newDesc(subsystem, name, help string, labels prometheus.Labels) *prometheus
 }
 
 func queryDatabases(server *Server) ([]string, error) {
-	rows, err := server.db.Query("SELECT datname FROM pg_database WHERE datallowconn = true AND datistemplate = false") // nolint: safesql
+	rows, err := server.db.Query("SELECT datname FROM pg_database WHERE datallowconn = true AND datistemplate = false AND datname != current_database()") // nolint: safesql
 	if err != nil {
 		return nil, fmt.Errorf("Error retrieving databases: %v", err)
 	}
@@ -1264,7 +1266,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 		log.Infof("Semantic Version Changed on %q: %s -> %s", server, server.lastMapVersion, semanticVersion)
 		server.mappingMtx.Lock()
 
-		if e.disableDefaultMetrics {
+		if e.disableDefaultMetrics || (!e.disableDefaultMetrics && e.autoDiscoverDatabases && !server.master) {
 			server.metricMap = make(map[string]MetricMapNamespace)
 			server.queryOverrides = make(map[string]string)
 		} else {
@@ -1303,7 +1305,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
 		"Version string as reported by postgres", []string{"version", "short_version"}, server.labels)
 
-	if !e.disableDefaultMetrics {
+	if !e.disableDefaultMetrics && (server.master && e.autoDiscoverDatabases) {
 		ch <- prometheus.MustNewConstMetric(versionDesc,
 			prometheus.UntypedValue, 1, versionString, semanticVersion.String())
 	}
@@ -1367,6 +1369,8 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			log.Errorf("Error opening connection to database (%s): %v", loggableDSN(dsn), err)
 			continue
 		}
+
+		server.master = true
 
 		databaseNames, err := queryDatabases(server)
 		if err != nil {
