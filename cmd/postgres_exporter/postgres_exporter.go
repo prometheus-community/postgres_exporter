@@ -85,6 +85,26 @@ func (cu *ColumnUsage) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
+// MappingOptions is a copy of ColumnMapping used only for parsing
+type MappingOptions struct {
+	Usage             string             `yaml:"usage"`
+	Description       string             `yaml:"description"`
+	Mapping           map[string]float64 `yaml:"metric_mapping"` // Optional column mapping for MAPPEDMETRIC
+	SupportedVersions semver.Range       `yaml:"pg_version"`     // Semantic version ranges which are supported. Unsupported columns are not queried (internally converted to DISCARD).
+}
+
+// nolint: golint
+type Mapping map[string]MappingOptions
+
+// nolint: golint
+type UserQuery struct {
+	Query   string    `yaml:"query"`
+	Metrics []Mapping `yaml:"metrics"`
+}
+
+// nolint: golint
+type UserQueries map[string]UserQuery
+
 // Regex used to get the "short-version" from the postgres version field.
 var versionRegex = regexp.MustCompile(`^\w+ ((\d+)(\.\d+)?(\.\d+)?)`)
 var lowestSupportedVersion = semver.MustParse("9.1.0")
@@ -392,6 +412,45 @@ func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]
 	return resultMap
 }
 
+func parseUserQueries(content []byte) (map[string]map[string]ColumnMapping, map[string]string, error) {
+	var userQueries UserQueries
+
+	err := yaml.Unmarshal(content, &userQueries)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Stores the loaded map representation
+	metricMaps := make(map[string]map[string]ColumnMapping)
+	newQueryOverrides := make(map[string]string)
+
+	for metric, specs := range userQueries {
+		log.Debugln("New user metric namespace from YAML:", metric)
+		newQueryOverrides[metric] = specs.Query
+		metricMap, ok := metricMaps[metric]
+		if !ok {
+			// Namespace for metric not found - add it.
+			metricMap = make(map[string]ColumnMapping)
+			metricMaps[metric] = metricMap
+		}
+		for _, metric := range specs.Metrics {
+			for name, mappingOption := range metric {
+				var columnMapping ColumnMapping
+				tmpUsage, _ := stringToColumnUsage(mappingOption.Usage)
+				columnMapping.usage = tmpUsage
+				columnMapping.description = mappingOption.Description
+
+				// TODO: we should support cu
+				columnMapping.mapping = nil
+				// Should we support this for users?
+				columnMapping.supportedVersions = nil
+				metricMap[name] = columnMapping
+			}
+		}
+	}
+	return metricMaps, newQueryOverrides, nil
+}
+
 // Add queries to the builtinMetricMaps and queryOverrides maps. Added queries do not
 // respect version requirements, because it is assumed that the user knows
 // what they are doing with their version of postgres.
@@ -399,71 +458,12 @@ func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]
 // This function modifies metricMap and queryOverrideMap to contain the new
 // queries.
 // TODO: test code for all cu.
-// TODO: use proper struct type system
 // TODO: the YAML this supports is "non-standard" - we should move away from it.
 func addQueries(content []byte, pgVersion semver.Version, server *Server) error {
-	var extra map[string]interface{}
-
-	err := yaml.Unmarshal(content, &extra)
+	metricMaps, newQueryOverrides, err := parseUserQueries(content)
 	if err != nil {
-		return err
+		return nil
 	}
-
-	// Stores the loaded map representation
-	metricMaps := make(map[string]map[string]ColumnMapping)
-	newQueryOverrides := make(map[string]string)
-
-	for metric, specs := range extra {
-		log.Debugln("New user metric namespace from YAML:", metric)
-		for key, value := range specs.(map[interface{}]interface{}) {
-			switch key.(string) {
-			case "query":
-				query := value.(string)
-				newQueryOverrides[metric] = query
-
-			case "metrics":
-				for _, c := range value.([]interface{}) {
-					column := c.(map[interface{}]interface{})
-
-					for n, a := range column {
-						var columnMapping ColumnMapping
-
-						// Fetch the metric map we want to work on.
-						metricMap, ok := metricMaps[metric]
-						if !ok {
-							// Namespace for metric not found - add it.
-							metricMap = make(map[string]ColumnMapping)
-							metricMaps[metric] = metricMap
-						}
-
-						// Get name.
-						name := n.(string)
-
-						for attrKey, attrVal := range a.(map[interface{}]interface{}) {
-							switch attrKey.(string) {
-							case "usage":
-								usage, err := stringToColumnUsage(attrVal.(string))
-								if err != nil {
-									return err
-								}
-								columnMapping.usage = usage
-							case "description":
-								columnMapping.description = attrVal.(string)
-							}
-						}
-
-						// TODO: we should support cu
-						columnMapping.mapping = nil
-						// Should we support this for users?
-						columnMapping.supportedVersions = nil
-
-						metricMap[name] = columnMapping
-					}
-				}
-			}
-		}
-	}
-
 	// Convert the loaded metric map into exporter representation
 	partialExporterMap := makeDescMap(pgVersion, server.labels, metricMaps)
 
@@ -488,7 +488,6 @@ func addQueries(content []byte, pgVersion semver.Version, server *Server) error 
 		}
 		server.queryOverrides[k] = v
 	}
-
 	return nil
 }
 
