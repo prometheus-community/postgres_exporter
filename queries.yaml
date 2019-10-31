@@ -120,7 +120,7 @@ pg_database:
     - datname:
         usage: "LABEL"
         description: "Name of the database"
-    - size:
+    - size_bytes:
         usage: "GAUGE"
         description: "Disk space used by the database"
 
