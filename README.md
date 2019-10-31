@@ -242,7 +242,7 @@ GRANT SELECT ON postgres_exporter.pg_stat_replication TO postgres_exporter;
 > ```
 
 # Hacking
-* To build a copy for your current architecture run `go run mage.go binary` or just `go run mage.go`
+* To build a copy for your current architecture run `go run mage.go binary`.
   This will create a symlink to the just built binary in the root directory.
 * To build release tar balls run `go run mage.go release`.
 * Build system is a bit temperamental at the moment since the conversion to mage - I am working on getting it
