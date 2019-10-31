@@ -257,7 +257,6 @@ pg_stat_database_tup_returned
 pg_stat_database_tup_updated
 pg_stat_database_xact_commit
 pg_stat_database_xact_rollback
-pg_static
 pg_stat_replication_pg_xlog_location_diff
 pg_up
 process_cpu_seconds_total

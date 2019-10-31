@@ -280,7 +280,6 @@ pg_stat_database_tup_returned
 pg_stat_database_tup_updated
 pg_stat_database_xact_commit
 pg_stat_database_xact_rollback
-pg_static
 pg_stat_replication_pg_current_wal_lsn_bytes
 pg_stat_replication_pg_wal_lsn_diff
 pg_up
