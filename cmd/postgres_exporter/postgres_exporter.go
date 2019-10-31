@@ -85,6 +85,26 @@ func (cu *ColumnUsage) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
+// MappingOptions is a copy of ColumnMapping used only for parsing
+type MappingOptions struct {
+	Usage             string             `yaml:"usage"`
+	Description       string             `yaml:"description"`
+	Mapping           map[string]float64 `yaml:"metric_mapping"` // Optional column mapping for MAPPEDMETRIC
+	SupportedVersions semver.Range       `yaml:"pg_version"`     // Semantic version ranges which are supported. Unsupported columns are not queried (internally converted to DISCARD).
+}
+
+// nolint: golint
+type Mapping map[string]MappingOptions
+
+// nolint: golint
+type UserQuery struct {
+	Query   string    `yaml:"query"`
+	Metrics []Mapping `yaml:"metrics"`
+}
+
+// nolint: golint
+type UserQueries map[string]UserQuery
+
 // Regex used to get the "short-version" from the postgres version field.
 var versionRegex = regexp.MustCompile(`^\w+ ((\d+)(\.\d+)?(\.\d+)?)`)
 var lowestSupportedVersion = semver.MustParse("9.1.0")
@@ -242,6 +262,7 @@ var builtinMetricMaps = map[string]map[string]ColumnMapping{
 		"restart_lsn":              {DISCARD, "The address (LSN) of oldest WAL which still might be required by the consumer of this slot and thus won't be automatically removed during checkpoints", nil, nil},
 		"pg_current_xlog_location": {DISCARD, "pg_current_xlog_location", nil, nil},
 		"pg_current_wal_lsn":       {DISCARD, "pg_current_xlog_location", nil, semver.MustParseRange(">=10.0.0")},
+		"pg_current_wal_lsn_bytes": {GAUGE, "WAL position in bytes", nil, semver.MustParseRange(">=10.0.0")},
 		"pg_xlog_location_diff":    {GAUGE, "Lag in bytes between master and slave", nil, semver.MustParseRange(">=9.2.0 <10.0.0")},
 		"pg_wal_lsn_diff":          {GAUGE, "Lag in bytes between master and slave", nil, semver.MustParseRange(">=10.0.0")},
 		"confirmed_flush_lsn":      {DISCARD, "LSN position a consumer of a slot has confirmed flushing the data received", nil, nil},
@@ -299,6 +320,7 @@ var queryOverrides = map[string][]OverrideQuery{
 			`
 			SELECT *,
 				(case pg_is_in_recovery() when 't' then null else pg_current_wal_lsn() end) AS pg_current_wal_lsn,
+				(case pg_is_in_recovery() when 't' then null else pg_wal_lsn_diff(pg_current_wal_lsn(), pg_lsn('0/0'))::float end) AS pg_current_wal_lsn_bytes,
 				(case pg_is_in_recovery() when 't' then null else pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)::float end) AS pg_wal_lsn_diff
 			FROM pg_stat_replication
 			`,
@@ -390,6 +412,45 @@ func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]
 	return resultMap
 }
 
+func parseUserQueries(content []byte) (map[string]map[string]ColumnMapping, map[string]string, error) {
+	var userQueries UserQueries
+
+	err := yaml.Unmarshal(content, &userQueries)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Stores the loaded map representation
+	metricMaps := make(map[string]map[string]ColumnMapping)
+	newQueryOverrides := make(map[string]string)
+
+	for metric, specs := range userQueries {
+		log.Debugln("New user metric namespace from YAML:", metric)
+		newQueryOverrides[metric] = specs.Query
+		metricMap, ok := metricMaps[metric]
+		if !ok {
+			// Namespace for metric not found - add it.
+			metricMap = make(map[string]ColumnMapping)
+			metricMaps[metric] = metricMap
+		}
+		for _, metric := range specs.Metrics {
+			for name, mappingOption := range metric {
+				var columnMapping ColumnMapping
+				tmpUsage, _ := stringToColumnUsage(mappingOption.Usage)
+				columnMapping.usage = tmpUsage
+				columnMapping.description = mappingOption.Description
+
+				// TODO: we should support cu
+				columnMapping.mapping = nil
+				// Should we support this for users?
+				columnMapping.supportedVersions = nil
+				metricMap[name] = columnMapping
+			}
+		}
+	}
+	return metricMaps, newQueryOverrides, nil
+}
+
 // Add queries to the builtinMetricMaps and queryOverrides maps. Added queries do not
 // respect version requirements, because it is assumed that the user knows
 // what they are doing with their version of postgres.
@@ -397,71 +458,12 @@ func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]
 // This function modifies metricMap and queryOverrideMap to contain the new
 // queries.
 // TODO: test code for all cu.
-// TODO: use proper struct type system
 // TODO: the YAML this supports is "non-standard" - we should move away from it.
 func addQueries(content []byte, pgVersion semver.Version, server *Server) error {
-	var extra map[string]interface{}
-
-	err := yaml.Unmarshal(content, &extra)
+	metricMaps, newQueryOverrides, err := parseUserQueries(content)
 	if err != nil {
-		return err
+		return nil
 	}
-
-	// Stores the loaded map representation
-	metricMaps := make(map[string]map[string]ColumnMapping)
-	newQueryOverrides := make(map[string]string)
-
-	for metric, specs := range extra {
-		log.Debugln("New user metric namespace from YAML:", metric)
-		for key, value := range specs.(map[interface{}]interface{}) {
-			switch key.(string) {
-			case "query":
-				query := value.(string)
-				newQueryOverrides[metric] = query
-
-			case "metrics":
-				for _, c := range value.([]interface{}) {
-					column := c.(map[interface{}]interface{})
-
-					for n, a := range column {
-						var columnMapping ColumnMapping
-
-						// Fetch the metric map we want to work on.
-						metricMap, ok := metricMaps[metric]
-						if !ok {
-							// Namespace for metric not found - add it.
-							metricMap = make(map[string]ColumnMapping)
-							metricMaps[metric] = metricMap
-						}
-
-						// Get name.
-						name := n.(string)
-
-						for attrKey, attrVal := range a.(map[interface{}]interface{}) {
-							switch attrKey.(string) {
-							case "usage":
-								usage, err := stringToColumnUsage(attrVal.(string))
-								if err != nil {
-									return err
-								}
-								columnMapping.usage = usage
-							case "description":
-								columnMapping.description = attrVal.(string)
-							}
-						}
-
-						// TODO: we should support cu
-						columnMapping.mapping = nil
-						// Should we support this for users?
-						columnMapping.supportedVersions = nil
-
-						metricMap[name] = columnMapping
-					}
-				}
-			}
-		}
-	}
-
 	// Convert the loaded metric map into exporter representation
 	partialExporterMap := makeDescMap(pgVersion, server.labels, metricMaps)
 
@@ -486,7 +488,6 @@ func addQueries(content []byte, pgVersion semver.Version, server *Server) error 
 		}
 		server.queryOverrides[k] = v
 	}
-
 	return nil
 }
 
@@ -706,7 +707,7 @@ func parseFingerprint(url string) (string, error) {
 	pairs := strings.Split(dsn, " ")
 	kv := make(map[string]string, len(pairs))
 	for _, pair := range pairs {
-		splitted := strings.Split(pair, "=")
+		splitted := strings.SplitN(pair, "=", 2)
 		if len(splitted) != 2 {
 			return "", fmt.Errorf("malformed dsn %q", dsn)
 		}
@@ -865,17 +866,29 @@ func (s *Servers) GetServer(dsn string) (*Server, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	var err error
-	server, ok := s.servers[dsn]
-	if !ok {
-		server, err = NewServer(dsn, s.opts...)
-		if err != nil {
+	var ok bool
+	errCount := 0 // start at zero because we increment before doing work
+	retries := 3
+	var server *Server
+	for {
+		if errCount++; errCount > retries {
 			return nil, err
 		}
-		s.servers[dsn] = server
-	}
-	if err = server.Ping(); err != nil {
-		delete(s.servers, dsn)
-		return nil, err
+		server, ok = s.servers[dsn]
+		if !ok {
+			server, err = NewServer(dsn, s.opts...)
+			if err != nil {
+				time.Sleep(time.Duration(errCount) * time.Second)
+				continue
+			}
+			s.servers[dsn] = server
+		}
+		if err = server.Ping(); err != nil {
+			delete(s.servers, dsn)
+			time.Sleep(time.Duration(errCount) * time.Second)
+			continue
+		}
+		break
 	}
 	return server, nil
 }
@@ -1487,8 +1500,8 @@ func main() {
 
 	http.Handle(*metricPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "Content-Type:text/plain; charset=UTF-8") // nolint: errcheck
-		w.Write(landingPage)                                                     // nolint: errcheck
+		w.Header().Set("Content-Type", "text/html; charset=UTF-8") // nolint: errcheck
+		w.Write(landingPage)                                       // nolint: errcheck
 	})
 
 	log.Infof("Starting Server: %s", *listenAddress)

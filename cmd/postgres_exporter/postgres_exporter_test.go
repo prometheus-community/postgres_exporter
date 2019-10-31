@@ -3,6 +3,7 @@
 package main
 
 import (
+	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
@@ -194,6 +195,10 @@ func (s *FunctionalSuite) TestParseFingerprint(c *C) {
 			fingerprint: "localhost:55432",
 		},
 		{
+			url:         "postgresql://userDsn:passwordDsn%3D@localhost:55432/?sslmode=disabled",
+			fingerprint: "localhost:55432",
+		},
+		{
 			url:         "port=1234",
 			fingerprint: "localhost:1234",
 		},
@@ -299,5 +304,19 @@ func (s *FunctionalSuite) TestBooleanConversionToValueAndString(c *C) {
 		str, ok := dbToString(cs.input)
 		c.Assert(str, Equals, cs.expectedString)
 		c.Assert(ok, Equals, cs.expectedOK)
+	}
+}
+
+func (s *FunctionalSuite) TestParseUserQueries(c *C) {
+	userQueriesData, err := ioutil.ReadFile("./tests/user_queries_ok.yaml")
+	if err == nil {
+		metricMaps, newQueryOverrides, err := parseUserQueries(userQueriesData)
+		c.Assert(err, Equals, nil)
+		c.Assert(metricMaps, NotNil)
+		c.Assert(newQueryOverrides, NotNil)
+
+		if len(metricMaps) != 2 {
+			c.Errorf("Expected 2 metrics from user file, got %d", len(metricMaps))
+		}
 	}
 }
