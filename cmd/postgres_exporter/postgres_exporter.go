@@ -708,7 +708,7 @@ func parseFingerprint(url string) (string, error) {
 	pairs := strings.Split(dsn, " ")
 	kv := make(map[string]string, len(pairs))
 	for _, pair := range pairs {
-		splitted := strings.Split(pair, "=")
+		splitted := strings.SplitN(pair, "=", 2)
 		if len(splitted) != 2 {
 			return "", fmt.Errorf("malformed dsn %q", dsn)
 		}
