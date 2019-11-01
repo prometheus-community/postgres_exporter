@@ -286,6 +286,19 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		true,
 		0,
 	},
+	"pg_stat_archiver": {
+		map[string]ColumnMapping{
+			"archived_count":     {COUNTER, "Number of WAL files that have been successfully archived", nil, nil},
+			"last_archived_wal":  {DISCARD, "Name of the last WAL file successfully archived", nil, nil},
+			"last_archived_time": {DISCARD, "Time of the last successful archive operation", nil, nil},
+			"failed_count":       {COUNTER, "Number of failed attempts for archiving WAL files", nil, nil},
+			"last_failed_wal":    {DISCARD, "Name of the WAL file of the last failed archival operation", nil, nil},
+			"last_failed_time":   {DISCARD, "Time of the last failed archival operation", nil, nil},
+			"stats_reset":        {DISCARD, "Time at which these statistics were last reset", nil, nil},
+			"last_archive_age":   {GAUGE, "Time in seconds since last WAL segment was successfully archived", nil, nil},
+		},
+		0,
+	},
 	"pg_stat_activity": {
 		map[string]ColumnMapping{
 			"datname":         {LABEL, "Name of this database", nil, nil},
@@ -360,6 +373,17 @@ var queryOverrides = map[string][]OverrideQuery{
 			SELECT *,
 				(case pg_is_in_recovery() when 't' then null else pg_current_xlog_location() end) AS pg_current_xlog_location
 			FROM pg_stat_replication
+			`,
+		},
+	},
+
+	"pg_stat_archiver": {
+		{
+			semver.MustParseRange(">=0.0.0"),
+			`
+			SELECT *,
+				extract(epoch from now() - last_archived_time) AS last_archive_age
+			FROM pg_stat_archiver
 			`,
 		},
 	},
