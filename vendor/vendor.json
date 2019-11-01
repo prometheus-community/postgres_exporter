@@ -3,12 +3,6 @@
 	"ignore": "test",
 	"package": [
 		{
-			"checksumSHA1": "9cl7+wv0GvxpQV+HOtV93F9pbmE=",
-			"path": "github.com/Sirupsen/logrus",
-			"revision": "89742aefa4b206dcf400792f3bd35b542998eb3b",
-			"revisionTime": "2017-08-22T13:27:46Z"
-		},
-		{
 			"checksumSHA1": "KmjnydoAbofMieIWm+it5OWERaM=",
 			"path": "github.com/alecthomas/template",
 			"revision": "a0175ee3bccc567396460bf5acd36800cb10c49c",
@@ -189,16 +183,28 @@
 			"revisionTime": "2017-07-14T08:24:55Z"
 		},
 		{
-			"checksumSHA1": "hu0MsbTdFzZxNRyAxe2HmTFFFak=",
+			"checksumSHA1": "5dHjKxShYVWVB1Fb00dAnR6kqVk=",
 			"path": "github.com/prometheus/client_golang/prometheus",
-			"revision": "5cec1d0429b02e4323e042eb04dafdb079ddf568",
-			"revisionTime": "2017-10-05T11:29:15Z"
+			"revision": "2641b987480bca71fb39738eb8c8b0d577cb1d76",
+			"revisionTime": "2019-06-07T14:56:44Z",
+			"version": "v0.9.4",
+			"versionExact": "v0.9.4"
 		},
 		{
-			"checksumSHA1": "wsAkYlRRUNx+OAuUOIqdjO7dICM=",
+			"checksumSHA1": "UBqhkyjCz47+S19MVTigxJ2VjVQ=",
+			"path": "github.com/prometheus/client_golang/prometheus/internal",
+			"revision": "2641b987480bca71fb39738eb8c8b0d577cb1d76",
+			"revisionTime": "2019-06-07T14:56:44Z",
+			"version": "v0.9.4",
+			"versionExact": "v0.9.4"
+		},
+		{
+			"checksumSHA1": "V51yx4gq61QCD9clxnps792Eq2Y=",
 			"path": "github.com/prometheus/client_golang/prometheus/promhttp",
-			"revision": "5cec1d0429b02e4323e042eb04dafdb079ddf568",
-			"revisionTime": "2017-10-05T11:29:15Z"
+			"revision": "2641b987480bca71fb39738eb8c8b0d577cb1d76",
+			"revisionTime": "2019-06-07T14:56:44Z",
+			"version": "v0.9.4",
+			"versionExact": "v0.9.4"
 		},
 		{
 			"checksumSHA1": "DvwvOlPNAgRntBzt3b3OSRMS2N4=",
@@ -207,40 +213,60 @@
 			"revisionTime": "2017-02-16T18:52:47Z"
 		},
 		{
-			"checksumSHA1": "xfnn0THnqNwjwimeTClsxahYrIo=",
+			"checksumSHA1": "vA545Z9FkjGvIHBTAKQOE0nap/k=",
 			"path": "github.com/prometheus/common/expfmt",
-			"revision": "1bab55dd05dbff384524a6a1c99006d9eb5f139b",
-			"revisionTime": "2017-10-06T14:14:18Z"
+			"revision": "287d3e634a1e550c9e463dd7e5a75a422c614505",
+			"revisionTime": "2019-09-13T08:39:41Z",
+			"version": "v0.7.0",
+			"versionExact": "v0.7.0"
 		},
 		{
-			"checksumSHA1": "GWlM3d2vPYyNATtTFgftS10/A9w=",
+			"checksumSHA1": "1Mhfofk+wGZ94M0+Bd98K8imPD4=",
 			"path": "github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg",
-			"revision": "1bab55dd05dbff384524a6a1c99006d9eb5f139b",
-			"revisionTime": "2017-10-06T14:14:18Z"
+			"revision": "287d3e634a1e550c9e463dd7e5a75a422c614505",
+			"revisionTime": "2019-09-13T08:39:41Z",
+			"version": "v0.7.0",
+			"versionExact": "v0.7.0"
 		},
 		{
-			"checksumSHA1": "urKbLgaVUBz64iwZ6z4fHijDfXE=",
+			"checksumSHA1": "MGnqHnmEqc1fjnYiWReSiW8C27A=",
 			"path": "github.com/prometheus/common/log",
-			"revision": "1bab55dd05dbff384524a6a1c99006d9eb5f139b",
-			"revisionTime": "2017-10-06T14:14:18Z"
+			"revision": "287d3e634a1e550c9e463dd7e5a75a422c614505",
+			"revisionTime": "2019-09-13T08:39:41Z",
+			"version": "v0.7.0",
+			"versionExact": "v0.7.0"
 		},
 		{
-			"checksumSHA1": "3VoqH7TFfzA6Ds0zFzIbKCUvBmw=",
+			"checksumSHA1": "ccmMs+h9Jo8kE7izqsUkWShD4d0=",
 			"path": "github.com/prometheus/common/model",
-			"revision": "1bab55dd05dbff384524a6a1c99006d9eb5f139b",
-			"revisionTime": "2017-10-06T14:14:18Z"
+			"revision": "287d3e634a1e550c9e463dd7e5a75a422c614505",
+			"revisionTime": "2019-09-13T08:39:41Z",
+			"version": "v0.7.0",
+			"versionExact": "v0.7.0"
 		},
 		{
-			"checksumSHA1": "pW1yt1G1J9jnQMCxr1TDI7LQr3s=",
+			"checksumSHA1": "91KYK0SpvkaMJJA2+BcxbVnyRO0=",
+			"path": "github.com/prometheus/common/version",
+			"revision": "287d3e634a1e550c9e463dd7e5a75a422c614505",
+			"revisionTime": "2019-09-13T08:39:41Z",
+			"version": "v0.7.0",
+			"versionExact": "v0.7.0"
+		},
+		{
+			"checksumSHA1": "WB7dFqkmD3R514xql9YM3ZP1dDM=",
 			"path": "github.com/prometheus/procfs",
-			"revision": "a6e9df898b1336106c743392c48ee0b71f5c4efa",
-			"revisionTime": "2017-10-17T21:40:25Z"
+			"revision": "833678b5bb319f2d20a475cb165c6cc59c2cc77c",
+			"revisionTime": "2019-05-31T16:30:47Z",
+			"version": "v0.0.2",
+			"versionExact": "v0.0.2"
 		},
 		{
-			"checksumSHA1": "xCiFAAwVTrjsfZT1BIJQ3DgeNCY=",
-			"path": "github.com/prometheus/procfs/xfs",
-			"revision": "a6e9df898b1336106c743392c48ee0b71f5c4efa",
-			"revisionTime": "2017-10-17T21:40:25Z"
+			"checksumSHA1": "Kmjs49lbjGmlgUPx3pks0tVDed0=",
+			"path": "github.com/prometheus/procfs/internal/fs",
+			"revision": "65bdadfa96aecebf4dcf888da995a29eab4fc964",
+			"revisionTime": "2019-05-28T16:49:32Z",
+			"version": "v0.0.1",
+			"versionExact": "v0.0.1"
 		},
 		{
 			"checksumSHA1": "BYvROBsiyAXK4sq6yhDe8RgT4LM=",
