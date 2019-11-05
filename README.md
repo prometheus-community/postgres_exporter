@@ -43,6 +43,9 @@ Package vendoring is handled with [`govendor`](https://github.com/kardianos/gove
 
 ### Flags
 
+* `help`
+  Show context-sensitive help (also try --help-long and --help-man).
+
 * `web.listen-address`
   Address to listen on for web interface and telemetry. Default is `:9187`.
 
@@ -55,6 +58,9 @@ Package vendoring is handled with [`govendor`](https://github.com/kardianos/gove
 * `disable-settings-metrics`
   Use the flag if you don't want to scrape `pg_settings`.
 
+* `auto-discover-databases`
+  Whether to discover the databases on a server dynamically.
+
 * `extend.query-path`
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
   for examples of the format.
@@ -63,15 +69,21 @@ Package vendoring is handled with [`govendor`](https://github.com/kardianos/gove
   Do not run - print the internal representation of the metric maps. Useful when debugging a custom
   queries file.
 
+* `constantLabels`
+  Labels to set in all metrics. A list of `label=value` pairs, separated by commas.
+
+* `version`
+  Show application version.
+
+* `exclude-databases`
+  A list of databases to remove when autoDiscoverDatabases is enabled.
+
 * `log.level`
   Set logging level: one of `debug`, `info`, `warn`, `error`, `fatal`
 
 * `log.format`
   Set the log output target and format. e.g. `logger:syslog?appname=bob&local=7` or `logger:stdout?json=true`
   Defaults to `logger:stderr`.
-
-* `constantLabels`
-  Labels to set in all metrics. A list of `label=value` pairs, separated by commas.
 
 ### Environment Variables
 
