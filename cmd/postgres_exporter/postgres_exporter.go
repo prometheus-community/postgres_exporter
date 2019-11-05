@@ -1488,6 +1488,7 @@ func getDataSources() []string {
 	if len(dsn) == 0 {
 		var user string
 		var pass string
+		var uri string
 
 		if len(os.Getenv("DATA_SOURCE_USER_FILE")) != 0 {
 			fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_USER_FILE"))
@@ -1510,7 +1511,17 @@ func getDataSources() []string {
 		}
 
 		ui := url.UserPassword(user, pass).String()
-		uri := os.Getenv("DATA_SOURCE_URI")
+
+		if len(os.Getenv("DATA_SOURCE_URI_FILE")) != 0 {
+			fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_URI_FILE"))
+			if err != nil {
+				panic(err)
+			}
+			uri = strings.TrimSpace(string(fileContents))
+		} else {
+			uri = os.Getenv("DATA_SOURCE_URI")
+		}
+
 		dsn = "postgresql://" + ui + "@" + uri
 
 		return []string{dsn}
