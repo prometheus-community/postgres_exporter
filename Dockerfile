@@ -1,14 +1,17 @@
-FROM debian:7.11-slim
+FROM golang:1.13-buster AS base
 RUN useradd -u 20001 postgres_exporter
+
+WORKDIR /go/src/app
+
+COPY . .
+RUN go run ./mage.go binary
 
 FROM scratch
 
-COPY --from=0 /etc/passwd /etc/passwd
+COPY --from=base /etc/passwd /etc/passwd
 USER postgres_exporter
 
-ARG binary
-
-COPY $binary /postgres_exporter
+COPY --from=base /go/src/app/postgres_exporter /postgres_exporter
 
 EXPOSE 9187
 
