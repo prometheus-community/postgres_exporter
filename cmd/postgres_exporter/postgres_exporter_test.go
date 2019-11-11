@@ -32,6 +32,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 				"metric_which_stays":    {COUNTER, "This metric should not be eliminated", nil, nil},
 				"metric_which_discards": {COUNTER, "This metric should be forced to DISCARD", nil, nil},
 			},
+			true,
 			0,
 		},
 	}
