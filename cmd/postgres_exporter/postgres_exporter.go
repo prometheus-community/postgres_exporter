@@ -1485,13 +1485,13 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 	server, err := e.servers.GetServer(dsn)
 
+	if err != nil {
+		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), err.Error())}
+	}
+
 	// Check if autoDiscoverDatabases is false, set dsn as master database (Default: false)
 	if !e.autoDiscoverDatabases {
 		server.master = true
-	}
-
-	if err != nil {
-		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), err.Error())}
 	}
 
 	// Check if map versions need to be updated
