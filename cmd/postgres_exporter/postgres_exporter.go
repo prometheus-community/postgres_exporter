@@ -100,6 +100,7 @@ type Mapping map[string]MappingOptions
 type UserQuery struct {
 	Query        string    `yaml:"query"`
 	Metrics      []Mapping `yaml:"metrics"`
+	Master       bool      `yaml:"master"`        // Querying only for master database
 	CacheSeconds uint64    `yaml:"cache_seconds"` // Number of seconds to cache the namespace result metrics for.
 }
 
@@ -139,6 +140,7 @@ func (cm *ColumnMapping) UnmarshalYAML(unmarshal func(interface{}) error) error 
 // This is mainly so we can parse cacheSeconds around.
 type intermediateMetricMap struct {
 	columnMappings map[string]ColumnMapping
+	master         bool
 	cacheSeconds   uint64
 }
 
@@ -146,6 +148,7 @@ type intermediateMetricMap struct {
 type MetricMapNamespace struct {
 	labels         []string             // Label names for this namespace
 	columnMappings map[string]MetricMap // Column mappings in this namespace
+	master         bool                 // Call query only for master database
 	cacheSeconds   uint64               // Number of seconds this metric namespace can be cached. 0 disables.
 }
 
@@ -211,6 +214,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 			"blk_write_time": {COUNTER, "Time spent writing data file blocks by backends in this database, in milliseconds", nil, nil},
 			"stats_reset":    {COUNTER, "Time at which these statistics were last reset", nil, nil},
 		},
+		true,
 		0,
 	},
 	"pg_stat_database_conflicts": {
@@ -223,6 +227,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 			"confl_bufferpin":  {COUNTER, "Number of queries in this database that have been canceled due to pinned buffers", nil, nil},
 			"confl_deadlock":   {COUNTER, "Number of queries in this database that have been canceled due to deadlocks", nil, nil},
 		},
+		true,
 		0,
 	},
 	"pg_locks": {
@@ -231,6 +236,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 			"mode":    {LABEL, "Type of Lock", nil, nil},
 			"count":   {GAUGE, "Number of locks", nil, nil},
 		},
+		true,
 		0,
 	},
 	"pg_stat_replication": {
@@ -276,6 +282,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 			"flush_lag":                {DISCARD, "Time elapsed between flushing recent WAL locally and receiving notification that this standby server has written and flushed it (but not yet applied it). This can be used to gauge the delay that synchronous_commit level remote_flush incurred while committing if this server was configured as a synchronous standby.", nil, semver.MustParseRange(">=10.0.0")},
 			"replay_lag":               {DISCARD, "Time elapsed between flushing recent WAL locally and receiving notification that this standby server has written, flushed and applied it. This can be used to gauge the delay that synchronous_commit level remote_apply incurred while committing if this server was configured as a synchronous standby.", nil, semver.MustParseRange(">=10.0.0")},
 		},
+		true,
 		0,
 	},
 	"pg_stat_activity": {
@@ -285,6 +292,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 			"count":           {GAUGE, "number of connections in this state", nil, nil},
 			"max_tx_duration": {GAUGE, "max duration in seconds any active transaction has been running", nil, nil},
 		},
+		true,
 		0,
 	},
 }
@@ -444,6 +452,7 @@ func parseUserQueries(content []byte) (map[string]intermediateMetricMap, map[str
 			newMetricMap := make(map[string]ColumnMapping)
 			metricMap = intermediateMetricMap{
 				columnMappings: newMetricMap,
+				master:         specs.Master,
 				cacheSeconds:   specs.CacheSeconds,
 			}
 			metricMaps[metric] = metricMap
@@ -614,7 +623,7 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 			}
 		}
 
-		metricMap[namespace] = MetricMapNamespace{variableLabels, thisMap, intermediateMappings.cacheSeconds}
+		metricMap[namespace] = MetricMapNamespace{variableLabels, thisMap, intermediateMappings.master, intermediateMappings.cacheSeconds}
 	}
 
 	return metricMap
@@ -857,7 +866,7 @@ func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool
 
 	var err error
 
-	if (!disableSettingsMetrics && !*autoDiscoverDatabases) || (!disableSettingsMetrics && *autoDiscoverDatabases && s.master) {
+	if !disableSettingsMetrics && s.master {
 		if err = querySettings(ch, s); err != nil {
 			err = fmt.Errorf("error retrieving settings: %s", err)
 		}
@@ -1257,6 +1266,12 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 
 	for namespace, mapping := range server.metricMap {
 		log.Debugln("Querying namespace: ", namespace)
+
+		if mapping.master && !server.master {
+			log.Debugln("Query skipped...")
+			continue
+		}
+
 		scrapeMetric := false
 		// Check if the metric is cached
 		server.cacheMtx.Lock()
@@ -1335,12 +1350,13 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 		log.Infof("Semantic Version Changed on %q: %s -> %s", server, server.lastMapVersion, semanticVersion)
 		server.mappingMtx.Lock()
 
-		if e.disableDefaultMetrics || (!e.disableDefaultMetrics && e.autoDiscoverDatabases && !server.master) {
-			server.metricMap = make(map[string]MetricMapNamespace)
-			server.queryOverrides = make(map[string]string)
-		} else {
+		// Get Default Metrics only for master database
+		if !e.disableDefaultMetrics && server.master {
 			server.metricMap = makeDescMap(semanticVersion, server.labels, e.builtinMetricMaps)
 			server.queryOverrides = makeQueryOverrideMap(semanticVersion, queryOverrides)
+		} else {
+			server.metricMap = make(map[string]MetricMapNamespace)
+			server.queryOverrides = make(map[string]string)
 		}
 
 		server.lastMapVersion = semanticVersion
@@ -1370,11 +1386,11 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 		server.mappingMtx.Unlock()
 	}
 
-	// Output the version as a special metric
+	// Output the version as a special metric only for master database
 	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
 		"Version string as reported by postgres", []string{"version", "short_version"}, server.labels)
 
-	if !e.disableDefaultMetrics && (server.master && e.autoDiscoverDatabases) {
+	if !e.disableDefaultMetrics && server.master {
 		ch <- prometheus.MustNewConstMetric(versionDesc,
 			prometheus.UntypedValue, 1, versionString, semanticVersion.String())
 	}
@@ -1439,6 +1455,7 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			continue
 		}
 
+		// If autoDiscoverDatabases is true, set first dsn as master database (Default: false)
 		server.master = true
 
 		databaseNames, err := queryDatabases(server)
@@ -1467,6 +1484,12 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 
 func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 	server, err := e.servers.GetServer(dsn)
+
+	// Check if autoDiscoverDatabases is false, set dsn as master database (Default: false)
+	if !e.autoDiscoverDatabases {
+		server.master = true
+	}
+
 	if err != nil {
 		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), err.Error())}
 	}
