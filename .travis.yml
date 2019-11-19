@@ -14,7 +14,6 @@ before_install:
 script:
 - "./gh-assets-clone.sh"
 - go run mage.go -v all
-- "$HOME/gopath/bin/goveralls -coverprofile=cover.out -service=travis-ci"
 - go run mage.go docker
 branches:
   except:
