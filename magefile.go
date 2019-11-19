@@ -282,7 +282,6 @@ func getCoreTools() []string {
 	staticTools := []string{
 		"github.com/kardianos/govendor",
 		"github.com/wadey/gocovmerge",
-		"github.com/mattn/goveralls",
 		"github.com/tmthrgd/go-bindata/go-bindata",
 		"github.com/GoASTScanner/gas/cmd/gas", // workaround for Ast scanner
 		"github.com/alecthomas/gometalinter",
