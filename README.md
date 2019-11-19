@@ -85,6 +85,9 @@ The following environment variables configure the exporter:
    an alternative to `DATA_SOURCE_NAME` which exclusively accepts the raw URI
    without a username and password component.
 
+* `DATA_SOURCE_URI_FILE`
+   The same as above but reads the URI from a file.
+
 * `DATA_SOURCE_USER`
   When using `DATA_SOURCE_URI`, this environment variable is used to specify
   the username.
