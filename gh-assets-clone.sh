@@ -14,5 +14,5 @@ ASSETS_DIR=".assets-branch"
 
 # Clone the assets branch with the correct credentials
 git clone --single-branch -b "$GIT_ASSETS_BRANCH" \
-    "https://${GIT_API_KEY}@github.com/${TRAVIS_REPO_SLUG}.git" "$ASSETS_DIR" || exit 1
+    "https://github.com/${TRAVIS_REPO_SLUG}.git" "$ASSETS_DIR" || exit 1
 

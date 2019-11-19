@@ -15,6 +15,9 @@ script:
 - "./gh-assets-clone.sh"
 - go run mage.go -v all
 - go run mage.go docker
+env:
+  global:
+    - GIT_ASSETS_BRANCH=assets
 branches:
   except:
   - assets
