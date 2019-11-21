@@ -1,0 +1,36 @@
+sudo: required
+services:
+- docker
+language: go
+go:
+- 1.13.4
+before_install:
+- go get -v github.com/mattn/goveralls
+- sudo wget -O /usr/local/bin/p2 https://github.com/wrouesnel/p2cli/releases/download/r4/p2
+  && sudo chmod +x /usr/local/bin/p2
+- sudo wget -O /usr/local/bin/docker-compose https://github.com/docker/compose/releases/download/1.9.0-rc4/docker-compose-Linux-x86_64
+  && sudo chmod +x /usr/local/bin/docker-compose
+- sudo apt-get update && sudo apt-get install postgresql-client-common
+script:
+- "./gh-assets-clone.sh"
+- go run mage.go -v all
+- go run mage.go docker
+env:
+  global:
+  - GO111MODULE=off
+  - GIT_ASSETS_BRANCH=assets
+branches:
+  except:
+  - assets
+before_deploy:
+- find bin -maxdepth 1 -mindepth 1 -type d -exec tar cvf {}.tar {}  \;
+deploy:
+  provider: releases
+  skip_cleanup: true
+  file_glob: true
+  api_key:
+    secure: JgV78D/cxddwX6hB7Qh5SENteYt/mlKE+E3yU4UP6p1CY74jIoFdCxvBa4/GhVLHbJCxsQReC3LA5Xdj6VEyBmh/gUSHlqo4+Z9V6+dyqgpMahOGBalpmR7UHXjZxPUs3C8kF7JIYoUReYU50K2Ij9y0JadPGptdgpuJfZHHMq1YtYpoeCyZ1BjxNEHB1CxFSjlm4IQ+lP7HgzCk8jvP7j5ELV5aUhDH2fP9uHVAU2cg5a2iSucWThQqBXDIvAy3hYWbsRMOQZesmbqVlWMqzfMkIRNmhBONHBRwayOSEIbkgZTVMEzUvz0lB4eCojJXmnmudkku/kdk0O/k53R4tVstXVBmel30ro0f8d9VS/auLAx7h1u/FfhipyewXINf8iQ9wtpDeq7vr+MGhg7iPHVeydpUACzVd4GRB6ptCEZLWgR9Qypoz8nXXCoTUuo/41zisJBULU2sWLaxrMx7CPo78jMSEKgTstQbx8ZmkilikcUCgd9Cm3v8ySYEKOdGeKkHjHHLzwZd1fRG3Wpe46OY9UM58qDDK7vzGRo584xW/C4XaFgFKaFf2Cbj++fPv9hNH+CYsUykrthRhHyzjmXloB2j/ELYWDxO0zlmChqh6dTDMHlHo9Hzx9EGp5rEWoPjXyoW4KoBYOl5ik6rXmytWusaIKu+2GuMKRRYZzg=
+  file: bin/*
+  on:
+    repo: form3tech-oss/postgres_exporter
+    branch: master

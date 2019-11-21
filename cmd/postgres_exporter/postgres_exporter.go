@@ -18,14 +18,25 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+<<<<<<< HEAD
+=======
+	"github.com/form3tech-oss/postgres_exporter/tools/src/gopkg.in/alecthomas/kingpin.v3-unstable"
+	"io/ioutil"
+>>>>>>> 2cb1f0f (adds vault auth)
 	"math"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 
+<<<<<<< HEAD
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log/level"
+=======
+	"github.com/blang/semver"
+	"github.com/form3tech-oss/go-vault-client/pkg/vaultclient"
+	"github.com/lib/pq"
+>>>>>>> 2cb1f0f (adds vault auth)
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -701,3 +712,208 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 		e.error.Set(1)
 	}
 }
+<<<<<<< HEAD
+=======
+
+func (e *Exporter) discoverDatabaseDSNs() []string {
+	dsns := make(map[string]struct{})
+	for _, dsn := range e.dsn {
+		parsedDSN, err := url.Parse(dsn)
+		if err != nil {
+			log.Errorf("Unable to parse DSN (%s): %v", loggableDSN(dsn), err)
+			continue
+		}
+
+		dsns[dsn] = struct{}{}
+		server, err := e.servers.GetServer(dsn)
+		if err != nil {
+			log.Errorf("Error opening connection to database (%s): %v", loggableDSN(dsn), err)
+			continue
+		}
+
+		server.master = true
+
+		databaseNames, err := queryDatabases(server)
+		if err != nil {
+			log.Errorf("Error querying databases (%s): %v", loggableDSN(dsn), err)
+			continue
+		}
+		for _, databaseName := range databaseNames {
+			if contains(e.excludeDatabases, databaseName) {
+				continue
+			}
+			parsedDSN.Path = databaseName
+			dsns[parsedDSN.String()] = struct{}{}
+		}
+	}
+
+	result := make([]string, len(dsns))
+	index := 0
+	for dsn := range dsns {
+		result[index] = dsn
+		index++
+	}
+
+	return result
+}
+
+func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
+	server, err := e.servers.GetServer(dsn)
+	if err != nil {
+		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), err.Error())}
+	}
+
+	// Check if map versions need to be updated
+	if err := e.checkMapVersions(ch, server); err != nil {
+		log.Warnln("Proceeding with outdated query maps, as the Postgres version could not be determined:", err)
+	}
+
+	return server.Scrape(ch, e.disableSettingsMetrics)
+}
+
+func loadSecrets() (map[string]interface{}, error) {
+	result := make(map[string]interface{})
+	vaultAuth, err := vaultclient.NewVaultAuth(vaultclient.NewDefaultConfig())
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := vaultAuth.VaultClient()
+	if err != nil {
+		return nil, err
+	}
+
+	secret, err := client.Logical().Read("/secret/application")
+	if err == nil {
+		for key, value := range secret.Data {
+			result[key] = value
+		}
+	} else {
+		log.Warnln("error reading vault secrets from /secret/application", err)
+	}
+
+	secret, err = client.Logical().Read("/secret/postgres_exporter")
+	if err == nil {
+		for key, value := range secret.Data {
+			result[key] = value
+		}
+	} else {
+		log.Warnln("error reading vault secrets from /secret/postgres_exporter", err)
+	}
+
+	return result, nil
+}
+
+// try to get the DataSource
+// DATA_SOURCE_NAME always wins so we do not break older versions
+// reading secrets from files wins over secrets in environment variables
+// DATA_SOURCE_NAME > DATA_SOURCE_{USER|PASS}_FILE > DATA_SOURCE_{USER|PASS}
+func getDataSources() []string {
+	var dsn = os.Getenv("DATA_SOURCE_NAME")
+	if len(dsn) == 0 {
+		var user string
+		var pass string
+
+		if len(os.Getenv("DATA_SOURCE_USER_FILE")) != 0 {
+			fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_USER_FILE"))
+			if err != nil {
+				panic(err)
+			}
+			user = strings.TrimSpace(string(fileContents))
+		} else {
+			user = os.Getenv("DATA_SOURCE_USER")
+		}
+
+		if len(os.Getenv("DATA_SOURCE_PASS_FILE")) != 0 {
+			fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_PASS_FILE"))
+			if err != nil {
+				panic(err)
+			}
+			pass = strings.TrimSpace(string(fileContents))
+		} else {
+			pass = os.Getenv("DATA_SOURCE_PASS")
+		}
+
+		if len(user) == 0 || len(pass) == 0 {
+			secrets, err := loadSecrets()
+			if err != nil {
+				panic(err)
+			}
+
+			if len(user) == 0 {
+				user = secrets["database-username"].(string)
+			}
+
+			if len(pass) == 0 {
+				pass = secrets["database-password"].(string)
+			}
+		}
+
+		ui := url.UserPassword(user, pass).String()
+		uri := os.Getenv("DATA_SOURCE_URI")
+		dsn = "postgresql://" + ui + "@" + uri
+
+		return []string{dsn}
+	}
+	return strings.Split(dsn, ",")
+}
+
+func contains(a []string, x string) bool {
+	for _, n := range a {
+		if x == n {
+			return true
+		}
+	}
+	return false
+}
+
+func main() {
+	kingpin.Version(fmt.Sprintf("postgres_exporter %s (built with %s)\n", Version, runtime.Version()))
+	log.AddFlags(kingpin.CommandLine)
+	kingpin.Parse()
+
+	// landingPage contains the HTML served at '/'.
+	// TODO: Make this nicer and more informative.
+	var landingPage = []byte(`<html>
+	<head><title>Postgres exporter</title></head>
+	<body>
+	<h1>Postgres exporter</h1>
+	<p><a href='` + *metricPath + `'>Metrics</a></p>
+	</body>
+	</html>
+	`)
+
+	if *onlyDumpMaps {
+		dumpMaps()
+		return
+	}
+
+	dsn := getDataSources()
+	if len(dsn) == 0 {
+		log.Fatal("couldn't find environment variables describing the datasource to use")
+	}
+
+	exporter := NewExporter(dsn,
+		DisableDefaultMetrics(*disableDefaultMetrics),
+		DisableSettingsMetrics(*disableSettingsMetrics),
+		AutoDiscoverDatabases(*autoDiscoverDatabases),
+		WithUserQueriesPath(*queriesPath),
+		WithConstantLabels(*constantLabelsList),
+		ExcludeDatabases(*excludeDatabases),
+	)
+	defer func() {
+		exporter.servers.Close()
+	}()
+
+	prometheus.MustRegister(exporter)
+
+	http.Handle(*metricPath, promhttp.Handler())
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=UTF-8") // nolint: errcheck
+		w.Write(landingPage)                                       // nolint: errcheck
+	})
+
+	log.Infof("Starting Server: %s", *listenAddress)
+	log.Fatal(http.ListenAndServe(*listenAddress, nil))
+}
+>>>>>>> 2cb1f0f (adds vault auth)
