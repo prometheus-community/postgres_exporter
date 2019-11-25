@@ -23,13 +23,26 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
+	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
 )
 
+// Branch is set during build to the git branch.
+var Branch string
+
+// BuildDate is set during build to the ISO-8601 date and time.
+var BuildDate string
+
+// Revision is set during build to the git commit revision.
+var Revision string
+
 // Version is set during build to the git describe version
 // (semantic version)-(commitish) form.
-var Version = "0.0.1"
+var Version = "0.0.1-rev"
+
+// VersionShort is set during build to the semantic version.
+var VersionShort = "0.0.1"
 
 var (
 	listenAddress          = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").Envar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
@@ -1689,6 +1702,13 @@ func main() {
 	defer func() {
 		exporter.servers.Close()
 	}()
+
+	// Setup build info metric.
+	version.Branch = Branch
+	version.BuildDate = BuildDate
+	version.Revision = Revision
+	version.Version = VersionShort
+	prometheus.MustRegister(version.NewCollector("postgres_exporter"))
 
 	prometheus.MustRegister(exporter)
 

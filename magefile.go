@@ -119,6 +119,31 @@ var goDirs []string
 var goPkgs []string
 var goCmds []string
 
+var branch = func() string {
+	if v := os.Getenv("BRANCH"); v != "" {
+		return v
+	}
+	out, _ := sh.Output("git", "rev-parse", "--abbrev-ref", "HEAD")
+
+	return out
+}()
+
+var buildDate = func() string {
+	if v := os.Getenv("BUILDDATE"); v != "" {
+		return v
+	}
+	return time.Now().Format("2006-01-02T15:04:05-0700")
+}()
+
+var revision = func() string {
+	if v := os.Getenv("REVISION"); v != "" {
+		return v
+	}
+	out, _ := sh.Output("git", "rev-parse", "HEAD")
+
+	return out
+}()
+
 var version = func() string {
 	if v := os.Getenv("VERSION"); v != "" {
 		return v
@@ -533,7 +558,11 @@ func IntegrationTestBinary() error {
 	if (changed && (err == nil)) || os.IsNotExist(err) {
 		return sh.RunWith(map[string]string{"CGO_ENABLED": "0"}, "go", "test", "./cmd/postgres_exporter",
 			"-c", "-tags", "integration",
-			"-a", "-ldflags", "-extldflags '-static'", "-X", fmt.Sprintf("main.Version=%s", version),
+			"-a", "-ldflags", "-extldflags '-static'",
+			"-X", fmt.Sprintf("main.Branch=%s", branch),
+			"-X", fmt.Sprintf("main.BuildDate=%s", buildDate),
+			"-X", fmt.Sprintf("main.Revision=%s", revision),
+			"-X", fmt.Sprintf("main.VersionShort=%s", versionShort),
 			"-o", "postgres_exporter_integration_test", "-cover", "-covermode", "count")
 	}
 	return err
