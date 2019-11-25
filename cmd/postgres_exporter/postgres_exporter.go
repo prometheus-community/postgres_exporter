@@ -205,6 +205,23 @@ func dumpMaps() {
 }
 
 var builtinMetricMaps = map[string]intermediateMetricMap{
+	"pg_stat_bgwriter": {
+		map[string]ColumnMapping{
+			"checkpoints_timed":     {COUNTER, "Number of scheduled checkpoints that have been performed", nil, nil},
+			"checkpoints_req":       {COUNTER, "Number of requested checkpoints that have been performed", nil, nil},
+			"checkpoint_write_time": {COUNTER, "Total amount of time that has been spent in the portion of checkpoint processing where files are written to disk, in milliseconds", nil, nil},
+			"checkpoint_sync_time":  {COUNTER, "Total amount of time that has been spent in the portion of checkpoint processing where files are synchronized to disk, in milliseconds", nil, nil},
+			"buffers_checkpoint":    {COUNTER, "Number of buffers written during checkpoints", nil, nil},
+			"buffers_clean":         {COUNTER, "Number of buffers written by the background writer", nil, nil},
+			"maxwritten_clean":      {COUNTER, "Number of times the background writer stopped a cleaning scan because it had written too many buffers", nil, nil},
+			"buffers_backend":       {COUNTER, "Number of buffers written directly by a backend", nil, nil},
+			"buffers_backend_fsync": {COUNTER, "Number of times a backend had to execute its own fsync call (normally the background writer handles those even when the backend does its own write)", nil, nil},
+			"buffers_alloc":         {COUNTER, "Number of buffers allocated", nil, nil},
+			"stats_reset":           {COUNTER, "Time at which these statistics were last reset", nil, nil},
+		},
+		true,
+		0,
+	},
 	"pg_stat_database": {
 		map[string]ColumnMapping{
 			"datid":          {LABEL, "OID of a database", nil, nil},
