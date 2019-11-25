@@ -296,6 +296,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 			"stats_reset":        {DISCARD, "Time at which these statistics were last reset", nil, nil},
 			"last_archive_age":   {GAUGE, "Time in seconds since last WAL segment was successfully archived", nil, nil},
 		},
+		true,
 		0,
 	},
 	"pg_stat_activity": {
