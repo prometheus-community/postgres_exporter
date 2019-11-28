@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/form3tech-oss/go-vault-client/pkg/vaultclient"
 	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -1479,6 +1480,39 @@ func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 	return server.Scrape(ch, e.disableSettingsMetrics)
 }
 
+func loadSecrets() (map[string]interface{}, error) {
+	result := make(map[string]interface{})
+	vaultAuth, err := vaultclient.NewVaultAuth(vaultclient.NewDefaultConfig())
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := vaultAuth.VaultClient()
+	if err != nil {
+		return nil, err
+	}
+
+	secret, err := client.Logical().Read("/secret/application")
+	if err == nil {
+		for key, value := range secret.Data {
+			result[key] = value
+		}
+	} else {
+		log.Warnln("error reading vault secrets from /secret/application", err)
+	}
+
+	secret, err = client.Logical().Read("/secret/postgres_exporter")
+	if err == nil {
+		for key, value := range secret.Data {
+			result[key] = value
+		}
+	} else {
+		log.Warnln("error reading vault secrets from /secret/postgres_exporter", err)
+	}
+
+	return result, nil
+}
+
 // try to get the DataSource
 // DATA_SOURCE_NAME always wins so we do not break older versions
 // reading secrets from files wins over secrets in environment variables
@@ -1507,6 +1541,21 @@ func getDataSources() []string {
 			pass = strings.TrimSpace(string(fileContents))
 		} else {
 			pass = os.Getenv("DATA_SOURCE_PASS")
+		}
+
+		if len(user) == 0 || len(pass) == 0 {
+			secrets, err := loadSecrets()
+			if err != nil {
+				panic(err)
+			}
+
+			if len(user) == 0 {
+				user = secrets["database-username"].(string)
+			}
+
+			if len(pass) == 0 {
+				pass = secrets["database-password"].(string)
+			}
 		}
 
 		ui := url.UserPassword(user, pass).String()
