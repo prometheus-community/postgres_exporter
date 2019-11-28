@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/form3tech-oss/postgres_exporter/tools/src/gopkg.in/alecthomas/kingpin.v3-unstable"
 	"io/ioutil"
 	"math"
 	"net/http"
