@@ -11,6 +11,7 @@ before_install:
 - sudo wget -O /usr/local/bin/docker-compose https://github.com/docker/compose/releases/download/1.9.0-rc4/docker-compose-Linux-x86_64
   && sudo chmod +x /usr/local/bin/docker-compose
 - sudo apt-get update && sudo apt-get install postgresql-client-common
+- if [[ -a .git/shallow ]]; then git fetch --unshallow --tags; fi
 script:
 - "./gh-assets-clone.sh"
 - go run mage.go -v all
