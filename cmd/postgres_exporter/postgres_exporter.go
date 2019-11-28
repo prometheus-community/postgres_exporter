@@ -18,25 +18,18 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-<<<<<<< HEAD
-=======
-	"github.com/form3tech-oss/postgres_exporter/tools/src/gopkg.in/alecthomas/kingpin.v3-unstable"
 	"io/ioutil"
->>>>>>> 2cb1f0f (adds vault auth)
 	"math"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 
-<<<<<<< HEAD
-	"github.com/blang/semver/v4"
-	"github.com/go-kit/log/level"
-=======
 	"github.com/blang/semver"
+	"github.com/blang/semver/v4"
 	"github.com/form3tech-oss/go-vault-client/pkg/vaultclient"
+	"github.com/go-kit/log/level"
 	"github.com/lib/pq"
->>>>>>> 2cb1f0f (adds vault auth)
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -712,8 +705,6 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 		e.error.Set(1)
 	}
 }
-<<<<<<< HEAD
-=======
 
 func (e *Exporter) discoverDatabaseDSNs() []string {
 	dsns := make(map[string]struct{})
@@ -916,4 +907,3 @@ func main() {
 	log.Infof("Starting Server: %s", *listenAddress)
 	log.Fatal(http.ListenAndServe(*listenAddress, nil))
 }
->>>>>>> 2cb1f0f (adds vault auth)
