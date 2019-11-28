@@ -33,4 +33,4 @@ deploy:
   file: bin/*
   on:
     repo: form3tech-oss/postgres_exporter
-    branch: master
+    tags: true
