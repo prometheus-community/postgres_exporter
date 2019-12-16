@@ -3,6 +3,12 @@ language: go
 
 go:
 - 1.12.x
+- 1.13.x
+
+# skip non-trunk PMM-XXXX branch builds, but still build pull requests
+branches:
+  except:
+    - /^PMM\-\d{4}/
 
 env:
 - POSTGRESQL_IMAGE=postgres:9.4
