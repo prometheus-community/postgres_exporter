@@ -10,14 +10,17 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/fsnotify/fsnotify"
 	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -937,7 +940,7 @@ func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool
 
 // Servers contains a collection of servers to Postgres.
 type Servers struct {
-	m       sync.Mutex
+	m       sync.RWMutex
 	servers map[string]*Server
 	opts    []ServerOpt
 }
@@ -986,10 +989,11 @@ func (s *Servers) GetServer(dsn string) (*Server, error) {
 func (s *Servers) Close() {
 	s.m.Lock()
 	defer s.m.Unlock()
-	for _, server := range s.servers {
+	for k, server := range s.servers {
 		if err := server.Close(); err != nil {
 			log.Errorf("failed to close connection to %q: %v", server, err)
 		}
+		delete(s.servers, k)
 	}
 }
 
@@ -1599,10 +1603,12 @@ func getDataSources() []string {
 		} else {
 			uri = os.Getenv("DATA_SOURCE_URI")
 		}
+		ret := []string{}
+		for _, u := range strings.Split(uri, ",") {
+			ret = append(ret, "postgresql://"+ui+"@"+u)
+		}
 
-		dsn = "postgresql://" + ui + "@" + uri
-
-		return []string{dsn}
+		return ret
 	}
 	return strings.Split(dsn, ",")
 }
@@ -1616,10 +1622,102 @@ func contains(a []string, x string) bool {
 	return false
 }
 
+//setup exporter and wait for reload signal. If received, cleanup and exit
+func registerExporter(s chan bool) {
+	dsn := getDataSources()
+	if len(dsn) == 0 {
+		log.Fatal("couldn't find environment variables describing the datasource to use")
+	}
+
+	exp := NewExporter(dsn,
+		DisableDefaultMetrics(*disableDefaultMetrics),
+		DisableSettingsMetrics(*disableSettingsMetrics),
+		AutoDiscoverDatabases(*autoDiscoverDatabases),
+		WithUserQueriesPath(*queriesPath),
+		WithConstantLabels(*constantLabelsList),
+		ExcludeDatabases(*excludeDatabases),
+	)
+	prometheus.MustRegister(exp)
+
+	//cleanup
+	defer func() {
+		done := prometheus.Unregister(exp)
+		if done {
+			exp.servers.Close()
+		}
+	}()
+
+	<-s
+	log.Infof("Got signal. Reloading...")
+}
+
 func main() {
 	kingpin.Version(fmt.Sprintf("postgres_exporter %s (built with %s)\n", Version, runtime.Version()))
 	log.AddFlags(kingpin.CommandLine)
 	kingpin.Parse()
+
+	//add channels to trigger reload
+	sigs := make(chan os.Signal, 1)
+	reload := make(chan bool, 1)
+
+	//if we use uri file setup fs notify watcher that will trigger reload on file edit or sighup
+	//there is no sense in doing this if uri file is not used
+	if len(os.Getenv("DATA_SOURCE_URI_FILE")) != 0 {
+
+		//reload on SIGHUP
+		signal.Notify(sigs, syscall.SIGHUP)
+
+		go func() {
+			for {
+				select {
+				case <-sigs:
+					reload <- true
+				}
+			}
+		}()
+
+		watcher, err := fsnotify.NewWatcher()
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer watcher.Close()
+
+		go func() {
+			for {
+				select {
+				case event, ok := <-watcher.Events:
+					if !ok {
+						return
+					}
+					if event.Op&fsnotify.Write == fsnotify.Write {
+						log.Info("Modified file:", event.Name)
+						reload <- true
+					}
+					//depending on edit method there can be no write event
+					if event.Op&fsnotify.Remove == fsnotify.Remove || event.Op&fsnotify.Rename == fsnotify.Rename {
+						log.Info("Modified file:", event.Name)
+						reload <- true
+						//if file was edited with vim like editor then we need to watch in different place now
+						err = watcher.Add(os.Getenv("DATA_SOURCE_URI_FILE"))
+						if err != nil {
+							log.Info(err)
+						}
+					}
+					log.Info("Event: ", event.Op)
+				case err, ok := <-watcher.Errors:
+					if !ok {
+						return
+					}
+					log.Info("Watch error:", err)
+				}
+			}
+		}()
+		//start first watcher
+		err = watcher.Add(os.Getenv("DATA_SOURCE_URI_FILE"))
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	// landingPage contains the HTML served at '/'.
 	// TODO: Make this nicer and more informative.
@@ -1637,23 +1735,6 @@ func main() {
 		return
 	}
 
-	dsn := getDataSources()
-	if len(dsn) == 0 {
-		log.Fatal("couldn't find environment variables describing the datasource to use")
-	}
-
-	exporter := NewExporter(dsn,
-		DisableDefaultMetrics(*disableDefaultMetrics),
-		DisableSettingsMetrics(*disableSettingsMetrics),
-		AutoDiscoverDatabases(*autoDiscoverDatabases),
-		WithUserQueriesPath(*queriesPath),
-		WithConstantLabels(*constantLabelsList),
-		ExcludeDatabases(*excludeDatabases),
-	)
-	defer func() {
-		exporter.servers.Close()
-	}()
-
 	// Setup build info metric.
 	version.Branch = Branch
 	version.BuildDate = BuildDate
@@ -1661,7 +1742,12 @@ func main() {
 	version.Version = VersionShort
 	prometheus.MustRegister(version.NewCollector("postgres_exporter"))
 
-	prometheus.MustRegister(exporter)
+	//keep registering exporters. Register function is blocking and will cleanup after itself on every reload signal.
+	go func() {
+		for {
+			registerExporter(reload)
+		}
+	}()
 
 	http.Handle(*metricPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
