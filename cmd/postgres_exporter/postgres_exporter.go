@@ -867,7 +867,6 @@ func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return nil, err
@@ -1496,12 +1495,13 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 
 func (e *Exporter) discoverDatabaseDSNs() []string {
 	dsns := make(map[string]struct{})
-	for _, dsn := range e.dsn {
-		parsedDSN, err := url.Parse(dsn)
-		if err != nil {
-			log.Errorf("Unable to parse DSN (%s): %v", loggableDSN(dsn), err)
-			continue
-		}
+	for _, dsn := range e.dsn { 
+    log.Debugln("DSN before parse: ", dsn)
+    parsedDSN, err := pq.ParseURL(dsn)
+    log.Debugln("DSN after parse: ", parsedDSN)
+    if err != nil {
+      parsedDSN = dsn
+    }
 
 		dsns[dsn] = struct{}{}
 		server, err := e.servers.GetServer(dsn)
@@ -1522,8 +1522,9 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			if contains(e.excludeDatabases, databaseName) {
 				continue
 			}
-			parsedDSN.Path = databaseName
-			dsns[parsedDSN.String()] = struct{}{}
+      newDSN := parsedDSN + " dbname=" + databaseName
+      log.Debugln("Found new DSN: ", newDSN)
+			dsns[newDSN] = struct{}{}
 		}
 	}
 
@@ -1533,7 +1534,6 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 		result[index] = dsn
 		index++
 	}
-
 	return result
 }
 
