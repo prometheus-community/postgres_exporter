@@ -1495,13 +1495,13 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 
 func (e *Exporter) discoverDatabaseDSNs() []string {
 	dsns := make(map[string]struct{})
-	for _, dsn := range e.dsn { 
-    log.Debugln("DSN before parse: ", dsn)
-    parsedDSN, err := pq.ParseURL(dsn)
-    log.Debugln("DSN after parse: ", parsedDSN)
-    if err != nil {
-      parsedDSN = dsn
-    }
+	for _, dsn := range e.dsn {
+		log.Debugln("DSN before parse: ", dsn)
+		parsedDSN, err := pq.ParseURL(dsn)
+		log.Debugln("DSN after parse: ", parsedDSN)
+		if err != nil {
+			parsedDSN = dsn
+		}
 
 		dsns[dsn] = struct{}{}
 		server, err := e.servers.GetServer(dsn)
@@ -1522,8 +1522,8 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			if contains(e.excludeDatabases, databaseName) {
 				continue
 			}
-      newDSN := parsedDSN + " dbname=" + databaseName
-      log.Debugln("Found new DSN: ", newDSN)
+			newDSN := parsedDSN + " dbname=" + databaseName
+			log.Debugln("Found new DSN: ", newDSN)
 			dsns[newDSN] = struct{}{}
 		}
 	}
