@@ -31,6 +31,7 @@ VERSIONS=( \
     9.6 \
     10 \
     11 \
+    12 \
 )
 
 wait_for_postgres(){
