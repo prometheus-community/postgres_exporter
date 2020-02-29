@@ -1,32 +1,23 @@
 package main
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/wrouesnel/postgres_exporter/pkg/pgdbconv"
-	"github.com/wrouesnel/postgres_exporter/pkg/queries"
+	"github.com/wrouesnel/postgres_exporter/pkg/queries/metricmaps"
 	"io/ioutil"
-	"math"
 	"net/http"
 	"net/url"
 	"os"
 	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/blang/semver"
-	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
-	"gopkg.in/yaml.v2"
-
-	"github.com/wrouesnel/postgres_exporter/pkg/pgexporter"
 	"github.com/wrouesnel/postgres_exporter/pkg/servers"
 )
 
@@ -58,8 +49,6 @@ var (
 	excludeDatabases       = kingpin.Flag("exclude-databases", "A list of databases to remove when autoDiscoverDatabases is enabled").Default("").Envar("PG_EXPORTER_EXCLUDE_DATABASES").String()
 )
 
-
-
 // Regex used to get the "short-version" from the postgres version field.
 var versionRegex = regexp.MustCompile(`^\w+ ((\d+)(\.\d+)?(\.\d+)?)`)
 var lowestSupportedVersion = semver.MustParse("9.1.0")
@@ -74,8 +63,6 @@ func parseVersion(versionString string) (semver.Version, error) {
 	return semver.Version{},
 		errors.New(fmt.Sprintln("Could not find a postgres version in string:", versionString))
 }
-
-
 
 // ErrorConnectToServer is a connection to PgSQL server error
 type ErrorConnectToServer struct {
@@ -105,35 +92,6 @@ func dumpMaps() {
 		}
 		fmt.Println()
 	}
-}
-
-
-
-
-
-
-// Convert the query override file to the version-specific query override file
-// for the exporter.
-func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]OverrideQuery) map[string]string {
-	resultMap := make(map[string]string)
-	for name, overrideDef := range queryOverrides {
-		// Find a matching semver. We make it an error to have overlapping
-		// ranges at test-time, so only 1 should ever match.
-		matched := false
-		for _, queryDef := range overrideDef {
-			if queryDef.versionRange(pgVersion) {
-				resultMap[name] = queryDef.query
-				matched = true
-				break
-			}
-		}
-		if !matched {
-			log.Warnln("No query matched override for", name, "- disabling metric space.")
-			resultMap[name] = ""
-		}
-	}
-
-	return resultMap
 }
 
 // Add queries to the builtinMetricMaps and queryOverrides maps. Added queries do not
@@ -173,11 +131,6 @@ func addQueries(content []byte, pgVersion semver.Version, server *Server) error 
 		server.queryOverrides[k] = v
 	}
 	return nil
-}
-
-type cachedMetrics struct {
-	metrics    []prometheus.Metric
-	lastScrape time.Time
 }
 
 func parseConstLabels(s string) prometheus.Labels {
@@ -231,179 +184,6 @@ func queryDatabases(server *servers.Server) ([]string, error) {
 	}
 
 	return result, nil
-}
-
-// Query within a namespace mapping and emit metrics. Returns fatal errors if
-// the scrape fails, and a slice of errors if they were non-fatal.
-func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNamespace) ([]prometheus.Metric, []error, error) {
-	// Check for a query override for this namespace
-	query, found := server.queryOverrides[namespace]
-
-	// Was this query disabled (i.e. nothing sensible can be queried on cu
-	// version of PostgreSQL?
-	if query == "" && found {
-		// Return success (no pertinent data)
-		return []prometheus.Metric{}, []error{}, nil
-	}
-
-	// Don't fail on a bad scrape of one metric
-	var rows *sql.Rows
-	var err error
-
-	if !found {
-		// I've no idea how to avoid this properly at the moment, but this is
-		// an admin tool so you're not injecting SQL right?
-		rows, err = server.db.Query(fmt.Sprintf("SELECT * FROM %s;", namespace)) // nolint: gas, safesql
-	} else {
-		rows, err = server.db.Query(query) // nolint: safesql
-	}
-	if err != nil {
-		return []prometheus.Metric{}, []error{}, fmt.Errorf("Error running query on database %q: %s %v", server, namespace, err)
-	}
-	defer rows.Close() // nolint: errcheck
-
-	var columnNames []string
-	columnNames, err = rows.Columns()
-	if err != nil {
-		return []prometheus.Metric{}, []error{}, errors.New(fmt.Sprintln("Error retrieving column list for: ", namespace, err))
-	}
-
-	// Make a lookup map for the column indices
-	var columnIdx = make(map[string]int, len(columnNames))
-	for i, n := range columnNames {
-		columnIdx[n] = i
-	}
-
-	var columnData = make([]interface{}, len(columnNames))
-	var scanArgs = make([]interface{}, len(columnNames))
-	for i := range columnData {
-		scanArgs[i] = &columnData[i]
-	}
-
-	nonfatalErrors := []error{}
-
-	metrics := make([]prometheus.Metric, 0)
-
-	for rows.Next() {
-		err = rows.Scan(scanArgs...)
-		if err != nil {
-			return []prometheus.Metric{}, []error{}, errors.New(fmt.Sprintln("Error retrieving rows:", namespace, err))
-		}
-
-		// Get the label values for this row.
-		labels := make([]string, len(mapping.labels))
-		for idx, label := range mapping.labels {
-			labels[idx], _ = dbToString(columnData[columnIdx[label]])
-		}
-
-		// Loop over column names, and match to scan data. Unknown columns
-		// will be filled with an untyped metric number *if* they can be
-		// converted to float64s. NULLs are allowed and treated as NaN.
-		for idx, columnName := range columnNames {
-			var metric prometheus.Metric
-			if metricMapping, ok := mapping.columnMappings[columnName]; ok {
-				// Is this a metricy metric?
-				if metricMapping.discard {
-					continue
-				}
-
-				value, ok := dbToFloat64(columnData[idx])
-				if !ok {
-					nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName, columnData[idx])))
-					continue
-				}
-				// Generate the metric
-				metric = prometheus.MustNewConstMetric(metricMapping.desc, metricMapping.vtype, value, labels...)
-			} else {
-				// Unknown metric. Report as untyped if scan to float64 works, else note an error too.
-				metricLabel := fmt.Sprintf("%s_%s", namespace, columnName)
-				desc := prometheus.NewDesc(metricLabel, fmt.Sprintf("Unknown metric from %s", namespace), mapping.labels, server.labels)
-
-				// Its not an error to fail here, since the values are
-				// unexpected anyway.
-				value, ok := dbToFloat64(columnData[idx])
-				if !ok {
-					nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unparseable column type - discarding: ", namespace, columnName, err)))
-					continue
-				}
-				metric = prometheus.MustNewConstMetric(desc, prometheus.UntypedValue, value, labels...)
-			}
-			metrics = append(metrics, metric)
-		}
-	}
-	return metrics, nonfatalErrors, nil
-}
-
-// Iterate through all the namespace mappings in the exporter and run their
-// queries.
-func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[string]error {
-	// Return a map of namespace -> errors
-	namespaceErrors := make(map[string]error)
-
-	scrapeStart := time.Now()
-
-	for namespace, mapping := range server.metricMap {
-		log.Debugln("Querying namespace: ", namespace)
-
-		if mapping.master && !server.master {
-			log.Debugln("Query skipped...")
-			continue
-		}
-
-		scrapeMetric := false
-		// Check if the metric is cached
-		server.cacheMtx.Lock()
-		cachedMetric, found := server.metricCache[namespace]
-		server.cacheMtx.Unlock()
-		// If found, check if needs refresh from cache
-		if found {
-			if scrapeStart.Sub(cachedMetric.lastScrape).Seconds() > float64(mapping.cacheSeconds) {
-				scrapeMetric = true
-			}
-		} else {
-			scrapeMetric = true
-		}
-
-		var metrics []prometheus.Metric
-		var nonFatalErrors []error
-		var err error
-		if scrapeMetric {
-			metrics, nonFatalErrors, err = queryNamespaceMapping(server, namespace, mapping)
-		} else {
-			metrics = cachedMetric.metrics
-		}
-
-		// Serious error - a namespace disappeared
-		if err != nil {
-			namespaceErrors[namespace] = err
-			log.Infoln(err)
-		}
-		// Non-serious errors - likely version or parsing problems.
-		if len(nonFatalErrors) > 0 {
-			for _, err := range nonFatalErrors {
-				log.Infoln(err.Error())
-			}
-		}
-
-		// Emit the metrics into the channel
-		for _, metric := range metrics {
-			ch <- metric
-		}
-
-		if scrapeMetric {
-			// Only cache if metric is meaningfully cacheable
-			if mapping.cacheSeconds > 0 {
-				server.cacheMtx.Lock()
-				server.metricCache[namespace] = cachedMetrics{
-					metrics:    metrics,
-					lastScrape: scrapeStart,
-				}
-				server.cacheMtx.Unlock()
-			}
-		}
-	}
-
-	return namespaceErrors
 }
 
 // getDataSources tries to get a datasource connection ID.

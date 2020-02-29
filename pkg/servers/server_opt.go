@@ -1,5 +1,7 @@
 package servers
 
+import "github.com/prometheus/client_golang/prometheus"
+
 type ServerOpt func(*Server)
 
 // ServerWithLabels configures a set of labels.

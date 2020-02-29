@@ -1,7 +1,8 @@
-package main
+package servers
 
 import (
 	"fmt"
+	"github.com/wrouesnel/postgres_exporter/pkg/queries/metricmaps"
 	"math"
 	"strconv"
 	"strings"
@@ -9,35 +10,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
 )
-
-// Query the pg_settings view containing runtime variables
-func querySettings(ch chan<- prometheus.Metric, server *Server) error {
-	log.Debugf("Querying pg_setting view on %q", server)
-
-	// pg_settings docs: https://www.postgresql.org/docs/current/static/view-pg-settings.html
-	//
-	// NOTE: If you add more vartypes here, you must update the supported
-	// types in normaliseUnit() below
-	query := "SELECT name, setting, COALESCE(unit, ''), short_desc, vartype FROM pg_settings WHERE vartype IN ('bool', 'integer', 'real');"
-
-	rows, err := server.db.Query(query)
-	if err != nil {
-		return fmt.Errorf("Error running query on database %q: %s %v", server, namespace, err)
-	}
-	defer rows.Close() // nolint: errcheck
-
-	for rows.Next() {
-		s := &pgSetting{}
-		err = rows.Scan(&s.name, &s.setting, &s.unit, &s.shortDesc, &s.vartype)
-		if err != nil {
-			return fmt.Errorf("Error retrieving rows on %q: %s %v", server, namespace, err)
-		}
-
-		ch <- s.metric(server.labels)
-	}
-
-	return nil
-}
 
 // pgSetting is represents a PostgreSQL runtime variable as returned by the
 // pg_settings view.

@@ -1,7 +1,17 @@
 package metricmaps
 
+import (
+	"fmt"
+	"github.com/blang/semver"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/log"
+	"github.com/wrouesnel/postgres_exporter/pkg/pgdbconv"
+	"math"
+	"time"
+)
+
 // Turn the MetricMap column mapping into a prometheus descriptor mapping.
-func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metricMaps map[string]intermediateMetricMap) map[string]MetricMapNamespace {
+func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metricMaps map[string]IntermediateMetricMap) map[string]MetricMapNamespace {
 	var metricMap = make(map[string]MetricMapNamespace)
 
 	for namespace, intermediateMappings := range metricMaps {
@@ -9,23 +19,23 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 
 		// Get the constant labels
 		var variableLabels []string
-		for columnName, columnMapping := range intermediateMappings.columnMappings {
-			if columnMapping.usage == queries.LABEL {
+		for columnName, columnMapping := range intermediateMappings.ColumnMappings {
+			if columnMapping.Usage == LABEL {
 				variableLabels = append(variableLabels, columnName)
 			}
 		}
 
-		for columnName, columnMapping := range intermediateMappings.columnMappings {
+		for columnName, columnMapping := range intermediateMappings.ColumnMappings {
 			// Check column version compatibility for the current map
 			// Force to discard if not compatible.
-			if columnMapping.supportedVersions != nil {
-				if !columnMapping.supportedVersions(pgVersion) {
+			if columnMapping.SupportedVersions != nil {
+				if !columnMapping.SupportedVersions.Range(pgVersion) {
 					// It's very useful to be able to see what columns are being
 					// rejected.
 					log.Debugln(columnName, "is being forced to discard due to version incompatibility.")
 					thisMap[columnName] = MetricMap{
-						discard: true,
-						conversion: func(_ interface{}) (float64, bool) {
+						Discard: true,
+						Conversion: func(_ interface{}) (float64, bool) {
 							return math.NaN(), true
 						},
 					}
@@ -35,52 +45,52 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 
 			// Determine how to convert the column based on its usage.
 			// nolint: dupl
-			switch columnMapping.usage {
-			case queries.DISCARD, queries.LABEL:
+			switch columnMapping.Usage {
+			case DISCARD, LABEL:
 				thisMap[columnName] = MetricMap{
-					discard: true,
-					conversion: func(_ interface{}) (float64, bool) {
+					Discard: true,
+					Conversion: func(_ interface{}) (float64, bool) {
 						return math.NaN(), true
 					},
 				}
-			case queries.COUNTER:
+			case COUNTER:
 				thisMap[columnName] = MetricMap{
-					vtype: prometheus.CounterValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, variableLabels, serverLabels),
-					conversion: func(in interface{}) (float64, bool) {
+					ValueType: prometheus.CounterValue,
+					Desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.Description, variableLabels, serverLabels),
+					Conversion: func(in interface{}) (float64, bool) {
 						return pgdbconv.DBToFloat64(in)
 					},
 				}
-			case queries.GAUGE:
+			case GAUGE:
 				thisMap[columnName] = MetricMap{
-					vtype: prometheus.GaugeValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, variableLabels, serverLabels),
-					conversion: func(in interface{}) (float64, bool) {
+					ValueType: prometheus.GaugeValue,
+					Desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.Description, variableLabels, serverLabels),
+					Conversion: func(in interface{}) (float64, bool) {
 						return pgdbconv.DBToFloat64(in)
 					},
 				}
-			case queries.MAPPEDMETRIC:
+			case MAPPEDMETRIC:
 				thisMap[columnName] = MetricMap{
-					vtype: prometheus.GaugeValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, variableLabels, serverLabels),
-					conversion: func(in interface{}) (float64, bool) {
+					ValueType: prometheus.GaugeValue,
+					Desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.Description, variableLabels, serverLabels),
+					Conversion: func(in interface{}) (float64, bool) {
 						text, ok := in.(string)
 						if !ok {
 							return math.NaN(), false
 						}
 
-						val, ok := columnMapping.mapping[text]
+						val, ok := columnMapping.Mapping[text]
 						if !ok {
 							return math.NaN(), false
 						}
 						return val, true
 					},
 				}
-			case queries.DURATION:
+			case DURATION:
 				thisMap[columnName] = MetricMap{
-					vtype: prometheus.GaugeValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s_milliseconds", namespace, columnName), columnMapping.description, variableLabels, serverLabels),
-					conversion: func(in interface{}) (float64, bool) {
+					ValueType: prometheus.GaugeValue,
+					Desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s_milliseconds", namespace, columnName), columnMapping.Description, variableLabels, serverLabels),
+					Conversion: func(in interface{}) (float64, bool) {
 						var durationString string
 						switch t := in.(type) {
 						case []byte:
@@ -108,10 +118,10 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 		}
 
 		metricMap[namespace] = MetricMapNamespace{
-			labels:         variableLabels,
-			columnMappings: thisMap,
-			master:         intermediateMappings.master,
-			cacheSeconds:   intermediateMappings.cacheSeconds}
+			Labels:         variableLabels,
+			ColumnMappings: thisMap,
+			Master:         intermediateMappings.Master,
+			CacheSeconds:   intermediateMappings.CacheSeconds}
 	}
 
 	return metricMap

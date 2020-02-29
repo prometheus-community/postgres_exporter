@@ -3,12 +3,12 @@ package metricmaps
 // Metric name parts.
 const (
 	// Namespace for all metrics.
-	namespace = "pg"
+	ExporterNamespaceLabel = "pg"
 	// Subsystems.
-	exporter = "exporter"
+	ExporterSubsystemLabel = "ExporterSubsystemLabel"
 	// Metric label used for static string data thats handy to send to Prometheus
 	// e.g. version
-	staticLabelName = "static"
+	StaticLabelName = "static"
 	// Metric label used for server identification.
-	serverLabelName = "server"
+	ServerLabelName = "server"
 )
