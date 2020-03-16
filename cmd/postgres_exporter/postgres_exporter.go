@@ -830,7 +830,7 @@ func loadSecrets() (map[string]interface{}, error) {
 	}
 
 	secret, err = client.Logical().Read("/secret/postgres_exporter")
-	if err == nil {
+	if err == nil && secret != nil {
 		for key, value := range secret.Data {
 			result[key] = value
 		}
