@@ -543,7 +543,7 @@ func parseUserQueries(content []byte) (map[string]intermediateMetricMap, map[str
 func addQueries(content []byte, pgVersion semver.Version, server *Server) error {
 	metricMaps, newQueryOverrides, err := parseUserQueries(content)
 	if err != nil {
-		return nil
+		return err
 	}
 	// Convert the loaded metric map into exporter representation
 	partialExporterMap := makeDescMap(pgVersion, server.labels, metricMaps)
