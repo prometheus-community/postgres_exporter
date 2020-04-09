@@ -97,6 +97,7 @@ func (p *Platform) ReleaseBase() string {
 var platforms []Platform = []Platform{
 	{"linux", "amd64", ""},
 	{"linux", "386", ""},
+	{"linux", "arm64", ""},
 	{"darwin", "amd64", ""},
 	{"darwin", "386", ""},
 	{"windows", "amd64", ".exe"},

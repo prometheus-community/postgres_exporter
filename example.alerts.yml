@@ -3,7 +3,7 @@ groups:
   - name: PostgreSQL
     rules:
     - alert: PostgreSQLMaxConnectionsReached
-      expr: sum(pg_stat_activity_count) by (instance) > sum(pg_settings_max_connections) by (instance)
+      expr: sum(pg_stat_activity_count) by (instance) >= sum(pg_settings_max_connections) by (instance) - sum(pg_settings_superuser_reserved_connections) by (instance)
       for: 1m
       labels:
         severity: email
@@ -12,7 +12,7 @@ groups:
         description: "{{ $labels.instance }} is exceeding the currently configured maximum Postgres connection limit (current value: {{ $value }}s). Services may be degraded - please take immediate action (you probably need to increase max_connections in the Docker image and re-deploy."
 
     - alert: PostgreSQLHighConnections
-      expr: sum(pg_stat_activity_count) by (instance) > sum(pg_settings_max_connections * 0.8) by (instance)
+      expr: sum(pg_stat_activity_count) by (instance) > (sum(pg_settings_max_connections) by (instance) - sum(pg_settings_superuser_reserved_connections) by (instance)) * 0.8
       for: 10m
       labels:
         severity: email

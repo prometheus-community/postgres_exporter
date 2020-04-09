@@ -122,7 +122,7 @@ pg_statio_user_tables:
         description: "Number of buffer hits in this table's TOAST table indexes (if any)"
         
 pg_database:
-  query: "SELECT pg_database.datname, pg_database_size(pg_database.datname) as size FROM pg_database"
+  query: "SELECT pg_database.datname, pg_database_size(pg_database.datname) as size_bytes FROM pg_database"
   master: true
   cache_seconds: 30
   metrics:
