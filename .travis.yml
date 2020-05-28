@@ -10,27 +10,38 @@ branches:
     - /^PMM\-\d{4}/
 
 env:
-- POSTGRESQL_IMAGE=postgres:9.4
-- POSTGRESQL_IMAGE=postgres:9.5
-- POSTGRESQL_IMAGE=postgres:9.6
-- POSTGRESQL_IMAGE=postgres:10
-- POSTGRESQL_IMAGE=postgres:11
-- POSTGRESQL_IMAGE=postgres:12
+  global:
+    secure: "eLcr0XXYX0MOiddypI8ypKF38Sw/f0m56mfmwqeEScsCaaBebp/XOOXXt5omMLnSRsrgYwUu9jvFLQau2GCOL2mEzubCkh6UhYsvpsyfYabhqGRh7KFiOocIlvIPwuY9/CnEa31gQnk9icf0s8tcdwyGQtvew/vKQ9aRi8tX1rmdA0B0RLN6P9LfrVIUkon0I+xxgSqP4Dj9rcOS5Vas4oVKjzaI0fAtKE0tmt6vP5+R42kV0ZqVv2FCwJ7MMdA6oTueY31Az5UwK3VgERBHL7BPoPq+GrhBW7aIe1yrmd3rUaauRfpjhjd6AYjyKpcZyyjzAhKk0Y5yXTiMZ7YE23y/3wtcsQXpFiUK/no/LxjqhrN330zKhklHqBdDgvirR6NzU8WFaSI3lV17XxLcvTMMoMaWnoN8SKeLd1bEYu4js88e44sOLQ0PGkMPVQifhamRDGDhFT+ZONV/L7dDtebnPRgrG5Jkf+l2reYXTG6spMAofZvlfbtKN3N6EkWAr+u6c+Suxld4dqyipvb3UatM9y0bQlSiC76/VLUAug9D4J86RKuDoIdapumED1hX+odZLkfT6teFRw+RJpFeU34phW9mRy1wIUHTc4mWfev6dEDCfqjxWGZRNBvUhSHoJFjvvVX0E/NtUSFLxOf89vShFLd+6M7EyktRxBvFl9A="
+  matrix:
+    - POSTGRESQL_IMAGE=postgres:9.4
+    - POSTGRESQL_IMAGE=postgres:9.5
+    - POSTGRESQL_IMAGE=postgres:9.6
+    - POSTGRESQL_IMAGE=postgres:10
+    - POSTGRESQL_IMAGE=postgres:11
+    - POSTGRESQL_IMAGE=postgres:12
 
 services:
 - docker
 
 go_import_path: github.com/percona/postgres_exporter
 
-before_script:
-# use the same uid as in container
-- sudo usermod -u 999 postgres
-- sudo chown postgres:postgres testdata/ssl/*
-- sudo chmod 0600 testdata/ssl/*
+install:
+  # install reviewdog and golangci-lin
+  - curl https://raw.githubusercontent.com/reviewdog/reviewdog/master/install.sh| sh -s
+  - curl https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s latest
 
-- docker --version
-- docker-compose --version
-- docker-compose up -d
+before_script:
+  # static analyze
+  - bin/golangci-lint run -c=.golangci-required.yml --out-format=line-number | bin/reviewdog -f=golangci-lint -level=error -reporter=github-pr-check
+  - bin/golangci-lint run -c=.golangci.yml --out-format=line-number | bin/reviewdog -f=golangci-lint -level=error -reporter=github-pr-review
+  # use the same uid as in container
+  - sudo usermod -u 999 postgres
+  - sudo chown postgres:postgres testdata/ssl/*
+  - sudo chmod 0600 testdata/ssl/*
+
+  - docker --version
+  - docker-compose --version
+  - docker-compose up -d
 
 script:
 - make

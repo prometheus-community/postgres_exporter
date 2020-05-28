@@ -8,6 +8,7 @@ services:
       - 127.0.0.1:5432:5432
     environment:
       - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=root
 
   postgresql-ssl:
     image: ${POSTGRESQL_IMAGE:-postgres}
@@ -21,5 +22,6 @@ services:
       - 127.0.0.1:5433:5432
     environment:
       - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=root
     volumes:
       - ./testdata/ssl:/var/lib/postgresql/ssl
