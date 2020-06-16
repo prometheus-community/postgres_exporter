@@ -224,7 +224,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		},
 		true,
 		0,
-		"all",
+		"",
 	},
 	"pg_stat_database": {
 		map[string]ColumnMapping{
@@ -250,7 +250,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		},
 		true,
 		0,
-		"all",
+		"",
 	},
 	"pg_stat_database_conflicts": {
 		map[string]ColumnMapping{
@@ -264,7 +264,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		},
 		true,
 		0,
-		"all",
+		"",
 	},
 	"pg_locks": {
 		map[string]ColumnMapping{
@@ -274,7 +274,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		},
 		true,
 		0,
-		"all",
+		"",
 	},
 	"pg_stat_replication": {
 		map[string]ColumnMapping{
@@ -321,7 +321,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		},
 		true,
 		0,
-		"all",
+		"",
 	},
 	"pg_stat_archiver": {
 		map[string]ColumnMapping{
@@ -336,7 +336,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		},
 		true,
 		0,
-		"all",
+		"",
 	},
 	"pg_stat_activity": {
 		map[string]ColumnMapping{
@@ -347,7 +347,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		},
 		true,
 		0,
-		"all",
+		"",
 	},
 }
 
@@ -503,7 +503,6 @@ func parseUserQueries(content []byte) (map[string]intermediateMetricMap, map[str
 	if err != nil {
 		return nil, nil, err
 	}
-
 
 	// Stores the loaded map representation
 	metricMaps := make(map[string]intermediateMetricMap)
@@ -844,11 +843,10 @@ type cachedMetrics struct {
 // Server describes a connection to Postgres.
 // Also it contains metrics map and query overrides.
 type Server struct {
-	db     *sql.DB
-	labels prometheus.Labels
-	master bool
+	db          *sql.DB
+	labels      prometheus.Labels
+	master      bool
 	runonserver string
-	serverversion string
 
 	// Last version used to calculate metric map. If mismatch on scrape,
 	// then maps are recalculated.
@@ -894,7 +892,6 @@ func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 	s := &Server{
 		db:     db,
 		master: false,
-		runonserver: "all",
 		labels: prometheus.Labels{
 			serverLabelName: fingerprint,
 		},
@@ -1342,10 +1339,14 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 			continue
 		}
 
-		// check if the query is to be run on specific server version or not
-		if len(mapping.runonserver) > 0 && !strings.Contains(mapping.runonserver, "all") && !strings.Contains(server.serverversion, mapping.runonserver) {
-			log.Debugln("Query skipped for database version: [%s] as it should be run on database server version: [%s]", server.serverversion, mapping.runonserver)
-			continue
+		// check if the query is to be run on specific database server version range or not
+		if len(mapping.runonserver) > 0 {
+			serVersion, _ := semver.Parse(server.lastMapVersion.String())
+			runServerRange, _ := semver.ParseRange(mapping.runonserver)
+			if !runServerRange(serVersion) {
+				log.Debugln("Query skipped for database version: [%s] as it should be run on database server version: [%s]", server.lastMapVersion.String(), mapping.runonserver)
+				continue
+			}
 		}
 
 		scrapeMetric := false
@@ -1436,7 +1437,6 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 		}
 
 		server.lastMapVersion = semanticVersion
-		server.serverversion = semanticVersion.String()
 
 		if e.userQueriesPath != "" {
 			// Clear the metric while a reload is happening
