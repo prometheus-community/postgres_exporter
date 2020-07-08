@@ -192,7 +192,7 @@ In addition, the option `--exclude-databases` adds the possibily to filter the r
 
 ### Running as non-superuser
 
-To be able to collect metrics from `pg_stat_activity` and `pg_stat_replication`
+To be able to collect metrics from `pg_stat_activity`
 as  non-superuser you have to create functions and views as a superuser, and
 assign permissions separately to those.
 
@@ -243,9 +243,56 @@ AS
   SELECT * from get_pg_stat_activity();
 
 GRANT SELECT ON postgres_exporter.pg_stat_activity TO postgres_exporter;
+```
 
-CREATE OR REPLACE FUNCTION get_pg_stat_replication() RETURNS SETOF pg_stat_replication AS
-$$ SELECT * FROM pg_catalog.pg_stat_replication; $$
+To collect all data from pg_stat_replication, as superuser or not, it's necessary to 
+create the function below to convert `write_lag`, `flush_lag` and `replay_lag` from interval to float:
+
+```
+CREATE OR REPLACE FUNCTION get_pg_stat_replication() 
+RETURNS TABLE(
+  pid integer,
+  usesysid oid,
+  usename name,
+  application_name text,
+  client_addr inet,
+  client_hostname text,
+  client_port integer,
+  backend_start timestamp with time zone,
+  backend_xmin xid,
+  state text,
+  sent_lsn pg_lsn,
+  write_lsn pg_lsn,
+  flush_lsn pg_lsn,
+  replay_lsn pg_lsn,
+  write_lag float,
+  flush_lag float,
+  replay_lag float,
+  sync_priority integer,
+  sync_state text)
+AS
+$$ 
+SELECT pid, 
+       usesysid, 
+       usename,
+       application_name,
+       client_addr,
+       client_hostname,
+       client_port,
+       backend_start,
+       backend_xmin,
+       state,
+       sent_lsn,
+       write_lsn,
+       flush_lsn,
+       replay_lsn,
+       EXTRACT(EPOCH FROM write_lag) AS write_lag,
+       EXTRACT(EPOCH FROM flush_lag) AS flush_lag,
+       EXTRACT(EPOCH FROM replay_lag) AS replay_lag,
+       sync_priority,
+       sync_state
+  FROM pg_catalog.pg_stat_replication;
+$$
 LANGUAGE sql
 VOLATILE
 SECURITY DEFINER;
