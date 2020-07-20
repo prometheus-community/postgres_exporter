@@ -1147,29 +1147,6 @@ func (e *Exporter) setupInternalMetrics() {
 
 // Describe implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
-	// We cannot know in advance what metrics the exporter will generate
-	// from Postgres. So we use the poor man's describe method: Run a collect
-	// and send the descriptors of all the collected metrics. The problem
-	// here is that we need to connect to the Postgres DB. If it is currently
-	// unavailable, the descriptors will be incomplete. Since this is a
-	// stand-alone exporter and not used as a library within other code
-	// implementing additional metrics, the worst that can happen is that we
-	// don't detect inconsistent metrics created by this exporter
-	// itself. Also, a change in the monitored Postgres instance may change the
-	// exported metrics during the runtime of the exporter.
-	metricCh := make(chan prometheus.Metric)
-	doneCh := make(chan struct{})
-
-	go func() {
-		for m := range metricCh {
-			ch <- m.Desc()
-		}
-		close(doneCh)
-	}()
-
-	e.Collect(metricCh)
-	close(metricCh)
-	<-doneCh
 }
 
 // Collect implements prometheus.Collector.
