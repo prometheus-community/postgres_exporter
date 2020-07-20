@@ -1503,12 +1503,12 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			continue
 		}
 
-		dsns[dsn] = struct{}{}
 		server, err := e.servers.GetServer(dsn)
 		if err != nil {
 			log.Errorf("Error opening connection to database (%s): %v", loggableDSN(dsn), err)
 			continue
 		}
+		dsns[dsn] = struct{}{}
 
 		// If autoDiscoverDatabases is true, set first dsn as master database (Default: false)
 		server.master = true
