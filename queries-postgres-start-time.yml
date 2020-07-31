@@ -1,0 +1,6 @@
+pg_postmaster_uptime:
+  query: "select extract(epoch from current_timestamp - pg_postmaster_start_time()) as seconds"
+  metrics:
+    - seconds:
+        usage: "GAUGE"
+        description: "Service uptime"
