@@ -94,8 +94,9 @@ The following environment variables configure the exporter:
   URI may contain the username and password to connect with.
 
 * `DATA_SOURCE_URI`
-   an alternative to `DATA_SOURCE_NAME` which exclusively accepts the raw URI
-   without a username and password component.
+   an alternative to `DATA_SOURCE_NAME` which exclusively accepts the hostname
+   without a username and password component. For example, `my_pg_hostname` or
+   `my_pg_hostname?sslmode=disable`.
 
 * `DATA_SOURCE_URI_FILE`
    The same as above but reads the URI from a file.
