@@ -302,6 +302,18 @@ AS
   SELECT * FROM get_pg_stat_replication();
 
 GRANT SELECT ON postgres_exporter.pg_stat_replication TO postgres_exporter;
+
+CREATE OR REPLACE FUNCTION get_pg_stat_statements() RETURNS SETOF pg_stat_statements AS
+$$ SELECT * FROM public.pg_stat_statements; $$
+LANGUAGE sql
+VOLATILE
+SECURITY DEFINER;
+
+CREATE OR REPLACE VIEW postgres_exporter.pg_stat_statements
+AS
+  SELECT * FROM get_pg_stat_statements();
+
+GRANT SELECT ON postgres_exporter.pg_stat_statements TO postgres_exporter;
 ```
 
 > **NOTE**
