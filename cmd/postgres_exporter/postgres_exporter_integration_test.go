@@ -29,7 +29,12 @@ func (s *IntegrationSuite) SetUpSuite(c *C) {
 	dsn := os.Getenv("DATA_SOURCE_NAME")
 	c.Assert(dsn, Not(Equals), "")
 
-	exporter := NewExporter(strings.Split(dsn, ","))
+	dsnFactories := make([]DsnFactory, 0)
+	for _, d := range strings.Split(dsn, ",") {
+		dsnFactories = append(dsnFactories, &RawDsnFactory{dsn: d})
+	}
+
+	exporter := NewExporter(dsnFactories)
 	c.Assert(exporter, NotNil)
 	// Assign the exporter to the suite
 	s.e = exporter
@@ -46,8 +51,11 @@ func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 		}
 	}()
 
-	for _, dsn := range s.e.dsn {
+	for _, dsnFactory := range s.e.dsnFactories {
 		// Open a database connection
+		dsn, err := dsnFactory.NewDsn()
+		c.Assert(err, IsNil)
+
 		server, err := NewServer(dsn)
 		c.Assert(server, NotNil)
 		c.Assert(err, IsNil)
@@ -86,12 +94,12 @@ func (s *IntegrationSuite) TestInvalidDsnDoesntCrash(c *C) {
 	}()
 
 	// Send a bad DSN
-	exporter := NewExporter([]string{"invalid dsn"})
+	exporter := NewExporter([]DsnFactory{&RawDsnFactory{dsn: "invalid dsn"}})
 	c.Assert(exporter, NotNil)
 	exporter.scrape(ch)
 
 	// Send a DSN to a non-listening port.
-	exporter = NewExporter([]string{"postgresql://nothing:nothing@127.0.0.1:1/nothing"})
+	exporter = NewExporter([]DsnFactory{&RawDsnFactory{"postgresql://nothing:nothing@127.0.0.1:1/nothing"}})
 	c.Assert(exporter, NotNil)
 	exporter.scrape(ch)
 }
@@ -109,7 +117,12 @@ func (s *IntegrationSuite) TestUnknownMetricParsingDoesntCrash(c *C) {
 	dsn := os.Getenv("DATA_SOURCE_NAME")
 	c.Assert(dsn, Not(Equals), "")
 
-	exporter := NewExporter(strings.Split(dsn, ","))
+	dsnFactories := make([]DsnFactory, 0)
+	for _, d := range strings.Split(dsn, ",") {
+		dsnFactories = append(dsnFactories, &RawDsnFactory{dsn: d})
+	}
+
+	exporter := NewExporter(dsnFactories)
 	c.Assert(exporter, NotNil)
 
 	// Convert the default maps into a list of empty maps.

@@ -950,8 +950,9 @@ func NewServers(opts ...ServerOpt) *Servers {
 	}
 }
 
-// GetServer returns established connection from a collection.
-func (s *Servers) GetServer(dsn string) (*Server, error) {
+// GetServer returns established connection from a collection. If a connection
+// is invalid a new connection is established.
+func (s *Servers) GetServer(dsnID string, dsn string) (*Server, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	var err error
@@ -963,17 +964,17 @@ func (s *Servers) GetServer(dsn string) (*Server, error) {
 		if errCount++; errCount > retries {
 			return nil, err
 		}
-		server, ok = s.servers[dsn]
+		server, ok = s.servers[dsnID]
 		if !ok {
 			server, err = NewServer(dsn, s.opts...)
 			if err != nil {
 				time.Sleep(time.Duration(errCount) * time.Second)
 				continue
 			}
-			s.servers[dsn] = server
+			s.servers[dsnID] = server
 		}
 		if err = server.Ping(); err != nil {
-			delete(s.servers, dsn)
+			delete(s.servers, dsnID)
 			time.Sleep(time.Duration(errCount) * time.Second)
 			continue
 		}
@@ -1002,7 +1003,7 @@ type Exporter struct {
 	disableDefaultMetrics, disableSettingsMetrics, autoDiscoverDatabases bool
 
 	excludeDatabases []string
-	dsn              []string
+	dsnFactories     []DsnFactory
 	userQueriesPath  string
 	constantLabels   prometheus.Labels
 	duration         prometheus.Gauge
@@ -1088,9 +1089,9 @@ func parseConstLabels(s string) prometheus.Labels {
 }
 
 // NewExporter returns a new PostgreSQL exporter for the provided DSN.
-func NewExporter(dsn []string, opts ...ExporterOpt) *Exporter {
+func NewExporter(dsnFactories []DsnFactory, opts ...ExporterOpt) *Exporter {
 	e := &Exporter{
-		dsn:               dsn,
+		dsnFactories:      dsnFactories,
 		builtinMetricMaps: builtinMetricMaps,
 	}
 
@@ -1459,18 +1460,33 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 
 	e.totalScrapes.Inc()
 
-	dsns := e.dsn
+	var errorsCount int
+	var dsns map[string]string
+
+	dsnFactories := e.dsnFactories
+
 	if e.autoDiscoverDatabases {
 		dsns = e.discoverDatabaseDSNs()
+	} else {
+		dsns = make(map[string]string)
+		for _, dsnFactory := range dsnFactories {
+			dsn, err := dsnFactory.NewDsn()
+
+			if err != nil {
+				log.Errorf("Unable to create dsn (%s): %v", loggableDSN(dsnFactory.DsnID()), err)
+
+				errorsCount++
+			} else {
+				dsns[dsnFactory.DsnID()] = dsn
+			}
+		}
 	}
 
-	var errorsCount int
 	var connectionErrorsCount int
 
-	for _, dsn := range dsns {
-		if err := e.scrapeDSN(ch, dsn); err != nil {
+	for dsnID, dsn := range dsns {
+		if err := e.scrapeDSN(ch, dsnID, dsn); err != nil {
 			errorsCount++
-
 			log.Errorf(err.Error())
 
 			if _, ok := err.(*ErrorConnectToServer); ok {
@@ -1494,17 +1510,31 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	}
 }
 
-func (e *Exporter) discoverDatabaseDSNs() []string {
-	dsns := make(map[string]struct{})
-	for _, dsn := range e.dsn {
-		parsedDSN, err := url.Parse(dsn)
+func (e *Exporter) discoverDatabaseDSNs() map[string]string {
+	dsns := make(map[string]string)
+	for _, dsnFactory := range e.dsnFactories {
+		dsnID := dsnFactory.DsnID()
+		dsn, err := dsnFactory.NewDsn()
+		if err != nil {
+			log.Errorf("Unable to create DSN (%s): %v", loggableDSN(dsnFactory.DsnID()), err)
+		}
+
+		// Validate the DSN returned from the factory
+		parsedDsn, err := url.Parse(dsn)
 		if err != nil {
 			log.Errorf("Unable to parse DSN (%s): %v", loggableDSN(dsn), err)
 			continue
 		}
 
-		dsns[dsn] = struct{}{}
-		server, err := e.servers.GetServer(dsn)
+		// Validate and DSN Id assigned to the factory
+		parsedDsnID, err := url.Parse(dsnID)
+		if err != nil {
+			log.Errorf("Unable to parse DSN Id (%s): %v", loggableDSN(dsnID), err)
+			continue
+		}
+
+		dsns[dsnID] = dsn
+		server, err := e.servers.GetServer(dsnID, dsn)
 		if err != nil {
 			log.Errorf("Error opening connection to database (%s): %v", loggableDSN(dsn), err)
 			continue
@@ -1522,23 +1552,19 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			if contains(e.excludeDatabases, databaseName) {
 				continue
 			}
-			parsedDSN.Path = databaseName
-			dsns[parsedDSN.String()] = struct{}{}
+
+			parsedDsn.Path = databaseName
+			parsedDsnID.Path = databaseName
+
+			dsns[parsedDsnID.String()] = parsedDsn.String()
 		}
 	}
 
-	result := make([]string, len(dsns))
-	index := 0
-	for dsn := range dsns {
-		result[index] = dsn
-		index++
-	}
-
-	return result
+	return dsns
 }
 
-func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
-	server, err := e.servers.GetServer(dsn)
+func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsnID string, dsn string) error {
+	server, err := e.servers.GetServer(dsnID, dsn)
 
 	if err != nil {
 		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), err.Error())}
@@ -1561,9 +1587,12 @@ func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 // DATA_SOURCE_NAME always wins so we do not break older versions
 // reading secrets from files wins over secrets in environment variables
 // DATA_SOURCE_NAME > DATA_SOURCE_{USER|PASS}_FILE > DATA_SOURCE_{USER|PASS}
-func getDataSources() []string {
+func getDataSources() []DsnFactory {
 	var dsn = os.Getenv("DATA_SOURCE_NAME")
-	if len(dsn) == 0 {
+	var dsns []string
+	if len(dsn) > 0 {
+		dsns = strings.Split(dsn, ",")
+	} else {
 		var user string
 		var pass string
 		var uri string
@@ -1602,9 +1631,23 @@ func getDataSources() []string {
 
 		dsn = "postgresql://" + ui + "@" + uri
 
-		return []string{dsn}
+		dsns = []string{dsn}
 	}
-	return strings.Split(dsn, ",")
+
+	dsnFactories := make([]DsnFactory, 0, len(dsns))
+	for _, dsn := range dsns {
+		u, _ := url.Parse(dsn)
+
+		if pw, set := u.User.Password(); set && pw == "AWS_RDS_IAM_AUTH" {
+			log.Infof("Building AwsRdsIamFactory for %s", loggableDSN(dsn))
+			dsnFactories = append(dsnFactories, &AwsRdsIamFactory{dsn: dsn})
+		} else {
+			log.Infof("Building RawDsnFactory for %s", loggableDSN(dsn))
+			dsnFactories = append(dsnFactories, &RawDsnFactory{dsn: dsn})
+		}
+	}
+
+	return dsnFactories
 }
 
 func contains(a []string, x string) bool {
@@ -1637,12 +1680,12 @@ func main() {
 		return
 	}
 
-	dsn := getDataSources()
-	if len(dsn) == 0 {
+	dsnFactories := getDataSources()
+	if len(dsnFactories) == 0 {
 		log.Fatal("couldn't find environment variables describing the datasource to use")
 	}
 
-	exporter := NewExporter(dsn,
+	exporter := NewExporter(dsnFactories,
 		DisableDefaultMetrics(*disableDefaultMetrics),
 		DisableSettingsMetrics(*disableSettingsMetrics),
 		AutoDiscoverDatabases(*autoDiscoverDatabases),

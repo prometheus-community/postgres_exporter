@@ -228,6 +228,8 @@ ALTER USER postgres_exporter SET SEARCH_PATH TO postgres_exporter,pg_catalog;
 -- If deploying as non-superuser (for example in AWS RDS), uncomment the GRANT
 -- line below and replace <MASTER_USER> with your root user.
 -- GRANT postgres_exporter TO <MASTER_USER>;
+-- If using AWS RDS IAM authentication, uncomment the line below
+-- GRANT rds_iam TO postgres_exporter;
 CREATE SCHEMA IF NOT EXISTS postgres_exporter;
 GRANT USAGE ON SCHEMA postgres_exporter TO postgres_exporter;
 GRANT CONNECT ON DATABASE postgres TO postgres_exporter;

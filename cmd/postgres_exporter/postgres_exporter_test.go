@@ -111,12 +111,14 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
 
 	var expected = "postgresql://custom_username$&+,%2F%3A;=%3F%40:custom_password$&+,%2F%3A;=%3F%40@localhost:5432/?sslmode=disable"
 
-	dsn := getDataSources()
-	if len(dsn) == 0 {
+	ds := getDataSources()
+	if len(ds) == 0 {
 		c.Errorf("Expected one data source, zero found")
 	}
-	if dsn[0] != expected {
-		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn[0], expected)
+
+	dsn, _ := ds[0].NewDsn()
+	if dsn != expected {
+		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, expected)
 	}
 }
 
@@ -127,12 +129,14 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDns(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_NAME")
 
-	dsn := getDataSources()
-	if len(dsn) == 0 {
+	ds := getDataSources()
+	if len(ds) == 0 {
 		c.Errorf("Expected one data source, zero found")
 	}
-	if dsn[0] != envDsn {
-		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn[0], envDsn)
+
+	dsn, _ := ds[0].NewDsn()
+	if dsn != envDsn {
+		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, envDsn)
 	}
 }
 
@@ -151,12 +155,14 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDnsAndSecrets(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_PASS")
 
-	dsn := getDataSources()
-	if len(dsn) == 0 {
+	ds := getDataSources()
+	if len(ds) == 0 {
 		c.Errorf("Expected one data source, zero found")
 	}
-	if dsn[0] != envDsn {
-		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn[0], envDsn)
+
+	dsn, _ := ds[0].NewDsn()
+	if dsn != envDsn {
+		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, envDsn)
 	}
 }
 
