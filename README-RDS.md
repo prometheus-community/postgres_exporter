@@ -36,3 +36,21 @@ Running postgres-exporter in a container like so:
   ```
 + lastly, you must reboot the RDS instance.
 
+### AWS RDS IAM Authentication
+
+To use [AWS RDS IAM Authentication](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html)
+set the data source password to the magic value `AWS_RDS_IAM_AUTH`.
+
+An AWS session is constructed using the default providers of the `aws-go-sdk` and should work will all common
+configuration options. Using EC2 IAM roles and `AWS_WEB_IDENTITY_TOKEN_FILE`s, via IAM Roles for Service Accounts,
+are specifically known to work.
+
+Troubleshooting:
+ - Do not set `sslmode=disabled`
+ - Set the `AWS_REGION` environment variable if the running instance does not have access to the EC2 metadata endpoint
+ - If using `AWS_WEB_IDENTITY_TOKEN_FILE` with kubernetes you likely need to configure your deployment to set the
+    `securityContext`s `fsGroup` value to `20001` (the ID set for the `postgres_exporter` user in the Dockerfile).
+    ```
+         securityContext:
+               fsGroup: 20001
+   ```
