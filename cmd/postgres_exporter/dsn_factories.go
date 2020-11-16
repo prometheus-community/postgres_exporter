@@ -1,11 +1,12 @@
 package main
 
 import (
+	"net/url"
+	"os"
+
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/rds/rdsutils"
-	"net/url"
-	"os"
 )
 
 // DsnFactory creates DSNs
