@@ -76,7 +76,13 @@ func (p *Platform) String() string {
 }
 
 func (p *Platform) PlatformDir() string {
-	platformDir := path.Join(binDir, fmt.Sprintf("%s_%s_%s", productName, versionShort, p.String()))
+    //change path at windows
+	if (p.OS == "windows") {
+		platformDir = path.Join(fmt.Sprintf("%s_%s_%s", productName, versionShort, p.String()))
+	}else{
+		platformDir = path.Join(binDir, fmt.Sprintf("%s_%s_%s", productName, versionShort, p.String()))
+	}
+	//platformDir := path.Join(binDir, fmt.Sprintf("%s_%s_%s", productName, versionShort, p.String()))
 	return platformDir
 }
 
