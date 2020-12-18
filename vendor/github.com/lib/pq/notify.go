@@ -4,6 +4,8 @@ package pq
 // This module contains support for Postgres LISTEN/NOTIFY.
 
 import (
+	"context"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"sync"
@@ -27,6 +29,61 @@ func recvNotification(r *readBuf) *Notification {
 	extra := r.string()
 
 	return &Notification{bePid, channel, extra}
+}
+
+// SetNotificationHandler sets the given notification handler on the given
+// connection. A runtime panic occurs if c is not a pq connection. A nil handler
+// may be used to unset it.
+//
+// Note: Notification handlers are executed synchronously by pq meaning commands
+// won't continue to be processed until the handler returns.
+func SetNotificationHandler(c driver.Conn, handler func(*Notification)) {
+	c.(*conn).notificationHandler = handler
+}
+
+// NotificationHandlerConnector wraps a regular connector and sets a notification handler
+// on it.
+type NotificationHandlerConnector struct {
+	driver.Connector
+	notificationHandler func(*Notification)
+}
+
+// Connect calls the underlying connector's connect method and then sets the
+// notification handler.
+func (n *NotificationHandlerConnector) Connect(ctx context.Context) (driver.Conn, error) {
+	c, err := n.Connector.Connect(ctx)
+	if err == nil {
+		SetNotificationHandler(c, n.notificationHandler)
+	}
+	return c, err
+}
+
+// ConnectorNotificationHandler returns the currently set notification handler, if any. If
+// the given connector is not a result of ConnectorWithNotificationHandler, nil is
+// returned.
+func ConnectorNotificationHandler(c driver.Connector) func(*Notification) {
+	if c, ok := c.(*NotificationHandlerConnector); ok {
+		return c.notificationHandler
+	}
+	return nil
+}
+
+// ConnectorWithNotificationHandler creates or sets the given handler for the given
+// connector. If the given connector is a result of calling this function
+// previously, it is simply set on the given connector and returned. Otherwise,
+// this returns a new connector wrapping the given one and setting the notification
+// handler. A nil notification handler may be used to unset it.
+//
+// The returned connector is intended to be used with database/sql.OpenDB.
+//
+// Note: Notification handlers are executed synchronously by pq meaning commands
+// won't continue to be processed until the handler returns.
+func ConnectorWithNotificationHandler(c driver.Connector, handler func(*Notification)) *NotificationHandlerConnector {
+	if c, ok := c.(*NotificationHandlerConnector); ok {
+		c.notificationHandler = handler
+		return c
+	}
+	return &NotificationHandlerConnector{Connector: c, notificationHandler: handler}
 }
 
 const (
@@ -174,8 +231,12 @@ func (l *ListenerConn) listenerConnLoop() (err error) {
 			}
 			l.replyChan <- message{t, nil}
 
-		case 'N', 'S':
+		case 'S':
 			// ignore
+		case 'N':
+			if n := l.cn.noticeHandler; n != nil {
+				n(parseError(r))
+			}
 		default:
 			return fmt.Errorf("unexpected message %q from server in listenerConnLoop", t)
 		}
@@ -637,7 +698,7 @@ func (l *Listener) disconnectCleanup() error {
 // after the connection has been established.
 func (l *Listener) resync(cn *ListenerConn, notificationChan <-chan *Notification) error {
 	doneChan := make(chan error)
-	go func() {
+	go func(notificationChan <-chan *Notification) {
 		for channel := range l.channels {
 			// If we got a response, return that error to our caller as it's
 			// going to be more descriptive than cn.Err().
@@ -658,7 +719,7 @@ func (l *Listener) resync(cn *ListenerConn, notificationChan <-chan *Notificatio
 			}
 		}
 		doneChan <- nil
-	}()
+	}(notificationChan)
 
 	// Ignore notifications while synchronization is going on to avoid
 	// deadlocks.  We have to send a nil notification over Notify anyway as
@@ -725,6 +786,9 @@ func (l *Listener) Close() error {
 	}
 	l.isClosed = true
 
+	// Unblock calls to Listen()
+	l.reconnectCond.Broadcast()
+
 	return nil
 }
 
@@ -784,7 +848,7 @@ func (l *Listener) listenerConnLoop() {
 		}
 		l.emitEvent(ListenerEventDisconnected, err)
 
-		time.Sleep(nextReconnect.Sub(time.Now()))
+		time.Sleep(time.Until(nextReconnect))
 	}
 }
 
