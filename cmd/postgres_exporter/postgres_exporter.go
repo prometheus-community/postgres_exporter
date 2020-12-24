@@ -1046,7 +1046,7 @@ func (s *Servers) GetServer(dsn string) (*Server, error) {
 	var err error
 	var ok bool
 	errCount := 0 // start at zero because we increment before doing work
-	retries := 3
+	retries := 1
 	var server *Server
 	for {
 		if errCount++; errCount > retries {
