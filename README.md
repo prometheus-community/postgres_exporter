@@ -43,6 +43,9 @@ Package vendoring is handled with [`govendor`](https://github.com/kardianos/gove
 
 ### Flags
 
+* `help`
+  Show context-sensitive help (also try --help-long and --help-man).
+
 * `web.listen-address`
   Address to listen on for web interface and telemetry. Default is `:9187`.
 
@@ -55,6 +58,9 @@ Package vendoring is handled with [`govendor`](https://github.com/kardianos/gove
 * `disable-settings-metrics`
   Use the flag if you don't want to scrape `pg_settings`.
 
+* `auto-discover-databases`
+  Whether to discover the databases on a server dynamically.
+
 * `extend.query-path`
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
   for examples of the format.
@@ -63,15 +69,21 @@ Package vendoring is handled with [`govendor`](https://github.com/kardianos/gove
   Do not run - print the internal representation of the metric maps. Useful when debugging a custom
   queries file.
 
+* `constantLabels`
+  Labels to set in all metrics. A list of `label=value` pairs, separated by commas.
+
+* `version`
+  Show application version.
+
+* `exclude-databases`
+  A list of databases to remove when autoDiscoverDatabases is enabled.
+
 * `log.level`
   Set logging level: one of `debug`, `info`, `warn`, `error`, `fatal`
 
 * `log.format`
   Set the log output target and format. e.g. `logger:syslog?appname=bob&local=7` or `logger:stdout?json=true`
   Defaults to `logger:stderr`.
-
-* `constantLabels`
-  Labels to set in all metrics. A list of `label=value` pairs, separated by commas.
 
 ### Environment Variables
 
@@ -82,8 +94,12 @@ The following environment variables configure the exporter:
   URI may contain the username and password to connect with.
 
 * `DATA_SOURCE_URI`
-   an alternative to `DATA_SOURCE_NAME` which exclusively accepts the raw URI
-   without a username and password component.
+   an alternative to `DATA_SOURCE_NAME` which exclusively accepts the hostname
+   without a username and password component. For example, `my_pg_hostname` or
+   `my_pg_hostname?sslmode=disable`.
+
+* `DATA_SOURCE_URI_FILE`
+   The same as above but reads the URI from a file.
 
 * `DATA_SOURCE_USER`
   When using `DATA_SOURCE_URI`, this environment variable is used to specify
@@ -111,12 +127,18 @@ The following environment variables configure the exporter:
 * `PG_EXPORTER_DISABLE_SETTINGS_METRICS`
   Use the flag if you don't want to scrape `pg_settings`. Value can be `true` or `false`. Defauls is `false`.
 
+* `PG_EXPORTER_AUTO_DISCOVER_DATABASES`
+  Whether to discover the databases on a server dynamically. Value can be `true` or `false`. Defauls is `false`.
+
 * `PG_EXPORTER_EXTEND_QUERY_PATH`
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
   for examples of the format.
 
 * `PG_EXPORTER_CONSTANT_LABELS`
   Labels to set in all metrics. A list of `label=value` pairs, separated by commas.
+
+* `PG_EXPORTER_EXCLUDE_DATABASES`
+  A comma-separated list of databases to remove when autoDiscoverDatabases is enabled. Default is empty string.
 
 Settings set by environment variables starting with `PG_` will be overwritten by the corresponding CLI flag if given.
 
@@ -163,7 +185,7 @@ flag. This removes all built-in metrics, and uses only metrics defined by querie
 
 ### Automatically discover databases
 To scrape metrics from all databases on a database server, the database DSN's can be dynamically discovered via the 
-`--auto-discover-databases` flag. When true, `SELECT datname FROM pg_database WHERE datallowconn = true AND datistemplate = false` is run for all configured DSN's. From the 
+`--auto-discover-databases` flag. When true, `SELECT datname FROM pg_database WHERE datallowconn = true AND datistemplate = false and datname != current_database()` is run for all configured DSN's. From the 
 result a new set of DSN's is created for which the metrics are scraped.
 
 In addition, the option `--exclude-databases` adds the possibily to filter the result from the auto discovery to discard databases you do not need.
@@ -233,6 +255,18 @@ AS
   SELECT * FROM get_pg_stat_replication();
 
 GRANT SELECT ON postgres_exporter.pg_stat_replication TO postgres_exporter;
+
+CREATE OR REPLACE FUNCTION get_pg_stat_statements() RETURNS SETOF pg_stat_statements AS
+$$ SELECT * FROM public.pg_stat_statements; $$
+LANGUAGE sql
+VOLATILE
+SECURITY DEFINER;
+
+CREATE OR REPLACE VIEW postgres_exporter.pg_stat_statements
+AS
+  SELECT * FROM get_pg_stat_statements();
+
+GRANT SELECT ON postgres_exporter.pg_stat_statements TO postgres_exporter;
 ```
 
 > **NOTE**

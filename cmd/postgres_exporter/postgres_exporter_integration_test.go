@@ -117,6 +117,7 @@ func (s *IntegrationSuite) TestUnknownMetricParsingDoesntCrash(c *C) {
 	for k := range exporter.builtinMetricMaps {
 		emptyMaps[k] = intermediateMetricMap{
 			map[string]ColumnMapping{},
+			true,
 			0,
 		}
 	}

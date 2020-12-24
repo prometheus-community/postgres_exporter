@@ -32,6 +32,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 				"metric_which_stays":    {COUNTER, "This metric should not be eliminated", nil, nil},
 				"metric_which_discards": {COUNTER, "This metric should be forced to DISCARD", nil, nil},
 			},
+			true,
 			0,
 		},
 	}
@@ -110,7 +111,11 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
 
 	var expected = "postgresql://custom_username$&+,%2F%3A;=%3F%40:custom_password$&+,%2F%3A;=%3F%40@localhost:5432/?sslmode=disable"
 
-	dsn := getDataSources()
+	dsn, err := getDataSources()
+	if err != nil {
+		c.Errorf("Unexpected error reading datasources")
+	}
+
 	if len(dsn) == 0 {
 		c.Errorf("Expected one data source, zero found")
 	}
@@ -126,7 +131,11 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDns(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_NAME")
 
-	dsn := getDataSources()
+	dsn, err := getDataSources()
+	if err != nil {
+		c.Errorf("Unexpected error reading datasources")
+	}
+
 	if len(dsn) == 0 {
 		c.Errorf("Expected one data source, zero found")
 	}
@@ -150,7 +159,11 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDnsAndSecrets(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_PASS")
 
-	dsn := getDataSources()
+	dsn, err := getDataSources()
+	if err != nil {
+		c.Errorf("Unexpected error reading datasources")
+	}
+
 	if len(dsn) == 0 {
 		c.Errorf("Expected one data source, zero found")
 	}
