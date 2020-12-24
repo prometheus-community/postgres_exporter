@@ -315,6 +315,16 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		true,
 		0,
 	},
+	"pg_replication_slots": {
+		map[string]ColumnMapping{
+			"slot_name":       {LABEL, "Name of the replication slot", nil, nil},
+			"database":        {LABEL, "Name of the database", nil, nil},
+			"active":          {GAUGE, "Flag indicating if the slot is active", nil, nil},
+			"pg_wal_lsn_diff": {GAUGE, "Replication lag in bytes", nil, nil},
+		},
+		true,
+		0,
+	},
 	"pg_stat_archiver": {
 		map[string]ColumnMapping{
 			"archived_count":     {COUNTER, "Number of WAL files that have been successfully archived", nil, nil},
@@ -403,6 +413,16 @@ var queryOverrides = map[string][]OverrideQuery{
 			SELECT *,
 				(case pg_is_in_recovery() when 't' then null else pg_current_xlog_location() end) AS pg_current_xlog_location
 			FROM pg_stat_replication
+			`,
+		},
+	},
+
+	"pg_replication_slots": {
+		{
+			semver.MustParseRange(">=9.4.0"),
+			`
+			SELECT slot_name, database, active, pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)
+			FROM pg_replication_slots
 			`,
 		},
 	},
