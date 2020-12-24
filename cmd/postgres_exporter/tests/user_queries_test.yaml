@@ -1,0 +1,51 @@
+random:
+  query: |
+    WITH data AS (SELECT floor(random()*10) AS d FROM generate_series(1,100)),
+         metrics AS (SELECT SUM(d) AS sum, COUNT(*) AS count FROM data),
+         buckets AS (SELECT le, SUM(CASE WHEN d <= le THEN 1 ELSE 0 END) AS d
+                     FROM data, UNNEST(ARRAY[1, 2, 4, 8]) AS le GROUP BY le)
+    SELECT
+      sum AS histogram_sum,
+      count AS histogram_count,
+      ARRAY_AGG(le) AS histogram,
+      ARRAY_AGG(d) AS histogram_bucket,
+      ARRAY_AGG(le) AS missing,
+      ARRAY_AGG(le) AS missing_sum,
+      ARRAY_AGG(d) AS missing_sum_bucket,
+      ARRAY_AGG(le) AS missing_count,
+      ARRAY_AGG(d) AS missing_count_bucket,
+      sum AS missing_count_sum,
+      ARRAY_AGG(le) AS unexpected_sum,
+      ARRAY_AGG(d) AS unexpected_sum_bucket,
+      'data' AS unexpected_sum_sum,
+      ARRAY_AGG(le) AS unexpected_count,
+      ARRAY_AGG(d) AS unexpected_count_bucket,
+      sum AS unexpected_count_sum,
+      'nan'::varchar AS unexpected_count_count,
+      ARRAY_AGG(le) AS unexpected_bytes,
+      ARRAY_AGG(d) AS unexpected_bytes_bucket,
+      sum AS unexpected_bytes_sum,
+      'nan'::bytea AS unexpected_bytes_count
+    FROM metrics, buckets GROUP BY 1,2
+  metrics:
+    - histogram:
+        usage: "HISTOGRAM"
+        description: "Random data"
+    - missing:
+        usage: "HISTOGRAM"
+        description: "nonfatal error"
+    - missing_sum:
+        usage: "HISTOGRAM"
+        description: "nonfatal error"
+    - missing_count:
+        usage: "HISTOGRAM"
+        description: "nonfatal error"
+    - unexpected_sum:
+        usage: "HISTOGRAM"
+        description: "nonfatal error"
+    - unexpected_count:
+        usage: "HISTOGRAM"
+        description: "nonfatal error"
+    - unexpected_bytes:
+        usage: "HISTOGRAM"
+        description: "nonfatal error"

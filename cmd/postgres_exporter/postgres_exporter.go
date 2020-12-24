@@ -81,6 +81,7 @@ const (
 	GAUGE        ColumnUsage = iota // Use this column as a gauge
 	MAPPEDMETRIC ColumnUsage = iota // Use this column with the supplied mapping of text values
 	DURATION     ColumnUsage = iota // This column should be interpreted as a text duration (and converted to milliseconds)
+	HISTOGRAM    ColumnUsage = iota // Use this column as a histogram
 )
 
 // UnmarshalYAML implements the yaml.Unmarshaller interface.
@@ -170,6 +171,7 @@ type MetricMapNamespace struct {
 // be mapped to by the collector
 type MetricMap struct {
 	discard    bool                              // Should metric be discarded during mapping?
+	histogram  bool                              // Should metric be treated as a histogram?
 	vtype      prometheus.ValueType              // Prometheus valuetype
 	desc       *prometheus.Desc                  // Prometheus descriptor
 	conversion func(interface{}) (float64, bool) // Conversion function to turn PG result into float64
@@ -316,6 +318,16 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		true,
 		0,
 	},
+	"pg_replication_slots": {
+		map[string]ColumnMapping{
+			"slot_name":       {LABEL, "Name of the replication slot", nil, nil},
+			"database":        {LABEL, "Name of the database", nil, nil},
+			"active":          {GAUGE, "Flag indicating if the slot is active", nil, nil},
+			"pg_wal_lsn_diff": {GAUGE, "Replication lag in bytes", nil, nil},
+		},
+		true,
+		0,
+	},
 	"pg_stat_archiver": {
 		map[string]ColumnMapping{
 			"archived_count":     {COUNTER, "Number of WAL files that have been successfully archived", nil, nil},
@@ -404,6 +416,16 @@ var queryOverrides = map[string][]OverrideQuery{
 			SELECT *,
 				(case pg_is_in_recovery() when 't' then null else pg_current_xlog_location() end) AS pg_current_xlog_location
 			FROM pg_stat_replication
+			`,
+		},
+	},
+
+	"pg_replication_slots": {
+		{
+			semver.MustParseRange(">=9.4.0"),
+			`
+			SELECT slot_name, database, active, pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)
+			FROM pg_replication_slots
 			`,
 		},
 	},
@@ -633,6 +655,27 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 						return dbToFloat64(in)
 					},
 				}
+			case HISTOGRAM:
+				thisMap[columnName] = MetricMap{
+					histogram: true,
+					vtype:     prometheus.UntypedValue,
+					desc:      prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, variableLabels, serverLabels),
+					conversion: func(in interface{}) (float64, bool) {
+						return dbToFloat64(in)
+					},
+				}
+				thisMap[columnName+"_bucket"] = MetricMap{
+					histogram: true,
+					discard:   true,
+				}
+				thisMap[columnName+"_sum"] = MetricMap{
+					histogram: true,
+					discard:   true,
+				}
+				thisMap[columnName+"_count"] = MetricMap{
+					histogram: true,
+					discard:   true,
+				}
 			case MAPPEDMETRIC:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.GaugeValue,
@@ -704,6 +747,9 @@ func stringToColumnUsage(s string) (ColumnUsage, error) {
 	case "GAUGE":
 		u = GAUGE
 
+	case "HISTOGRAM":
+		u = HISTOGRAM
+
 	case "MAPPEDMETRIC":
 		u = MAPPEDMETRIC
 
@@ -752,6 +798,46 @@ func dbToFloat64(t interface{}) (float64, bool) {
 		return math.NaN(), true
 	default:
 		return math.NaN(), false
+	}
+}
+
+// Convert database.sql types to uint64 for Prometheus consumption. Null types are mapped to 0. string and []byte
+// types are mapped as 0 and !ok
+func dbToUint64(t interface{}) (uint64, bool) {
+	switch v := t.(type) {
+	case uint64:
+		return v, true
+	case int64:
+		return uint64(v), true
+	case float64:
+		return uint64(v), true
+	case time.Time:
+		return uint64(v.Unix()), true
+	case []byte:
+		// Try and convert to string and then parse to a uint64
+		strV := string(v)
+		result, err := strconv.ParseUint(strV, 10, 64)
+		if err != nil {
+			log.Infoln("Could not parse []byte:", err)
+			return 0, false
+		}
+		return result, true
+	case string:
+		result, err := strconv.ParseUint(v, 10, 64)
+		if err != nil {
+			log.Infoln("Could not parse string:", err)
+			return 0, false
+		}
+		return result, true
+	case bool:
+		if v {
+			return 1, true
+		}
+		return 0, true
+	case nil:
+		return 0, true
+	default:
+		return 0, false
 	}
 }
 
@@ -1287,13 +1373,68 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 					continue
 				}
 
-				value, ok := dbToFloat64(columnData[idx])
-				if !ok {
-					nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName, columnData[idx])))
-					continue
+				if metricMapping.histogram {
+					var keys []float64
+					err = pq.Array(&keys).Scan(columnData[idx])
+					if err != nil {
+						return []prometheus.Metric{}, []error{}, errors.New(fmt.Sprintln("Error retrieving", columnName, "buckets:", namespace, err))
+					}
+
+					var values []int64
+					valuesIdx, ok := columnIdx[columnName+"_bucket"]
+					if !ok {
+						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Missing column: ", namespace, columnName+"_bucket")))
+						continue
+					}
+					err = pq.Array(&values).Scan(columnData[valuesIdx])
+					if err != nil {
+						return []prometheus.Metric{}, []error{}, errors.New(fmt.Sprintln("Error retrieving", columnName, "bucket values:", namespace, err))
+					}
+
+					buckets := make(map[float64]uint64, len(keys))
+					for i, key := range keys {
+						if i >= len(values) {
+							break
+						}
+						buckets[key] = uint64(values[i])
+					}
+
+					idx, ok = columnIdx[columnName+"_sum"]
+					if !ok {
+						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Missing column: ", namespace, columnName+"_sum")))
+						continue
+					}
+					sum, ok := dbToFloat64(columnData[idx])
+					if !ok {
+						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName+"_sum", columnData[idx])))
+						continue
+					}
+
+					idx, ok = columnIdx[columnName+"_count"]
+					if !ok {
+						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Missing column: ", namespace, columnName+"_count")))
+						continue
+					}
+					count, ok := dbToUint64(columnData[idx])
+					if !ok {
+						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName+"_count", columnData[idx])))
+						continue
+					}
+
+					metric = prometheus.MustNewConstHistogram(
+						metricMapping.desc,
+						count, sum, buckets,
+						labels...,
+					)
+				} else {
+					value, ok := dbToFloat64(columnData[idx])
+					if !ok {
+						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName, columnData[idx])))
+						continue
+					}
+					// Generate the metric
+					metric = prometheus.MustNewConstMetric(metricMapping.desc, metricMapping.vtype, value, labels...)
 				}
-				// Generate the metric
-				metric = prometheus.MustNewConstMetric(metricMapping.desc, metricMapping.vtype, value, labels...)
 			} else {
 				// Unknown metric. Report as untyped if scan to float64 works, else note an error too.
 				metricLabel := fmt.Sprintf("%s_%s", namespace, columnName)
@@ -1564,50 +1705,51 @@ func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 // DATA_SOURCE_NAME always wins so we do not break older versions
 // reading secrets from files wins over secrets in environment variables
 // DATA_SOURCE_NAME > DATA_SOURCE_{USER|PASS}_FILE > DATA_SOURCE_{USER|PASS}
-func getDataSources() []string {
+func getDataSources() ([]string, error) {
 	var dsn = os.Getenv("DATA_SOURCE_NAME")
-	if len(dsn) == 0 {
-		var user string
-		var pass string
-		var uri string
-
-		if len(os.Getenv("DATA_SOURCE_USER_FILE")) != 0 {
-			fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_USER_FILE"))
-			if err != nil {
-				panic(err)
-			}
-			user = strings.TrimSpace(string(fileContents))
-		} else {
-			user = os.Getenv("DATA_SOURCE_USER")
-		}
-
-		if len(os.Getenv("DATA_SOURCE_PASS_FILE")) != 0 {
-			fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_PASS_FILE"))
-			if err != nil {
-				panic(err)
-			}
-			pass = strings.TrimSpace(string(fileContents))
-		} else {
-			pass = os.Getenv("DATA_SOURCE_PASS")
-		}
-
-		ui := url.UserPassword(user, pass).String()
-
-		if len(os.Getenv("DATA_SOURCE_URI_FILE")) != 0 {
-			fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_URI_FILE"))
-			if err != nil {
-				panic(err)
-			}
-			uri = strings.TrimSpace(string(fileContents))
-		} else {
-			uri = os.Getenv("DATA_SOURCE_URI")
-		}
-
-		dsn = "postgresql://" + ui + "@" + uri
-
-		return []string{dsn}
+	if len(dsn) != 0 {
+		return strings.Split(dsn, ","), nil
 	}
-	return strings.Split(dsn, ",")
+
+	var user, pass, uri string
+
+	dataSourceUserFile := os.Getenv("DATA_SOURCE_USER_FILE")
+	if len(dataSourceUserFile) != 0 {
+		fileContents, err := ioutil.ReadFile(dataSourceUserFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed loading data source user file %s: %s", dataSourceUserFile, err.Error())
+		}
+		user = strings.TrimSpace(string(fileContents))
+	} else {
+		user = os.Getenv("DATA_SOURCE_USER")
+	}
+
+	dataSourcePassFile := os.Getenv("DATA_SOURCE_PASS_FILE")
+	if len(dataSourcePassFile) != 0 {
+		fileContents, err := ioutil.ReadFile(dataSourcePassFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed loading data source pass file %s: %s", dataSourcePassFile, err.Error())
+		}
+		pass = strings.TrimSpace(string(fileContents))
+	} else {
+		pass = os.Getenv("DATA_SOURCE_PASS")
+	}
+
+	ui := url.UserPassword(user, pass).String()
+	dataSrouceURIFile := os.Getenv("DATA_SOURCE_URI_FILE")
+	if len(dataSrouceURIFile) != 0 {
+		fileContents, err := ioutil.ReadFile(dataSrouceURIFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed loading data source URI file %s: %s", dataSrouceURIFile, err.Error())
+		}
+		uri = strings.TrimSpace(string(fileContents))
+	} else {
+		uri = os.Getenv("DATA_SOURCE_URI")
+	}
+
+	dsn = "postgresql://" + ui + "@" + uri
+
+	return []string{dsn}, nil
 }
 
 func contains(a []string, x string) bool {
@@ -1640,19 +1782,25 @@ func main() {
 		return
 	}
 
-	dsn := getDataSources()
+	dsn, err := getDataSources()
+	if err != nil {
+		log.Fatalf("failed reading data sources: %s", err.Error())
+	}
+
 	if len(dsn) == 0 {
 		log.Fatal("couldn't find environment variables describing the datasource to use")
 	}
 
-	exporter := NewExporter(dsn,
+	opts := []ExporterOpt{
 		DisableDefaultMetrics(*disableDefaultMetrics),
 		DisableSettingsMetrics(*disableSettingsMetrics),
 		AutoDiscoverDatabases(*autoDiscoverDatabases),
 		WithUserQueriesPath(*queriesPath),
 		WithConstantLabels(*constantLabelsList),
 		ExcludeDatabases(*excludeDatabases),
-	)
+	}
+
+	exporter := NewExporter(dsn, opts...)
 	defer func() {
 		exporter.servers.Close()
 	}()
