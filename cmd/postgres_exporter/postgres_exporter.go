@@ -1581,50 +1581,51 @@ func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 // DATA_SOURCE_NAME always wins so we do not break older versions
 // reading secrets from files wins over secrets in environment variables
 // DATA_SOURCE_NAME > DATA_SOURCE_{USER|PASS}_FILE > DATA_SOURCE_{USER|PASS}
-func getDataSources() []string {
+func getDataSources() ([]string, error) {
 	var dsn = os.Getenv("DATA_SOURCE_NAME")
-	if len(dsn) == 0 {
-		var user string
-		var pass string
-		var uri string
-
-		if len(os.Getenv("DATA_SOURCE_USER_FILE")) != 0 {
-			fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_USER_FILE"))
-			if err != nil {
-				panic(err)
-			}
-			user = strings.TrimSpace(string(fileContents))
-		} else {
-			user = os.Getenv("DATA_SOURCE_USER")
-		}
-
-		if len(os.Getenv("DATA_SOURCE_PASS_FILE")) != 0 {
-			fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_PASS_FILE"))
-			if err != nil {
-				panic(err)
-			}
-			pass = strings.TrimSpace(string(fileContents))
-		} else {
-			pass = os.Getenv("DATA_SOURCE_PASS")
-		}
-
-		ui := url.UserPassword(user, pass).String()
-
-		if len(os.Getenv("DATA_SOURCE_URI_FILE")) != 0 {
-			fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_URI_FILE"))
-			if err != nil {
-				panic(err)
-			}
-			uri = strings.TrimSpace(string(fileContents))
-		} else {
-			uri = os.Getenv("DATA_SOURCE_URI")
-		}
-
-		dsn = "postgresql://" + ui + "@" + uri
-
-		return []string{dsn}
+	if len(dsn) != 0 {
+		return strings.Split(dsn, ","), nil
 	}
-	return strings.Split(dsn, ",")
+
+	var user, pass, uri string
+
+	dataSourceUserFile := os.Getenv("DATA_SOURCE_USER_FILE")
+	if len(dataSourceUserFile) != 0 {
+		fileContents, err := ioutil.ReadFile(dataSourceUserFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed loading data source user file %s: %s", dataSourceUserFile, err.Error())
+		}
+		user = strings.TrimSpace(string(fileContents))
+	} else {
+		user = os.Getenv("DATA_SOURCE_USER")
+	}
+
+	dataSourcePassFile := os.Getenv("DATA_SOURCE_PASS_FILE")
+	if len(dataSourcePassFile) != 0 {
+		fileContents, err := ioutil.ReadFile(dataSourcePassFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed loading data source pass file %s: %s", dataSourcePassFile, err.Error())
+		}
+		pass = strings.TrimSpace(string(fileContents))
+	} else {
+		pass = os.Getenv("DATA_SOURCE_PASS")
+	}
+
+	ui := url.UserPassword(user, pass).String()
+	dataSrouceURIFile := os.Getenv("DATA_SOURCE_URI_FILE")
+	if len(dataSrouceURIFile) != 0 {
+		fileContents, err := ioutil.ReadFile(dataSrouceURIFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed loading data source URI file %s: %s", dataSrouceURIFile, err.Error())
+		}
+		uri = strings.TrimSpace(string(fileContents))
+	} else {
+		uri = os.Getenv("DATA_SOURCE_URI")
+	}
+
+	dsn = "postgresql://" + ui + "@" + uri
+
+	return []string{dsn}, nil
 }
 
 func contains(a []string, x string) bool {
@@ -1657,19 +1658,25 @@ func main() {
 		return
 	}
 
-	dsn := getDataSources()
+	dsn, err := getDataSources()
+	if err != nil {
+		log.Fatalf("failed reading data sources: %s", err.Error())
+	}
+
 	if len(dsn) == 0 {
 		log.Fatal("couldn't find environment variables describing the datasource to use")
 	}
 
-	exporter := NewExporter(dsn,
+	opts := []ExporterOpt{
 		DisableDefaultMetrics(*disableDefaultMetrics),
 		DisableSettingsMetrics(*disableSettingsMetrics),
 		AutoDiscoverDatabases(*autoDiscoverDatabases),
 		WithUserQueriesPath(*queriesPath),
 		WithConstantLabels(*constantLabelsList),
 		ExcludeDatabases(*excludeDatabases),
-	)
+	}
+
+	exporter := NewExporter(dsn, opts...)
 	defer func() {
 		exporter.servers.Close()
 	}()
