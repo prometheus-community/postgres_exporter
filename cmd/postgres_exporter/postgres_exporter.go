@@ -53,6 +53,7 @@ var (
 	onlyDumpMaps           = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
 	constantLabelsList     = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,).").Default("").Envar("PG_EXPORTER_CONSTANT_LABELS").String()
 	excludeDatabases       = kingpin.Flag("exclude-databases", "A list of databases to remove when autoDiscoverDatabases is enabled").Default("").Envar("PG_EXPORTER_EXCLUDE_DATABASES").String()
+	metricPrefix           = kingpin.Flag("metric-prefix", "A metric prefix can be used to have non-default (not \"pg\") prefixes for each of the metrics").Default("pg").Envar("PG_EXPORTER_METRIC_PREFIX").String()
 )
 
 // Metric name parts.
@@ -625,6 +626,8 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 					continue
 				}
 			}
+
+			namespace := strings.Replace(namespace, "pg", *metricPrefix, 1)
 
 			// Determine how to convert the column based on its usage.
 			// nolint: dupl
