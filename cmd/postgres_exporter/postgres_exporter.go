@@ -80,6 +80,7 @@ const (
 	GAUGE        ColumnUsage = iota // Use this column as a gauge
 	MAPPEDMETRIC ColumnUsage = iota // Use this column with the supplied mapping of text values
 	DURATION     ColumnUsage = iota // This column should be interpreted as a text duration (and converted to milliseconds)
+	HISTOGRAM    ColumnUsage = iota // Use this column as a histogram
 )
 
 // UnmarshalYAML implements the yaml.Unmarshaller interface.
@@ -169,6 +170,7 @@ type MetricMapNamespace struct {
 // be mapped to by the collector
 type MetricMap struct {
 	discard    bool                              // Should metric be discarded during mapping?
+	histogram  bool                              // Should metric be treated as a histogram?
 	vtype      prometheus.ValueType              // Prometheus valuetype
 	desc       *prometheus.Desc                  // Prometheus descriptor
 	conversion func(interface{}) (float64, bool) // Conversion function to turn PG result into float64
@@ -650,6 +652,27 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 						return dbToFloat64(in)
 					},
 				}
+			case HISTOGRAM:
+				thisMap[columnName] = MetricMap{
+					histogram: true,
+					vtype:     prometheus.UntypedValue,
+					desc:      prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, variableLabels, serverLabels),
+					conversion: func(in interface{}) (float64, bool) {
+						return dbToFloat64(in)
+					},
+				}
+				thisMap[columnName+"_bucket"] = MetricMap{
+					histogram: true,
+					discard:   true,
+				}
+				thisMap[columnName+"_sum"] = MetricMap{
+					histogram: true,
+					discard:   true,
+				}
+				thisMap[columnName+"_count"] = MetricMap{
+					histogram: true,
+					discard:   true,
+				}
 			case MAPPEDMETRIC:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.GaugeValue,
@@ -721,6 +744,9 @@ func stringToColumnUsage(s string) (ColumnUsage, error) {
 	case "GAUGE":
 		u = GAUGE
 
+	case "HISTOGRAM":
+		u = HISTOGRAM
+
 	case "MAPPEDMETRIC":
 		u = MAPPEDMETRIC
 
@@ -769,6 +795,46 @@ func dbToFloat64(t interface{}) (float64, bool) {
 		return math.NaN(), true
 	default:
 		return math.NaN(), false
+	}
+}
+
+// Convert database.sql types to uint64 for Prometheus consumption. Null types are mapped to 0. string and []byte
+// types are mapped as 0 and !ok
+func dbToUint64(t interface{}) (uint64, bool) {
+	switch v := t.(type) {
+	case uint64:
+		return v, true
+	case int64:
+		return uint64(v), true
+	case float64:
+		return uint64(v), true
+	case time.Time:
+		return uint64(v.Unix()), true
+	case []byte:
+		// Try and convert to string and then parse to a uint64
+		strV := string(v)
+		result, err := strconv.ParseUint(strV, 10, 64)
+		if err != nil {
+			log.Infoln("Could not parse []byte:", err)
+			return 0, false
+		}
+		return result, true
+	case string:
+		result, err := strconv.ParseUint(v, 10, 64)
+		if err != nil {
+			log.Infoln("Could not parse string:", err)
+			return 0, false
+		}
+		return result, true
+	case bool:
+		if v {
+			return 1, true
+		}
+		return 0, true
+	case nil:
+		return 0, true
+	default:
+		return 0, false
 	}
 }
 
@@ -1304,13 +1370,68 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 					continue
 				}
 
-				value, ok := dbToFloat64(columnData[idx])
-				if !ok {
-					nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName, columnData[idx])))
-					continue
+				if metricMapping.histogram {
+					var keys []float64
+					err = pq.Array(&keys).Scan(columnData[idx])
+					if err != nil {
+						return []prometheus.Metric{}, []error{}, errors.New(fmt.Sprintln("Error retrieving", columnName, "buckets:", namespace, err))
+					}
+
+					var values []int64
+					valuesIdx, ok := columnIdx[columnName+"_bucket"]
+					if !ok {
+						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Missing column: ", namespace, columnName+"_bucket")))
+						continue
+					}
+					err = pq.Array(&values).Scan(columnData[valuesIdx])
+					if err != nil {
+						return []prometheus.Metric{}, []error{}, errors.New(fmt.Sprintln("Error retrieving", columnName, "bucket values:", namespace, err))
+					}
+
+					buckets := make(map[float64]uint64, len(keys))
+					for i, key := range keys {
+						if i >= len(values) {
+							break
+						}
+						buckets[key] = uint64(values[i])
+					}
+
+					idx, ok = columnIdx[columnName+"_sum"]
+					if !ok {
+						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Missing column: ", namespace, columnName+"_sum")))
+						continue
+					}
+					sum, ok := dbToFloat64(columnData[idx])
+					if !ok {
+						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName+"_sum", columnData[idx])))
+						continue
+					}
+
+					idx, ok = columnIdx[columnName+"_count"]
+					if !ok {
+						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Missing column: ", namespace, columnName+"_count")))
+						continue
+					}
+					count, ok := dbToUint64(columnData[idx])
+					if !ok {
+						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName+"_count", columnData[idx])))
+						continue
+					}
+
+					metric = prometheus.MustNewConstHistogram(
+						metricMapping.desc,
+						count, sum, buckets,
+						labels...,
+					)
+				} else {
+					value, ok := dbToFloat64(columnData[idx])
+					if !ok {
+						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName, columnData[idx])))
+						continue
+					}
+					// Generate the metric
+					metric = prometheus.MustNewConstMetric(metricMapping.desc, metricMapping.vtype, value, labels...)
 				}
-				// Generate the metric
-				metric = prometheus.MustNewConstMetric(metricMapping.desc, metricMapping.vtype, value, labels...)
 			} else {
 				// Unknown metric. Report as untyped if scan to float64 works, else note an error too.
 				metricLabel := fmt.Sprintf("%s_%s", namespace, columnName)

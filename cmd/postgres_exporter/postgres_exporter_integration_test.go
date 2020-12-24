@@ -126,3 +126,26 @@ func (s *IntegrationSuite) TestUnknownMetricParsingDoesntCrash(c *C) {
 	// scrape the exporter and make sure it works
 	exporter.scrape(ch)
 }
+
+// TestExtendQueriesDoesntCrash tests that specifying extend.query-path doesn't
+// crash.
+func (s *IntegrationSuite) TestExtendQueriesDoesntCrash(c *C) {
+	// Setup a dummy channel to consume metrics
+	ch := make(chan prometheus.Metric, 100)
+	go func() {
+		for range ch {
+		}
+	}()
+
+	dsn := os.Getenv("DATA_SOURCE_NAME")
+	c.Assert(dsn, Not(Equals), "")
+
+	exporter := NewExporter(
+		strings.Split(dsn, ","),
+		WithUserQueriesPath("../user_queries_test.yaml"),
+	)
+	c.Assert(exporter, NotNil)
+
+	// scrape the exporter and make sure it works
+	exporter.scrape(ch)
+}
