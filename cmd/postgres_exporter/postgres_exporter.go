@@ -53,6 +53,7 @@ var (
 	onlyDumpMaps           = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
 	constantLabelsList     = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,).").Default("").Envar("PG_EXPORTER_CONSTANT_LABELS").String()
 	excludeDatabases       = kingpin.Flag("exclude-databases", "A list of databases to remove when autoDiscoverDatabases is enabled").Default("").Envar("PG_EXPORTER_EXCLUDE_DATABASES").String()
+	metricPrefix           = kingpin.Flag("metric-prefix", "A metric prefix can be used to have non-default (not \"pg\") prefixes for each of the metrics").Default("pg").Envar("PG_EXPORTER_METRIC_PREFIX").String()
 )
 
 // Metric name parts.
@@ -626,6 +627,8 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 				}
 			}
 
+			namespace := strings.Replace(namespace, "pg", *metricPrefix, 1)
+
 			// Determine how to convert the column based on its usage.
 			// nolint: dupl
 			switch columnMapping.usage {
@@ -1043,7 +1046,7 @@ func (s *Servers) GetServer(dsn string) (*Server, error) {
 	var err error
 	var ok bool
 	errCount := 0 // start at zero because we increment before doing work
-	retries := 3
+	retries := 1
 	var server *Server
 	for {
 		if errCount++; errCount > retries {
@@ -1233,29 +1236,6 @@ func (e *Exporter) setupInternalMetrics() {
 
 // Describe implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
-	// We cannot know in advance what metrics the exporter will generate
-	// from Postgres. So we use the poor man's describe method: Run a collect
-	// and send the descriptors of all the collected metrics. The problem
-	// here is that we need to connect to the Postgres DB. If it is currently
-	// unavailable, the descriptors will be incomplete. Since this is a
-	// stand-alone exporter and not used as a library within other code
-	// implementing additional metrics, the worst that can happen is that we
-	// don't detect inconsistent metrics created by this exporter
-	// itself. Also, a change in the monitored Postgres instance may change the
-	// exported metrics during the runtime of the exporter.
-	metricCh := make(chan prometheus.Metric)
-	doneCh := make(chan struct{})
-
-	go func() {
-		for m := range metricCh {
-			ch <- m.Desc()
-		}
-		close(doneCh)
-	}()
-
-	e.Collect(metricCh)
-	close(metricCh)
-	<-doneCh
 }
 
 // Collect implements prometheus.Collector.
@@ -1644,12 +1624,12 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			continue
 		}
 
-		dsns[dsn] = struct{}{}
 		server, err := e.servers.GetServer(dsn)
 		if err != nil {
 			log.Errorf("Error opening connection to database (%s): %v", loggableDSN(dsn), err)
 			continue
 		}
+		dsns[dsn] = struct{}{}
 
 		// If autoDiscoverDatabases is true, set first dsn as master database (Default: false)
 		server.master = true

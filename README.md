@@ -140,6 +140,9 @@ The following environment variables configure the exporter:
 * `PG_EXPORTER_EXCLUDE_DATABASES`
   A comma-separated list of databases to remove when autoDiscoverDatabases is enabled. Default is empty string.
 
+* `PG_EXPORTER_METRIC_PREFIX`
+  A prefix to use for each of the default metrics exported by postgres-exporter. Default is `pg`
+
 Settings set by environment variables starting with `PG_` will be overwritten by the corresponding CLI flag if given.
 
 ### Setting the Postgres server's data source name
