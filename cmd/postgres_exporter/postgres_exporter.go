@@ -1616,11 +1616,27 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 }
 
 func (e *Exporter) discoverDatabaseDSNs() []string {
+	// connstring syntax is complex (and not sure if even regular).
+	// we don't need to parse it, so just superficially validate that it starts
+	// with a valid-ish keyword pair
+	connstringRe := regexp.MustCompile(`^ *[a-zA-Z0-9]+ *= *[^= ]+`)
+
 	dsns := make(map[string]struct{})
 	for _, dsn := range e.dsn {
-		parsedDSN, err := url.Parse(dsn)
-		if err != nil {
-			log.Errorf("Unable to parse DSN (%s): %v", loggableDSN(dsn), err)
+		var dsnURI *url.URL
+		var dsnConnstring string
+
+		if strings.HasPrefix(dsn, "postgresql://") {
+			var err error
+			dsnURI, err = url.Parse(dsn)
+			if err != nil {
+				log.Errorf("Unable to parse DSN as URI (%s): %v", loggableDSN(dsn), err)
+				continue
+			}
+		} else if connstringRe.MatchString(dsn) {
+			dsnConnstring = dsn
+		} else {
+			log.Errorf("Unable to parse DSN as either URI or connstring (%s)", loggableDSN(dsn))
 			continue
 		}
 
@@ -1643,8 +1659,16 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			if contains(e.excludeDatabases, databaseName) {
 				continue
 			}
-			parsedDSN.Path = databaseName
-			dsns[parsedDSN.String()] = struct{}{}
+
+			if dsnURI != nil {
+				dsnURI.Path = databaseName
+				dsn = dsnURI.String()
+			} else {
+				// replacing one dbname with another is complicated.
+				// just append new dbname to override.
+				dsn = fmt.Sprintf("%s dbname=%s", dsnConnstring, databaseName)
+			}
+			dsns[dsn] = struct{}{}
 		}
 	}
 
