@@ -601,6 +601,8 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 	for namespace, intermediateMappings := range metricMaps {
 		thisMap := make(map[string]MetricMap)
 
+		namespace = strings.Replace(namespace, "pg", *metricPrefix, 1)
+
 		// Get the constant labels
 		var variableLabels []string
 		for columnName, columnMapping := range intermediateMappings.columnMappings {
@@ -626,8 +628,6 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 					continue
 				}
 			}
-
-			namespace := strings.Replace(namespace, "pg", *metricPrefix, 1)
 
 			// Determine how to convert the column based on its usage.
 			// nolint: dupl
