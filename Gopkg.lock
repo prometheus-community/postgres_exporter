@@ -104,14 +104,16 @@
   revision = "7600349dcfe1abd18d72d3a1770870d9800a7801"
 
 [[projects]]
-  digest = "1:93ed91deb3bb95cf63bbe5ae3f16eb4b7559b438fc3a3c6917cd12cc31e38c08"
+  digest = "1:b12cfb0b45b8e782f75d2e2dc694d0f6c6acf08653f73720f049769091a7d85a"
   name = "github.com/prometheus/procfs"
   packages = [
     ".",
-    "xfs",
+    "internal/fs",
+    "internal/util",
   ]
   pruneopts = "UT"
-  revision = "a6e9df898b1336106c743392c48ee0b71f5c4efa"
+  revision = "d3334bf511d8b1570144f488cc14d08b539df979"
+  version = "v0.3.0"
 
 [[projects]]
   digest = "1:fb011abd58a582cf867409273f372fc6437eda670ff02055c47e6203e90466d7"
