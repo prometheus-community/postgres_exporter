@@ -53,6 +53,7 @@ var (
 	onlyDumpMaps           = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
 	constantLabelsList     = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,).").Default("").Envar("PG_EXPORTER_CONSTANT_LABELS").String()
 	excludeDatabases       = kingpin.Flag("exclude-databases", "A list of databases to remove when autoDiscoverDatabases is enabled").Default("").Envar("PG_EXPORTER_EXCLUDE_DATABASES").String()
+	metricPrefix           = kingpin.Flag("metric-prefix", "A metric prefix can be used to have non-default (not \"pg\") prefixes for each of the metrics").Default("pg").Envar("PG_EXPORTER_METRIC_PREFIX").String()
 )
 
 // Metric name parts.
@@ -80,6 +81,7 @@ const (
 	GAUGE        ColumnUsage = iota // Use this column as a gauge
 	MAPPEDMETRIC ColumnUsage = iota // Use this column with the supplied mapping of text values
 	DURATION     ColumnUsage = iota // This column should be interpreted as a text duration (and converted to milliseconds)
+	HISTOGRAM    ColumnUsage = iota // Use this column as a histogram
 )
 
 // UnmarshalYAML implements the yaml.Unmarshaller interface.
@@ -169,6 +171,7 @@ type MetricMapNamespace struct {
 // be mapped to by the collector
 type MetricMap struct {
 	discard    bool                              // Should metric be discarded during mapping?
+	histogram  bool                              // Should metric be treated as a histogram?
 	vtype      prometheus.ValueType              // Prometheus valuetype
 	desc       *prometheus.Desc                  // Prometheus descriptor
 	conversion func(interface{}) (float64, bool) // Conversion function to turn PG result into float64
@@ -376,7 +379,8 @@ var queryOverrides = map[string][]OverrideQuery{
 				         ('sharelock'),
 				         ('sharerowexclusivelock'),
 				         ('exclusivelock'),
-				         ('accessexclusivelock')
+				         ('accessexclusivelock'),
+					 ('sireadlock')
 				) AS tmp(mode) CROSS JOIN pg_database
 			LEFT JOIN
 			  (SELECT database, lower(mode) AS mode,count(*) AS count
@@ -598,6 +602,8 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 	for namespace, intermediateMappings := range metricMaps {
 		thisMap := make(map[string]MetricMap)
 
+		namespace = strings.Replace(namespace, "pg", *metricPrefix, 1)
+
 		// Get the constant labels
 		var variableLabels []string
 		for columnName, columnMapping := range intermediateMappings.columnMappings {
@@ -649,6 +655,27 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 					conversion: func(in interface{}) (float64, bool) {
 						return dbToFloat64(in)
 					},
+				}
+			case HISTOGRAM:
+				thisMap[columnName] = MetricMap{
+					histogram: true,
+					vtype:     prometheus.UntypedValue,
+					desc:      prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, variableLabels, serverLabels),
+					conversion: func(in interface{}) (float64, bool) {
+						return dbToFloat64(in)
+					},
+				}
+				thisMap[columnName+"_bucket"] = MetricMap{
+					histogram: true,
+					discard:   true,
+				}
+				thisMap[columnName+"_sum"] = MetricMap{
+					histogram: true,
+					discard:   true,
+				}
+				thisMap[columnName+"_count"] = MetricMap{
+					histogram: true,
+					discard:   true,
 				}
 			case MAPPEDMETRIC:
 				thisMap[columnName] = MetricMap{
@@ -721,6 +748,9 @@ func stringToColumnUsage(s string) (ColumnUsage, error) {
 	case "GAUGE":
 		u = GAUGE
 
+	case "HISTOGRAM":
+		u = HISTOGRAM
+
 	case "MAPPEDMETRIC":
 		u = MAPPEDMETRIC
 
@@ -769,6 +799,46 @@ func dbToFloat64(t interface{}) (float64, bool) {
 		return math.NaN(), true
 	default:
 		return math.NaN(), false
+	}
+}
+
+// Convert database.sql types to uint64 for Prometheus consumption. Null types are mapped to 0. string and []byte
+// types are mapped as 0 and !ok
+func dbToUint64(t interface{}) (uint64, bool) {
+	switch v := t.(type) {
+	case uint64:
+		return v, true
+	case int64:
+		return uint64(v), true
+	case float64:
+		return uint64(v), true
+	case time.Time:
+		return uint64(v.Unix()), true
+	case []byte:
+		// Try and convert to string and then parse to a uint64
+		strV := string(v)
+		result, err := strconv.ParseUint(strV, 10, 64)
+		if err != nil {
+			log.Infoln("Could not parse []byte:", err)
+			return 0, false
+		}
+		return result, true
+	case string:
+		result, err := strconv.ParseUint(v, 10, 64)
+		if err != nil {
+			log.Infoln("Could not parse string:", err)
+			return 0, false
+		}
+		return result, true
+	case bool:
+		if v {
+			return 1, true
+		}
+		return 0, true
+	case nil:
+		return 0, true
+	default:
+		return 0, false
 	}
 }
 
@@ -977,7 +1047,7 @@ func (s *Servers) GetServer(dsn string) (*Server, error) {
 	var err error
 	var ok bool
 	errCount := 0 // start at zero because we increment before doing work
-	retries := 3
+	retries := 1
 	var server *Server
 	for {
 		if errCount++; errCount > retries {
@@ -1167,29 +1237,6 @@ func (e *Exporter) setupInternalMetrics() {
 
 // Describe implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
-	// We cannot know in advance what metrics the exporter will generate
-	// from Postgres. So we use the poor man's describe method: Run a collect
-	// and send the descriptors of all the collected metrics. The problem
-	// here is that we need to connect to the Postgres DB. If it is currently
-	// unavailable, the descriptors will be incomplete. Since this is a
-	// stand-alone exporter and not used as a library within other code
-	// implementing additional metrics, the worst that can happen is that we
-	// don't detect inconsistent metrics created by this exporter
-	// itself. Also, a change in the monitored Postgres instance may change the
-	// exported metrics during the runtime of the exporter.
-	metricCh := make(chan prometheus.Metric)
-	doneCh := make(chan struct{})
-
-	go func() {
-		for m := range metricCh {
-			ch <- m.Desc()
-		}
-		close(doneCh)
-	}()
-
-	e.Collect(metricCh)
-	close(metricCh)
-	<-doneCh
 }
 
 // Collect implements prometheus.Collector.
@@ -1304,13 +1351,68 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 					continue
 				}
 
-				value, ok := dbToFloat64(columnData[idx])
-				if !ok {
-					nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName, columnData[idx])))
-					continue
+				if metricMapping.histogram {
+					var keys []float64
+					err = pq.Array(&keys).Scan(columnData[idx])
+					if err != nil {
+						return []prometheus.Metric{}, []error{}, errors.New(fmt.Sprintln("Error retrieving", columnName, "buckets:", namespace, err))
+					}
+
+					var values []int64
+					valuesIdx, ok := columnIdx[columnName+"_bucket"]
+					if !ok {
+						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Missing column: ", namespace, columnName+"_bucket")))
+						continue
+					}
+					err = pq.Array(&values).Scan(columnData[valuesIdx])
+					if err != nil {
+						return []prometheus.Metric{}, []error{}, errors.New(fmt.Sprintln("Error retrieving", columnName, "bucket values:", namespace, err))
+					}
+
+					buckets := make(map[float64]uint64, len(keys))
+					for i, key := range keys {
+						if i >= len(values) {
+							break
+						}
+						buckets[key] = uint64(values[i])
+					}
+
+					idx, ok = columnIdx[columnName+"_sum"]
+					if !ok {
+						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Missing column: ", namespace, columnName+"_sum")))
+						continue
+					}
+					sum, ok := dbToFloat64(columnData[idx])
+					if !ok {
+						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName+"_sum", columnData[idx])))
+						continue
+					}
+
+					idx, ok = columnIdx[columnName+"_count"]
+					if !ok {
+						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Missing column: ", namespace, columnName+"_count")))
+						continue
+					}
+					count, ok := dbToUint64(columnData[idx])
+					if !ok {
+						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName+"_count", columnData[idx])))
+						continue
+					}
+
+					metric = prometheus.MustNewConstHistogram(
+						metricMapping.desc,
+						count, sum, buckets,
+						labels...,
+					)
+				} else {
+					value, ok := dbToFloat64(columnData[idx])
+					if !ok {
+						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName, columnData[idx])))
+						continue
+					}
+					// Generate the metric
+					metric = prometheus.MustNewConstMetric(metricMapping.desc, metricMapping.vtype, value, labels...)
 				}
-				// Generate the metric
-				metric = prometheus.MustNewConstMetric(metricMapping.desc, metricMapping.vtype, value, labels...)
 			} else {
 				// Unknown metric. Report as untyped if scan to float64 works, else note an error too.
 				metricLabel := fmt.Sprintf("%s_%s", namespace, columnName)
@@ -1515,20 +1617,36 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 }
 
 func (e *Exporter) discoverDatabaseDSNs() []string {
+	// connstring syntax is complex (and not sure if even regular).
+	// we don't need to parse it, so just superficially validate that it starts
+	// with a valid-ish keyword pair
+	connstringRe := regexp.MustCompile(`^ *[a-zA-Z0-9]+ *= *[^= ]+`)
+
 	dsns := make(map[string]struct{})
 	for _, dsn := range e.dsn {
-		parsedDSN, err := url.Parse(dsn)
-		if err != nil {
-			log.Errorf("Unable to parse DSN (%s): %v", loggableDSN(dsn), err)
+		var dsnURI *url.URL
+		var dsnConnstring string
+
+		if strings.HasPrefix(dsn, "postgresql://") {
+			var err error
+			dsnURI, err = url.Parse(dsn)
+			if err != nil {
+				log.Errorf("Unable to parse DSN as URI (%s): %v", loggableDSN(dsn), err)
+				continue
+			}
+		} else if connstringRe.MatchString(dsn) {
+			dsnConnstring = dsn
+		} else {
+			log.Errorf("Unable to parse DSN as either URI or connstring (%s)", loggableDSN(dsn))
 			continue
 		}
 
-		dsns[dsn] = struct{}{}
 		server, err := e.servers.GetServer(dsn)
 		if err != nil {
 			log.Errorf("Error opening connection to database (%s): %v", loggableDSN(dsn), err)
 			continue
 		}
+		dsns[dsn] = struct{}{}
 
 		// If autoDiscoverDatabases is true, set first dsn as master database (Default: false)
 		server.master = true
@@ -1542,8 +1660,16 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			if contains(e.excludeDatabases, databaseName) {
 				continue
 			}
-			parsedDSN.Path = databaseName
-			dsns[parsedDSN.String()] = struct{}{}
+
+			if dsnURI != nil {
+				dsnURI.Path = databaseName
+				dsn = dsnURI.String()
+			} else {
+				// replacing one dbname with another is complicated.
+				// just append new dbname to override.
+				dsn = fmt.Sprintf("%s dbname=%s", dsnConnstring, databaseName)
+			}
+			dsns[dsn] = struct{}{}
 		}
 	}
 
