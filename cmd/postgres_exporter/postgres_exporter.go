@@ -379,7 +379,8 @@ var queryOverrides = map[string][]OverrideQuery{
 				         ('sharelock'),
 				         ('sharerowexclusivelock'),
 				         ('exclusivelock'),
-				         ('accessexclusivelock')
+				         ('accessexclusivelock'),
+					 ('sireadlock')
 				) AS tmp(mode) CROSS JOIN pg_database
 			LEFT JOIN
 			  (SELECT database, lower(mode) AS mode,count(*) AS count
