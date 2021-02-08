@@ -1490,10 +1490,8 @@ func main() {
 		exporter.servers.Close()
 	}()
 
-	psCollector := prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{})
-	goCollector := prometheus.NewGoCollector()
-
-	prometheus.MustRegister(psCollector, goCollector, exporter)
+	// process and go collector is registered in prometheus/registry init
+	prometheus.MustRegister(exporter)
 
 	exporter_shared.RunServer("PostgreSQL", *listenAddress, *metricPath, promhttp.ContinueOnError)
 }
