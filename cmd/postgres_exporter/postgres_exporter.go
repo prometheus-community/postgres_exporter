@@ -715,7 +715,7 @@ func parseFingerprint(url string) (string, error) {
 	pairs := strings.Split(dsn, " ")
 	kv := make(map[string]string, len(pairs))
 	for _, pair := range pairs {
-		splitted := strings.Split(pair, "=")
+		splitted := strings.SplitN(pair, "=", 2)
 		if len(splitted) != 2 {
 			return "", fmt.Errorf("malformed dsn %q", dsn)
 		}
@@ -1465,6 +1465,8 @@ func main() {
 	if len(dsn) == 0 {
 		log.Fatal("couldn't find environment variables describing the datasource to use")
 	}
+
+	fmt.Println(dsn)
 
 	queriesEnabled := map[MetricResolution]bool{
 		HR: *collectCustomQueryHr,
