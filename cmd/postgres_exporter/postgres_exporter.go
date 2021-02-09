@@ -1466,8 +1466,6 @@ func main() {
 		log.Fatal("couldn't find environment variables describing the datasource to use")
 	}
 
-	fmt.Println(dsn)
-
 	queriesEnabled := map[MetricResolution]bool{
 		HR: *collectCustomQueryHr,
 		MR: *collectCustomQueryMr,
