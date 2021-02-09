@@ -16,19 +16,24 @@ package exporter_shared
 
 import (
 	"crypto/subtle"
+	"flag"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
-	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
 )
 
 var (
-	authFileF = kingpin.Flag("web.auth-file", "Path to YAML file with server_user, server_password keys for HTTP Basic authentication "+
-		"(overrides HTTP_AUTH environment variable).").String()
+	authFileF = flag.String(
+		"web.auth-file", "",
+		"Path to YAML file with server_user, server_password keys for HTTP Basic authentication "+
+			"(overrides HTTP_AUTH environment variable).",
+	)
 )
 
 // basicAuth combines username and password.
@@ -64,11 +69,14 @@ func readBasicAuth() *basicAuth {
 	return &auth
 }
 
-// basicAuthHandler checks username and password before invoking provided next handler.
+// basicAuthHandler checks username and password before invoking provided handler.
 type basicAuthHandler struct {
 	basicAuth
-	nextHandler http.Handler
+	handler http.HandlerFunc
 }
+
+// check interface
+var _ http.Handler = (*basicAuthHandler)(nil)
 
 // ServeHTTP implements http.Handler.
 func (h *basicAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -81,21 +89,21 @@ func (h *basicAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.nextHandler.ServeHTTP(w, r)
+	h.handler(w, r)
 }
 
-// authHandler wraps provided handler with basic authentication if it is configured.
-func authHandler(handler http.Handler) http.Handler {
+// handler returns http.Handler for default Prometheus registry.
+func handler(errorHandling promhttp.HandlerErrorHandling) http.Handler {
+	handler := promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{
+		ErrorLog:      log.NewErrorLogger(),
+		ErrorHandling: errorHandling,
+	})
+
 	auth := readBasicAuth()
 	if auth.Username != "" && auth.Password != "" {
+		handler = &basicAuthHandler{basicAuth: *auth, handler: handler.ServeHTTP}
 		log.Infoln("HTTP Basic authentication is enabled.")
-		return &basicAuthHandler{basicAuth: *auth, nextHandler: handler}
 	}
 
 	return handler
 }
-
-// check interfaces
-var (
-	_ http.Handler = (*basicAuthHandler)(nil)
-)

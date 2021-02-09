@@ -12,26 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package exporter_shared provides shared code for Percona Prometheus exporters.
 package exporter_shared
 
 import (
 	"bytes"
 	"crypto/tls"
+	"flag"
 	"html/template"
 	"net/http"
 	"os"
 	"strings"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (
-	sslCertFileF = kingpin.Flag("web.ssl-cert-file", "Path to SSL certificate file.").String()
-	sslKeyFileF  = kingpin.Flag("web.ssl-key-file", "Path to SSL key file.").String()
+	sslCertFileF = flag.String("web.ssl-cert-file", "", "Path to SSL certificate file.")
+	sslKeyFileF  = flag.String("web.ssl-key-file", "", "Path to SSL key file.")
 
 	landingPage = template.Must(template.New("home").Parse(strings.TrimSpace(`
 <html>
@@ -46,24 +44,12 @@ var (
 `)))
 )
 
-// DefaultMetricsHandler returns metrics handler for default Prometheus gatherer/registerer
-// with logging and continuing on error.
-// Handler is not protected by HTTP basic authentication - it is done by RunServer.
-func DefaultMetricsHandler() http.Handler {
-	h := promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{
-		ErrorLog:      log.NewErrorLogger(),
-		ErrorHandling: promhttp.ContinueOnError,
-	})
-	return promhttp.InstrumentMetricHandler(prometheus.DefaultRegisterer, h)
-}
-
 // RunServer runs server for exporter with given name (it is used on landing page) on given address,
-// with HTTP basic authentication (if configured)
-// and with given HTTP handler (that should be created with DefaultMetricsHandler or manually).
+// exposing metrics under given path.
 // Function never returns.
-func RunServer(name, addr, path string, handler http.Handler) {
+func RunServer(name, addr, path string, errorHandling promhttp.HandlerErrorHandling) {
 	if (*sslCertFileF == "") != (*sslKeyFileF == "") {
-		log.Fatal("One of the flags --web.ssl-cert-file or --web.ssl-key-file is missing to enable HTTPS.")
+		log.Fatal("One of the flags -web.ssl-cert-file or -web.ssl-key-file is missing to enable HTTPS.")
 	}
 
 	ssl := false
@@ -77,17 +63,17 @@ func RunServer(name, addr, path string, handler http.Handler) {
 		ssl = true
 	}
 
+	handler := handler(errorHandling)
 	var buf bytes.Buffer
 	data := map[string]string{"name": name, "path": path}
 	if err := landingPage.Execute(&buf, data); err != nil {
 		log.Fatal(err)
 	}
 
-	h := authHandler(handler)
 	if ssl {
-		runHTTPS(addr, path, h, buf.Bytes())
+		runHTTPS(addr, path, handler, buf.Bytes())
 	} else {
-		runHTTP(addr, path, h, buf.Bytes())
+		runHTTP(addr, path, handler, buf.Bytes())
 	}
 }
 
@@ -99,28 +85,23 @@ func runHTTPS(addr, path string, handler http.Handler, landing []byte) {
 		w.Write(landing)
 	})
 
-	// see internal security baseline
 	tlsCfg := &tls.Config{
 		MinVersion:               tls.VersionTLS12,
+		CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
 		PreferServerCipherSuites: true,
 		CipherSuites: []uint16{
-			// no SHA-1, ECDHE before plain RSA, GCM before CBC
-			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
-			tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
 			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_RSA_WITH_AES_128_CBC_SHA256,
+			tls.TLS_RSA_WITH_AES_256_CBC_SHA,
 		},
 	}
 
 	srv := &http.Server{
-		Addr:      addr,
-		Handler:   mux,
-		TLSConfig: tlsCfg,
+		Addr:         addr,
+		Handler:      mux,
+		TLSConfig:    tlsCfg,
+		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)), // disable HTTP/2
 	}
 	log.Infof("Starting HTTPS server for https://%s%s ...", addr, path)
 	log.Fatal(srv.ListenAndServeTLS(*sslCertFileF, *sslKeyFileF))
