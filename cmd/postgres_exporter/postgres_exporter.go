@@ -158,7 +158,6 @@ type intermediateMetricMap struct {
 	columnMappings map[string]ColumnMapping
 	master         bool
 	cacheSeconds   uint64
-	runonserver    string
 }
 
 // MetricMapNamespace groups metric maps under a shared set of labels.
@@ -167,7 +166,6 @@ type MetricMapNamespace struct {
 	columnMappings map[string]MetricMap // Column mappings in this namespace
 	master         bool                 // Call query only for master database
 	cacheSeconds   uint64               // Number of seconds this metric namespace can be cached. 0 disables.
-	runonserver    string               // Run the query on which server version
 }
 
 // MetricMap stores the prometheus metric description which a given column will
@@ -227,7 +225,6 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		},
 		true,
 		0,
-		"",
 	},
 	"pg_stat_database": {
 		map[string]ColumnMapping{
@@ -253,7 +250,6 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		},
 		true,
 		0,
-		"",
 	},
 	"pg_stat_database_conflicts": {
 		map[string]ColumnMapping{
@@ -267,7 +263,6 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		},
 		true,
 		0,
-		"",
 	},
 	"pg_locks": {
 		map[string]ColumnMapping{
@@ -277,7 +272,6 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		},
 		true,
 		0,
-		"",
 	},
 	"pg_stat_replication": {
 		map[string]ColumnMapping{
@@ -324,7 +318,6 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		},
 		true,
 		0,
-		"",
 	},
 	"pg_replication_slots": {
 		map[string]ColumnMapping{
@@ -349,7 +342,6 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		},
 		true,
 		0,
-		"",
 	},
 	"pg_stat_activity": {
 		map[string]ColumnMapping{
@@ -360,7 +352,6 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		},
 		true,
 		0,
-		"",
 	},
 }
 
@@ -543,7 +534,6 @@ func parseUserQueries(content []byte) (map[string]intermediateMetricMap, map[str
 				columnMappings: newMetricMap,
 				master:         specs.Master,
 				cacheSeconds:   specs.CacheSeconds,
-				runonserver:    specs.RunOnServer,
 			}
 			metricMaps[metric] = metricMap
 		}
@@ -736,7 +726,7 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 			}
 		}
 
-		metricMap[namespace] = MetricMapNamespace{variableLabels, thisMap, intermediateMappings.master, intermediateMappings.cacheSeconds, intermediateMappings.runonserver}
+		metricMap[namespace] = MetricMapNamespace{variableLabels, thisMap, intermediateMappings.master, intermediateMappings.cacheSeconds}
 	}
 
 	return metricMap
