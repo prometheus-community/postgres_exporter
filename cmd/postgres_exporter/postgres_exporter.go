@@ -1452,11 +1452,11 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 		}
 
 		// check if the query is to be run on specific database server version range or not
-		if len(mapping.runonserver) > 0 {
+		if len(server.runonserver) > 0 {
 			serVersion, _ := semver.Parse(server.lastMapVersion.String())
-			runServerRange, _ := semver.ParseRange(mapping.runonserver)
+			runServerRange, _ := semver.ParseRange(server.runonserver)
 			if !runServerRange(serVersion) {
-				log.Debugln("Query skipped for database version: [%s] as it should be run on database server version: [%s]", server.lastMapVersion.String(), mapping.runonserver)
+				log.Debugln("Query skipped for database version: [%s] as it should be run on database server version: [%s]", server.lastMapVersion.String(), server.runonserver)
 				continue
 			}
 		}
