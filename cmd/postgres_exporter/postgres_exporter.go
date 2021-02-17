@@ -117,6 +117,7 @@ type UserQuery struct {
 	Metrics      []Mapping `yaml:"metrics"`
 	Master       bool      `yaml:"master"`        // Querying only for master database
 	CacheSeconds uint64    `yaml:"cache_seconds"` // Number of seconds to cache the namespace result metrics for.
+	RunOnServer  string    `yaml:"runonserver"`   // Querying to run on which server version
 }
 
 // nolint: golint
@@ -379,7 +380,8 @@ var queryOverrides = map[string][]OverrideQuery{
 				         ('sharelock'),
 				         ('sharerowexclusivelock'),
 				         ('exclusivelock'),
-				         ('accessexclusivelock')
+				         ('accessexclusivelock'),
+					 ('sireadlock')
 				) AS tmp(mode) CROSS JOIN pg_database
 			LEFT JOIN
 			  (SELECT database, lower(mode) AS mode,count(*) AS count
@@ -601,6 +603,8 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 	for namespace, intermediateMappings := range metricMaps {
 		thisMap := make(map[string]MetricMap)
 
+		namespace = strings.Replace(namespace, "pg", *metricPrefix, 1)
+
 		// Get the constant labels
 		var variableLabels []string
 		for columnName, columnMapping := range intermediateMappings.columnMappings {
@@ -626,8 +630,6 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 					continue
 				}
 			}
-
-			namespace := strings.Replace(namespace, "pg", *metricPrefix, 1)
 
 			// Determine how to convert the column based on its usage.
 			// nolint: dupl
@@ -921,9 +923,10 @@ type cachedMetrics struct {
 // Server describes a connection to Postgres.
 // Also it contains metrics map and query overrides.
 type Server struct {
-	db     *sql.DB
-	labels prometheus.Labels
-	master bool
+	db          *sql.DB
+	labels      prometheus.Labels
+	master      bool
+	runonserver string
 
 	// Last version used to calculate metric map. If mismatch on scrape,
 	// then maps are recalculated.
@@ -1448,6 +1451,16 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 			continue
 		}
 
+		// check if the query is to be run on specific database server version range or not
+		if len(server.runonserver) > 0 {
+			serVersion, _ := semver.Parse(server.lastMapVersion.String())
+			runServerRange, _ := semver.ParseRange(server.runonserver)
+			if !runServerRange(serVersion) {
+				log.Debugln("Query skipped for database version: ", server.lastMapVersion.String(), " as it should be run on database server version: ", server.runonserver)
+				continue
+			}
+		}
+
 		scrapeMetric := false
 		// Check if the metric is cached
 		server.cacheMtx.Lock()
@@ -1616,11 +1629,27 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 }
 
 func (e *Exporter) discoverDatabaseDSNs() []string {
+	// connstring syntax is complex (and not sure if even regular).
+	// we don't need to parse it, so just superficially validate that it starts
+	// with a valid-ish keyword pair
+	connstringRe := regexp.MustCompile(`^ *[a-zA-Z0-9]+ *= *[^= ]+`)
+
 	dsns := make(map[string]struct{})
 	for _, dsn := range e.dsn {
-		parsedDSN, err := url.Parse(dsn)
-		if err != nil {
-			log.Errorf("Unable to parse DSN (%s): %v", loggableDSN(dsn), err)
+		var dsnURI *url.URL
+		var dsnConnstring string
+
+		if strings.HasPrefix(dsn, "postgresql://") {
+			var err error
+			dsnURI, err = url.Parse(dsn)
+			if err != nil {
+				log.Errorf("Unable to parse DSN as URI (%s): %v", loggableDSN(dsn), err)
+				continue
+			}
+		} else if connstringRe.MatchString(dsn) {
+			dsnConnstring = dsn
+		} else {
+			log.Errorf("Unable to parse DSN as either URI or connstring (%s)", loggableDSN(dsn))
 			continue
 		}
 
@@ -1643,8 +1672,16 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			if contains(e.excludeDatabases, databaseName) {
 				continue
 			}
-			parsedDSN.Path = databaseName
-			dsns[parsedDSN.String()] = struct{}{}
+
+			if dsnURI != nil {
+				dsnURI.Path = databaseName
+				dsn = dsnURI.String()
+			} else {
+				// replacing one dbname with another is complicated.
+				// just append new dbname to override.
+				dsn = fmt.Sprintf("%s dbname=%s", dsnConnstring, databaseName)
+			}
+			dsns[dsn] = struct{}{}
 		}
 	}
 
