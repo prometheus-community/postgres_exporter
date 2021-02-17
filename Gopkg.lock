@@ -63,12 +63,12 @@
   version = "v1.0.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:e6302108756918ad63e77c51eddecc6aa64ebc9911f79b763505e78f30e55c48"
+  digest = "1:d24cef3c660d0f7068001383c140db70861593ad5f7cb14d70bf6167c0236a7e"
   name = "github.com/percona/exporter_shared"
   packages = ["."]
   pruneopts = "UT"
-  revision = "7d9e9cc0256a3fbb559aa2f3fb9d8d37e3bd1bf5"
+  revision = "ffa14cdb344417f2b7c14f05b4e2fce818100be9"
+  version = "v0.4.0"
 
 [[projects]]
   digest = "1:eb04f69c8991e52eff33c428bd729e04208bf03235be88e4df0d88497c6861b9"
