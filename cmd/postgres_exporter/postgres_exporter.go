@@ -117,6 +117,7 @@ type UserQuery struct {
 	Metrics      []Mapping `yaml:"metrics"`
 	Master       bool      `yaml:"master"`        // Querying only for master database
 	CacheSeconds uint64    `yaml:"cache_seconds"` // Number of seconds to cache the namespace result metrics for.
+	RunOnServer  string    `yaml:"runonserver"`   // Querying to run on which server version
 }
 
 // nolint: golint
@@ -922,9 +923,10 @@ type cachedMetrics struct {
 // Server describes a connection to Postgres.
 // Also it contains metrics map and query overrides.
 type Server struct {
-	db     *sql.DB
-	labels prometheus.Labels
-	master bool
+	db          *sql.DB
+	labels      prometheus.Labels
+	master      bool
+	runonserver string
 
 	// Last version used to calculate metric map. If mismatch on scrape,
 	// then maps are recalculated.
@@ -1447,6 +1449,16 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 		if mapping.master && !server.master {
 			log.Debugln("Query skipped...")
 			continue
+		}
+
+		// check if the query is to be run on specific database server version range or not
+		if len(server.runonserver) > 0 {
+			serVersion, _ := semver.Parse(server.lastMapVersion.String())
+			runServerRange, _ := semver.ParseRange(server.runonserver)
+			if !runServerRange(serVersion) {
+				log.Debugln("Query skipped for database version: ", server.lastMapVersion.String(), " as it should be run on database server version: ", server.runonserver)
+				continue
+			}
 		}
 
 		scrapeMetric := false
