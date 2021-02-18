@@ -1539,6 +1539,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("Couldn't create filtered metrics handler: %s", err)))
 		return
 	}
+
 	filteredHandler.ServeHTTP(w, r)
 }
 
