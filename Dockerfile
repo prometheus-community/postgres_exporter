@@ -1,12 +1,12 @@
-FROM debian:10-slim
-RUN useradd -u 20001 postgres_exporter
+ARG ARCH="amd64"
+ARG OS="linux"
+FROM quay.io/prometheus/busybox-${OS}-${ARCH}:latest
+LABEL maintainer="The Prometheus Authors <prometheus-developers@googlegroups.com>"
 
-USER postgres_exporter
+ARG ARCH="amd64"
+ARG OS="linux"
+COPY .build/${OS}-${ARCH}/postgres_exporter /bin/postgres_exporter
 
-ARG binary
-
-COPY $binary /postgres_exporter
-
-EXPOSE 9187
-
-ENTRYPOINT [ "/postgres_exporter" ]
+EXPOSE     9187
+USER       nobody
+ENTRYPOINT [ "/bin/postgres_exporter" ]

@@ -19,3 +19,4 @@
 /.metrics.*.added
 /.metrics.*.removed
 /tools/src
+/vendor

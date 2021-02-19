@@ -1,0 +1,57 @@
+---
+version: 2.1
+
+orbs:
+  prometheus: prometheus/prometheus@0.8.0
+
+executors:
+  # This must match .promu.yml.
+  golang:
+    docker:
+    - image: circleci/golang:1.15
+
+jobs:
+  test:
+    executor: golang
+
+    steps:
+    - prometheus/setup_environment
+    - run: make
+    - prometheus/store_artifact:
+        file: postgres_exporter
+
+workflows:
+  version: 2
+  postgres_exporter:
+    jobs:
+    - test:
+        filters:
+          tags:
+            only: /.*/
+    - prometheus/build:
+        name: build
+        filters:
+          tags:
+            only: /.*/
+    - prometheus/publish_master:
+        context: org-context
+        docker_hub_organization: prometheuscommunity
+        quay_io_organization: prometheuscommunity
+        requires:
+        - test
+        - build
+        filters:
+          branches:
+            only: master
+    - prometheus/publish_release:
+        context: org-context
+        docker_hub_organization: prometheuscommunity
+        quay_io_organization: prometheuscommunity
+        requires:
+        - test
+        - build
+        filters:
+          tags:
+            only: /^v.*/
+          branches:
+            ignore: /.*/
