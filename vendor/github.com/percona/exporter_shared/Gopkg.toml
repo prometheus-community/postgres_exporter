@@ -1,0 +1,8 @@
+[[constraint]]
+  name = "github.com/prometheus/client_model"
+  branch = "master"
+
+[prune]
+  go-tests = true
+  non-go = true
+  unused-packages = true
