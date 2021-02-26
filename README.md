@@ -1,7 +1,7 @@
-[![Build Status](https://travis-ci.org/wrouesnel/postgres_exporter.svg?branch=master)](https://travis-ci.org/wrouesnel/postgres_exporter)
-[![Coverage Status](https://coveralls.io/repos/github/wrouesnel/postgres_exporter/badge.svg?branch=master)](https://coveralls.io/github/wrouesnel/postgres_exporter?branch=master)
-[![Go Report Card](https://goreportcard.com/badge/github.com/wrouesnel/postgres_exporter)](https://goreportcard.com/report/github.com/wrouesnel/postgres_exporter)
-[![Docker Pulls](https://img.shields.io/docker/pulls/wrouesnel/postgres_exporter.svg)](https://hub.docker.com/r/wrouesnel/postgres_exporter/tags)
+[![Build Status](https://circleci.com/gh/prometheus-community/postgres_exporter.svg?style=svg)](https://circleci.com/gh/prometheus-community/postgres_exporter)
+[![Coverage Status](https://coveralls.io/repos/github/prometheus-community/postgres_exporter/badge.svg?branch=master)](https://coveralls.io/github/prometheus-community/postgres_exporter?branch=master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/prometheus-community/postgres_exporter)](https://goreportcard.com/report/github.com/prometheus-community/postgres_exporter)
+[![Docker Pulls](https://img.shields.io/docker/pulls/prometheuscommunity/postgres-exporter.svg)](https://hub.docker.com/r/prometheuscommunity/postgres-exporter/tags)
 
 # PostgreSQL Server Exporter
 
@@ -15,31 +15,30 @@ This package is available for Docker:
 # Start an example database
 docker run --net=host -it --rm -e POSTGRES_PASSWORD=password postgres
 # Connect to it
-docker run --net=host -e DATA_SOURCE_NAME="postgresql://postgres:password@localhost:5432/postgres?sslmode=disable" wrouesnel/postgres_exporter
+docker run \
+  --net=host \
+  -e DATA_SOURCE_NAME="postgresql://postgres:password@localhost:5432/postgres?sslmode=disable" \
+  quay.io/prometheuscommunity/postgres-exporter
 ```
 
 ## Building and running
 
-The build system is based on [Mage](https://magefile.org)
+    git clone https://github.com/prometheus-community/postgres_exporter.git
+    cd postgres_exporter
+    make build
+    ./postgres_exporter <flags>
 
-The default make file behavior is to build the binary:
-```
-$ go get github.com/wrouesnel/postgres_exporter
-$ cd ${GOPATH-$HOME/go}/src/github.com/wrouesnel/postgres_exporter
-$ go run mage.go binary
-$ export DATA_SOURCE_NAME="postgresql://login:password@hostname:port/dbname"
-$ ./postgres_exporter <flags>
-```
+To build the Docker image:
 
-To build the dockerfile, run `go run mage.go docker`.
+    make promu
+    promu crossbuild -p linux/amd64 -p linux/armv7 -p linux/amd64 -p linux/ppc64le
+    make docker
 
-This will build the docker image as `wrouesnel/postgres_exporter:latest`. This
-is a minimal docker image containing *just* postgres_exporter. By default no SSL
-certificates are included, if you need to use SSL you should either bind-mount
-`/etc/ssl/certs/ca-certificates.crt` or derive a new image containing them.
+This will build the docker image as `prometheuscommunity/postgres_exporter:${branch}`.
 
 ### Vendoring
-Package vendoring is handled with [`govendor`](https://github.com/kardianos/govendor)
+
+Package vendoring is handled with Go modules.
 
 ### Flags
 
@@ -277,10 +276,3 @@ GRANT SELECT ON postgres_exporter.pg_stat_statements TO postgres_exporter;
 > ```
 > DATA_SOURCE_NAME=postgresql://postgres_exporter:password@localhost:5432/postgres?sslmode=disable
 > ```
-
-# Hacking
-* To build a copy for your current architecture run `go run mage.go binary`.
-  This will create a symlink to the just built binary in the root directory.
-* To build release tar balls run `go run mage.go release`.
-* Build system is a bit temperamental at the moment since the conversion to mage - I am working on getting it
-  to be a perfect out of the box experience, but am time-constrained on it at the moment.

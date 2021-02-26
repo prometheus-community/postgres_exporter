@@ -1,3 +1,16 @@
+// Copyright 2021 The Prometheus Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // These are specialized integration tests. We only build them when we're doing
 // a lot of additional work to keep the external docker environment they require
 // working.
@@ -75,7 +88,7 @@ func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 }
 
 // TestInvalidDsnDoesntCrash tests that specifying an invalid DSN doesn't crash
-// the exporter. Related to https://github.com/wrouesnel/postgres_exporter/issues/93
+// the exporter. Related to https://github.com/prometheus-community/postgres_exporter/issues/93
 // although not a replication of the scenario.
 func (s *IntegrationSuite) TestInvalidDsnDoesntCrash(c *C) {
 	// Setup a dummy channel to consume metrics

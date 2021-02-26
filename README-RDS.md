@@ -3,7 +3,7 @@
 ### When using postgres-exporter with Amazon Web Services' RDS, the
   rolname "rdsadmin" and datname "rdsadmin" must be excluded.
 
-I had success running docker container 'wrouesnel/postgres_exporter:latest'
+I had success running docker container 'quay.io/prometheuscommunity/postgres-exporter:latest'
 with queries.yaml as the PG_EXPORTER_EXTEND_QUERY_PATH.  errors
 mentioned in issue#335 appeared and I had to modify the
 'pg_stat_statements' query with the following:
@@ -24,7 +24,7 @@ Running postgres-exporter in a container like so:
       -e PG_EXPORTER_DISABLE_DEFAULT_METRICS=true \
       -e PG_EXPORTER_DISABLE_SETTINGS_METRICS=true \
       -e PG_EXPORTER_EXTEND_QUERY_PATH='/var/lib/postgresql/queries.yaml' \
-      wrouesnel/postgres_exporter
+      quay.io/prometheuscommunity/postgres-exporter
   ```
 
 ### Expected changes to RDS:
