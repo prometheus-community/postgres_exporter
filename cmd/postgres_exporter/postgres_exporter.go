@@ -716,7 +716,7 @@ func parseFingerprint(url string) (string, error) {
 	pairs := strings.Split(dsn, " ")
 	kv := make(map[string]string, len(pairs))
 	for _, pair := range pairs {
-		splitted := strings.Split(pair, "=")
+		splitted := strings.SplitN(pair, "=", 2)
 		if len(splitted) != 2 {
 			return "", fmt.Errorf("malformed dsn %q", dsn)
 		}
@@ -1539,6 +1539,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("Couldn't create filtered metrics handler: %s", err)))
 		return
 	}
+
 	filteredHandler.ServeHTTP(w, r)
 }
 
