@@ -1,4 +1,4 @@
-## v0.9.0 / 2021-03-01
+## 0.9.0 / 2021-03-01
 
 First release under the Prometheus Community organisation.
 
@@ -16,7 +16,7 @@ First release under the Prometheus Community organisation.
 * [BUGFIX] Don't retry if an error occurs #426
 * [BUGFIX] Do not panic on incorrect env #457
 
-## v0.8.0 / 2019-11-25
+## 0.8.0 / 2019-11-25
 
 * Add a build info metric (#323)
 * Re-add pg_stat_bgwriter metrics which were accidentally removed in the previous version. (resolves #336)
@@ -29,7 +29,7 @@ First release under the Prometheus Community organisation.
   - added current database name to metrics because any database in cluster maybe have the same table names
   - added "master" field for query instance metrics.
 
-## v0.7.0 / 2019-11-01
+## 0.7.0 / 2019-11-01
 
 Introduces some more significant changes, hence the minor version bump in
 such a short time frame.
@@ -42,7 +42,7 @@ such a short time frame.
 * Don't stop generating fingerprint while encountering value with "=" sign (#318)
   (may resolve problems with passwords and special characters).
 
-## v0.6.0 / 2019-10-30
+## 0.6.0 / 2019-10-30
 
 * Add SQL for grant connect (#303)
 * Expose pg_current_wal_lsn_bytes (#307)
@@ -54,11 +54,11 @@ such a short time frame.
 * Discover only databases that are not templates and allow connections (#297)
 * Add --exclude-databases option (#298)
 
-## v0.5.1 / 2019-07-09
+## 0.5.1 / 2019-07-09
 
 * Add application_name as a label for pg_stat_replication metrics (#285).
 
-## v0.5.0 / 2019-07-03
+## 0.5.0 / 2019-07-03
 
 It's been far too long since I've done a release and we have a lot of accumulated changes.
 
@@ -71,28 +71,28 @@ It's been far too long since I've done a release and we have a lot of accumulate
 * Add support for collecting metrics from multiple servers.
 * PostgreSQL 11 is now supported in the integration tests.
 
-## v0.4.7 / 2018-10-02
+## 0.4.7 / 2018-10-02
 
 * Added a query for v9.1 pg_stat_activity.
 * Add `--constantLabels` flag to allow applying fixed constant labels to metrics.
 * queries.yml: dd pg_statio_user_tables.
 * Support 'B' suffix in units.
 
-## v0.4.6 / 2018-04-15
+## 0.4.6 / 2018-04-15
 
 * Fix issue #173 - 32 and 64mb unit sizes were not supported in pg_settings.
 
-## v0.4.5 / 2018-02-27
+## 0.4.5 / 2018-02-27
 
 * Add commandline flag to disable default metrics (thanks @hsun-cnnxty)
 
-## v0.4.4 / 2018-03-21
+## 0.4.4 / 2018-03-21
 
 * Bugfix for 0.4.3 which broke pg_up (it would always be 0).
 * pg_up is now refreshed based on database Ping() every scrape.
 * Re-release of 0.4.4 to fix version numbering.
 
-## v0.4.2 / 2018-02-19
+## 0.4.2 / 2018-02-19
 
 * Adds the following environment variables for overriding defaults:
     * `PG_EXPORTER_WEB_LISTEN_ADDRESS`
@@ -102,13 +102,13 @@ It's been far too long since I've done a release and we have a lot of accumulate
 * Add Content-Type to HTTP landing page.
 * Fix Makefile to produce .exe binaries for Windows.
 
-## v0.4.1 / 2017-11-30
+## 0.4.1 / 2017-11-30
 
 * No code changes to v0.4.0 for the exporter.
 * First release switching to tar-file based distribution.
 * First release with Windows and Darwin cross-builds.\\
 
-## v0.4.0 / 2017-11-29
+## 0.4.0 / 2017-11-29
 
 * Fix panic due to inconsistent label cardinality when using queries.yaml with
   queries which return extra columns.
@@ -118,28 +118,28 @@ It's been far too long since I've done a release and we have a lot of accumulate
   Ping() the PG instance before a scrape.
 * Fix broken link in landing page for `/metrics`
 
-## v0.3.0 / 2017-10-23
+## 0.3.0 / 2017-10-23
 
 * Add support for PostgreSQL 10.
 
-## v0.2.3 / 2017-09-07
+## 0.2.3 / 2017-09-07
 
 * Add support for the 16kB unit when decoding pg_settings. (#101)
 
-## v0.2.2 / 2017-08-04
+## 0.2.2 / 2017-08-04
 
 * Fix DSN logging. The exporter previously never actually logged the DSN when
   database connections failed. This was also masking a logic error which could
   potentially lead to a crash when DSN was unparseable, though no actual
   crash could be produced in testing.
 
-## v0.2.1 / 2017-06-07
+## 0.2.1 / 2017-06-07
 
 * Ignore functions that cannot be executed during replication recovery (#52)
 * Add a `-version` flag finally.
 * Add confirmed_flush_lsn to pg_stat_replication.
 
-## v0.2.0 / 2017-04-18
+## 0.2.0 / 2017-04-18
 
 * Major change - use pg_settings to retrieve runtime variables. Adds >180
   new metrics and descriptions (big thanks to Matt Bostock for this work).
@@ -170,21 +170,21 @@ It's been far too long since I've done a release and we have a lot of accumulate
   pg_settings_max_standby_streaming_delay_seconds
   ```
 
-## v0.1.3 / 2017-02-21
+## 0.1.3 / 2017-02-21
 
 * Update the Go build to 1.7.5 to include a fix for NAT handling.
 * Fix passwords leaking in DB url error message on connection failure.
 
-## v0.1.2 / 2017-02-07
+## 0.1.2 / 2017-02-07
 
 * Use a connection pool of size 1 to reduce memory churn on target database.
 
-## v0.1.1 / 2016-11-29
+## 0.1.1 / 2016-11-29
 
 * Fix pg_stat_replication metrics not being collected due to semantic version
   filter problem.
 
-## v0.1.0 / 2016-11-21
+## 0.1.0 / 2016-11-21
 
 * Change default port to 9187.
 * Fix regressions with pg_stat_replication on older versions of Postgres.
@@ -192,6 +192,6 @@ It's been far too long since I've done a release and we have a lot of accumulate
 * Much more thorough testing structure.
 * Move to semantic versioning for releases and docker image publications.
 
-## v0.0.1 / 2016-06-03
+## 0.0.1 / 2016-06-03
 
 Initial release for publication.
