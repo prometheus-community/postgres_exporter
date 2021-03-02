@@ -31,11 +31,16 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/log"
+	"github.com/prometheus/common/promlog"
+	"github.com/prometheus/common/promlog/flag"
 	"github.com/prometheus/common/version"
+	"github.com/prometheus/exporter-toolkit/web"
+	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
 )
@@ -58,6 +63,7 @@ var VersionShort = "0.0.1"
 
 var (
 	listenAddress          = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").Envar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
+	webConfig              = webflag.AddFlags(kingpin.CommandLine)
 	metricPath             = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").Envar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
 	disableDefaultMetrics  = kingpin.Flag("disable-default-metrics", "Do not include default metrics.").Default("false").Envar("PG_EXPORTER_DISABLE_DEFAULT_METRICS").Bool()
 	disableSettingsMetrics = kingpin.Flag("disable-settings-metrics", "Do not include pg_settings metrics.").Default("false").Envar("PG_EXPORTER_DISABLE_SETTINGS_METRICS").Bool()
@@ -67,6 +73,7 @@ var (
 	constantLabelsList     = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,).").Default("").Envar("PG_EXPORTER_CONSTANT_LABELS").String()
 	excludeDatabases       = kingpin.Flag("exclude-databases", "A list of databases to remove when autoDiscoverDatabases is enabled").Default("").Envar("PG_EXPORTER_EXCLUDE_DATABASES").String()
 	metricPrefix           = kingpin.Flag("metric-prefix", "A metric prefix can be used to have non-default (not \"pg\") prefixes for each of the metrics").Default("pg").Envar("PG_EXPORTER_METRIC_PREFIX").String()
+	logger                 = log.NewNopLogger()
 )
 
 // Metric name parts.
@@ -516,7 +523,7 @@ func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]
 			}
 		}
 		if !matched {
-			log.Warnln("No query matched override for", name, "- disabling metric space.")
+			level.Warn(logger).Log("msg", "No query matched override, disabling metric space", "name", name)
 			resultMap[name] = ""
 		}
 	}
@@ -537,7 +544,7 @@ func parseUserQueries(content []byte) (map[string]intermediateMetricMap, map[str
 	newQueryOverrides := make(map[string]string)
 
 	for metric, specs := range userQueries {
-		log.Debugln("New user metric namespace from YAML:", metric, "Will cache results for:", specs.CacheSeconds)
+		level.Debug(logger).Log("msg", "New user metric namespace from YAML metric", "metric", metric, "cache_seconds", specs.CacheSeconds)
 		newQueryOverrides[metric] = specs.Query
 		metricMap, ok := metricMaps[metric]
 		if !ok {
@@ -589,9 +596,9 @@ func addQueries(content []byte, pgVersion semver.Version, server *Server) error 
 	for k, v := range partialExporterMap {
 		_, found := server.metricMap[k]
 		if found {
-			log.Debugln("Overriding metric", k, "from user YAML file.")
+			level.Debug(logger).Log("msg", "Overriding metric from user YAML file", "metric", k)
 		} else {
-			log.Debugln("Adding new metric", k, "from user YAML file.")
+			level.Debug(logger).Log("msg", "Adding new metric from user YAML file", "metric", k)
 		}
 		server.metricMap[k] = v
 	}
@@ -600,9 +607,9 @@ func addQueries(content []byte, pgVersion semver.Version, server *Server) error 
 	for k, v := range newQueryOverrides {
 		_, found := server.queryOverrides[k]
 		if found {
-			log.Debugln("Overriding query override", k, "from user YAML file.")
+			level.Debug(logger).Log("msg", "Overriding query override from user YAML file", "query_override", k)
 		} else {
-			log.Debugln("Adding new query override", k, "from user YAML file.")
+			level.Debug(logger).Log("msg", "Adding new query override from user YAML file", "query_override", k)
 		}
 		server.queryOverrides[k] = v
 	}
@@ -633,7 +640,7 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 				if !columnMapping.supportedVersions(pgVersion) {
 					// It's very useful to be able to see what columns are being
 					// rejected.
-					log.Debugln(columnName, "is being forced to discard due to version incompatibility.")
+					level.Debug(logger).Log("msg", "Column is being forced to discard due to version incompatibility", "column", columnName)
 					thisMap[columnName] = MetricMap{
 						discard: true,
 						conversion: func(_ interface{}) (float64, bool) {
@@ -720,7 +727,7 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 						case string:
 							durationString = t
 						default:
-							log.Errorln("DURATION conversion metric was not a string")
+							level.Error(logger).Log("msg", "Duration conversion metric was not a string")
 							return math.NaN(), false
 						}
 
@@ -730,7 +737,7 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 
 						d, err := time.ParseDuration(durationString)
 						if err != nil {
-							log.Errorln("Failed converting result to metric:", columnName, in, err)
+							level.Error(logger).Log("msg", "Failed converting result to metric", "column", columnName, "in", in, "err", err)
 							return math.NaN(), false
 						}
 						return float64(d / time.Millisecond), true
@@ -793,14 +800,14 @@ func dbToFloat64(t interface{}) (float64, bool) {
 		strV := string(v)
 		result, err := strconv.ParseFloat(strV, 64)
 		if err != nil {
-			log.Infoln("Could not parse []byte:", err)
+			level.Info(logger).Log("msg", "Could not parse []byte", "err", err)
 			return math.NaN(), false
 		}
 		return result, true
 	case string:
 		result, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			log.Infoln("Could not parse string:", err)
+			level.Info(logger).Log("msg", "Could not parse string", "err", err)
 			return math.NaN(), false
 		}
 		return result, true
@@ -833,14 +840,14 @@ func dbToUint64(t interface{}) (uint64, bool) {
 		strV := string(v)
 		result, err := strconv.ParseUint(strV, 10, 64)
 		if err != nil {
-			log.Infoln("Could not parse []byte:", err)
+			level.Info(logger).Log("msg", "Could not parse []byte", "err", err)
 			return 0, false
 		}
 		return result, true
 	case string:
 		result, err := strconv.ParseUint(v, 10, 64)
 		if err != nil {
-			log.Infoln("Could not parse string:", err)
+			level.Info(logger).Log("msg", "Could not parse string", "err", err)
 			return 0, false
 		}
 		return result, true
@@ -980,7 +987,7 @@ func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 
-	log.Infof("Established new database connection to %q.", fingerprint)
+	level.Info(logger).Log("msg", "Established new database connection", "fingerprint", fingerprint)
 
 	s := &Server{
 		db:     db,
@@ -1007,7 +1014,7 @@ func (s *Server) Close() error {
 func (s *Server) Ping() error {
 	if err := s.db.Ping(); err != nil {
 		if cerr := s.Close(); cerr != nil {
-			log.Errorf("Error while closing non-pinging DB connection to %q: %v", s, cerr)
+			level.Error(logger).Log("msg", "Error while closing non-pinging DB connection", "server", s, "err", cerr)
 		}
 		return err
 	}
@@ -1093,7 +1100,7 @@ func (s *Servers) Close() {
 	defer s.m.Unlock()
 	for _, server := range s.servers {
 		if err := server.Close(); err != nil {
-			log.Errorf("failed to close connection to %q: %v", server, err)
+			level.Error(logger).Log("msg", "Failed to close connection", "server", server, "err", err)
 		}
 	}
 }
@@ -1178,7 +1185,7 @@ func parseConstLabels(s string) prometheus.Labels {
 	for _, p := range parts {
 		keyValue := strings.Split(strings.TrimSpace(p), "=")
 		if len(keyValue) != 2 {
-			log.Errorf(`Wrong constant labels format %q, should be "key=value"`, p)
+			level.Error(logger).Log(`Wrong constant labels format, should be "key=value"`, "input", p)
 			continue
 		}
 		key := strings.TrimSpace(keyValue[0])
@@ -1457,10 +1464,10 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 	scrapeStart := time.Now()
 
 	for namespace, mapping := range server.metricMap {
-		log.Debugln("Querying namespace: ", namespace)
+		level.Debug(logger).Log("msg", "Querying namespace", "namespace", namespace)
 
 		if mapping.master && !server.master {
-			log.Debugln("Query skipped...")
+			level.Debug(logger).Log("msg", "Query skipped...")
 			continue
 		}
 
@@ -1469,7 +1476,7 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 			serVersion, _ := semver.Parse(server.lastMapVersion.String())
 			runServerRange, _ := semver.ParseRange(server.runonserver)
 			if !runServerRange(serVersion) {
-				log.Debugln("Query skipped for database version: ", server.lastMapVersion.String(), " as it should be run on database server version: ", server.runonserver)
+				level.Debug(logger).Log("msg", "Query skipped for this database version", "version", server.lastMapVersion.String(), "target_version", server.runonserver)
 				continue
 			}
 		}
@@ -1500,12 +1507,12 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 		// Serious error - a namespace disappeared
 		if err != nil {
 			namespaceErrors[namespace] = err
-			log.Infoln(err)
+			level.Info(logger).Log("err", err)
 		}
 		// Non-serious errors - likely version or parsing problems.
 		if len(nonFatalErrors) > 0 {
 			for _, err := range nonFatalErrors {
-				log.Infoln(err.Error())
+				level.Info(logger).Log("err", err)
 			}
 		}
 
@@ -1532,7 +1539,7 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 
 // Check and update the exporters query maps if the version has changed.
 func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server) error {
-	log.Debugf("Querying Postgres Version on %q", server)
+	level.Debug(logger).Log("msg", "Querying PostgreSQL version", "server", server)
 	versionRow := server.db.QueryRow("SELECT version();")
 	var versionString string
 	err := versionRow.Scan(&versionString)
@@ -1544,12 +1551,12 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 		return fmt.Errorf("Error parsing version string on %q: %v", server, err)
 	}
 	if !e.disableDefaultMetrics && semanticVersion.LT(lowestSupportedVersion) {
-		log.Warnf("PostgreSQL version is lower on %q then our lowest supported version! Got %s minimum supported is %s.", server, semanticVersion, lowestSupportedVersion)
+		level.Warn(logger).Log("msg", "PostgreSQL version is lower than our lowest supported version", "server", server, "version", semanticVersion, "lowest_supported_version", lowestSupportedVersion)
 	}
 
 	// Check if semantic version changed and recalculate maps if needed.
 	if semanticVersion.NE(server.lastMapVersion) || server.metricMap == nil {
-		log.Infof("Semantic Version Changed on %q: %s -> %s", server, server.lastMapVersion, semanticVersion)
+		level.Info(logger).Log("msg", "Semantic version changed", "server", server, "from", server.lastMapVersion, "to", semanticVersion)
 		server.mappingMtx.Lock()
 
 		// Get Default Metrics only for master database
@@ -1570,13 +1577,13 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 			// Calculate the hashsum of the useQueries
 			userQueriesData, err := ioutil.ReadFile(e.userQueriesPath)
 			if err != nil {
-				log.Errorln("Failed to reload user queries:", e.userQueriesPath, err)
+				level.Error(logger).Log("msg", "Failed to reload user queries", "path", e.userQueriesPath, "err", err)
 				e.userQueriesError.WithLabelValues(e.userQueriesPath, "").Set(1)
 			} else {
 				hashsumStr := fmt.Sprintf("%x", sha256.Sum256(userQueriesData))
 
 				if err := addQueries(userQueriesData, semanticVersion, server); err != nil {
-					log.Errorln("Failed to reload user queries:", e.userQueriesPath, err)
+					level.Error(logger).Log("msg", "Failed to reload user queries", "path", e.userQueriesPath, "err", err)
 					e.userQueriesError.WithLabelValues(e.userQueriesPath, hashsumStr).Set(1)
 				} else {
 					// Mark user queries as successfully loaded
@@ -1618,7 +1625,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 		if err := e.scrapeDSN(ch, dsn); err != nil {
 			errorsCount++
 
-			log.Errorf(err.Error())
+			level.Error(logger).Log("err", err)
 
 			if _, ok := err.(*ErrorConnectToServer); ok {
 				connectionErrorsCount++
@@ -1656,19 +1663,19 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			var err error
 			dsnURI, err = url.Parse(dsn)
 			if err != nil {
-				log.Errorf("Unable to parse DSN as URI (%s): %v", loggableDSN(dsn), err)
+				level.Error(logger).Log("msg", "Unable to parse DSN as URI", "dsn", loggableDSN(dsn), "err", err)
 				continue
 			}
 		} else if connstringRe.MatchString(dsn) {
 			dsnConnstring = dsn
 		} else {
-			log.Errorf("Unable to parse DSN as either URI or connstring (%s)", loggableDSN(dsn))
+			level.Error(logger).Log("msg", "Unable to parse DSN as either URI or connstring", "dsn", loggableDSN(dsn))
 			continue
 		}
 
 		server, err := e.servers.GetServer(dsn)
 		if err != nil {
-			log.Errorf("Error opening connection to database (%s): %v", loggableDSN(dsn), err)
+			level.Error(logger).Log("msg", "Error opening connection to database", "dsn", loggableDSN(dsn), "err", err)
 			continue
 		}
 		dsns[dsn] = struct{}{}
@@ -1678,7 +1685,7 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 
 		databaseNames, err := queryDatabases(server)
 		if err != nil {
-			log.Errorf("Error querying databases (%s): %v", loggableDSN(dsn), err)
+			level.Error(logger).Log("msg", "Error querying databases", "dsn", loggableDSN(dsn), "err", err)
 			continue
 		}
 		for _, databaseName := range databaseNames {
@@ -1722,7 +1729,7 @@ func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 
 	// Check if map versions need to be updated
 	if err := e.checkMapVersions(ch, server); err != nil {
-		log.Warnln("Proceeding with outdated query maps, as the Postgres version could not be determined:", err)
+		level.Warn(logger).Log("msg", "Proceeding with outdated query maps, as the Postgres version could not be determined", "err", err)
 	}
 
 	return server.Scrape(ch, e.disableSettingsMetrics)
@@ -1790,8 +1797,10 @@ func contains(a []string, x string) bool {
 
 func main() {
 	kingpin.Version(fmt.Sprintf("postgres_exporter %s (built with %s)\n", Version, runtime.Version()))
-	log.AddFlags(kingpin.CommandLine)
+	promlogConfig := &promlog.Config{}
+	flag.AddFlags(kingpin.CommandLine, promlogConfig)
 	kingpin.Parse()
+	logger = promlog.New(promlogConfig)
 
 	// landingPage contains the HTML served at '/'.
 	// TODO: Make this nicer and more informative.
@@ -1811,11 +1820,13 @@ func main() {
 
 	dsn, err := getDataSources()
 	if err != nil {
-		log.Fatalf("failed reading data sources: %s", err.Error())
+		level.Error(logger).Log("msg", "Failed reading data sources", "err", err.Error())
+		os.Exit(1)
 	}
 
 	if len(dsn) == 0 {
-		log.Fatal("couldn't find environment variables describing the datasource to use")
+		level.Error(logger).Log("msg", "Couldn't find environment variables describing the datasource to use")
+		os.Exit(1)
 	}
 
 	opts := []ExporterOpt{
@@ -1847,6 +1858,10 @@ func main() {
 		w.Write(landingPage)                                       // nolint: errcheck
 	})
 
-	log.Infof("Starting Server: %s", *listenAddress)
-	log.Fatal(http.ListenAndServe(*listenAddress, nil))
+	level.Info(logger).Log("msg", "Listening on address", "address", *listenAddress)
+	srv := &http.Server{Addr: *listenAddress}
+	if err := web.ListenAndServe(srv, *webConfig, logger); err != nil {
+		level.Error(logger).Log("msg", "Error running HTTP server", "err", err)
+		os.Exit(1)
+	}
 }

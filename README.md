@@ -36,10 +36,6 @@ To build the Docker image:
 
 This will build the docker image as `prometheuscommunity/postgres_exporter:${branch}`.
 
-### Vendoring
-
-Package vendoring is handled with Go modules.
-
 ### Flags
 
 * `help`
@@ -78,11 +74,14 @@ Package vendoring is handled with Go modules.
   A list of databases to remove when autoDiscoverDatabases is enabled.
 
 * `log.level`
-  Set logging level: one of `debug`, `info`, `warn`, `error`, `fatal`
+  Set logging level: one of `debug`, `info`, `warn`, `error`.
 
 * `log.format`
-  Set the log output target and format. e.g. `logger:syslog?appname=bob&local=7` or `logger:stdout?json=true`
-  Defaults to `logger:stderr`.
+  Set the log format: one of `logfmt`, `json`.
+
+* `web.config.file`
+  Configuration file to use TLS and/or basic authentication. The format of the
+  file is described [in the exporter-toolkit repository](https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md).
 
 ### Environment Variables
 
