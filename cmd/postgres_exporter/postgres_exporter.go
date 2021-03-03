@@ -24,7 +24,6 @@ import (
 	"net/url"
 	"os"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -44,22 +43,6 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
 )
-
-// Branch is set during build to the git branch.
-var Branch string
-
-// BuildDate is set during build to the ISO-8601 date and time.
-var BuildDate string
-
-// Revision is set during build to the git commit revision.
-var Revision string
-
-// Version is set during build to the git describe version
-// (semantic version)-(commitish) form.
-var Version = "0.0.1-rev"
-
-// VersionShort is set during build to the semantic version.
-var VersionShort = "0.0.1"
 
 var (
 	listenAddress          = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").Envar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
@@ -82,6 +65,8 @@ const (
 	namespace = "pg"
 	// Subsystems.
 	exporter = "exporter"
+	// The name of the exporter.
+	exporterName = "postgres_exporter"
 	// Metric label used for static string data thats handy to send to Prometheus
 	// e.g. version
 	staticLabelName = "static"
@@ -1796,9 +1781,10 @@ func contains(a []string, x string) bool {
 }
 
 func main() {
-	kingpin.Version(fmt.Sprintf("postgres_exporter %s (built with %s)\n", Version, runtime.Version()))
+	kingpin.Version(version.Print(exporterName))
 	promlogConfig := &promlog.Config{}
 	flag.AddFlags(kingpin.CommandLine, promlogConfig)
+	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 	logger = promlog.New(promlogConfig)
 
@@ -1843,12 +1829,7 @@ func main() {
 		exporter.servers.Close()
 	}()
 
-	// Setup build info metric.
-	version.Branch = Branch
-	version.BuildDate = BuildDate
-	version.Revision = Revision
-	version.Version = VersionShort
-	prometheus.MustRegister(version.NewCollector("postgres_exporter"))
+	prometheus.MustRegister(version.NewCollector(exporterName))
 
 	prometheus.MustRegister(exporter)
 
