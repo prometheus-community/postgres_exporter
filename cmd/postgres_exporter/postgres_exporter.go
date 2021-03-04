@@ -76,10 +76,6 @@ const (
 	serverLabelName = "server"
 )
 
-func init() {
-	prometheus.MustRegister(version.NewCollector("postgres_exporter"))
-}
-
 type MetricResolution string
 
 const (
@@ -1718,13 +1714,13 @@ func main() {
 		exporter.servers.Close()
 	}()
 
+	prometheus.MustRegister(exporter)
+
 	version.Branch = Branch
 	version.BuildDate = BuildDate
 	version.Revision = Revision
 	version.Version = VersionShort
 	prometheus.MustRegister(version.NewCollector("postgres_exporter"))
-
-	prometheus.MustRegister(exporter)
 
 	psCollector := prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{})
 	goCollector := prometheus.NewGoCollector()

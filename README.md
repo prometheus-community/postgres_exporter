@@ -34,7 +34,7 @@ docker run --net=host -e DATA_SOURCE_NAME="postgresql://postgres:password@localh
   Use the flag if you don't want to scrape `pg_settings`.
 
 * `auto-discover-databases`
-  Whether to discover the databases on a server dynamically.
+  Enable discovering databases automatically.
 
 * `extend.query-path`
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
@@ -102,7 +102,7 @@ The following environment variables configure the exporter:
   Use the flag if you don't want to scrape `pg_settings`. Value can be `true` or `false`. Defauls is `false`.
 
 * `PG_EXPORTER_AUTO_DISCOVER_DATABASES`
-  Whether to discover the databases on a server dynamically. Value can be `true` or `false`. Defauls is `false`.
+  Enable discovering databases automatically. Value can be `true` or `false`. Defauls is `false`.
 
 * `PG_EXPORTER_EXTEND_QUERY_PATH`
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
