@@ -73,6 +73,9 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `exclude-databases`
   A list of databases to remove when autoDiscoverDatabases is enabled.
 
+* `include-databases`
+  A list of databases to only include when autoDiscoverDatabases is enabled.
+
 * `log.level`
   Set logging level: one of `debug`, `info`, `warn`, `error`.
 
@@ -138,6 +141,10 @@ The following environment variables configure the exporter:
 * `PG_EXPORTER_EXCLUDE_DATABASES`
   A comma-separated list of databases to remove when autoDiscoverDatabases is enabled. Default is empty string.
 
+* `PG_EXPORTER_INCLUDE_DATABASES`
+  A comma-separated list of databases to only include when autoDiscoverDatabases is enabled. Default is empty string,
+  means allow all.
+
 * `PG_EXPORTER_METRIC_PREFIX`
   A prefix to use for each of the default metrics exported by postgres-exporter. Default is `pg`
 
@@ -190,6 +197,9 @@ To scrape metrics from all databases on a database server, the database DSN's ca
 result a new set of DSN's is created for which the metrics are scraped.
 
 In addition, the option `--exclude-databases` adds the possibily to filter the result from the auto discovery to discard databases you do not need.
+
+If you want to include only subset of databases, you can use option `--include-databases`. Exporter still makes request to
+`pg_database` table, but do scrape from only if database is in include list.
 
 ### Running as non-superuser
 
