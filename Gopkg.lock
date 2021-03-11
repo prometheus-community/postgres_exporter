@@ -21,6 +21,14 @@
   revision = "2efee857e7cfd4f3d0138cc3cbb1b4966962b93a"
 
 [[projects]]
+  digest = "1:3bfdfb3f1e89263734e9dd6d65a00ad0d4886750061439b7da2a8ab753a2ecf4"
+  name = "github.com/andybalholm/brotli"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "729edfbcfeaad43a6412c185205501ec80773250"
+  version = "v1.0.1"
+
+[[projects]]
   digest = "1:5bb36304653e73c2ced864d49c9f344e7141a7ceef852442edcea212094ebc3c"
   name = "github.com/beorn7/perks"
   packages = ["quantile"]
@@ -36,11 +44,58 @@
   version = "v3.5.1"
 
 [[projects]]
+  digest = "1:d052bda13fd17bd8cf52ccae57b0a03ffeea80cffc2cffc62741235fa34f92cf"
+  name = "github.com/dsnet/compress"
+  packages = [
+    ".",
+    "bzip2",
+    "bzip2/internal/sais",
+    "internal",
+    "internal/errors",
+    "internal/prefix",
+  ]
+  pruneopts = "UT"
+  revision = "da652975a8eea9fa0735aba8056747a751db0bd3"
+  version = "v0.0.1"
+
+[[projects]]
   digest = "1:9b0e71863f18fc5de645a263184c8a6409ae731e847b35b25da4be818f1975fa"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
   pruneopts = "UT"
   revision = "1643683e1b54a9e88ad26d98f81400c8c9d9f4f9"
+
+[[projects]]
+  digest = "1:517c4dd8b618aa9053dfde13c4391dff6e43f7445c2d2b394c0cb9861ba209c8"
+  name = "github.com/golang/snappy"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "674baa8c7fc30da5df3074a459494a7e6b427dff"
+  version = "v0.0.3"
+
+[[projects]]
+  digest = "1:f7775a8efab1209ecf1d6751e7e1f0fac43b508cc6cd0b7f85d4aac583e3879b"
+  name = "github.com/klauspost/compress"
+  packages = [
+    "flate",
+    "fse",
+    "gzip",
+    "huff0",
+    "snappy",
+    "zstd",
+    "zstd/internal/xxhash",
+  ]
+  pruneopts = "UT"
+  revision = "a576225a10eb8feafd84f269df11f0c26b7139e0"
+  version = "v1.11.9"
+
+[[projects]]
+  digest = "1:4d4cab38f2e6a9f0f17fdbe03746c6c983ddacbd2bae4d49798d928d0aaad790"
+  name = "github.com/klauspost/pgzip"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "52335df0e96fa9c509c6fa2966697620beef6dc3"
+  version = "v1.2.5"
 
 [[projects]]
   digest = "1:62f794e53445d22aa4d1709a9123053b9bf7c3284571b5b807f80d57e1648844"
@@ -55,6 +110,18 @@
   version = "v1.9.0"
 
 [[projects]]
+  digest = "1:21fefab5f8b3593c9ae127b2fb351ec8c4442ce351a2058dc0c53d6604216ea5"
+  name = "github.com/magefile/mage"
+  packages = [
+    "mg",
+    "sh",
+    "target",
+  ]
+  pruneopts = "UT"
+  revision = "07afc7d24f4d6d6442305d49552f04fbda5ccb3e"
+  version = "v1.11.0"
+
+[[projects]]
   digest = "1:ff5ebae34cfbf047d505ee150de27e60570e8c394b3b8fdbb720ff6ac71985fc"
   name = "github.com/matttproud/golang_protobuf_extensions"
   packages = ["pbutil"]
@@ -63,12 +130,39 @@
   version = "v1.0.1"
 
 [[projects]]
+  digest = "1:aab0382058a406b557df49e366afcf9201f7e1e56103ee2513644fc02952ff6c"
+  name = "github.com/mholt/archiver"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "3bd45bda8a6db94a901d9f39983d3b2298438e43"
+  version = "v3.3.0"
+
+[[projects]]
+  digest = "1:8ff6e2d612ac4e2186fb27f0b7b8758948e3fc0b9cbd034e0ead31dbb4d01c75"
+  name = "github.com/nwaples/rardecode"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "e2fa07408d4b19ae0500efbcc6983863c95f821e"
+  version = "v1.1.0"
+
+[[projects]]
   digest = "1:d24cef3c660d0f7068001383c140db70861593ad5f7cb14d70bf6167c0236a7e"
   name = "github.com/percona/exporter_shared"
   packages = ["."]
   pruneopts = "UT"
   revision = "ffa14cdb344417f2b7c14f05b4e2fce818100be9"
   version = "v0.4.0"
+
+[[projects]]
+  digest = "1:5d4e89b52ea1467abc362f480ebba12a1b528217f5b6f617ba6a1203d566571b"
+  name = "github.com/pierrec/lz4"
+  packages = [
+    ".",
+    "internal/xxh32",
+  ]
+  pruneopts = "UT"
+  revision = "0e583d326e0ec6b9c1ad223188dc709af385408e"
+  version = "v2.6.0"
 
 [[projects]]
   digest = "1:eb04f69c8991e52eff33c428bd729e04208bf03235be88e4df0d88497c6861b9"
@@ -123,6 +217,27 @@
   revision = "89742aefa4b206dcf400792f3bd35b542998eb3b"
 
 [[projects]]
+  digest = "1:700049c743d00f6e6520c631f5056ec50f21c36e0f6cda34d97a55fd6c0dc355"
+  name = "github.com/ulikunitz/xz"
+  packages = [
+    ".",
+    "internal/hash",
+    "internal/xlog",
+    "lzma",
+  ]
+  pruneopts = "UT"
+  revision = "b0e6b5a2af126053b434443f09f8b9678a31f02c"
+  version = "v0.5.10"
+
+[[projects]]
+  branch = "master"
+  digest = "1:0dfba983988bcd90e6dd30b9bfdb9685ff530dbf61db3706e55372e975b1d8bc"
+  name = "github.com/xi2/xz"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "48954b6210f8d154cb5f8484d3a3e1f83489309e"
+
+[[projects]]
   digest = "1:624a05c7c6ed502bf77364cd3d54631383dafc169982fddd8ee77b53c3d9cccf"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
@@ -169,6 +284,10 @@
   input-imports = [
     "github.com/blang/semver",
     "github.com/lib/pq",
+    "github.com/magefile/mage/mg",
+    "github.com/magefile/mage/sh",
+    "github.com/magefile/mage/target",
+    "github.com/mholt/archiver",
     "github.com/percona/exporter_shared",
     "github.com/prometheus/client_golang/prometheus",
     "github.com/prometheus/client_golang/prometheus/promhttp",
