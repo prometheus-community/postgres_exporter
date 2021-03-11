@@ -55,6 +55,7 @@ var (
 	onlyDumpMaps           = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
 	constantLabelsList     = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,).").Default("").Envar("PG_EXPORTER_CONSTANT_LABELS").String()
 	excludeDatabases       = kingpin.Flag("exclude-databases", "A list of databases to remove when autoDiscoverDatabases is enabled").Default("").Envar("PG_EXPORTER_EXCLUDE_DATABASES").String()
+	includeDatabases       = kingpin.Flag("include-databases", "A list of databases to include when autoDiscoverDatabases is enabled").Default("").Envar("PG_EXPORTER_INCLUDE_DATABASES").String()
 	metricPrefix           = kingpin.Flag("metric-prefix", "A metric prefix can be used to have non-default (not \"pg\") prefixes for each of the metrics").Default("pg").Envar("PG_EXPORTER_METRIC_PREFIX").String()
 	logger                 = log.NewNopLogger()
 )
@@ -1099,6 +1100,7 @@ type Exporter struct {
 	disableDefaultMetrics, disableSettingsMetrics, autoDiscoverDatabases bool
 
 	excludeDatabases []string
+	includeDatabases []string
 	dsn              []string
 	userQueriesPath  string
 	constantLabels   prometheus.Labels
@@ -1141,6 +1143,13 @@ func AutoDiscoverDatabases(b bool) ExporterOpt {
 func ExcludeDatabases(s string) ExporterOpt {
 	return func(e *Exporter) {
 		e.excludeDatabases = strings.Split(s, ",")
+	}
+}
+
+// IncludeDatabases allows to filter result from AutoDiscoverDatabases
+func IncludeDatabases(s string) ExporterOpt {
+	return func(e *Exporter) {
+		e.includeDatabases = strings.Split(s, ",")
 	}
 }
 
@@ -1678,6 +1687,10 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 				continue
 			}
 
+			if len(e.includeDatabases) != 0 && !contains(e.includeDatabases, databaseName) {
+				continue
+			}
+
 			if dsnURI != nil {
 				dsnURI.Path = databaseName
 				dsn = dsnURI.String()
@@ -1822,6 +1835,7 @@ func main() {
 		WithUserQueriesPath(*queriesPath),
 		WithConstantLabels(*constantLabelsList),
 		ExcludeDatabases(*excludeDatabases),
+		IncludeDatabases(*includeDatabases),
 	}
 
 	exporter := NewExporter(dsn, opts...)
