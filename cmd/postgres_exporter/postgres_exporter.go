@@ -1446,6 +1446,16 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 	// Return a map of namespace -> errors
 	namespaceErrors := make(map[string]error)
 
+	// check if the query is to be run on specific database server version range or not
+	if len(server.runonserver) > 0 {
+		serVersion, _ := semver.Parse(server.lastMapVersion.String())
+		runServerRange, _ := semver.ParseRange(server.runonserver)
+		if !runServerRange(serVersion) {
+			level.Debug(logger).Log("msg", "Query skipped for this database version", "version", server.lastMapVersion.String(), "target_version", server.runonserver)
+			return namespaceErrors
+		}
+	}
+
 	scrapeStart := time.Now()
 
 	for namespace, mapping := range server.metricMap {
@@ -1454,16 +1464,6 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 		if mapping.master && !server.master {
 			level.Debug(logger).Log("msg", "Query skipped...")
 			continue
-		}
-
-		// check if the query is to be run on specific database server version range or not
-		if len(server.runonserver) > 0 {
-			serVersion, _ := semver.Parse(server.lastMapVersion.String())
-			runServerRange, _ := semver.ParseRange(server.runonserver)
-			if !runServerRange(serVersion) {
-				level.Debug(logger).Log("msg", "Query skipped for this database version", "version", server.lastMapVersion.String(), "target_version", server.runonserver)
-				continue
-			}
 		}
 
 		scrapeMetric := false
