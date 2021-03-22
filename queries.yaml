@@ -1,5 +1,6 @@
 pg_replication:
   query: "SELECT EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())) as lag"
+  master: true
   metrics:
     - lag:
         usage: "GAUGE"
@@ -7,14 +8,18 @@ pg_replication:
 
 pg_postmaster:
   query: "SELECT pg_postmaster_start_time as start_time_seconds from pg_postmaster_start_time()"
+  master: true
   metrics:
     - start_time_seconds:
         usage: "GAUGE"
         description: "Time at which postmaster started"
 
 pg_stat_user_tables:
-  query: "SELECT schemaname, relname, seq_scan, seq_tup_read, idx_scan, idx_tup_fetch, n_tup_ins, n_tup_upd, n_tup_del, n_tup_hot_upd, n_live_tup, n_dead_tup, n_mod_since_analyze, last_vacuum, last_autovacuum, last_analyze, last_autoanalyze, vacuum_count, autovacuum_count, analyze_count, autoanalyze_count FROM pg_stat_user_tables"
+  query: "SELECT current_database() datname, schemaname, relname, seq_scan, seq_tup_read, idx_scan, idx_tup_fetch, n_tup_ins, n_tup_upd, n_tup_del, n_tup_hot_upd, n_live_tup, n_dead_tup, n_mod_since_analyze, COALESCE(last_vacuum, '1970-01-01Z'), COALESCE(last_vacuum, '1970-01-01Z') as last_vacuum, COALESCE(last_autovacuum, '1970-01-01Z') as last_autovacuum, COALESCE(last_analyze, '1970-01-01Z') as last_analyze, COALESCE(last_autoanalyze, '1970-01-01Z') as last_autoanalyze, vacuum_count, autovacuum_count, analyze_count, autoanalyze_count FROM pg_stat_user_tables"
   metrics:
+    - datname:
+        usage: "LABEL"
+        description: "Name of current database"
     - schemaname:
         usage: "LABEL"
         description: "Name of the schema that this table is in"
@@ -80,8 +85,11 @@ pg_stat_user_tables:
         description: "Number of times this table has been analyzed by the autovacuum daemon"
 
 pg_statio_user_tables:
-  query: "SELECT schemaname, relname, heap_blks_read, heap_blks_hit, idx_blks_read, idx_blks_hit, toast_blks_read, toast_blks_hit, tidx_blks_read, tidx_blks_hit FROM pg_statio_user_tables"
+  query: "SELECT current_database() datname, schemaname, relname, heap_blks_read, heap_blks_hit, idx_blks_read, idx_blks_hit, toast_blks_read, toast_blks_hit, tidx_blks_read, tidx_blks_hit FROM pg_statio_user_tables"
   metrics:
+    - datname:
+        usage: "LABEL"
+        description: "Name of current database"
     - schemaname:
         usage: "LABEL"
         description: "Name of the schema that this table is in"
@@ -114,7 +122,9 @@ pg_statio_user_tables:
         description: "Number of buffer hits in this table's TOAST table indexes (if any)"
 
 pg_database:
-  query: " SELECT pg_database.datname, pg_database_size(pg_database.datname) as size FROM pg_database"
+  query: "SELECT pg_database.datname, pg_database_size(pg_database.datname) as size FROM pg_database"
+  master: true
+  cache_seconds: 30
   metrics:
     - datname:
         usage: "LABEL"
