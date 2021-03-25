@@ -2,13 +2,13 @@
 version: 2.1
 
 orbs:
-  prometheus: prometheus/prometheus@0.8.0
+  prometheus: prometheus/prometheus@0.11.0
 
 executors:
   # This must match .promu.yml.
   golang:
     docker:
-    - image: circleci/golang:1.15
+    - image: circleci/golang:1.16
 
 jobs:
   test:
@@ -22,7 +22,7 @@ jobs:
 
   integration:
     docker:
-    - image: circleci/golang:1.15
+    - image: circleci/golang:1.16
     - image: << parameters.postgres_image >>
       environment:
         POSTGRES_DB: circle_test
