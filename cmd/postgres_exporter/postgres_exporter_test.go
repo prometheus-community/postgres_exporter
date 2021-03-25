@@ -4,6 +4,7 @@ package main
 
 import (
 	"database/sql"
+	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
@@ -26,10 +27,14 @@ func (s *FunctionalSuite) SetUpSuite(c *C) {
 }
 
 func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
-	testMetricMap := map[string]map[string]ColumnMapping{
+	testMetricMap := map[string]intermediateMetricMap{
 		"test_namespace": {
-			"metric_which_stays":    {COUNTER, "This metric should not be eliminated", nil, nil},
-			"metric_which_discards": {COUNTER, "This metric should be forced to DISCARD", nil, nil},
+			map[string]ColumnMapping{
+				"metric_which_stays":    {COUNTER, "This metric should not be eliminated", nil, nil},
+				"metric_which_discards": {COUNTER, "This metric should be forced to DISCARD", nil, nil},
+			},
+			true,
+			0,
 		},
 	}
 
@@ -51,9 +56,9 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 	// nolint: dupl
 	{
 		// Update the map so the discard metric should be eliminated
-		discardableMetric := testMetricMap["test_namespace"]["metric_which_discards"]
+		discardableMetric := testMetricMap["test_namespace"].columnMappings["metric_which_discards"]
 		discardableMetric.supportedVersions = semver.MustParseRange(">0.0.1")
-		testMetricMap["test_namespace"]["metric_which_discards"] = discardableMetric
+		testMetricMap["test_namespace"].columnMappings["metric_which_discards"] = discardableMetric
 
 		// Discard metric should be discarded
 		resultMap := makeDescMap(semver.MustParse("0.0.1"), prometheus.Labels{}, testMetricMap)
@@ -72,9 +77,9 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 	// nolint: dupl
 	{
 		// Update the map so the discard metric should be kept but has a version
-		discardableMetric := testMetricMap["test_namespace"]["metric_which_discards"]
+		discardableMetric := testMetricMap["test_namespace"].columnMappings["metric_which_discards"]
 		discardableMetric.supportedVersions = semver.MustParseRange(">0.0.1")
-		testMetricMap["test_namespace"]["metric_which_discards"] = discardableMetric
+		testMetricMap["test_namespace"].columnMappings["metric_which_discards"] = discardableMetric
 
 		// Discard metric should be discarded
 		resultMap := makeDescMap(semver.MustParse("0.0.2"), prometheus.Labels{}, testMetricMap)
@@ -244,6 +249,10 @@ func (s *FunctionalSuite) TestParseFingerprint(c *C) {
 			fingerprint: "localhost:55432",
 		},
 		{
+			url:         "postgresql://userDsn:passwordDsn%3D@localhost:55432/?sslmode=disabled",
+			fingerprint: "localhost:55432",
+		},
+		{
 			url:         "port=1234",
 			fingerprint: "localhost:1234",
 		},
@@ -356,4 +365,18 @@ func postgresVersion(db *sql.DB) (int, error) {
 	version := 0
 	err := db.QueryRow("SHOW server_version_num").Scan(&version)
 	return version, err
+}
+
+func (s *FunctionalSuite) TestParseUserQueries(c *C) {
+	userQueriesData, err := ioutil.ReadFile("./tests/user_queries_ok.yaml")
+	if err == nil {
+		metricMaps, newQueryOverrides, err := parseUserQueries(userQueriesData)
+		c.Assert(err, Equals, nil)
+		c.Assert(metricMaps, NotNil)
+		c.Assert(newQueryOverrides, NotNil)
+
+		if len(metricMaps) != 2 {
+			c.Errorf("Expected 2 metrics from user file, got %d", len(metricMaps))
+		}
+	}
 }
