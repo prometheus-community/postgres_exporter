@@ -361,7 +361,11 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 	},
 	"pg_stat_ssl": {
 		map[string]ColumnMapping{
-			"unencrypted_connection_count": {GAUGE, "Number of unencrypted client connections (TCP/IP communication)", nil, semver.MustParseRange(">=9.5.0")},
+			"usename":          {LABEL, "Name of this connected user", nil, nil},
+			"datname":          {LABEL, "Name of this database", nil, nil},
+			"application_name": {LABEL, "Name of this connected application", nil, nil},
+			"client_addr":      {LABEL, "IP of this connected client", nil, nil},
+			"encrypted":        {GAUGE, "Encryption status of a database connection through TCP/IP", nil, semver.MustParseRange(">=9.5.0")},
 		},
 		true,
 		0,
@@ -503,11 +507,11 @@ var queryOverrides = map[string][]OverrideQuery{
 		{
 			semver.MustParseRange(">=9.5.0"),
 			`
-			SELECT count(*) as unencrypted_connection_count
+			SELECT distinct usename, datname, application_name, ssl as encrypted, client_addr
 			FROM pg_stat_ssl
-			JOIN pg_stat_activity
+			LEFT JOIN pg_stat_activity
 			ON pg_stat_ssl.pid = pg_stat_activity.pid
-			WHERE text(client_addr) is not null AND ssl = 'f';
+			WHERE text(client_addr) is not null;
 			`,
 		},
 	},
