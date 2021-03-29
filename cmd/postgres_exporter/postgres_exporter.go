@@ -361,7 +361,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 	},
 	"pg_stat_ssl": {
 		map[string]ColumnMapping{
-			"unencrypted_connection_count":	{GAUGE, "Number of unencrypted client connections (TCP/IP communication)", nil, semver.MustParseRange(">=9.5.0")},
+			"unencrypted_connection_count": {GAUGE, "Number of unencrypted client connections (TCP/IP communication)", nil, semver.MustParseRange(">=9.5.0")},
 		},
 		true,
 		0,
