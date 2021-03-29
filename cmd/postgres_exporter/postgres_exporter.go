@@ -359,6 +359,13 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		true,
 		0,
 	},
+	"pg_stat_ssl": {
+		map[string]ColumnMapping{
+			"unencrypted_connection_count":	{GAUGE, "Number of unencrypted remote connections", nil, semver.MustParseRange(">=9.5.0")},
+		},
+		true,
+		0,
+	},
 }
 
 // OverrideQuery 's are run in-place of simple namespace look ups, and provide
@@ -488,6 +495,19 @@ var queryOverrides = map[string][]OverrideQuery{
 				COALESCE(count(*),0) AS count,
 				COALESCE(MAX(EXTRACT(EPOCH FROM now() - xact_start))::float,0) AS max_tx_duration
 			FROM pg_stat_activity GROUP BY datname
+			`,
+		},
+	},
+
+	"pg_stat_ssl": {
+		{
+			semver.MustParseRange(">=9.5.0"),
+			`
+			SELECT count(*) as unencrypted_connection_count
+			FROM pg_stat_ssl
+			JOIN pg_stat_activity
+			ON pg_stat_ssl.pid = pg_stat_activity.pid
+			WHERE text(client_addr) is not null AND ssl = 'f';
 			`,
 		},
 	},
