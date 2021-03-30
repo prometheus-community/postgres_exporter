@@ -517,7 +517,7 @@ func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]
 	return resultMap
 }
 
-func parseUserQueries(content []byte) (map[string]intermediateMetricMap, map[string]string, error) {
+func parseUserQueries(content []byte, server *Server) (map[string]intermediateMetricMap, map[string]string, error) {
 	var userQueries UserQueries
 
 	err := yaml.Unmarshal(content, &userQueries)
@@ -531,6 +531,17 @@ func parseUserQueries(content []byte) (map[string]intermediateMetricMap, map[str
 
 	for metric, specs := range userQueries {
 		level.Debug(logger).Log("msg", "New user metric namespace from YAML metric", "metric", metric, "cache_seconds", specs.CacheSeconds)
+
+                // check if the query is to be run on specific database server version range or not
+                if len(specs.RunOnServer) > 0 {
+                        serVersion, _ := semver.Parse(server.lastMapVersion.String())
+                        runServerRange, _ := semver.ParseRange(specs.RunOnServer)
+                        if !runServerRange(serVersion) {
+                                level.Debug(logger).Log("msg", "Query skipped for this database version", "version", server.lastMapVersion.String(), "target_version", specs.RunOnServer)
+                                continue
+                        }
+                }
+
 		newQueryOverrides[metric] = specs.Query
 		metricMap, ok := metricMaps[metric]
 		if !ok {
@@ -571,7 +582,7 @@ func parseUserQueries(content []byte) (map[string]intermediateMetricMap, map[str
 // TODO: test code for all cu.
 // TODO: the YAML this supports is "non-standard" - we should move away from it.
 func addQueries(content []byte, pgVersion semver.Version, server *Server) error {
-	metricMaps, newQueryOverrides, err := parseUserQueries(content)
+	metricMaps, newQueryOverrides, err := parseUserQueries(content, server)
 	if err != nil {
 		return err
 	}
@@ -1463,16 +1474,6 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 		if mapping.master && !server.master {
 			level.Debug(logger).Log("msg", "Query skipped...")
 			continue
-		}
-
-		// check if the query is to be run on specific database server version range or not
-		if len(server.runonserver) > 0 {
-			serVersion, _ := semver.Parse(server.lastMapVersion.String())
-			runServerRange, _ := semver.ParseRange(server.runonserver)
-			if !runServerRange(serVersion) {
-				level.Debug(logger).Log("msg", "Query skipped for this database version", "version", server.lastMapVersion.String(), "target_version", server.runonserver)
-				continue
-			}
 		}
 
 		scrapeMetric := false
