@@ -508,7 +508,7 @@ var queryOverrides = map[string][]OverrideQuery{
 		{
 			semver.MustParseRange(">=9.5.0"),
 			`
-			SELECT distinct usename, datname, application_name, ssl as encrypted, client_addr, client_port
+			SELECT distinct usename, datname, application_name, client_addr, client_port, ssl as encrypted
 			FROM pg_stat_ssl
 			LEFT JOIN pg_stat_activity
 			ON pg_stat_ssl.pid = pg_stat_activity.pid
