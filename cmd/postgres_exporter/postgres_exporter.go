@@ -365,6 +365,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 			"datname":          {LABEL, "Name of this database", nil, nil},
 			"application_name": {LABEL, "Name of this connected application", nil, nil},
 			"client_addr":      {LABEL, "IP of this connected client", nil, nil},
+			"client_port":      {LABEL, "TCP port number that the client is using for communication", nil, nil},
 			"encrypted":        {GAUGE, "Encryption status of a database connection through TCP/IP", nil, semver.MustParseRange(">=9.5.0")},
 		},
 		true,
@@ -507,7 +508,7 @@ var queryOverrides = map[string][]OverrideQuery{
 		{
 			semver.MustParseRange(">=9.5.0"),
 			`
-			SELECT distinct usename, datname, application_name, ssl as encrypted, client_addr
+			SELECT distinct usename, datname, application_name, ssl as encrypted, client_addr, client_port
 			FROM pg_stat_ssl
 			LEFT JOIN pg_stat_activity
 			ON pg_stat_ssl.pid = pg_stat_activity.pid
