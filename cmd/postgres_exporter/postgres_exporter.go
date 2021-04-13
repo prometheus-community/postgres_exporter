@@ -1215,7 +1215,9 @@ func newDesc(subsystem, name, help string, labels prometheus.Labels) *prometheus
 }
 
 func queryDatabases(server *Server) ([]string, error) {
-	rows, err := server.db.Query("SELECT datname FROM pg_database WHERE datallowconn = true AND datistemplate = false AND datname != current_database()") // nolint: safesql
+	query := `SELECT datname FROM pg_database  WHERE datallowconn = true AND datistemplate = false AND has_database_privilege(current_user, datname, 'connect')`
+
+	rows, err := server.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving databases: %v", err)
 	}
@@ -1223,12 +1225,18 @@ func queryDatabases(server *Server) ([]string, error) {
 
 	var databaseName string
 	result := make([]string, 0)
+
 	for rows.Next() {
 		err = rows.Scan(&databaseName)
 		if err != nil {
 			return nil, errors.New(fmt.Sprintln("error retrieving rows:", err))
 		}
+
 		result = append(result, databaseName)
+	}
+
+	if rows.Err() != nil {
+		return nil, errors.New(fmt.Sprintln("error retrieving rows:", err))
 	}
 
 	return result, nil
