@@ -1149,7 +1149,9 @@ func ExcludeDatabases(s string) ExporterOpt {
 // IncludeDatabases allows to filter result from AutoDiscoverDatabases
 func IncludeDatabases(s string) ExporterOpt {
 	return func(e *Exporter) {
-		e.includeDatabases = strings.Split(s, ",")
+		if len(s) > 0 {
+			e.includeDatabases = strings.Split(s, ",")
+		}
 	}
 }
 

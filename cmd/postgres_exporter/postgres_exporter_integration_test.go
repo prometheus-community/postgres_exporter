@@ -162,3 +162,16 @@ func (s *IntegrationSuite) TestExtendQueriesDoesntCrash(c *C) {
 	// scrape the exporter and make sure it works
 	exporter.scrape(ch)
 }
+
+func (s *IntegrationSuite) TestAutoDiscoverDatabases(c *C) {
+	dsn := os.Getenv("DATA_SOURCE_NAME")
+
+	exporter := NewExporter(
+		strings.Split(dsn, ","),
+	)
+	c.Assert(exporter, NotNil)
+
+	dsns := exporter.discoverDatabaseDSNs()
+
+	c.Assert(len(dsns), Equals, 2)
+}
