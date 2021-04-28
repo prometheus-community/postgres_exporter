@@ -31,15 +31,15 @@ pg_stat_user_tables:
      n_live_tup,
      n_dead_tup,
      n_mod_since_analyze,
-     COALESCE(last_vacuum, '1970-01-01Z') as last_vacuum, 
-     COALESCE(last_autovacuum, '1970-01-01Z') as last_autovacuum, 
-     COALESCE(last_analyze, '1970-01-01Z') as last_analyze, 
-     COALESCE(last_autoanalyze, '1970-01-01Z') as last_autoanalyze, 
-     vacuum_count, 
-     autovacuum_count, 
-     analyze_count, 
-     autoanalyze_count 
-   FROM 
+     COALESCE(last_vacuum, '1970-01-01Z') as last_vacuum,
+     COALESCE(last_autovacuum, '1970-01-01Z') as last_autovacuum,
+     COALESCE(last_analyze, '1970-01-01Z') as last_analyze,
+     COALESCE(last_autoanalyze, '1970-01-01Z') as last_autoanalyze,
+     vacuum_count,
+     autovacuum_count,
+     analyze_count,
+     autoanalyze_count
+   FROM
      pg_stat_user_tables
   metrics:
     - datname:
@@ -145,7 +145,7 @@ pg_statio_user_tables:
     - tidx_blks_hit:
         usage: "COUNTER"
         description: "Number of buffer hits in this table's TOAST table indexes (if any)"
-        
+
 pg_database:
   query: "SELECT pg_database.datname, pg_database_size(pg_database.datname) as size_bytes FROM pg_database"
   master: true
@@ -229,7 +229,7 @@ pg_stat_statements:
         usage: "COUNTER"
         description: "Total time the statement spent writing blocks, in milliseconds (if track_io_timing is enabled, otherwise zero)"
 
-pg_stat_activity:
+pg_process_idle:
   query: |
     WITH
       metrics AS (
@@ -259,16 +259,16 @@ pg_stat_activity:
       )
     SELECT
       application_name,
-      process_idle_seconds_sum,
-      process_idle_seconds_count,
-      ARRAY_AGG(le) AS process_idle_seconds,
-      ARRAY_AGG(bucket) AS process_idle_seconds_bucket
+      process_idle_seconds_sum as seconds_sum,
+      process_idle_seconds_count as seconds_count,
+      ARRAY_AGG(le) AS seconds,
+      ARRAY_AGG(bucket) AS seconds_bucket
     FROM metrics JOIN buckets USING (application_name)
     GROUP BY 1, 2, 3
   metrics:
     - application_name:
         usage: "LABEL"
         description: "Application Name"
-    - process_idle_seconds:
+    - seconds:
         usage: "HISTOGRAM"
         description: "Idle time of server processes"
