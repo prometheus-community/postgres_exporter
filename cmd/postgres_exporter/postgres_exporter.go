@@ -889,7 +889,7 @@ func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
+	db.SetMaxIdleConns(-1)
 
 	log.Infof("Established new database connection to %q.", fingerprint)
 

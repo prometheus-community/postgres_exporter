@@ -1,12 +1,13 @@
 dist: bionic
 language: go
+os: linux
 
 go:
   - 1.15.x
   - 1.14.x
   - tip
 
-matrix:
+jobs:
   allow_failures:
     - go: tip
 
@@ -17,8 +18,9 @@ branches:
 
 env:
   global:
-    secure: "StREa6T4uZpBih6GSTshs+UWkaP8OQz7UHkuti8Ghlih6HbOnLUmPdADxrWpuMyLg2iXhJc5XFqmgHzsQAxYRjHFvBqeW8UerJqPzmU4pFWzLNoBDnTyNmeuRJCIyodf0DzmJWptM7a2wc7To3Zyv6hcObh5v7bKO/TfjU30EAVFaO3IOalYSLKc2ftJulZmXUpcrhzmo5L/89qSyCpLMCnVgymYLNhMtw4U4JDUmo7iQ48bWHhaIIoln5erT5DNV4n54shOARZihUfyWBolmqYYfyrDYSem23tWjzuWKM2w0HT3RSTYzjDj21jifKNvi3qCiEhBDZY1cQ1E7uuMoXqUAmzFAw7w8dSSddddMcH0cZDRNDPnqq0fRvhN2ZVKe333E+2NTOf9KYvZ13xhxraHsq5BBWEzVTUjgkNJ44o6QJFI+d5D5rvT18X2gnZbCSh/P5Vv41z67lZWDEWyNT1h3ZxxlnNFQPvGb+mYIFehmGjVfbgfI3ju4+DIXHnWdVKIgpt0yCXXByFZdqK3lP9cTb/2TgXEG2abwr5zi0rW8mn31602t6g3qO1pLzvSsTy93mWtI2jpYLzDvPCTdDxH2dW6/Xq0CJr03mtUUISBFYiO77ZdjjHoNV69LVt+6Pa721H4kV2l65+aH5jmzSUdMMqMug63L9GvpCLX5Hc="
-  matrix:
+    # REVIEWDOG_GITHUB_API_TOKEN
+    secure: w+61ClEP7mmr53RaNDFFFcA1qw39CRIUCG9PBYOcuw7TqvFnn8e16IyWWKEjE0/Jd8lzL1xJYi3uNj4tqqWFp36bbgpjTh5QbUGAOEpRr2pPFCpl6Xhg8WGwlElU2tJIKlUqwWfZOJeD3AtALF6/IeAh9e7+Gp1xa22lQ7RAt5aaC3Z1qV2eo2e1kXa8WrBO5N+uTriu9tpBdPDqQFgFdExcl0tVsSbfidxTAe9tykdReKdrgz89rrJ310kpPe3vPSNk5nxPJj3y3S6eXer8wMM5whY5hCcyExlP7sezptASN083kdBpq/K53YGFQiqF0Nac3OogGs6vM0s9BB5hl/I1WXxKCy0fxB6x7+Z2oRLLUGbtriym5LgPyQo5FRdjrS3tonhnrMOb4Vsa7ai8UbFNETxCPzlRZj8x0aA1H6f6GbIrZ/EfBTJyxwE+xAbvFKwOEomC6dkGwCBClT+D7wqaYICfV21csYlTGCw5gPNrbZIZv5mntU/DRTH2mumYRpgzEm79/bRjXhL2mWzjL+LrBNgVJs4/8YsSSkE1Yu4jmQBSDUMbZHX1r63ZSAbjABhugtv1v6GZV0914Cv0g/infBlN8b7n0HDS7TcwqoWK5APP2rI77Z8hS1YLtsQjRoPOOFqhsRElqqsAwKhYFXHanYeKygrwO6YYXPANQ+8=
+  jobs:
     - POSTGRESQL_IMAGE=postgres:9.4
     - POSTGRESQL_IMAGE=postgres:9.5
     - POSTGRESQL_IMAGE=postgres:9.6
@@ -27,7 +29,7 @@ env:
     - POSTGRESQL_IMAGE=postgres:12
 
 services:
-- docker
+  - docker
 
 go_import_path: github.com/percona/postgres_exporter
 
@@ -50,14 +52,11 @@ before_script:
   - docker-compose up -d
 
 script:
-- make
-- make test
+  - make
+  - make test
 
 after_failure:
-- docker-compose logs
-#- docker exec postgres_exporter_postgresql cat /etc/passwd
-#- ls -l testdata/ssl
-#- sudo cat /etc/passwd
+  - docker-compose logs
 
 notifications:
   email: false
