@@ -23,16 +23,18 @@ docker run \
 
 ## Building and running
 
-    git clone https://github.com/prometheus-community/postgres_exporter.git
-    cd postgres_exporter
-    make build
-    ./postgres_exporter <flags>
+    $ mkdir -p $GOPATH/src/github.com/prometheus-community
+    $ cd $GOPATH/src/github.com/prometheus-community
+    $ git clone https://github.com/prometheus-community/postgres_exporter.git
+    $ cd postgres_exporter
+    $ make build
+    $ ./postgres_exporter <flags>
 
 To build the Docker image:
 
-    make promu
-    promu crossbuild -p linux/amd64 -p linux/armv7 -p linux/amd64 -p linux/ppc64le
-    make docker
+    $ make promu
+    $ promu crossbuild -p linux/amd64 -p linux/armv7 -p linux/arm64 -p linux/ppc64le
+    $ make docker
 
 This will build the docker image as `prometheuscommunity/postgres_exporter:${branch}`.
 
