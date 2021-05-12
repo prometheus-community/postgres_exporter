@@ -27,13 +27,13 @@ jobs:
           password: ${{ secrets.ARTI_TOKEN }}
       - name: Build docker image
         run: |
-          docker build -f ./Dockerfile -t temp-postgres-exporter:latest .
+          docker build -f ./Dockerfile -t temp-postgresql-exporter:latest .
       
       - name: Scan local image
         id: scan-local
         uses: sysdiglabs/scan-action@v3
         with:
-          image-tag: "temp-postgres-exporter:latest"
+          image-tag: "temp-postgresql-exporter:latest"
           sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
           ignore-failed-scan: true
           input-type: docker-daemon
@@ -47,8 +47,8 @@ jobs:
 
       - name: Change the tag of the image
         run: |
-          docker tag temp-postgres-exporter:latest artifactory.internal.sysdig.com/postgres-exporter:latest
+          docker tag temp-postgresql-exporter:latest artifactory.internal.sysdig.com/postgresql-exporter:latest
 
       - name: Push the image
         run: |
-          docker push artifactory.internal.sysdig.com/postgres-exporter:latest
+          docker push artifactory.internal.sysdig.com/postgresql-exporter:latest
