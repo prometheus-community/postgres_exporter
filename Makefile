@@ -14,9 +14,8 @@
 GO           ?= go
 GOFMT        ?= $(GO)fmt
 FIRST_GOPATH := $(firstword $(subst :, ,$(shell $(GO) env GOPATH)))
-PROMU        := $(FIRST_GOPATH)/bin/promu
-STATICCHECK  := $(FIRST_GOPATH)/bin/staticcheck
-GOVENDOR     := $(FIRST_GOPATH)/bin/govendor
+PROMU        := bin/promu
+STATICCHECK  := bin/staticcheck
 pkgs          = ./...
 
 PREFIX                  ?= $(shell pwd)
@@ -24,15 +23,15 @@ BIN_DIR                 ?= $(shell pwd)
 DOCKER_IMAGE_TAG        ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 DOCKER_IMAGE_NAME ?= postgres-exporter
 
-all: vet style staticcheck unused build test
+all: vet style staticcheck build test
 
 style:
 	@echo ">> checking code style"
-	! $(GOFMT) -d $$(find . -path ./vendor -prune -o -name '*.go' -print) | grep '^'
+	! $(GOFMT) -d $$(find . -name '*.go' -print) | grep '^'
 
 check_license:
 	@echo ">> checking license header"
-	@licRes=$$(for file in $$(find . -type f -iname '*.go' ! -path './vendor/*') ; do \
+	@licRes=$$(for file in $$(find . -type f -iname '*.go') ; do \
                awk 'NR<=3' $$file | grep -Eq "(Copyright|generated|GENERATED)" || echo $$file; \
        done); \
        if [ -n "$${licRes}" ]; then \
@@ -58,11 +57,8 @@ vet:
 
 staticcheck: $(STATICCHECK)
 	@echo ">> running staticcheck"
-	$(STATICCHECK) $(pkgs)
-
-unused: $(GOVENDOR)
-	@echo ">> running check for unused packages"
-	@$(GOVENDOR) list +unused | grep . && exit 1 || echo 'No unused packages'
+	GOOS= GOARCH= $(GO) build -modfile=tools/go.mod -o bin/staticcheck honnef.co/go/tools/cmd/staticcheck
+	bin/staticcheck $(pkgs)
 
 build: promu
 	@echo ">> building binaries"
@@ -77,12 +73,6 @@ docker:
 	docker build -t "$(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG)" .
 
 promu:
-	GOOS= GOARCH= $(GO) get -u github.com/prometheus/promu
+	GOOS= GOARCH= $(GO) build -modfile=tools/go.mod -o bin/promu github.com/prometheus/promu
 
-$(FIRST_GOPATH)/bin/staticcheck:
-	GOOS= GOARCH= $(GO) get -u honnef.co/go/tools/cmd/staticcheck
-
-$(FIRST_GOPATH)/bin/govendor:
-	GOOS= GOARCH= $(GO) get -u github.com/kardianos/govendor
-
-.PHONY: all style check_license format build test vet assets tarball docker promu staticcheck $(FIRST_GOPATH)/bin/staticcheck govendor $(FIRST_GOPATH)/bin/govendor
+.PHONY: all style check_license format build test vet assets tarball docker promu staticcheck bin/staticcheck

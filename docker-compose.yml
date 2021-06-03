@@ -15,8 +15,8 @@ services:
     container_name: postgres_exporter_postgresql-ssl
     command: >
       -c ssl=on
-      -c ssl_cert_file=/var/lib/postgresql/ssl/server.crt
-      -c ssl_key_file=/var/lib/postgresql/ssl/server.key
+      -c ssl_cert_file=/ssl/server.crt
+      -c ssl_key_file=/ssl/server.key
       -c log_min_messages=DEBUG4
     ports:
       - 127.0.0.1:5433:5432
@@ -24,4 +24,4 @@ services:
       - POSTGRES_USER=root
       - POSTGRES_PASSWORD=root
     volumes:
-      - ./testdata/ssl:/var/lib/postgresql/ssl
+      - ./testdata/ssl:/ssl
