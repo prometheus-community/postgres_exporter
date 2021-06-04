@@ -32,20 +32,33 @@
 # Add extra arguments via "postgres_exporter_args" which could be choosen from:
 # (see $ postgres_exporter --help)
 #
-#  -dumpmaps
-#    	Do not run, simply dump the maps.
-#  -extend.query-path string
-#    	Path to custom queries to run.
-#  -log.level value
-#    	Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal].
-#  -version
-#    	print version and exit
-#  -web.telemetry-path string
-#    	Path under which to expose metrics. (default "/metrics")
-#  -log.format value
-#    	If set use a syslog logger or JSON logging. Example: logger:syslog?appname=bob&local=7 or logger:stdout?json=true. Defaults to stderr.
-#  -extend.query-path string
-#    	Path to custom queries to run.
+#  --web.listen-address=":9187"
+#       Address to listen on for web interface and telemetry.
+#  --web.telemetry-path="/metrics"
+#       Path under which to expose metrics.
+#  --disable-default-metrics
+#       Do not include default metrics.
+#  --disable-settings-metrics
+#       Do not include pg_settings metrics.
+#  --auto-discover-databases
+#       Whether to discover the databases on a server dynamically.
+#  --extend.query-path=""
+#       Path to custom queries to run.
+#  --dumpmaps
+#       Do not run, simply dump the maps.
+#  --constantLabels=""
+#       A list of label=value separated by comma(,).
+#  --exclude-databases=""
+#       A list of databases to remove when autoDiscoverDatabases is enabled
+#  --metric-prefix="pg"
+#       A metric prefix can be used to have non-default (not "pg") prefixes for each of
+#  --version
+#       Show application version.
+#  --log.level="info"
+#       Only log messages with the given severity or above. Valid levels: [debug, info,
+#  --log.format="logger:stderr"
+#       Set the log target and format. Example: "logger:syslog?appname=bob&local=7" or
+#       "logger:stdout?json=true"
 
 
 . /etc/rc.subr
