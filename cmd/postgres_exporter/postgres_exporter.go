@@ -1342,10 +1342,6 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 		// an admin tool so you're not injecting SQL right?
 		rows, err = server.db.Query(fmt.Sprintf("SELECT * FROM %s;", namespace)) // nolint: gas
 	} else {
-		// make for pg13 breaking changes
-		if server.lastMapVersion.GE(semver.Version{Major: 13}) && namespace == "pg_stat_statements" {
-			fmt.Println(query)
-		}
 		rows, err = server.db.Query(query)
 	}
 	if err != nil {
