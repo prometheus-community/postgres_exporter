@@ -119,12 +119,12 @@ type Mapping map[string]MappingOptions
 
 // nolint: golint
 type UserQuery struct {
-	Query           string              `yaml:"query"`
-	Metrics         []Mapping           `yaml:"metrics"`
+	Query           string            `yaml:"query"`
+	Metrics         []Mapping         `yaml:"metrics"`
 	BreakingChanges []BreakingChanges `yaml:"breakingChanges"`
-	Master          bool                `yaml:"master"`        // Querying only for master database
-	CacheSeconds    uint64              `yaml:"cache_seconds"` // Number of seconds to cache the namespace result metrics for.
-	RunOnServer     string              `yaml:"runonserver"`   // Querying to run on which server version
+	Master          bool              `yaml:"master"`        // Querying only for master database
+	CacheSeconds    uint64            `yaml:"cache_seconds"` // Number of seconds to cache the namespace result metrics for.
+	RunOnServer     string            `yaml:"runonserver"`   // Querying to run on which server version
 }
 
 // nolint: golint
