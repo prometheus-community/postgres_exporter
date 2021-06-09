@@ -533,7 +533,7 @@ func parseUserQueries(content []byte, pgVersion semver.Version) (map[string]inte
 	for metric, specs := range userQueries {
 		level.Debug(logger).Log("msg", "New user metric namespace from YAML metric", "metric", metric, "cache_seconds", specs.CacheSeconds)
 		newQueryOverrides[metric] = specs.Query
-		for i := len(specs.BreakingChanges) - 1; i >= 0; i++ {
+		for i := len(specs.BreakingChanges) - 1; i >= 0; i-- {
 			if err := specs.BreakingChanges[i].ParseVerTolerant(); err != nil {
 				return nil, nil, err
 			}
@@ -570,8 +570,6 @@ func parseUserQueries(content []byte, pgVersion semver.Version) (map[string]inte
 				metricMap.columnMappings[name] = columnMapping
 			}
 		}
-
-
 	}
 	return metricMaps, newQueryOverrides, nil
 }
