@@ -533,13 +533,14 @@ func parseUserQueries(content []byte, pgVersion semver.Version) (map[string]inte
 	for metric, specs := range userQueries {
 		level.Debug(logger).Log("msg", "New user metric namespace from YAML metric", "metric", metric, "cache_seconds", specs.CacheSeconds)
 		newQueryOverrides[metric] = specs.Query
-		for i := range specs.BreakingChanges {
+		for i := len(specs.BreakingChanges) - 1; i >= 0; i++ {
 			if err := specs.BreakingChanges[i].ParseVerTolerant(); err != nil {
 				return nil, nil, err
 			}
 
 			if pgVersion.GE(specs.BreakingChanges[i].ver) {
 				newQueryOverrides[metric] = specs.BreakingChanges[i].FixColumns(specs.Query)
+				break
 			}
 		}
 
