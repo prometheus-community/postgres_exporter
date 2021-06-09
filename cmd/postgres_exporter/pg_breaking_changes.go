@@ -14,8 +14,6 @@
 package main
 
 import (
-	"strings"
-
 	"github.com/blang/semver"
 )
 
@@ -25,7 +23,7 @@ type BreakingChanges struct {
 	Columns map[string]string `yaml:"columns"`
 }
 
-func (bc *BreakingChanges) ParseVerTolerant() error {
+func (bc *BreakingChanges) parseVerTolerant() error {
 	bcVer, err := semver.ParseTolerant(bc.Version)
 	if err != nil {
 		return err
@@ -33,15 +31,4 @@ func (bc *BreakingChanges) ParseVerTolerant() error {
 
 	bc.ver = bcVer
 	return nil
-}
-
-func (bc *BreakingChanges) FixColumns(query string) string {
-	// nolint: golint
-	// 2 because old - new
-	oldnew := make([]string, 0, 2*len(bc.Columns))
-	for old := range bc.Columns {
-		oldnew = append(oldnew, old, bc.Columns[old])
-	}
-	r := strings.NewReplacer(oldnew...)
-	return r.Replace(query)
 }
