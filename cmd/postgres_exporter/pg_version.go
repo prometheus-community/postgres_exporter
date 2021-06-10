@@ -16,13 +16,13 @@ import (
 	"github.com/blang/semver"
 )
 
-type VersionQueries struct {
+type VersionQ struct {
 	Version string `yaml:"version"`
 	ver     semver.Version
 	Query   string `yaml:"query"`
 }
 
-func (v *VersionQueries) parseVerTolerant() error {
+func (v *VersionQ) parseVerTolerant() error {
 	bcVer, err := semver.ParseTolerant(v.Version)
 	if err != nil {
 		return err
