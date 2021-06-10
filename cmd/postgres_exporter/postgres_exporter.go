@@ -18,6 +18,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"math"
 	"net/http"
@@ -40,8 +41,6 @@ import (
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
-	"gopkg.in/alecthomas/kingpin.v2"
-	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -492,6 +491,39 @@ var queryOverrides = map[string][]OverrideQuery{
 			`,
 		},
 	},
+	"pg_stat_statements": {
+		{
+			semver.MustParseRange(">=13.0.0"),
+			`
+				   SELECT t2.rolname,
+					  t3.datname,
+					  queryid,
+					  calls,
+					  total_exec_time / 1000   as total_time_seconds,
+					  min_exec_time / 1000     as min_time_seconds,
+					  max_exec_time / 1000     as max_time_seconds,
+					  mean_exec_time / 1000    as mean_time_seconds,
+					  stddev_exec_time / 1000  as stddev_time_seconds,
+					  rows,
+					  shared_blks_hit,
+					  shared_blks_read,
+					  shared_blks_dirtied,
+					  shared_blks_written,
+					  local_blks_hit,
+					  local_blks_read,
+					  local_blks_dirtied,
+					  local_blks_written,
+					  temp_blks_read,
+					  temp_blks_written,
+					  blk_read_time / 1000  as blk_read_time_seconds,
+					  blk_write_time / 1000 as blk_write_time_seconds
+				  FROM pg_stat_statements t1
+					 JOIN pg_roles t2 ON (t1.userid = t2.oid)
+					 JOIN pg_database t3 ON (t1.dbid = t3.oid)
+				  WHERE t2.rolname != 'rdsadmin'
+   `,
+		},
+	},
 }
 
 // Convert the query override file to the version-specific query override file
@@ -518,7 +550,7 @@ func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]
 	return resultMap
 }
 
-func parseUserQueries(content []byte, pgVersion semver.Version) (map[string]intermediateMetricMap, map[string]string, error) {
+func parseUserQueries(content []byte) (map[string]intermediateMetricMap, map[string]string, error) {
 	var userQueries UserQueries
 
 	err := yaml.Unmarshal(content, &userQueries)
@@ -533,30 +565,6 @@ func parseUserQueries(content []byte, pgVersion semver.Version) (map[string]inte
 	for metric, specs := range userQueries {
 		level.Debug(logger).Log("msg", "New user metric namespace from YAML metric", "metric", metric, "cache_seconds", specs.CacheSeconds)
 		newQueryOverrides[metric] = specs.Query
-		columnT := make(map[string]string)
-		for i := range specs.BreakingChanges {
-			if err := specs.BreakingChanges[i].parseVerTolerant(); err != nil {
-				return nil, nil, err
-			}
-
-			if pgVersion.GE(specs.BreakingChanges[i].ver) {
-				for t := range specs.BreakingChanges[i].Columns {
-					columnT[t] = specs.BreakingChanges[i].Columns[t]
-				}
-			}
-		}
-
-		// nolint: golint
-		// 2 because old - new
-		oldnew := make([]string, 0, 2*len(columnT))
-		for t := range columnT {
-			oldnew = append(oldnew, t, columnT[t])
-		}
-
-		r := strings.NewReplacer(oldnew...)
-
-		newQueryOverrides[metric] = r.Replace(newQueryOverrides[metric])
-
 		metricMap, ok := metricMaps[metric]
 		if !ok {
 			// Namespace for metric not found - add it.
@@ -596,7 +604,7 @@ func parseUserQueries(content []byte, pgVersion semver.Version) (map[string]inte
 // TODO: test code for all cu.
 // TODO: the YAML this supports is "non-standard" - we should move away from it.
 func addQueries(content []byte, pgVersion semver.Version, server *Server) error {
-	metricMaps, newQueryOverrides, err := parseUserQueries(content, pgVersion)
+	metricMaps, newQueryOverrides, err := parseUserQueries(content)
 	if err != nil {
 		return err
 	}
