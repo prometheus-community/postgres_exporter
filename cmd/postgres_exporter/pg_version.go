@@ -10,25 +10,23 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 package main
 
 import (
 	"github.com/blang/semver"
 )
 
-type BreakingChanges struct {
+type VersionQueries struct {
 	Version string `yaml:"version"`
 	ver     semver.Version
-	Columns map[string]string `yaml:"columns"`
+	Query   string `yaml:"query"`
 }
 
-func (bc *BreakingChanges) parseVerTolerant() error {
-	bcVer, err := semver.ParseTolerant(bc.Version)
+func (v *VersionQueries) parseVerTolerant() error {
+	bcVer, err := semver.ParseTolerant(v.Version)
 	if err != nil {
 		return err
 	}
-
-	bc.ver = bcVer
+	v.ver = bcVer
 	return nil
 }

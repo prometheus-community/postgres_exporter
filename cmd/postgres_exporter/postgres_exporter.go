@@ -119,12 +119,12 @@ type Mapping map[string]MappingOptions
 
 // nolint: golint
 type UserQuery struct {
-	Query           string            `yaml:"query"`
-	Metrics         []Mapping         `yaml:"metrics"`
-	BreakingChanges []BreakingChanges `yaml:"breakingChanges"`
-	Master          bool              `yaml:"master"`        // Querying only for master database
-	CacheSeconds    uint64            `yaml:"cache_seconds"` // Number of seconds to cache the namespace result metrics for.
-	RunOnServer     string            `yaml:"runonserver"`   // Querying to run on which server version
+	Query          string           `yaml:"query"`
+	Metrics        []Mapping        `yaml:"metrics"`
+	VersionQueries []VersionQueries `yaml:"versionQueries"`
+	Master         bool             `yaml:"master"`        // Querying only for master database
+	CacheSeconds   uint64           `yaml:"cache_seconds"` // Number of seconds to cache the namespace result metrics for.
+	RunOnServer    string           `yaml:"runonserver"`   // Querying to run on which server version
 }
 
 // nolint: golint
@@ -533,29 +533,17 @@ func parseUserQueries(content []byte, pgVersion semver.Version) (map[string]inte
 	for metric, specs := range userQueries {
 		level.Debug(logger).Log("msg", "New user metric namespace from YAML metric", "metric", metric, "cache_seconds", specs.CacheSeconds)
 		newQueryOverrides[metric] = specs.Query
-		columnT := make(map[string]string)
-		for i := range specs.BreakingChanges {
-			if err := specs.BreakingChanges[i].parseVerTolerant(); err != nil {
+		if len(specs.VersionQueries) == 0 {
+			continue
+		}
+		for i := range specs.VersionQueries {
+			if err := specs.VersionQueries[i].parseVerTolerant(); err != nil {
 				return nil, nil, err
 			}
-
-			if pgVersion.GE(specs.BreakingChanges[i].ver) {
-				for t := range specs.BreakingChanges[i].Columns {
-					columnT[t] = specs.BreakingChanges[i].Columns[t]
-				}
+			if pgVersion.GE(specs.VersionQueries[i].ver) {
+				newQueryOverrides[metric] = specs.VersionQueries[i].Query
 			}
 		}
-
-		// nolint: golint
-		// 2 because old - new
-		oldnew := make([]string, 0, 2*len(columnT))
-		for t := range columnT {
-			oldnew = append(oldnew, t, columnT[t])
-		}
-
-		r := strings.NewReplacer(oldnew...)
-
-		newQueryOverrides[metric] = r.Replace(newQueryOverrides[metric])
 
 		metricMap, ok := metricMaps[metric]
 		if !ok {
