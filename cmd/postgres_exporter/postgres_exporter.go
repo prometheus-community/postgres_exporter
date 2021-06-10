@@ -18,6 +18,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"math"
@@ -118,12 +119,11 @@ type Mapping map[string]MappingOptions
 
 // nolint: golint
 type UserQuery struct {
-	Query           string            `yaml:"query"`
-	Metrics         []Mapping         `yaml:"metrics"`
-	BreakingChanges []BreakingChanges `yaml:"breakingChanges"`
-	Master          bool              `yaml:"master"`        // Querying only for master database
-	CacheSeconds    uint64            `yaml:"cache_seconds"` // Number of seconds to cache the namespace result metrics for.
-	RunOnServer     string            `yaml:"runonserver"`   // Querying to run on which server version
+	Query        string    `yaml:"query"`
+	Metrics      []Mapping `yaml:"metrics"`
+	Master       bool      `yaml:"master"`        // Querying only for master database
+	CacheSeconds uint64    `yaml:"cache_seconds"` // Number of seconds to cache the namespace result metrics for.
+	RunOnServer  string    `yaml:"runonserver"`   // Querying to run on which server version
 }
 
 // nolint: golint
