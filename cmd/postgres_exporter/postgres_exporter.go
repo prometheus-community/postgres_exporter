@@ -533,15 +533,14 @@ func parseUserQueries(content []byte, pgVersion semver.Version) (map[string]inte
 	for metric, specs := range userQueries {
 		level.Debug(logger).Log("msg", "New user metric namespace from YAML metric", "metric", metric, "cache_seconds", specs.CacheSeconds)
 		newQueryOverrides[metric] = specs.Query
-		if len(specs.VersionQueries) == 0 {
-			continue
-		}
-		for i := range specs.VersionQueries {
-			if err := specs.VersionQueries[i].parseVerTolerant(); err != nil {
-				return nil, nil, err
-			}
-			if pgVersion.GE(specs.VersionQueries[i].ver) {
-				newQueryOverrides[metric] = specs.VersionQueries[i].Query
+		if len(specs.VersionQueries) != 0 {
+			for i := range specs.VersionQueries {
+				if err := specs.VersionQueries[i].parseVerTolerant(); err != nil {
+					return nil, nil, err
+				}
+				if pgVersion.GE(specs.VersionQueries[i].ver) {
+					newQueryOverrides[metric] = specs.VersionQueries[i].Query
+				}
 			}
 		}
 
