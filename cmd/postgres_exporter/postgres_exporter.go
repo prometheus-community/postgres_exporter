@@ -119,11 +119,12 @@ type Mapping map[string]MappingOptions
 
 // nolint: golint
 type UserQuery struct {
-	Query        string    `yaml:"query"`
-	Metrics      []Mapping `yaml:"metrics"`
-	Master       bool      `yaml:"master"`        // Querying only for master database
-	CacheSeconds uint64    `yaml:"cache_seconds"` // Number of seconds to cache the namespace result metrics for.
-	RunOnServer  string    `yaml:"runonserver"`   // Querying to run on which server version
+	Query           string            `yaml:"query"`
+	Metrics         []Mapping         `yaml:"metrics"`
+	BreakingChanges []BreakingChanges `yaml:"breakingChanges"`
+	Master          bool              `yaml:"master"`        // Querying only for master database
+	CacheSeconds    uint64            `yaml:"cache_seconds"` // Number of seconds to cache the namespace result metrics for.
+	RunOnServer     string            `yaml:"runonserver"`   // Querying to run on which server version
 }
 
 // nolint: golint
@@ -517,7 +518,7 @@ func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]
 	return resultMap
 }
 
-func parseUserQueries(content []byte) (map[string]intermediateMetricMap, map[string]string, error) {
+func parseUserQueries(content []byte, pgVersion semver.Version) (map[string]intermediateMetricMap, map[string]string, error) {
 	var userQueries UserQueries
 
 	err := yaml.Unmarshal(content, &userQueries)
@@ -532,6 +533,30 @@ func parseUserQueries(content []byte) (map[string]intermediateMetricMap, map[str
 	for metric, specs := range userQueries {
 		level.Debug(logger).Log("msg", "New user metric namespace from YAML metric", "metric", metric, "cache_seconds", specs.CacheSeconds)
 		newQueryOverrides[metric] = specs.Query
+		columnT := make(map[string]string)
+		for i := range specs.BreakingChanges {
+			if err := specs.BreakingChanges[i].parseVerTolerant(); err != nil {
+				return nil, nil, err
+			}
+
+			if pgVersion.GE(specs.BreakingChanges[i].ver) {
+				for t := range specs.BreakingChanges[i].Columns {
+					columnT[t] = specs.BreakingChanges[i].Columns[t]
+				}
+			}
+		}
+
+		// nolint: golint
+		// 2 because old - new
+		oldnew := make([]string, 0, 2*len(columnT))
+		for t := range columnT {
+			oldnew = append(oldnew, t, columnT[t])
+		}
+
+		r := strings.NewReplacer(oldnew...)
+
+		newQueryOverrides[metric] = r.Replace(newQueryOverrides[metric])
+
 		metricMap, ok := metricMaps[metric]
 		if !ok {
 			// Namespace for metric not found - add it.
@@ -571,7 +596,7 @@ func parseUserQueries(content []byte) (map[string]intermediateMetricMap, map[str
 // TODO: test code for all cu.
 // TODO: the YAML this supports is "non-standard" - we should move away from it.
 func addQueries(content []byte, pgVersion semver.Version, server *Server) error {
-	metricMaps, newQueryOverrides, err := parseUserQueries(content)
+	metricMaps, newQueryOverrides, err := parseUserQueries(content, pgVersion)
 	if err != nil {
 		return err
 	}
