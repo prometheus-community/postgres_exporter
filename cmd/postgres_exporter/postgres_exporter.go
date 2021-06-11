@@ -359,6 +359,18 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		true,
 		0,
 	},
+	"pg_stat_ssl": {
+		map[string]ColumnMapping{
+			"usename":          {LABEL, "Name of this connected user", nil, nil},
+			"datname":          {LABEL, "Name of this database", nil, nil},
+			"application_name": {LABEL, "Name of this connected application", nil, nil},
+			"client_addr":      {LABEL, "IP of this connected client", nil, nil},
+			"client_port":      {LABEL, "TCP port number that the client is using for communication", nil, nil},
+			"encrypted":        {GAUGE, "Encryption status of a database connection through TCP/IP", nil, semver.MustParseRange(">=9.5.0")},
+		},
+		true,
+		0,
+	},
 }
 
 // OverrideQuery 's are run in-place of simple namespace look ups, and provide
@@ -495,6 +507,19 @@ var queryOverrides = map[string][]OverrideQuery{
 				COALESCE(count(*),0) AS count,
 				COALESCE(MAX(EXTRACT(EPOCH FROM now() - xact_start))::float,0) AS max_tx_duration
 			FROM pg_stat_activity GROUP BY datname
+			`,
+		},
+	},
+
+	"pg_stat_ssl": {
+		{
+			semver.MustParseRange(">=9.5.0"),
+			`
+			SELECT distinct usename, datname, application_name, client_addr, client_port, ssl as encrypted
+			FROM pg_stat_ssl
+			LEFT JOIN pg_stat_activity
+			ON pg_stat_ssl.pid = pg_stat_activity.pid
+			WHERE text(client_addr) is not null;
 			`,
 		},
 	},

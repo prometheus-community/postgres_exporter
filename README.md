@@ -203,9 +203,9 @@ If you want to include only subset of databases, you can use option `--include-d
 
 ### Running as non-superuser
 
-To be able to collect metrics from `pg_stat_activity` and `pg_stat_replication`
-as  non-superuser you have to create functions and views as a superuser, and
-assign permissions separately to those.
+To be able to collect metrics from `pg_stat_activity`, `pg_stat_replication`
+and `pg_stat_ssl` as non-superuser you have to create functions and views as
+a superuser, and assign permissions separately to those.
 
 In PostgreSQL, views run with the permissions of the user that created them so
 they can act as security barriers. Functions need to be created to share this
@@ -278,6 +278,18 @@ AS
   SELECT * FROM get_pg_stat_statements();
 
 GRANT SELECT ON postgres_exporter.pg_stat_statements TO postgres_exporter;
+
+CREATE OR REPLACE FUNCTION get_pg_stat_ssl() RETURNS SETOF pg_stat_ssl AS
+$$ SELECT * FROM pg_catalog.pg_stat_ssl; $$
+LANGUAGE sql
+VOLATILE
+SECURITY DEFINER;
+
+CREATE OR REPLACE VIEW postgres_exporter.pg_stat_ssl
+AS
+  SELECT * FROM get_pg_stat_ssl();
+
+GRANT SELECT ON postgres_exporter.pg_stat_ssl TO postgres_exporter;
 ```
 
 > **NOTE**
