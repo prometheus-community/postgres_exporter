@@ -302,6 +302,8 @@ github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FI
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
 github.com/percona/exporter_shared v0.7.2 h1:8eNBht83bgFagdiIm3b4HbsOFc5du6OUBCUVenTumdw=
 github.com/percona/exporter_shared v0.7.2/go.mod h1:AWk9lgTPzI7tC5PzpeBGvhhqjSJNxpPNFaF7qLIJqmo=
+github.com/percona/exporter_shared v0.7.3 h1:TX4LisZ08jo8KIlekBTwPX13JlM6gOOKgmwg7QEf+r8=
+github.com/percona/exporter_shared v0.7.3/go.mod h1:AWk9lgTPzI7tC5PzpeBGvhhqjSJNxpPNFaF7qLIJqmo=
 github.com/percona/postgres_exporter v0.4.6 h1:/x0qAgP7fzmle/MS3sPKt+3FW94amnUqTJtlibgGNSk=
 github.com/percona/postgres_exporter v0.4.6/go.mod h1:n1QU5O3iehITC/jEOGg1G0U/yKalDDmQVrELcjDMafw=
 github.com/performancecopilot/speed v3.0.0+incompatible/go.mod h1:/CLtqpZ5gBg1M9iaPbIdPPGyKcA8hKdoy6hAWba7Yac=

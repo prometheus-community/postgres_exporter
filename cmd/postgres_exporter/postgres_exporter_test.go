@@ -18,13 +18,11 @@ import (
 // Hook up gocheck into the "go test" runner.
 func Test(t *testing.T) { TestingT(t) }
 
-type FunctionalSuite struct {
-}
+type FunctionalSuite struct{}
 
 var _ = Suite(&FunctionalSuite{})
 
 func (s *FunctionalSuite) SetUpSuite(c *C) {
-
 }
 
 func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
@@ -111,7 +109,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_URI")
 
-	var expected = "postgresql://custom_username$&+,%2F%3A;=%3F%40:custom_password$&+,%2F%3A;=%3F%40@localhost:5432/?sslmode=disable"
+	expected := "postgresql://custom_username$&+,%2F%3A;=%3F%40:custom_password$&+,%2F%3A;=%3F%40@localhost:5432/?sslmode=disable"
 
 	dsn := getDataSources()
 	if len(dsn) == 0 {
@@ -165,7 +163,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDnsAndSecrets(c *C) {
 // test DSN including SSL enabled
 func (s *FunctionalSuite) TestSSL(c *C) {
 	// Thr driver doesn't support sslmode=prefer
-	envDsn := "postgresql://root:root@localhost:5433/?sslmode=require"
+	envDsn := "host=127.0.0.1 port=5433 user=root password=root database=postgres sslmode=require"
 	err := os.Setenv("DATA_SOURCE_NAME", envDsn)
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_NAME")
@@ -196,7 +194,6 @@ func (s *FunctionalSuite) TestSSL(c *C) {
 
 	db, err := sql.Open("postgres", dsn[0])
 	c.Assert(err, IsNil)
-	//v95 := semver.MustParse("9.5.0")
 	version, err := postgresVersion(db)
 	c.Assert(err, IsNil)
 	if version < 90500 {
@@ -328,7 +325,6 @@ func UnsetEnvironment(c *C, d string) {
 
 // test boolean metric type gets converted to float
 func (s *FunctionalSuite) TestBooleanConversionToValueAndString(c *C) {
-
 	type TestCase struct {
 		input          interface{}
 		expectedString string

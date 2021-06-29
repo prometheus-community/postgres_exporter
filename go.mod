@@ -8,7 +8,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/lib/pq v1.9.0
-	github.com/percona/exporter_shared v0.7.2
+	github.com/percona/exporter_shared v0.7.3
 	github.com/percona/postgres_exporter v0.4.6 // indirect
 	github.com/prometheus/client_golang v1.10.0
 	github.com/prometheus/client_model v0.2.0
