@@ -403,9 +403,9 @@ var queryOverrides = map[string][]OverrideQuery{
 			semver.MustParseRange(">=10.0.0"),
 			`
 			SELECT *,
-				(case pg_is_in_recovery() when 't' then null else pg_current_wal_lsn() end) AS pg_current_wal_lsn,
-				(case pg_is_in_recovery() when 't' then null else pg_wal_lsn_diff(pg_current_wal_lsn(), pg_lsn('0/0'))::float end) AS pg_current_wal_lsn_bytes,
-				(case pg_is_in_recovery() when 't' then null else pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)::float end) AS pg_wal_lsn_diff
+				(case pg_is_in_recovery() when 't' then pg_last_wal_receive_lsn() else pg_current_wal_lsn() end) AS pg_current_wal_lsn,
+				(case pg_is_in_recovery() when 't' then pg_wal_lsn_diff(pg_last_wal_receive_lsn(), pg_lsn('0/0'))::float else pg_wal_lsn_diff(pg_current_wal_lsn(), pg_lsn('0/0'))::float end) AS pg_current_wal_lsn_bytes,
+				(case pg_is_in_recovery() when 't' then pg_wal_lsn_diff(pg_last_wal_receive_lsn(), replay_lsn)::float else pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)::float end) AS pg_wal_lsn_diff
 			FROM pg_stat_replication
 			`,
 		},
@@ -413,8 +413,8 @@ var queryOverrides = map[string][]OverrideQuery{
 			semver.MustParseRange(">=9.2.0 <10.0.0"),
 			`
 			SELECT *,
-				(case pg_is_in_recovery() when 't' then null else pg_current_xlog_location() end) AS pg_current_xlog_location,
-				(case pg_is_in_recovery() when 't' then null else pg_xlog_location_diff(pg_current_xlog_location(), replay_location)::float end) AS pg_xlog_location_diff
+				(case pg_is_in_recovery() when 't' then pg_last_xlog_receive_location() else pg_current_xlog_location() end) AS pg_current_xlog_location,
+				(case pg_is_in_recovery() when 't' then pg_xlog_location_diff(pg_last_xlog_receive_location(), replay_location)::float else pg_xlog_location_diff(pg_current_xlog_location(), replay_location)::float end) AS pg_xlog_location_diff
 			FROM pg_stat_replication
 			`,
 		},
@@ -422,7 +422,7 @@ var queryOverrides = map[string][]OverrideQuery{
 			semver.MustParseRange("<9.2.0"),
 			`
 			SELECT *,
-				(case pg_is_in_recovery() when 't' then null else pg_current_xlog_location() end) AS pg_current_xlog_location
+				(case pg_is_in_recovery() when 't' then pg_last_xlog_receive_location() else pg_current_xlog_location() end) AS pg_current_xlog_location
 			FROM pg_stat_replication
 			`,
 		},
@@ -433,7 +433,7 @@ var queryOverrides = map[string][]OverrideQuery{
 			semver.MustParseRange(">=9.4.0 <10.0.0"),
 			`
 			SELECT slot_name, database, active,
-				(case pg_is_in_recovery() when 't' then pg_xlog_location_diff(pg_current_xlog_location(), restart_lsn) else pg_xlog_location_diff(pg_last_xlog_receive_location(), restart_lsn) as pg_xlog_location_diff
+				(case pg_is_in_recovery() when 't' then pg_xlog_location_diff(pg_last_xlog_receive_location(), restart_lsn) else pg_xlog_location_diff(pg_current_xlog_location(), restart_lsn) end) as pg_xlog_location_diff
 			FROM pg_replication_slots
 			`,
 		},
