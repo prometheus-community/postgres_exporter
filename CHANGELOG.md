@@ -1,4 +1,5 @@
 ## 0.10.0 / 2021-07-07
+
 * [ENHANCEMENT] Add ability to set included databases when autoDiscoverDatabases is enabled #499
 * [BUGFIX] fix pg_replication_slots on postgresql versions 9.4 <> 10.0 #537
 

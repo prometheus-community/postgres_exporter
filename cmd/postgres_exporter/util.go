@@ -184,7 +184,10 @@ func parseFingerprint(url string) (string, error) {
 		if len(splitted) != 2 {
 			return "", fmt.Errorf("malformed dsn %q", dsn)
 		}
-		kv[splitted[0]] = splitted[1]
+		// Newer versions of pq.ParseURL quote values so trim them off if they exist
+		key := strings.Trim(splitted[0], "'\"")
+		value := strings.Trim(splitted[1], "'\"")
+		kv[key] = value
 	}
 
 	var fingerprint string
