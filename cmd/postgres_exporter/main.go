@@ -115,7 +115,12 @@ func main() {
 
 	prometheus.MustRegister(exporter)
 
-	pe, err := collector.NewPostgresCollector(logger, dsn)
+	pe, err := collector.NewPostgresCollector(
+		logger,
+		dsn,
+		[]string{},
+		collector.WithAutoDiscoverDatabases(*autoDiscoverDatabases),
+	)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create PostgresCollector", "err", err.Error())
 		os.Exit(1)

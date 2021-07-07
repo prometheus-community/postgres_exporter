@@ -87,10 +87,27 @@ type PostgresCollector struct {
 	logger     log.Logger
 
 	servers map[string]*server
+
+	// autoDiscoverDatabases will cause the collector to query the database
+	// to find other servers and also scrape them.
+	autoDiscoverDatabases bool
 }
 
+type Option func(*PostgresCollector) error
+
 // NewPostgresCollector creates a new PostgresCollector.
-func NewPostgresCollector(logger log.Logger, dsns []string, filters ...string) (*PostgresCollector, error) {
+func NewPostgresCollector(logger log.Logger, dsns []string, filters []string, options ...Option) (*PostgresCollector, error) {
+	p := &PostgresCollector{
+		logger: logger,
+	}
+	// Apply options to customize the collector
+	for _, o := range options {
+		err := o(p)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	f := make(map[string]bool)
 	for _, filter := range filters {
 		enabled, exist := collectorState[filter]
@@ -121,48 +138,62 @@ func NewPostgresCollector(logger log.Logger, dsns []string, filters ...string) (
 		}
 	}
 
+	p.Collectors = collectors
+
 	servers := make(map[string]*server)
 	for _, dsn := range dsns {
 		s, err := makeServer(dsn)
 		if err != nil {
 			return nil, err
 		}
+		// Manually provided servers are always classified as "primary"
+		s.isPrimary = true
+
+		// TODO(@sysadmind): We need to discover the downstream servers and add them here.
+		// if p.autoDiscoverDatabases {
+		// }
+
 		servers[dsn] = s
 	}
 
-	return &PostgresCollector{
-		Collectors: collectors,
-		logger:     logger,
-		servers:    servers,
-	}, nil
+	p.servers = servers
+
+	return p, nil
+}
+
+func WithAutoDiscoverDatabases(discover bool) Option {
+	return func(p *PostgresCollector) error {
+		p.autoDiscoverDatabases = discover
+		return nil
+	}
 }
 
 // Describe implements the prometheus.Collector interface.
-func (n PostgresCollector) Describe(ch chan<- *prometheus.Desc) {
+func (p PostgresCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- scrapeDurationDesc
 	ch <- scrapeSuccessDesc
 }
 
 // Collect implements the prometheus.Collector interface.
-func (n PostgresCollector) Collect(ch chan<- prometheus.Metric) {
+func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 	ctx := context.TODO()
 	wg := sync.WaitGroup{}
-	wg.Add(len(n.servers))
-	for _, s := range n.servers {
+	wg.Add(len(p.servers))
+	for _, s := range p.servers {
 		go func(s *server) {
-			n.subCollect(ctx, s, ch)
+			p.subCollect(ctx, s, ch)
 			wg.Done()
 		}(s)
 	}
 	wg.Wait()
 }
 
-func (n PostgresCollector) subCollect(ctx context.Context, server *server, ch chan<- prometheus.Metric) {
+func (p PostgresCollector) subCollect(ctx context.Context, server *server, ch chan<- prometheus.Metric) {
 	wg := sync.WaitGroup{}
-	wg.Add(len(n.Collectors))
-	for name, c := range n.Collectors {
+	wg.Add(len(p.Collectors))
+	for name, c := range p.Collectors {
 		go func(name string, c Collector) {
-			execute(ctx, name, c, server, ch, n.logger)
+			execute(ctx, name, c, server, ch, p.logger)
 			wg.Done()
 		}(name, c)
 	}
