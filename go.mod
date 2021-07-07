@@ -1,11 +1,11 @@
 module github.com/prometheus-community/postgres_exporter
 
-go 1.14
+go 1.16
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/go-kit/kit v0.11.0
-	github.com/lib/pq v1.10.2
+	github.com/lib/pq v1.10.1
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.29.0
