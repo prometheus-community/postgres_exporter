@@ -24,15 +24,31 @@ import (
 
 // UserQuery represents a user defined query
 type UserQuery struct {
-	Query        string    `yaml:"query"`
-	Metrics      []Mapping `yaml:"metrics"`
-	Master       bool      `yaml:"master"`        // Querying only for master database
-	CacheSeconds uint64    `yaml:"cache_seconds"` // Number of seconds to cache the namespace result metrics for.
-	RunOnServer  string    `yaml:"runonserver"`   // Querying to run on which server version
+	Query          string     `yaml:"query"`
+	Metrics        []Mapping  `yaml:"metrics"`
+	VersionQueries []VersionQ `yaml:"versionQueries"`
+	Master         bool       `yaml:"master"`        // Querying only for master database
+	CacheSeconds   uint64     `yaml:"cache_seconds"` // Number of seconds to cache the namespace result metrics for.
+	RunOnServer    string     `yaml:"runonserver"`   // Querying to run on which server version
 }
 
 // UserQueries represents a set of UserQuery objects
 type UserQueries map[string]UserQuery
+
+func (uq *UserQuery) getVersionedQuery(pgVersion semver.Version) (string, error) {
+	r := uq.Query
+	if len(uq.VersionQueries) != 0 {
+		for i := range uq.VersionQueries {
+			if err := uq.VersionQueries[i].parseVerTolerant(); err != nil {
+				return "", err
+			}
+			if pgVersion.GE(uq.VersionQueries[i].ver) {
+				r = uq.VersionQueries[i].Query
+			}
+		}
+	}
+	return r, nil
+}
 
 // OverrideQuery 's are run in-place of simple namespace look ups, and provide
 // advanced functionality. But they have a tendency to postgres version specific.
@@ -197,7 +213,7 @@ func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]
 	return resultMap
 }
 
-func parseUserQueries(content []byte) (map[string]intermediateMetricMap, map[string]string, error) {
+func parseUserQueries(content []byte, pgVersion semver.Version) (map[string]intermediateMetricMap, map[string]string, error) {
 	var userQueries UserQueries
 
 	err := yaml.Unmarshal(content, &userQueries)
@@ -211,7 +227,12 @@ func parseUserQueries(content []byte) (map[string]intermediateMetricMap, map[str
 
 	for metric, specs := range userQueries {
 		level.Debug(logger).Log("msg", "New user metric namespace from YAML metric", "metric", metric, "cache_seconds", specs.CacheSeconds)
-		newQueryOverrides[metric] = specs.Query
+		versionQuery, err := specs.getVersionedQuery(pgVersion)
+		if err != nil {
+			return nil, nil, err
+		}
+		newQueryOverrides[metric] = versionQuery
+
 		metricMap, ok := metricMaps[metric]
 		if !ok {
 			// Namespace for metric not found - add it.
@@ -251,7 +272,7 @@ func parseUserQueries(content []byte) (map[string]intermediateMetricMap, map[str
 // TODO: test code for all cu.
 // TODO: the YAML this supports is "non-standard" - we should move away from it.
 func addQueries(content []byte, pgVersion semver.Version, server *Server) error {
-	metricMaps, newQueryOverrides, err := parseUserQueries(content)
+	metricMaps, newQueryOverrides, err := parseUserQueries(content, pgVersion)
 	if err != nil {
 		return err
 	}
