@@ -33,7 +33,7 @@ jobs:
 
       - name: Build ubi docker image
         run: |
-          docker build -f ./build/Dockerfile_ubi -t temp-postgresql:ubi .
+          docker build -f ./Dockerfile_ubi -t temp-postgresql:ubi .
 
       - name: Scan local image
         id: scan-local
