@@ -11,6 +11,7 @@ pipeline {
         registryCredential = 'jenkins-artifactory'
         ARTIFACTORY_URL = 'docker.internal.sysdig.com'
         EXPORTER = 'postgresql-exporter'
+        VERSION = '0.9.0'
     }
 
     stages {
@@ -18,7 +19,8 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry("https://${env.ARTIFACTORY_URL}",  registryCredential) {                        
-                        sh """docker pull ${env.ARTIFACTORY_URL}/${env.EXPORTER}:latest"""
+                        sh """docker pull ${env.ARTIFACTORY_URL}/${env.EXPORTER}:${env.VERSION}"""
+                        sh """docker pull ${env.ARTIFACTORY_URL}/${env.EXPORTER}:${env.VERSION}-ubi"""
                     }
                 }
             }
@@ -27,8 +29,10 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry("https://quay.io", "QUAY") {
-                        sh """docker tag ${env.ARTIFACTORY_URL}/${env.EXPORTER}:latest quay.io/sysdig/${env.EXPORTER}:latest"""
-                        sh """docker push quay.io/sysdig/${env.EXPORTER}:latest"""
+                        sh """docker tag ${env.ARTIFACTORY_URL}/${env.EXPORTER}:latest quay.io/sysdig/${env.EXPORTER}:${env.VERSION}"""
+                        sh """docker tag ${env.ARTIFACTORY_URL}/${env.EXPORTER}:latest quay.io/sysdig/${env.EXPORTER}:${env.VERSION}-ubi"""
+                        sh """docker push quay.io/sysdig/${env.EXPORTER}:${env.VERSION}"""
+                        sh """docker push quay.io/sysdig/${env.EXPORTER}:${env.VERSION}-ubi"""
                     }
                 }
             }
