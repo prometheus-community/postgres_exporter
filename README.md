@@ -10,15 +10,32 @@ Prometheus exporter for PostgreSQL server metrics.
 CI Tested PostgreSQL versions: `9.4`, `9.5`, `9.6`, `10`, `11`, `12`, `13`
 
 ## Quick Start
-This package is available for Docker:
+This package is available for Docker. It is recommended that you create your DATA_SOURCE_NAME as an environment file (also you can add other environment files as well)
+
 ```
-# Start an example database
-docker run --net=host -it --rm -e POSTGRES_PASSWORD=password postgres
+/usr/bin/cat<<EOF>$HOME/etc/postgres_exporter_env
+DATA_SOURCE_EXPORTER="postgresql://postgres:password@localhost:5432/postgres?sslmode=disable"
+EOF
+```
+
+```
+# Start an example database (don't forget to get rid of it after your test is done)
+docker run --net=host --interactive --rm --env POSTGRES_PASSWORD=password postgres
+
 # Connect to it
 docker run \
-  --net=host \
-  -e DATA_SOURCE_NAME="postgresql://postgres:password@localhost:5432/postgres?sslmode=disable" \
-  quay.io/prometheuscommunity/postgres-exporter
+    --detach \
+    --name postgres-exporter \
+    --net=host \
+    --env-file $HOME/etc/postgres_exporter_env \
+    quay.io/prometheuscommunity/postgres-exporter
+
+# Optional: Check the logs to see if it worked
+docker logs --follow postgres-exporter
+
+# You way want to remove this test run after you're done
+docker stop postgres-exporter
+docker rm postgres-exporter
 ```
 
 ## Building and running
