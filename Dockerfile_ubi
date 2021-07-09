@@ -16,7 +16,7 @@ COPY Makefile.common Makefile.common
 RUN make build
 RUN cp postgres_exporter /bin/postgres_exporter
 
-FROM sysdig/sysdig-mini-ubi:1
+FROM quay.io/sysdig/sysdig-mini-ubi:1
 COPY --from=builder /bin/postgres_exporter /bin/postgres_exporter
 EXPOSE     9187
 USER       59000:59000
