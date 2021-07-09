@@ -33,7 +33,7 @@ jobs:
 
       - name: Build ubi docker image
         run: |
-          docker build -f ./Dockerfile_ubi -t temp-postgresql:ubi .
+          docker build -f ./Dockerfile_ubi -t temp-postgresql-exporter:ubi .
 
       - name: Scan local image
         id: scan-local
@@ -49,7 +49,7 @@ jobs:
         id: scan-local-2
         uses: sysdiglabs/scan-action@v3
         with:
-          image-tag: "temp-postgresql:ubi"
+          image-tag: "temp-postgresql-exporter:ubi"
           sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
           ignore-failed-scan: true
           input-type: docker-daemon
