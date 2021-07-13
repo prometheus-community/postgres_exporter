@@ -14,6 +14,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -27,7 +28,7 @@ import (
 
 // Query within a namespace mapping and emit metrics. Returns fatal errors if
 // the scrape fails, and a slice of errors if they were non-fatal.
-func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNamespace) ([]prometheus.Metric, []error, error) {
+func queryNamespaceMapping(ctx context.Context, server *Server, namespace string, mapping MetricMapNamespace) ([]prometheus.Metric, []error, error) {
 	// Check for a query override for this namespace
 	query, found := server.queryOverrides[namespace]
 
@@ -45,9 +46,9 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 	if !found {
 		// I've no idea how to avoid this properly at the moment, but this is
 		// an admin tool so you're not injecting SQL right?
-		rows, err = server.db.Query(fmt.Sprintf("SELECT * FROM %s;", namespace)) // nolint: gas
+		rows, err = server.db.QueryContext(ctx, fmt.Sprintf("SELECT * FROM %s;", namespace)) // nolint: gas
 	} else {
-		rows, err = server.db.Query(query)
+		rows, err = server.db.QueryContext(ctx, query)
 	}
 	if err != nil {
 		return []prometheus.Metric{}, []error{}, fmt.Errorf("Error running query on database %q: %s %v", server, namespace, err)
@@ -183,7 +184,7 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 
 // Iterate through all the namespace mappings in the exporter and run their
 // queries.
-func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[string]error {
+func queryNamespaceMappings(ctx context.Context, ch chan<- prometheus.Metric, server *Server) map[string]error {
 	// Return a map of namespace -> errors
 	namespaceErrors := make(map[string]error)
 
@@ -225,7 +226,7 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 		var nonFatalErrors []error
 		var err error
 		if scrapeMetric {
-			metrics, nonFatalErrors, err = queryNamespaceMapping(server, namespace, mapping)
+			metrics, nonFatalErrors, err = queryNamespaceMapping(ctx, server, namespace, mapping)
 		} else {
 			metrics = cachedMetric.metrics
 		}

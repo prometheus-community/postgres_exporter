@@ -14,6 +14,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"strconv"
@@ -24,7 +25,7 @@ import (
 )
 
 // Query the pg_settings view containing runtime variables
-func querySettings(ch chan<- prometheus.Metric, server *Server) error {
+func querySettings(ctx context.Context, ch chan<- prometheus.Metric, server *Server) error {
 	level.Debug(logger).Log("msg", "Querying pg_setting view", "server", server)
 
 	// pg_settings docs: https://www.postgresql.org/docs/current/static/view-pg-settings.html
@@ -33,7 +34,7 @@ func querySettings(ch chan<- prometheus.Metric, server *Server) error {
 	// types in normaliseUnit() below
 	query := "SELECT name, setting, COALESCE(unit, ''), short_desc, vartype FROM pg_settings WHERE vartype IN ('bool', 'integer', 'real');"
 
-	rows, err := server.db.Query(query)
+	rows, err := server.db.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("Error running query on database %q: %s %v", server, namespace, err)
 	}

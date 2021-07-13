@@ -19,10 +19,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
@@ -38,11 +40,13 @@ type IntegrationSuite struct {
 
 var _ = Suite(&IntegrationSuite{})
 
+var testScrapeDuration = 10 * time.Second
+
 func (s *IntegrationSuite) SetUpSuite(c *C) {
 	dsn := os.Getenv("DATA_SOURCE_NAME")
 	c.Assert(dsn, Not(Equals), "")
 
-	exporter := NewExporter(strings.Split(dsn, ","))
+	exporter := NewExporter(strings.Split(dsn, ","), &testScrapeDuration)
 	c.Assert(exporter, NotNil)
 	// Assign the exporter to the suite
 	s.e = exporter
@@ -59,6 +63,8 @@ func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 		}
 	}()
 
+	ctx := context.Background()
+
 	for _, dsn := range s.e.dsn {
 		// Open a database connection
 		server, err := NewServer(dsn)
@@ -66,17 +72,17 @@ func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 		c.Assert(err, IsNil)
 
 		// Do a version update
-		err = s.e.checkMapVersions(ch, server)
+		err = s.e.checkMapVersions(ctx, ch, server)
 		c.Assert(err, IsNil)
 
-		err = querySettings(ch, server)
+		err = querySettings(ctx, ch, server)
 		if !c.Check(err, Equals, nil) {
 			fmt.Println("## ERRORS FOUND")
 			fmt.Println(err)
 		}
 
 		// This should never happen in our test cases.
-		errMap := queryNamespaceMappings(ch, server)
+		errMap := queryNamespaceMappings(ctx, ch, server)
 		if !c.Check(len(errMap), Equals, 0) {
 			fmt.Println("## NAMESPACE ERRORS FOUND")
 			for namespace, err := range errMap {
@@ -99,14 +105,15 @@ func (s *IntegrationSuite) TestInvalidDsnDoesntCrash(c *C) {
 	}()
 
 	// Send a bad DSN
-	exporter := NewExporter([]string{"invalid dsn"})
+	ctx := context.Background()
+	exporter := NewExporter([]string{"invalid dsn"}, &testScrapeDuration)
 	c.Assert(exporter, NotNil)
-	exporter.scrape(ch)
+	exporter.scrape(ctx, ch)
 
 	// Send a DSN to a non-listening port.
-	exporter = NewExporter([]string{"postgresql://nothing:nothing@127.0.0.1:1/nothing"})
+	exporter = NewExporter([]string{"postgresql://nothing:nothing@127.0.0.1:1/nothing"}, &testScrapeDuration)
 	c.Assert(exporter, NotNil)
-	exporter.scrape(ch)
+	exporter.scrape(ctx, ch)
 }
 
 // TestUnknownMetricParsingDoesntCrash deliberately deletes all the column maps out
@@ -122,7 +129,7 @@ func (s *IntegrationSuite) TestUnknownMetricParsingDoesntCrash(c *C) {
 	dsn := os.Getenv("DATA_SOURCE_NAME")
 	c.Assert(dsn, Not(Equals), "")
 
-	exporter := NewExporter(strings.Split(dsn, ","))
+	exporter := NewExporter(strings.Split(dsn, ","), &testScrapeDuration)
 	c.Assert(exporter, NotNil)
 
 	// Convert the default maps into a list of empty maps.
@@ -137,7 +144,7 @@ func (s *IntegrationSuite) TestUnknownMetricParsingDoesntCrash(c *C) {
 	exporter.builtinMetricMaps = emptyMaps
 
 	// scrape the exporter and make sure it works
-	exporter.scrape(ch)
+	exporter.scrape(context.Background(), ch)
 }
 
 // TestExtendQueriesDoesntCrash tests that specifying extend.query-path doesn't
@@ -154,13 +161,13 @@ func (s *IntegrationSuite) TestExtendQueriesDoesntCrash(c *C) {
 	c.Assert(dsn, Not(Equals), "")
 
 	exporter := NewExporter(
-		strings.Split(dsn, ","),
+		strings.Split(dsn, ","), &testScrapeDuration,
 		WithUserQueriesPath("../user_queries_test.yaml"),
 	)
 	c.Assert(exporter, NotNil)
 
 	// scrape the exporter and make sure it works
-	exporter.scrape(ch)
+	exporter.scrape(context.Background(), ch)
 }
 
 func (s *IntegrationSuite) TestAutoDiscoverDatabases(c *C) {
@@ -168,10 +175,11 @@ func (s *IntegrationSuite) TestAutoDiscoverDatabases(c *C) {
 
 	exporter := NewExporter(
 		strings.Split(dsn, ","),
+		&testScrapeDuration,
 	)
 	c.Assert(exporter, NotNil)
 
-	dsns := exporter.discoverDatabaseDSNs()
+	dsns := exporter.discoverDatabaseDSNs(context.Background())
 
 	c.Assert(len(dsns), Equals, 2)
 }

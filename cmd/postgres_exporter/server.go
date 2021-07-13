@@ -14,6 +14,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"sync"
@@ -95,8 +96,8 @@ func (s *Server) Close() error {
 }
 
 // Ping checks connection availability and possibly invalidates the connection if it fails.
-func (s *Server) Ping() error {
-	if err := s.db.Ping(); err != nil {
+func (s *Server) Ping(ctx context.Context) error {
+	if err := s.db.PingContext(ctx); err != nil {
 		if cerr := s.Close(); cerr != nil {
 			level.Error(logger).Log("msg", "Error while closing non-pinging DB connection", "server", s, "err", cerr)
 		}
@@ -111,19 +112,19 @@ func (s *Server) String() string {
 }
 
 // Scrape loads metrics.
-func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool) error {
+func (s *Server) Scrape(ctx context.Context, ch chan<- prometheus.Metric, disableSettingsMetrics bool) error {
 	s.mappingMtx.RLock()
 	defer s.mappingMtx.RUnlock()
 
 	var err error
 
 	if !disableSettingsMetrics && s.master {
-		if err = querySettings(ch, s); err != nil {
+		if err = querySettings(ctx, ch, s); err != nil {
 			err = fmt.Errorf("error retrieving settings: %s", err)
 		}
 	}
 
-	errMap := queryNamespaceMappings(ch, s)
+	errMap := queryNamespaceMappings(ctx, ch, s)
 	if len(errMap) > 0 {
 		err = fmt.Errorf("queryNamespaceMappings returned %d errors", len(errMap))
 	}
@@ -147,7 +148,7 @@ func NewServers(opts ...ServerOpt) *Servers {
 }
 
 // GetServer returns established connection from a collection.
-func (s *Servers) GetServer(dsn string) (*Server, error) {
+func (s *Servers) GetServer(ctx context.Context, dsn string) (*Server, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	var err error
@@ -168,7 +169,7 @@ func (s *Servers) GetServer(dsn string) (*Server, error) {
 			}
 			s.servers[dsn] = server
 		}
-		if err = server.Ping(); err != nil {
+		if err = server.Ping(ctx); err != nil {
 			delete(s.servers, dsn)
 			time.Sleep(time.Duration(errCount) * time.Second)
 			continue
