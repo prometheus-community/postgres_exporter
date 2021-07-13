@@ -14,6 +14,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"database/sql"
 	"errors"
@@ -468,6 +469,7 @@ type Exporter struct {
 	psqlUp           prometheus.Gauge
 	userQueriesError *prometheus.GaugeVec
 	totalScrapes     prometheus.Counter
+	scrapeTimeout    *time.Duration
 
 	// servers are used to allow re-using the DB connection between scrapes.
 	// servers contains metrics map and query overrides.
@@ -555,7 +557,7 @@ func parseConstLabels(s string) prometheus.Labels {
 }
 
 // NewExporter returns a new PostgreSQL exporter for the provided DSN.
-func NewExporter(dsn []string, opts ...ExporterOpt) *Exporter {
+func NewExporter(dsn []string, scrapeTimeout *time.Duration, opts ...ExporterOpt) *Exporter {
 	e := &Exporter{
 		dsn:               dsn,
 		builtinMetricMaps: builtinMetricMaps,
@@ -567,6 +569,7 @@ func NewExporter(dsn []string, opts ...ExporterOpt) *Exporter {
 
 	e.setupInternalMetrics()
 	e.servers = NewServers(ServerWithLabels(e.constantLabels))
+	e.scrapeTimeout = scrapeTimeout
 
 	return e
 }
@@ -614,7 +617,16 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements prometheus.Collector.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
-	e.scrape(ch)
+	var ctx context.Context
+	var cancel context.CancelFunc
+	if e.scrapeTimeout != nil {
+		ctx, cancel = context.WithTimeout(context.Background(), *e.scrapeTimeout)
+	} else {
+		ctx, cancel = context.WithCancel(context.Background())
+	}
+	defer cancel()
+
+	e.scrape(ctx, ch)
 
 	ch <- e.duration
 	ch <- e.totalScrapes
@@ -630,9 +642,9 @@ func newDesc(subsystem, name, help string, labels prometheus.Labels) *prometheus
 	)
 }
 
-func checkPostgresVersion(db *sql.DB, server string) (semver.Version, string, error) {
+func checkPostgresVersion(ctx context.Context, db *sql.DB, server string) (semver.Version, string, error) {
 	level.Debug(logger).Log("msg", "Querying PostgreSQL version", "server", server)
-	versionRow := db.QueryRow("SELECT version();")
+	versionRow := db.QueryRowContext(ctx, "SELECT version();")
 	var versionString string
 	err := versionRow.Scan(&versionString)
 	if err != nil {
@@ -647,8 +659,8 @@ func checkPostgresVersion(db *sql.DB, server string) (semver.Version, string, er
 }
 
 // Check and update the exporters query maps if the version has changed.
-func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server) error {
-	semanticVersion, versionString, err := checkPostgresVersion(server.db, server.String())
+func (e *Exporter) checkMapVersions(ctx context.Context, ch chan<- prometheus.Metric, server *Server) error {
+	semanticVersion, versionString, err := checkPostgresVersion(ctx, server.db, server.String())
 	if err != nil {
 		return fmt.Errorf("Error fetching version string on %q: %v", server, err)
 	}
@@ -709,7 +721,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 	return nil
 }
 
-func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
+func (e *Exporter) scrape(ctx context.Context, ch chan<- prometheus.Metric) {
 	defer func(begun time.Time) {
 		e.duration.Set(time.Since(begun).Seconds())
 	}(time.Now())
@@ -718,14 +730,14 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 
 	dsns := e.dsn
 	if e.autoDiscoverDatabases {
-		dsns = e.discoverDatabaseDSNs()
+		dsns = e.discoverDatabaseDSNs(ctx)
 	}
 
 	var errorsCount int
 	var connectionErrorsCount int
 
 	for _, dsn := range dsns {
-		if err := e.scrapeDSN(ch, dsn); err != nil {
+		if err := e.scrapeDSN(ctx, ch, dsn); err != nil {
 			errorsCount++
 
 			level.Error(logger).Log("err", err)

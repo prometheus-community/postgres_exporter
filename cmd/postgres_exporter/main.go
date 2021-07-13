@@ -42,6 +42,7 @@ var (
 	excludeDatabases       = kingpin.Flag("exclude-databases", "A list of databases to remove when autoDiscoverDatabases is enabled").Default("").Envar("PG_EXPORTER_EXCLUDE_DATABASES").String()
 	includeDatabases       = kingpin.Flag("include-databases", "A list of databases to include when autoDiscoverDatabases is enabled").Default("").Envar("PG_EXPORTER_INCLUDE_DATABASES").String()
 	metricPrefix           = kingpin.Flag("metric-prefix", "A metric prefix can be used to have non-default (not \"pg\") prefixes for each of the metrics").Default("pg").Envar("PG_EXPORTER_METRIC_PREFIX").String()
+	scrapeTimeout          = kingpin.Flag("scrape-timeout", "Maximum duration of a scrape").Default("60s").Envar("PG_EXPORTER_SCRAPE_TIMEOUT").Duration()
 	logger                 = log.NewNopLogger()
 )
 
@@ -105,7 +106,7 @@ func main() {
 		IncludeDatabases(*includeDatabases),
 	}
 
-	exporter := NewExporter(dsn, opts...)
+	exporter := NewExporter(dsn, scrapeTimeout, opts...)
 	defer func() {
 		exporter.servers.Close()
 	}()
