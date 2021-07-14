@@ -18,7 +18,7 @@ import (
 	"fmt"
 
 	"github.com/blang/semver"
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log/level"
 	"gopkg.in/yaml.v2"
 )
 
