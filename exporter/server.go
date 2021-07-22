@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package exporter
 
 import (
 	"database/sql"
@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -43,6 +44,8 @@ type Server struct {
 	// Currently cached metrics
 	metricCache map[string]cachedMetrics
 	cacheMtx    sync.Mutex
+
+	Logger log.Logger
 }
 
 // ServerOpt configures a server.
@@ -58,7 +61,7 @@ func ServerWithLabels(labels prometheus.Labels) ServerOpt {
 }
 
 // NewServer establishes a new connection using DSN.
-func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
+func NewServer(dsn string, logger log.Logger, opts ...ServerOpt) (*Server, error) {
 	fingerprint, err := parseFingerprint(dsn)
 	if err != nil {
 		return nil, err
@@ -80,6 +83,7 @@ func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 			serverLabelName: fingerprint,
 		},
 		metricCache: make(map[string]cachedMetrics),
+		Logger:      logger,
 	}
 
 	for _, opt := range opts {
@@ -98,7 +102,7 @@ func (s *Server) Close() error {
 func (s *Server) Ping() error {
 	if err := s.db.Ping(); err != nil {
 		if cerr := s.Close(); cerr != nil {
-			level.Error(logger).Log("msg", "Error while closing non-pinging DB connection", "server", s, "err", cerr)
+			level.Error(s.Logger).Log("msg", "Error while closing non-pinging DB connection", "server", s, "err", cerr)
 		}
 		return err
 	}
@@ -136,13 +140,15 @@ type Servers struct {
 	m       sync.Mutex
 	servers map[string]*Server
 	opts    []ServerOpt
+	logger  log.Logger
 }
 
 // NewServers creates a collection of servers to Postgres.
-func NewServers(opts ...ServerOpt) *Servers {
+func NewServers(logger log.Logger, opts ...ServerOpt) *Servers {
 	return &Servers{
 		servers: make(map[string]*Server),
 		opts:    opts,
+		logger:  logger,
 	}
 }
 
@@ -161,7 +167,7 @@ func (s *Servers) GetServer(dsn string) (*Server, error) {
 		}
 		server, ok = s.servers[dsn]
 		if !ok {
-			server, err = NewServer(dsn, s.opts...)
+			server, err = NewServer(dsn, s.logger, s.opts...)
 			if err != nil {
 				time.Sleep(time.Duration(errCount) * time.Second)
 				continue
@@ -184,7 +190,7 @@ func (s *Servers) Close() {
 	defer s.m.Unlock()
 	for _, server := range s.servers {
 		if err := server.Close(); err != nil {
-			level.Error(logger).Log("msg", "Failed to close connection", "server", server, "err", err)
+			level.Error(s.logger).Log("msg", "Failed to close connection", "server", server, "err", err)
 		}
 	}
 }

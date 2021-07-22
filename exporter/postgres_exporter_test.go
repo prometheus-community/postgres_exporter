@@ -13,7 +13,7 @@
 
 // +build !integration
 
-package main
+package exporter
 
 import (
 	"io/ioutil"
@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/go-kit/kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	. "gopkg.in/check.v1"
 )
@@ -32,12 +33,13 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 type FunctionalSuite struct {
+	logger log.Logger
 }
 
 var _ = Suite(&FunctionalSuite{})
 
 func (s *FunctionalSuite) SetUpSuite(c *C) {
-
+	s.logger = log.NewNopLogger()
 }
 
 func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
@@ -54,7 +56,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 
 	{
 		// No metrics should be eliminated
-		resultMap := makeDescMap(semver.MustParse("0.0.1"), prometheus.Labels{}, testMetricMap)
+		resultMap := makeDescMap(semver.MustParse("0.0.1"), prometheus.Labels{}, testMetricMap, "", s.logger)
 		c.Check(
 			resultMap["test_namespace"].columnMappings["metric_which_stays"].discard,
 			Equals,
@@ -75,7 +77,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 		testMetricMap["test_namespace"].columnMappings["metric_which_discards"] = discardableMetric
 
 		// Discard metric should be discarded
-		resultMap := makeDescMap(semver.MustParse("0.0.1"), prometheus.Labels{}, testMetricMap)
+		resultMap := makeDescMap(semver.MustParse("0.0.1"), prometheus.Labels{}, testMetricMap, "", s.logger)
 		c.Check(
 			resultMap["test_namespace"].columnMappings["metric_which_stays"].discard,
 			Equals,
@@ -96,7 +98,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 		testMetricMap["test_namespace"].columnMappings["metric_which_discards"] = discardableMetric
 
 		// Discard metric should be discarded
-		resultMap := makeDescMap(semver.MustParse("0.0.2"), prometheus.Labels{}, testMetricMap)
+		resultMap := makeDescMap(semver.MustParse("0.0.2"), prometheus.Labels{}, testMetricMap, "", s.logger)
 		c.Check(
 			resultMap["test_namespace"].columnMappings["metric_which_stays"].discard,
 			Equals,
@@ -126,7 +128,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
 
 	var expected = "postgresql://custom_username$&+,%2F%3A;=%3F%40:custom_password$&+,%2F%3A;=%3F%40@localhost:5432/?sslmode=disable"
 
-	dsn, err := getDataSources()
+	dsn, err := GetDataSources()
 	if err != nil {
 		c.Errorf("Unexpected error reading datasources")
 	}
@@ -146,7 +148,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDns(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_NAME")
 
-	dsn, err := getDataSources()
+	dsn, err := GetDataSources()
 	if err != nil {
 		c.Errorf("Unexpected error reading datasources")
 	}
@@ -174,7 +176,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDnsAndSecrets(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_PASS")
 
-	dsn, err := getDataSources()
+	dsn, err := GetDataSources()
 	if err != nil {
 		c.Errorf("Unexpected error reading datasources")
 	}
@@ -290,7 +292,7 @@ func (s *FunctionalSuite) TestParseConstLabels(c *C) {
 	}
 
 	for _, cs := range cases {
-		labels := parseConstLabels(cs.s)
+		labels := parseConstLabels(cs.s, s.logger)
 		if !reflect.DeepEqual(labels, cs.labels) {
 			c.Fatalf("labels not equal (%v -> %v)", labels, cs.labels)
 		}
@@ -389,7 +391,7 @@ func (s *FunctionalSuite) TestBooleanConversionToValueAndString(c *C) {
 	}
 
 	for _, cs := range cases {
-		value, ok := dbToFloat64(cs.input)
+		value, ok := dbToFloat64(cs.input, s.logger)
 		if math.IsNaN(cs.expectedValue) {
 			c.Assert(value, IsNaN)
 		} else {
@@ -397,7 +399,7 @@ func (s *FunctionalSuite) TestBooleanConversionToValueAndString(c *C) {
 		}
 		c.Assert(ok, Equals, cs.expectedOK)
 
-		count, ok := dbToUint64(cs.input)
+		count, ok := dbToUint64(cs.input, s.logger)
 		c.Assert(count, Equals, cs.expectedCount)
 		c.Assert(ok, Equals, cs.expectedOK)
 
@@ -410,7 +412,7 @@ func (s *FunctionalSuite) TestBooleanConversionToValueAndString(c *C) {
 func (s *FunctionalSuite) TestParseUserQueries(c *C) {
 	userQueriesData, err := ioutil.ReadFile("./tests/user_queries_ok.yaml")
 	if err == nil {
-		metricMaps, newQueryOverrides, err := parseUserQueries(userQueriesData)
+		metricMaps, newQueryOverrides, err := parseUserQueries(userQueriesData, s.logger)
 		c.Assert(err, Equals, nil)
 		c.Assert(metricMaps, NotNil)
 		c.Assert(newQueryOverrides, NotNil)

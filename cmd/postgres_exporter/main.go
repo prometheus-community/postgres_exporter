@@ -17,8 +17,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/prometheus-community/postgres_exporter/exporter"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/promlog"
@@ -42,23 +42,9 @@ var (
 	excludeDatabases       = kingpin.Flag("exclude-databases", "A list of databases to remove when autoDiscoverDatabases is enabled").Default("").Envar("PG_EXPORTER_EXCLUDE_DATABASES").String()
 	includeDatabases       = kingpin.Flag("include-databases", "A list of databases to include when autoDiscoverDatabases is enabled").Default("").Envar("PG_EXPORTER_INCLUDE_DATABASES").String()
 	metricPrefix           = kingpin.Flag("metric-prefix", "A metric prefix can be used to have non-default (not \"pg\") prefixes for each of the metrics").Default("pg").Envar("PG_EXPORTER_METRIC_PREFIX").String()
-	logger                 = log.NewNopLogger()
 )
 
-// Metric name parts.
-const (
-	// Namespace for all metrics.
-	namespace = "pg"
-	// Subsystems.
-	exporter = "exporter"
-	// The name of the exporter.
-	exporterName = "postgres_exporter"
-	// Metric label used for static string data thats handy to send to Prometheus
-	// e.g. version
-	staticLabelName = "static"
-	// Metric label used for server identification.
-	serverLabelName = "server"
-)
+const exporterName = "postgres_exporter"
 
 func main() {
 	kingpin.Version(version.Print(exporterName))
@@ -66,7 +52,7 @@ func main() {
 	flag.AddFlags(kingpin.CommandLine, promlogConfig)
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
-	logger = promlog.New(promlogConfig)
+	logger := promlog.New(promlogConfig)
 
 	// landingPage contains the HTML served at '/'.
 	// TODO: Make this nicer and more informative.
@@ -80,11 +66,11 @@ func main() {
 	`)
 
 	if *onlyDumpMaps {
-		dumpMaps()
+		exporter.DumpMaps()
 		return
 	}
 
-	dsn, err := getDataSources()
+	dsn, err := exporter.GetDataSources()
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed reading data sources", "err", err.Error())
 		os.Exit(1)
@@ -95,24 +81,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	opts := []ExporterOpt{
-		DisableDefaultMetrics(*disableDefaultMetrics),
-		DisableSettingsMetrics(*disableSettingsMetrics),
-		AutoDiscoverDatabases(*autoDiscoverDatabases),
-		WithUserQueriesPath(*queriesPath),
-		WithConstantLabels(*constantLabelsList),
-		ExcludeDatabases(*excludeDatabases),
-		IncludeDatabases(*includeDatabases),
+	opts := []exporter.ExporterOpt{
+		exporter.DisableDefaultMetrics(*disableDefaultMetrics),
+		exporter.DisableSettingsMetrics(*disableSettingsMetrics),
+		exporter.AutoDiscoverDatabases(*autoDiscoverDatabases),
+		exporter.WithUserQueriesPath(*queriesPath),
+		exporter.WithConstantLabels(*constantLabelsList),
+		exporter.ExcludeDatabases(*excludeDatabases),
+		exporter.IncludeDatabases(*includeDatabases),
+		exporter.MetricPrefix(*metricPrefix),
 	}
 
-	exporter := NewExporter(dsn, opts...)
+	exp := exporter.NewExporter(dsn, logger, opts...)
 	defer func() {
-		exporter.servers.Close()
+		exp.Servers.Close()
 	}()
 
 	prometheus.MustRegister(version.NewCollector(exporterName))
 
-	prometheus.MustRegister(exporter)
+	prometheus.MustRegister(exp)
 
 	http.Handle(*metricPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

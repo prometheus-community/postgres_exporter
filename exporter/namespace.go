@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package exporter
 
 import (
 	"database/sql"
@@ -130,7 +130,7 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Missing column: ", namespace, columnName+"_sum")))
 						continue
 					}
-					sum, ok := dbToFloat64(columnData[idx])
+					sum, ok := dbToFloat64(columnData[idx], server.Logger)
 					if !ok {
 						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName+"_sum", columnData[idx])))
 						continue
@@ -141,7 +141,7 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Missing column: ", namespace, columnName+"_count")))
 						continue
 					}
-					count, ok := dbToUint64(columnData[idx])
+					count, ok := dbToUint64(columnData[idx], server.Logger)
 					if !ok {
 						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName+"_count", columnData[idx])))
 						continue
@@ -153,7 +153,7 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 						labels...,
 					)
 				} else {
-					value, ok := dbToFloat64(columnData[idx])
+					value, ok := dbToFloat64(columnData[idx], server.Logger)
 					if !ok {
 						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName, columnData[idx])))
 						continue
@@ -168,7 +168,7 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 
 				// Its not an error to fail here, since the values are
 				// unexpected anyway.
-				value, ok := dbToFloat64(columnData[idx])
+				value, ok := dbToFloat64(columnData[idx], server.Logger)
 				if !ok {
 					nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unparseable column type - discarding: ", namespace, columnName, err)))
 					continue
@@ -190,10 +190,10 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 	scrapeStart := time.Now()
 
 	for namespace, mapping := range server.metricMap {
-		level.Debug(logger).Log("msg", "Querying namespace", "namespace", namespace)
+		level.Debug(server.Logger).Log("msg", "Querying namespace", "namespace", namespace)
 
 		if mapping.master && !server.master {
-			level.Debug(logger).Log("msg", "Query skipped...")
+			level.Debug(server.Logger).Log("msg", "Query skipped...")
 			continue
 		}
 
@@ -202,7 +202,7 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 			serVersion, _ := semver.Parse(server.lastMapVersion.String())
 			runServerRange, _ := semver.ParseRange(server.runonserver)
 			if !runServerRange(serVersion) {
-				level.Debug(logger).Log("msg", "Query skipped for this database version", "version", server.lastMapVersion.String(), "target_version", server.runonserver)
+				level.Debug(server.Logger).Log("msg", "Query skipped for this database version", "version", server.lastMapVersion.String(), "target_version", server.runonserver)
 				continue
 			}
 		}
@@ -233,12 +233,12 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 		// Serious error - a namespace disappeared
 		if err != nil {
 			namespaceErrors[namespace] = err
-			level.Info(logger).Log("err", err)
+			level.Warn(server.Logger).Log("err", err)
 		}
 		// Non-serious errors - likely version or parsing problems.
 		if len(nonFatalErrors) > 0 {
 			for _, err := range nonFatalErrors {
-				level.Info(logger).Log("err", err)
+				level.Info(server.Logger).Log("err", err)
 			}
 		}
 

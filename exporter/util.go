@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package exporter
 
 import (
 	"fmt"
@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/lib/pq"
 )
@@ -69,7 +70,7 @@ func stringToColumnUsage(s string) (ColumnUsage, error) {
 
 // Convert database.sql types to float64s for Prometheus consumption. Null types are mapped to NaN. string and []byte
 // types are mapped as NaN and !ok
-func dbToFloat64(t interface{}) (float64, bool) {
+func dbToFloat64(t interface{}, logger log.Logger) (float64, bool) {
 	switch v := t.(type) {
 	case int64:
 		return float64(v), true
@@ -107,7 +108,7 @@ func dbToFloat64(t interface{}) (float64, bool) {
 
 // Convert database.sql types to uint64 for Prometheus consumption. Null types are mapped to 0. string and []byte
 // types are mapped as 0 and !ok
-func dbToUint64(t interface{}) (uint64, bool) {
+func dbToUint64(t interface{}, logger log.Logger) (uint64, bool) {
 	switch v := t.(type) {
 	case uint64:
 		return v, true

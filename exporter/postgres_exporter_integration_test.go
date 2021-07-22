@@ -16,7 +16,7 @@
 // working.
 // +build integration
 
-package main
+package exporter
 
 import (
 	"fmt"
