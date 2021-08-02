@@ -186,8 +186,8 @@ The -extend.query-path command-line argument specifies a YAML file containing ad
 Some examples are provided in [queries.yaml](queries.yaml).
 
 ### Disabling default metrics
-To work with non-officially-supported postgres versions you can try disabling (e.g. 8.2.15)
-or a variant of postgres (e.g. Greenplum) you can disable the default metrics with the `--disable-default-metrics`
+To work with non-officially-supported postgres versions (e.g. 8.2.15),
+or variants of postgres (e.g. Greenplum), you can disable the default metrics with the `--disable-default-metrics`
 flag. This removes all built-in metrics, and uses only metrics defined by queries in the `queries.yaml` file you supply
 (so you must supply one, otherwise the exporter will return nothing but internal statuses and not your database).
 
