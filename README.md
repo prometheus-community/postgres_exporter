@@ -267,6 +267,7 @@ AS
 
 GRANT SELECT ON postgres_exporter.pg_stat_replication TO postgres_exporter;
 
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 CREATE OR REPLACE FUNCTION get_pg_stat_statements() RETURNS SETOF pg_stat_statements AS
 $$ SELECT * FROM public.pg_stat_statements; $$
 LANGUAGE sql
