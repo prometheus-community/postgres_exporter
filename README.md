@@ -1,6 +1,5 @@
-[![Build Status](https://travis-ci.org/percona/postgres_exporter.svg?branch=master)](https://travis-ci.org/percona/postgres_exporter)
-[![Coverage Status](https://coveralls.io/repos/github/percona/postgres_exporter/badge.svg?branch=master)](https://coveralls.io/github/percona/postgres_exporter?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/percona/postgres_exporter)](https://goreportcard.com/report/github.com/percona/postgres_exporter)
+[![Discord](https://img.shields.io/discord/808660945513611334?style=flat)](http://per.co.na/discord)
 
 # PostgreSQL Server Exporter
 
