@@ -32,8 +32,8 @@ jobs:
         run: |
           docker pull artifactory.internal.sysdig.com/$EXPORTER_NAME:$VERSION
           export RELEASE=$(docker inspect --format '{{ index .Config.Labels "release" }}' artifactory.internal.sysdig.com/$EXPORTER_NAME:$VERSION)
-          docker build --label release=$RELEASE -f ./builder/Dockerfile -t $EXPORTER_NAME:$VERSION --target scratch .
-          docker build --label version=$RELEASE -f ./builder/Dockerfile -t $EXPORTER_NAME:$VERSION-ubi --target ubi .  
+          docker build --label release=$RELEASE -f Dockerfile -t $EXPORTER_NAME:$VERSION --target scratch .
+          docker build --label version=$RELEASE -f Dockerfile -t $EXPORTER_NAME:$VERSION-ubi --target ubi .  
 
       - name: Scan local image
         id: scan-local

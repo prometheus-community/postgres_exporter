@@ -21,8 +21,8 @@ jobs:
       run: exit 78
     - name: Build image
       run: |
-        docker build --label release=${{ github.event.release.tag_name }} -f ./builder/Dockerfile --target scratch -t artifactory.internal.sysdig.com/$EXPORTER_NAME:latest .
-        docker build --label release=${{ github.event.release.tag_name }} -f ./builder/Dockerfile --target ubi -t artifactory.internal.sysdig.com/$EXPORTER_NAME:${{ github.event.release.tag_name }}-ubi .
+        docker build --label release=${{ github.event.release.tag_name }} -f Dockerfile --target scratch -t artifactory.internal.sysdig.com/$EXPORTER_NAME:latest .
+        docker build --label release=${{ github.event.release.tag_name }} -f Dockerfile --target ubi -t artifactory.internal.sysdig.com/$EXPORTER_NAME:${{ github.event.release.tag_name }}-ubi .
     - name: Publish docker image
       run: |
         docker tag artifactory.internal.sysdig.com/$EXPORTER_NAME:latest artifactory.internal.sysdig.com/$EXPORTER_NAME:${{ github.event.release.tag_name }}
