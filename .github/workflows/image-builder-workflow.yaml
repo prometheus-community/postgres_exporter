@@ -69,3 +69,11 @@ jobs:
         run: |
           docker push artifactory.internal.sysdig.com/$EXPORTER_NAME:$VERSION
           docker push artifactory.internal.sysdig.com/$EXPORTER_NAME:$VERSION-ubi
+
+      - name: Fake Upload master to Quay.io
+      uses: fjogeleit/http-request-action@master
+      with:
+        url: 'https://sysdig-jenkins.internal.sysdig.com/view/Integrations/job/integrations-postgresql-exporter/buildWithParameters?token=${{ secrets.JENKINS_PROMCAT_LAUNCH_TOKEN }}&TAG_REF=master&DRY_RUN=true'
+        method: 'POST'
+        username: david.lorite@sysdig.com
+        password: ${{ secrets.JENKINS_PROMCAT_API_TOKEN }}

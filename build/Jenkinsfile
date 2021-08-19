@@ -33,6 +33,9 @@ pipeline {
             agent any
             steps {
                 script {
+                    if (params.DRY_RUN) {
+                        echo "docker push quay.io/sysdig/${env.EXPORTER}:${env.VERSION}"
+                    } else {
                     docker.withRegistry("https://quay.io", "QUAY") {
                         sh """docker tag ${env.ARTIFACTORY_URL}/${env.EXPORTER}:${env.VERSION} quay.io/sysdig/${env.EXPORTER}:${env.VERSION}"""
                         sh """docker tag ${env.ARTIFACTORY_URL}/${env.EXPORTER}:${env.VERSION} quay.io/sysdig/${env.EXPORTER}:latest"""
