@@ -1,3 +1,8 @@
+## 0.10.0 / 2021-07-08
+
+* [ENHANCEMENT] Add ability to set included databases when autoDiscoverDatabases is enabled #499
+* [BUGFIX] fix pg_replication_slots on postgresql versions 9.4 <> 10.0 #537
+
 ## 0.9.0 / 2021-03-01
 
 First release under the Prometheus Community organisation.
