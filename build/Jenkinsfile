@@ -14,6 +14,10 @@ pipeline {
         EXPORTER = 'postgresql-exporter'
     }
 
+    parameters {
+        booleanParam(name: 'DRY_RUN', defaultValue: true, description: 'Perform a dry run (does not push images)')
+    }
+    
     stages {
         stage('Pull image from artifactory') {
             agent any
