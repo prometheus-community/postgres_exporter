@@ -16,7 +16,13 @@ COPY Makefile.common Makefile.common
 RUN make build
 RUN cp postgres_exporter /bin/postgres_exporter
 
-FROM scratch
+FROM scratch as scratch
+COPY --from=builder /bin/postgres_exporter /bin/postgres_exporter
+EXPOSE     9187
+USER       59000:59000
+ENTRYPOINT [ "/bin/postgres_exporter" ]
+
+FROM quay.io/sysdig/sysdig-mini-ubi:1.9 as ubi
 COPY --from=builder /bin/postgres_exporter /bin/postgres_exporter
 EXPOSE     9187
 USER       59000:59000

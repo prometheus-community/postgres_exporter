@@ -1,0 +1,38 @@
+on:
+  release:
+    types: [released]
+name: Build, test and publish
+jobs:
+  buildDockerImage:
+    env:
+      EXPORTER_NAME: postgresql-exporter
+    name: Build docker image
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Login to Artifactory
+      uses: docker/login-action@v1 
+      with:
+        registry: artifactory.internal.sysdig.com
+        username: david.lorite@sysdig.com
+        password: ${{ secrets.ARTI_TOKEN }}
+    - name: Release if tagged
+      if: "!startswith(github.ref, 'refs/tags/v')"
+      run: exit 78
+    - name: Build image
+      run: |
+        docker build --label release=${{ github.event.release.tag_name }} -f ./builder/Dockerfile --target scratch -t artifactory.internal.sysdig.com/$EXPORTER_NAME:latest .
+        docker build --label release=${{ github.event.release.tag_name }} -f ./builder/Dockerfile --target ubi -t artifactory.internal.sysdig.com/$EXPORTER_NAME:${{ github.event.release.tag_name }}-ubi .
+    - name: Publish docker image
+      run: |
+        docker tag artifactory.internal.sysdig.com/$EXPORTER_NAME:latest artifactory.internal.sysdig.com/$EXPORTER_NAME:${{ github.event.release.tag_name }}
+        docker push artifactory.internal.sysdig.com/$EXPORTER_NAME:${{ github.event.release.tag_name }}
+        docker push artifactory.internal.sysdig.com/$EXPORTER_NAME:${{ github.event.release.tag_name }}-ubi
+        docker push artifactory.internal.sysdig.com/$EXPORTER_NAME:latest
+    - name: Upload master to Quay.io
+      uses: fjogeleit/http-request-action@master
+      with:
+        url: 'https://sysdig-jenkins.internal.sysdig.com/view/view/Tech-Marketing/job/integrations-$EXPORTER_NAME/buildWithParameters?token=${{ secrets.JENKINS_LAUNCH_TOKEN }}&TAG_REF=master&DRY_RUN=false'
+        method: 'POST'
+        username: david.lorite@sysdig.com
+        password: ${{ secrets.JENKINS_API_TOKEN }}

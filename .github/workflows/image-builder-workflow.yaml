@@ -1,4 +1,4 @@
-name: buildandDeploy
+name: Build and scan
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
@@ -11,7 +11,8 @@ jobs:
   # This workflow contains a single job called "build"
   build:
     env:
-      VERSION: 0.9.0
+      VERSION: latest
+      EXPORTER_NAME: postgresql-exporter
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
     steps:
@@ -27,30 +28,28 @@ jobs:
           registry: artifactory.internal.sysdig.com
           username: david.lorite@sysdig.com
           password: ${{ secrets.ARTI_TOKEN }}
-      - name: Build docker image
+      - name: Increase version and build
         run: |
-          docker build -f ./Dockerfile -t temp-postgresql-exporter:latest .
-
-      - name: Build ubi docker image
-        run: |
-          docker build -f ./Dockerfile_ubi -t temp-postgresql-exporter:ubi .
+          docker pull artifactory.internal.sysdig.com/$EXPORTER_NAME:$VERSION
+          export RELEASE=$(docker inspect --format '{{ index .Config.Labels "release" }}' artifactory.internal.sysdig.com/$EXPORTER_NAME:$VERSION)
+          docker build --label release=$RELEASE -f ./builder/Dockerfile -t $EXPORTER_NAME:$VERSION --target scratch .
+          docker build --label version=$RELEASE -f ./builder/Dockerfile -t $EXPORTER_NAME:$VERSION-ubi --target ubi .  
 
       - name: Scan local image
         id: scan-local
         uses: sysdiglabs/scan-action@v3
         with:
-          image-tag: "temp-postgresql-exporter:latest"
-          sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
+          image-tag: "postgresql-exporter:latest"
+          sysdig-secure-token: ${{ secrets.PROMCAT_SECURE_TOKEN }}
           ignore-failed-scan: true
           input-type: docker-daemon
           run-as-user: root
-
-      - name: Scan local image
-        id: scan-local-2
+      - name: Scan local image 2
+        id: scan-local2
         uses: sysdiglabs/scan-action@v3
         with:
-          image-tag: "temp-postgresql-exporter:ubi"
-          sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
+          image-tag: "postgresql-exporter:latest-ubi"
+          sysdig-secure-token: ${{ secrets.PROMCAT_SECURE_TOKEN }}
           ignore-failed-scan: true
           input-type: docker-daemon
           run-as-user: root
@@ -63,10 +62,10 @@ jobs:
 
       - name: Change the tag of the image
         run: |
-          docker tag temp-postgresql-exporter:latest artifactory.internal.sysdig.com/postgresql-exporter:$VERSION
-          docker tag temp-postgresql-exporter:ubi artifactory.internal.sysdig.com/postgresql-exporter:$VERSION-ubi
+          docker tag $EXPORTER_NAME:$VERSION artifactory.internal.sysdig.com/$EXPORTER_NAME:$VERSION
+          docker tag $EXPORTER_NAME:$VERSION-ubi artifactory.internal.sysdig.com/$EXPORTER_NAME:$VERSION-ubi
 
       - name: Push the image
         run: |
-          docker push artifactory.internal.sysdig.com/postgresql-exporter:$VERSION
-          docker push artifactory.internal.sysdig.com/postgresql-exporter:$VERSION-ubi
+          docker push artifactory.internal.sysdig.com/$EXPORTER_NAME:$VERSION
+          docker push artifactory.internal.sysdig.com/$EXPORTER_NAME:$VERSION-ubi
