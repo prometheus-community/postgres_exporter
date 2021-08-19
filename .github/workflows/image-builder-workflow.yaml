@@ -40,7 +40,7 @@ jobs:
         uses: sysdiglabs/scan-action@v3
         with:
           image-tag: "postgresql-exporter:latest"
-          sysdig-secure-token: ${{ secrets.PROMCAT_SECURE_TOKEN }}
+          sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
           ignore-failed-scan: true
           input-type: docker-daemon
           run-as-user: root
@@ -49,7 +49,7 @@ jobs:
         uses: sysdiglabs/scan-action@v3
         with:
           image-tag: "postgresql-exporter:latest-ubi"
-          sysdig-secure-token: ${{ secrets.PROMCAT_SECURE_TOKEN }}
+          sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
           ignore-failed-scan: true
           input-type: docker-daemon
           run-as-user: root
