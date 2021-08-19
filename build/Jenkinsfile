@@ -1,24 +1,28 @@
+string projectName = "prometheus-integrations"
+
 pipeline {
-    agent {
-        label 'qa_terminating_j8'
-    }
+    agent none
+
 
     options {
-        disableConcurrentBuilds()
+        skipDefaultCheckout()
     }
 
     environment {
         registryCredential = 'jenkins-artifactory'
         ARTIFACTORY_URL = 'docker.internal.sysdig.com'
         EXPORTER = 'postgresql-exporter'
-        VERSION = '0.9.0'
     }
 
     stages {
         stage('Pull image from artifactory') {
+            agent any
             steps {
                 script {
-                    docker.withRegistry("https://${env.ARTIFACTORY_URL}",  registryCredential) {                        
+                    docker.withRegistry("https://${env.ARTIFACTORY_URL}",  registryCredential) {        
+                        sh """docker pull ${env.ARTIFACTORY_URL}/${env.EXPORTER}:latest"""
+                        env.VERSION = sh(script:"""docker inspect --format '{{ index .Config.Labels "release" }}' ${env.ARTIFACTORY_URL}/${env.EXPORTER}:latest""", returnStdout: true).trim()
+                        echo "VERSION = ${env.VERSION}"
                         sh """docker pull ${env.ARTIFACTORY_URL}/${env.EXPORTER}:${env.VERSION}"""
                         sh """docker pull ${env.ARTIFACTORY_URL}/${env.EXPORTER}:${env.VERSION}-ubi"""
                     }
@@ -26,6 +30,7 @@ pipeline {
             }
         }
         stage('Push image to Quay'){
+            agent any
             steps {
                 script {
                     docker.withRegistry("https://quay.io", "QUAY") {
@@ -39,5 +44,10 @@ pipeline {
                 }
             }
         }
+    } //stages
+    post {
+        cleanup {
+            cleanWs()
+        } //post
     }
 }
