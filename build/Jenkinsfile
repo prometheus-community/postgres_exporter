@@ -15,7 +15,7 @@ pipeline {
 
     parameters {
         booleanParam(name: 'DRY_RUN', defaultValue: true, description: 'Perform a dry run (does not push images)')
-        booleanParam(name: 'EXPORTER', defaultValue: true, description: 'Exporter name')
+        string(name: 'EXPORTER', defaultValue: "exporter", description: 'Exporter name')
     }
     
     stages {
