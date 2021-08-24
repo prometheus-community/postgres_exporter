@@ -126,10 +126,10 @@ The following environment variables configure the exporter:
   Use only metrics supplied from `queries.yaml`. Value can be `true` or `false`. Default is `false`.
 
 * `PG_EXPORTER_DISABLE_SETTINGS_METRICS`
-  Use the flag if you don't want to scrape `pg_settings`. Value can be `true` or `false`. Defauls is `false`.
+  Use the flag if you don't want to scrape `pg_settings`. Value can be `true` or `false`. Default is `false`.
 
 * `PG_EXPORTER_AUTO_DISCOVER_DATABASES`
-  Whether to discover the databases on a server dynamically. Value can be `true` or `false`. Defauls is `false`.
+  Whether to discover the databases on a server dynamically. Value can be `true` or `false`. Default is `false`.
 
 * `PG_EXPORTER_EXTEND_QUERY_PATH`
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
