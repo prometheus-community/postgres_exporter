@@ -1,0 +1,13 @@
+version: 2
+registries:
+  docker-registry-quay-io:
+    type: docker-registry
+    url: https://quay.io
+    username: "${{secrets.QUAY_USER}}"
+    password: "${{secrets.QUAY_PASS}}"
+updates:
+- package-ecosystem: "docker"
+  schedule:
+    interval: "daily"
+  registries:
+  - docker-registry-quay-io
