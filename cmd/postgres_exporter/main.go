@@ -29,6 +29,22 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
+// Branch is set during build to the git branch.
+var Branch string
+
+// BuildDate is set during build to the ISO-8601 date and time.
+var BuildDate string
+
+// Revision is set during build to the git commit revision.
+var Revision string
+
+// Version is set during build to the git describe version
+// (semantic version)-(commitish) form.
+var Version = "0.0.1-rev"
+
+// VersionShort is set during build to the semantic version.
+var VersionShort = "0.0.1"
+
 var (
 	listenAddress                 = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").Envar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
 	webConfig                     = webflag.AddFlags(kingpin.CommandLine)
@@ -57,13 +73,19 @@ const (
 	namespace = "pg"
 	// Subsystems.
 	exporter = "exporter"
-	// The name of the exporter.
-	exporterName = "postgres_exporter"
 	// Metric label used for static string data thats handy to send to Prometheus
 	// e.g. version
 	staticLabelName = "static"
 	// Metric label used for server identification.
 	serverLabelName = "server"
+)
+
+type MetricResolution string
+
+const (
+	LR MetricResolution = "lr"
+	MR MetricResolution = "mr"
+	HR MetricResolution = "hr"
 )
 
 func main() {
