@@ -22,7 +22,7 @@ import (
 
 	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/log"
+	log "github.com/sirupsen/logrus"
 )
 
 func (e *Exporter) discoverDatabaseDSNs() []string {
