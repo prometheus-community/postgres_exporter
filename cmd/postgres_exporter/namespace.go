@@ -190,8 +190,6 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 	scrapeStart := time.Now()
 
 	for namespace, mapping := range server.metricMap {
-		level.Debug(logger).Log("msg", "Querying namespace", "namespace", namespace)
-
 		if mapping.master && !server.master {
 			level.Debug(logger).Log("msg", "Query skipped...")
 			continue

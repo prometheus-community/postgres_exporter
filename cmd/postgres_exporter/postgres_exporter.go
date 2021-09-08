@@ -631,7 +631,6 @@ func newDesc(subsystem, name, help string, labels prometheus.Labels) *prometheus
 }
 
 func checkPostgresVersion(db *sql.DB, server string) (semver.Version, string, error) {
-	level.Debug(logger).Log("msg", "Querying PostgreSQL version", "server", server)
 	versionRow := db.QueryRow("SELECT version();")
 	var versionString string
 	err := versionRow.Scan(&versionString)
