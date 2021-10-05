@@ -93,6 +93,9 @@ The following environment variables configure the exporter:
 * `DATA_SOURCE_NAME`
   the default legacy format. Accepts URI form and key=value form arguments. The
   URI may contain the username and password to connect with.
+  
+* `DATA_SOURCE_NAME_FILE`
+  The same as above but reads the URI from a file.
 
 * `DATA_SOURCE_URI`
    an alternative to `DATA_SOURCE_NAME` which exclusively accepts the hostname

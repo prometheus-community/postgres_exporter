@@ -126,6 +126,16 @@ func getDataSources() ([]string, error) {
 		return strings.Split(dsn, ","), nil
 	}
 
+	dataSourceNameFile := os.Getenv("DATA_SOURCE_NAME_FILE")
+	if len(dataSourceNameFile) != 0 {
+		fileContents, err := ioutil.ReadFile(dataSourceNameFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed loading data source name file %s: %s", dataSourceNameFile, err.Error())
+		}
+		dsnContent := strings.TrimSpace(string(fileContents))
+		return strings.Split(dsnContent, ","), nil
+	}
+
 	var user, pass, uri string
 
 	dataSourceUserFile := os.Getenv("DATA_SOURCE_USER_FILE")
