@@ -33,7 +33,14 @@ func querySettings(ch chan<- prometheus.Metric, server *Server) error {
 			return fmt.Errorf("error retrieving rows on %q: %s %v", server, namespace, err)
 		}
 
-		ch <- s.metric(server.labels)
+		labels := make(prometheus.Labels)
+		server.labelsMtx.RLock()
+		for key, value := range server.labels {
+			labels[key] = value
+		}
+		server.labelsMtx.RUnlock()
+
+		ch <- s.metric(labels)
 	}
 
 	return nil

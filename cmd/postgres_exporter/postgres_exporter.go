@@ -558,31 +558,46 @@ func parseUserQueries(content []byte) (map[string]intermediateMetricMap, map[str
 func addQueries(content []byte, pgVersion semver.Version, server *Server) error {
 	metricMaps, newQueryOverrides, err := parseUserQueries(content)
 	if err != nil {
-		return nil
+		return err
 	}
 	// Convert the loaded metric map into exporter representation
-	partialExporterMap := makeDescMap(pgVersion, server.labels, metricMaps)
+	labels := make(prometheus.Labels)
+	server.labelsMtx.RLock()
+	for key, value := range server.labels {
+		labels[key] = value
+	}
+	server.labelsMtx.RUnlock()
+
+	partialExporterMap := makeDescMap(pgVersion, labels, metricMaps)
 
 	// Merge the two maps (which are now quite flatteend)
 	for k, v := range partialExporterMap {
+		server.metricMapMtx.RLock()
 		_, found := server.metricMap[k]
+		server.metricMapMtx.RUnlock()
 		if found {
 			log.Debugln("Overriding metric", k, "from user YAML file.")
 		} else {
 			log.Debugln("Adding new metric", k, "from user YAML file.")
 		}
+		server.metricMapMtx.Lock()
 		server.metricMap[k] = v
+		server.metricMapMtx.Unlock()
 	}
 
 	// Merge the query override map
 	for k, v := range newQueryOverrides {
+		server.queryOverridesMtx.RLock()
 		_, found := server.queryOverrides[k]
+		server.queryOverridesMtx.RUnlock()
 		if found {
 			log.Debugln("Overriding query override", k, "from user YAML file.")
 		} else {
 			log.Debugln("Adding new query override", k, "from user YAML file.")
 		}
+		server.queryOverridesMtx.Lock()
 		server.queryOverrides[k] = v
+		server.queryOverridesMtx.Unlock()
 	}
 	return nil
 }
@@ -848,21 +863,25 @@ type cachedMetrics struct {
 // Server describes a connection to Postgres.
 // Also it contains metrics map and query overrides.
 type Server struct {
-	db     *sql.DB
-	labels prometheus.Labels
-	master bool
+	db        *sql.DB
+	labels    prometheus.Labels
+	labelsMtx sync.RWMutex
+	master    bool
+	masterMtx sync.RWMutex
 
 	// Last version used to calculate metric map. If mismatch on scrape,
 	// then maps are recalculated.
-	lastMapVersion semver.Version
+	lastMapVersion    semver.Version
+	lastMapVersionMtx sync.RWMutex
 	// Currently active metric map
-	metricMap map[string]MetricMapNamespace
+	metricMap    map[string]MetricMapNamespace
+	metricMapMtx sync.RWMutex
 	// Currently active query overrides
-	queryOverrides map[string]string
-	mappingMtx     sync.RWMutex
+	queryOverrides    map[string]string
+	queryOverridesMtx sync.RWMutex
 	// Currently cached metrics
-	metricCache map[string]cachedMetrics
-	cacheMtx    sync.Mutex
+	metricCache    map[string]cachedMetrics
+	metricCacheMtx sync.Mutex
 }
 
 // ServerOpt configures a server.
@@ -932,12 +951,12 @@ func (s *Server) String() string {
 
 // Scrape loads metrics.
 func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool) error {
-	s.mappingMtx.RLock()
-	defer s.mappingMtx.RUnlock()
-
 	var err error
 
-	if !disableSettingsMetrics && s.master {
+	s.masterMtx.RLock()
+	master := s.master
+	s.masterMtx.RUnlock()
+	if !disableSettingsMetrics && master {
 		if err = querySettings(ch, s); err != nil {
 			err = fmt.Errorf("error retrieving settings: %s", err)
 		}
@@ -968,8 +987,6 @@ func NewServers(opts ...ServerOpt) *Servers {
 
 // GetServer returns established connection from a collection.
 func (s *Servers) GetServer(dsn string) (*Server, error) {
-	s.m.Lock()
-	defer s.m.Unlock()
 	var err error
 	var ok bool
 	errCount := 0 // start at zero because we increment before doing work
@@ -979,17 +996,24 @@ func (s *Servers) GetServer(dsn string) (*Server, error) {
 		if errCount++; errCount > retries {
 			return nil, err
 		}
+		s.m.Lock()
 		server, ok = s.servers[dsn]
+		s.m.Unlock()
 		if !ok {
 			server, err = NewServer(dsn, s.opts...)
 			if err != nil {
 				time.Sleep(time.Duration(errCount) * time.Second)
 				continue
 			}
+			s.m.Lock()
 			s.servers[dsn] = server
+			s.m.Unlock()
 		}
+
 		if err = server.Ping(); err != nil {
+			s.m.Lock()
 			delete(s.servers, dsn)
+			s.m.Unlock()
 			time.Sleep(time.Duration(errCount) * time.Second)
 			continue
 		}
@@ -1246,7 +1270,9 @@ func queryDatabases(server *Server) ([]string, error) {
 // the scrape fails, and a slice of errors if they were non-fatal.
 func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNamespace) ([]prometheus.Metric, []error, error) {
 	// Check for a query override for this namespace
+	server.queryOverridesMtx.RLock()
 	query, found := server.queryOverrides[namespace]
+	server.queryOverridesMtx.RUnlock()
 
 	// Was this query disabled (i.e. nothing sensible can be queried on cu
 	// version of PostgreSQL?
@@ -1266,6 +1292,7 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 	} else {
 		rows, err = server.db.Query(query) // nolint: safesql
 	}
+
 	if err != nil {
 		return []prometheus.Metric{}, []error{}, fmt.Errorf("Error running query on database %q: %s %v", server, namespace, err)
 	}
@@ -1326,7 +1353,13 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 			} else {
 				// Unknown metric. Report as untyped if scan to float64 works, else note an error too.
 				metricLabel := fmt.Sprintf("%s_%s", namespace, columnName)
-				desc := prometheus.NewDesc(metricLabel, fmt.Sprintf("Unknown metric from %s", namespace), mapping.labels, server.labels)
+				serverLabels := make(prometheus.Labels)
+				server.labelsMtx.RLock()
+				for key, value := range server.labels {
+					serverLabels[key] = value
+				}
+				server.labelsMtx.RUnlock()
+				desc := prometheus.NewDesc(metricLabel, fmt.Sprintf("Unknown metric from %s", namespace), mapping.labels, serverLabels)
 
 				// Its not an error to fail here, since the values are
 				// unexpected anyway.
@@ -1351,19 +1384,24 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 
 	scrapeStart := time.Now()
 
-	for namespace, mapping := range server.metricMap {
+	server.metricMapMtx.RLock()
+	metricMap := server.metricMap
+	server.metricMapMtx.RUnlock()
+	for namespace, mapping := range metricMap {
 		log.Debugln("Querying namespace: ", namespace)
 
-		if mapping.master && !server.master {
+		server.masterMtx.RLock()
+		master := server.master
+		server.masterMtx.RUnlock()
+		if mapping.master && !master {
 			log.Debugln("Query skipped...")
 			continue
 		}
-
 		scrapeMetric := false
 		// Check if the metric is cached
-		server.cacheMtx.Lock()
+		server.metricCacheMtx.Lock()
 		cachedMetric, found := server.metricCache[namespace]
-		server.cacheMtx.Unlock()
+		server.metricCacheMtx.Unlock()
 		// If found, check if needs refresh from cache
 		if found {
 			if scrapeStart.Sub(cachedMetric.lastScrape).Seconds() > float64(mapping.cacheSeconds) {
@@ -1402,12 +1440,12 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 		if scrapeMetric {
 			// Only cache if metric is meaningfully cacheable
 			if mapping.cacheSeconds > 0 {
-				server.cacheMtx.Lock()
+				server.metricCacheMtx.Lock()
 				server.metricCache[namespace] = cachedMetrics{
 					metrics:    metrics,
 					lastScrape: scrapeStart,
 				}
-				server.cacheMtx.Unlock()
+				server.metricCacheMtx.Unlock()
 			}
 		}
 	}
@@ -1432,21 +1470,52 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 		log.Warnf("PostgreSQL version is lower on %q then our lowest supported version! Got %s minimum supported is %s.", server, semanticVersion, lowestSupportedVersion)
 	}
 
+	metricMap := make(map[string]MetricMapNamespace)
+	server.metricMapMtx.RLock()
+	for key, value := range server.metricMap {
+		metricMap[key] = value
+	}
+	server.metricMapMtx.RUnlock()
+
+	server.masterMtx.RLock()
+	master := server.master
+	server.masterMtx.RUnlock()
+
+	labels := make(prometheus.Labels)
+	server.labelsMtx.RLock()
+	for key, value := range server.labels {
+		labels[key] = value
+	}
+	server.labelsMtx.RUnlock()
+
 	// Check if semantic version changed and recalculate maps if needed.
-	if semanticVersion.NE(server.lastMapVersion) || server.metricMap == nil {
+	server.lastMapVersionMtx.RLock()
+	isVersionNotEqual := semanticVersion.NE(server.lastMapVersion)
+	server.lastMapVersionMtx.RUnlock()
+
+	if isVersionNotEqual || metricMap == nil {
 		log.Infof("Semantic Version Changed on %q: %s -> %s", server, server.lastMapVersion, semanticVersion)
-		server.mappingMtx.Lock()
 
 		// Get Default Metrics only for master database
-		if !e.disableDefaultMetrics && server.master {
-			server.metricMap = makeDescMap(semanticVersion, server.labels, e.builtinMetricMaps)
+		if !e.disableDefaultMetrics && master {
+			server.metricMapMtx.Lock()
+			server.metricMap = makeDescMap(semanticVersion, labels, e.builtinMetricMaps)
+			server.metricMapMtx.Unlock()
+			server.queryOverridesMtx.Lock()
 			server.queryOverrides = makeQueryOverrideMap(semanticVersion, queryOverrides)
+			server.queryOverridesMtx.Unlock()
 		} else {
+			server.metricMapMtx.Lock()
 			server.metricMap = make(map[string]MetricMapNamespace)
+			server.metricMapMtx.Unlock()
+			server.queryOverridesMtx.Lock()
 			server.queryOverrides = make(map[string]string)
+			server.queryOverridesMtx.Unlock()
 		}
 
+		server.lastMapVersionMtx.Lock()
 		server.lastMapVersion = semanticVersion
+		server.lastMapVersionMtx.Unlock()
 
 		if e.userQueriesPath[HR] != "" || e.userQueriesPath[MR] != "" || e.userQueriesPath[LR] != "" {
 			// Clear the metric while a reload is happening
@@ -1458,18 +1527,17 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 				e.loadCustomQueries(res, semanticVersion, server)
 			}
 		}
-
-		server.mappingMtx.Unlock()
 	}
 
 	// Output the version as a special metric only for master database
 	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
-		"Version string as reported by postgres", []string{"version", "short_version"}, server.labels)
+		"Version string as reported by postgres", []string{"version", "short_version"}, labels)
 
-	if !e.disableDefaultMetrics && server.master {
+	if !e.disableDefaultMetrics && master {
 		ch <- prometheus.MustNewConstMetric(versionDesc,
 			prometheus.UntypedValue, 1, versionString, semanticVersion.String())
 	}
+
 	return nil
 }
 
@@ -1574,7 +1642,9 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 		}
 
 		// If autoDiscoverDatabases is true, set first dsn as master database (Default: false)
+		server.masterMtx.Lock()
 		server.master = true
+		server.masterMtx.Unlock()
 
 		databaseNames, err := queryDatabases(server)
 		if err != nil {
@@ -1609,7 +1679,9 @@ func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 
 	// Check if autoDiscoverDatabases is false, set dsn as master database (Default: false)
 	if !e.autoDiscoverDatabases {
+		server.masterMtx.Lock()
 		server.master = true
+		server.masterMtx.Unlock()
 	}
 
 	// Check if map versions need to be updated
