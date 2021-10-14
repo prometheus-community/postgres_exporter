@@ -17,11 +17,12 @@ services:
       -c ssl=on
       -c ssl_cert_file=/ssl/server.crt
       -c ssl_key_file=/ssl/server.key
+      -c ssl_ca_file=/ssl/CA.crt
       -c log_min_messages=DEBUG4
     ports:
-      - 127.0.0.1:5433:5432
+      - 5433:5432
     environment:
       - POSTGRES_USER=root
       - POSTGRES_PASSWORD=root
     volumes:
-      - ./testdata/ssl:/ssl
+      - ./testdata/ssl/server:/ssl
