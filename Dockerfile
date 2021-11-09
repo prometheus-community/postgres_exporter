@@ -22,7 +22,7 @@ EXPOSE     9187
 USER       59000:59000
 ENTRYPOINT [ "/bin/postgres_exporter" ]
 
-FROM quay.io/sysdig/sysdig-mini-ubi:1.1.11 as ubi
+FROM quay.io/sysdig/sysdig-mini-ubi:1.1.14 as ubi
 COPY --from=builder /bin/postgres_exporter /bin/postgres_exporter
 EXPOSE     9187
 USER       59000:59000
