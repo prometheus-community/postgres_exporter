@@ -204,7 +204,7 @@ If you want to include only subset of databases, you can use option `--include-d
 ### Running as non-superuser
 
 To be able to collect metrics from `pg_stat*` views as non-superuser in PostgreSQL
-server versions >= 10 you can grant pg_monitor built-in role to the user. If
+server versions >= 10 you can grant the `pg_monitor` or `pg_read_all_stats` [built-in roles](https://www.postgresql.org/docs/current/predefined-roles.html) to the user. If
 you need to monitor older PostgreSQL servers, you will have to create functions
 and views as a superuser, and assign permissions separately to those.
 
