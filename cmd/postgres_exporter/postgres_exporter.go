@@ -653,9 +653,15 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
 		"Version string as reported by postgres", []string{"version", "short_version"}, server.labels)
 
+	var semanticVersionShort = semanticVersion.String()
+	if semanticVersion.GE(semver.MustParse("10.0.0")) {
+		var versionSplit = strings.Split(semanticVersion.String(), ".")
+		semanticVersionShort = versionSplit[0] + "." + versionSplit[1]
+
+	}
 	if !e.disableDefaultMetrics && server.master {
 		ch <- prometheus.MustNewConstMetric(versionDesc,
-			prometheus.UntypedValue, 1, versionString, semanticVersion.String())
+			prometheus.UntypedValue, 1, versionString, semanticVersionShort)
 	}
 	return nil
 }
