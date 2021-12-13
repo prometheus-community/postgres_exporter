@@ -14,10 +14,10 @@ lint:
 			$(JSONNET_FMT) "$$f" | diff -u "$$f" -; \
 		done
 
-	mixtool lint mixin.libsonnet
+	mixtool lint 
 
 build:
-	mixtool generate all mixin.libsonnet
+	mixtool generate all
 
 clean:
 	rm -rf dashboards_out alerts.yaml rules.yaml

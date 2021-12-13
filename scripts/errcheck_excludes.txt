@@ -1,2 +1,0 @@
-// Never check for logger errors.
-(github.com/go-kit/kit/log.Logger).Log

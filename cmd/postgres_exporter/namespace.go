@@ -17,19 +17,36 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
+	"math"
 	"time"
 
-	"github.com/blang/semver"
 	"github.com/go-kit/kit/log/level"
 	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// MetricMapNamespace groups metric maps under a shared set of labels.
+type MetricMapNamespace struct {
+	labels         []string             // Label names for this namespace
+	columnMappings map[string]MetricMap // Column mappings in this namespace
+}
+
+// MetricMap stores the prometheus metric description which a given column will
+// be mapped to by the collector
+type MetricMap struct {
+	discard    bool                              // Should metric be discarded during mapping?
+	histogram  bool                              // Should metric be treated as a histogram?
+	vtype      prometheus.ValueType              // Prometheus valuetype
+	desc       *prometheus.Desc                  // Prometheus descriptor
+	conversion func(interface{}) (float64, bool) // Conversion function to turn PG result into float64
+}
+
 // Query within a namespace mapping and emit metrics. Returns fatal errors if
 // the scrape fails, and a slice of errors if they were non-fatal.
 func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNamespace) ([]prometheus.Metric, []error, error) {
 	// Check for a query override for this namespace
-	query, found := server.queryOverrides[namespace]
+	query, found := queries[namespace]
 
 	// Was this query disabled (i.e. nothing sensible can be queried on cu
 	// version of PostgreSQL?
@@ -38,17 +55,15 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 		return []prometheus.Metric{}, []error{}, nil
 	}
 
+	if !found {
+		log.Fatalf("query not found for namespace: %s", namespace)
+	}
+
 	// Don't fail on a bad scrape of one metric
 	var rows *sql.Rows
 	var err error
 
-	if !found {
-		// I've no idea how to avoid this properly at the moment, but this is
-		// an admin tool so you're not injecting SQL right?
-		rows, err = server.db.Query(fmt.Sprintf("SELECT * FROM %s;", namespace)) // nolint: gas
-	} else {
-		rows, err = server.db.Query(query)
-	}
+	rows, err = server.db.Query(query)
 	if err != nil {
 		return []prometheus.Metric{}, []error{}, fmt.Errorf("Error running query on database %q: %s %v", server, namespace, err)
 	}
@@ -187,49 +202,10 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 	// Return a map of namespace -> errors
 	namespaceErrors := make(map[string]error)
 
-	scrapeStart := time.Now()
-
-	for namespace, mapping := range server.metricMap {
+	for namespace, mapping := range makeDescMap(server.labels, metricMaps) {
 		level.Debug(logger).Log("msg", "Querying namespace", "namespace", namespace)
 
-		if mapping.master && !server.master {
-			level.Debug(logger).Log("msg", "Query skipped...")
-			continue
-		}
-
-		// check if the query is to be run on specific database server version range or not
-		if len(server.runonserver) > 0 {
-			serVersion, _ := semver.Parse(server.lastMapVersion.String())
-			runServerRange, _ := semver.ParseRange(server.runonserver)
-			if !runServerRange(serVersion) {
-				level.Debug(logger).Log("msg", "Query skipped for this database version", "version", server.lastMapVersion.String(), "target_version", server.runonserver)
-				continue
-			}
-		}
-
-		scrapeMetric := false
-		// Check if the metric is cached
-		server.cacheMtx.Lock()
-		cachedMetric, found := server.metricCache[namespace]
-		server.cacheMtx.Unlock()
-		// If found, check if needs refresh from cache
-		if found {
-			if scrapeStart.Sub(cachedMetric.lastScrape).Seconds() > float64(mapping.cacheSeconds) {
-				scrapeMetric = true
-			}
-		} else {
-			scrapeMetric = true
-		}
-
-		var metrics []prometheus.Metric
-		var nonFatalErrors []error
-		var err error
-		if scrapeMetric {
-			metrics, nonFatalErrors, err = queryNamespaceMapping(server, namespace, mapping)
-		} else {
-			metrics = cachedMetric.metrics
-		}
-
+		metrics, nonFatalErrors, err := queryNamespaceMapping(server, namespace, mapping)
 		// Serious error - a namespace disappeared
 		if err != nil {
 			namespaceErrors[namespace] = err
@@ -246,19 +222,125 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 		for _, metric := range metrics {
 			ch <- metric
 		}
-
-		if scrapeMetric {
-			// Only cache if metric is meaningfully cacheable
-			if mapping.cacheSeconds > 0 {
-				server.cacheMtx.Lock()
-				server.metricCache[namespace] = cachedMetrics{
-					metrics:    metrics,
-					lastScrape: scrapeStart,
-				}
-				server.cacheMtx.Unlock()
-			}
-		}
 	}
 
 	return namespaceErrors
+}
+
+// Turn the MetricMap column mapping into a prometheus descriptor mapping.
+func makeDescMap(serverLabels prometheus.Labels, metricMaps map[string]intermediateMetricMap) map[string]MetricMapNamespace {
+	var metricMap = make(map[string]MetricMapNamespace)
+
+	for namespace, intermediateMappings := range metricMaps {
+		thisMap := make(map[string]MetricMap)
+
+		// Get the constant labels
+		var variableLabels []string
+		for columnName, columnMapping := range intermediateMappings.columnMappings {
+			if columnMapping.usage == LABEL {
+				variableLabels = append(variableLabels, columnName)
+			}
+		}
+
+		for columnName, columnMapping := range intermediateMappings.columnMappings {
+
+			// Determine how to convert the column based on its usage.
+			// nolint: dupl
+			switch columnMapping.usage {
+			case DISCARD, LABEL:
+				thisMap[columnName] = MetricMap{
+					discard: true,
+					conversion: func(_ interface{}) (float64, bool) {
+						return math.NaN(), true
+					},
+				}
+			case COUNTER:
+				thisMap[columnName] = MetricMap{
+					vtype: prometheus.CounterValue,
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, variableLabels, serverLabels),
+					conversion: func(in interface{}) (float64, bool) {
+						return dbToFloat64(in)
+					},
+				}
+			case GAUGE:
+				thisMap[columnName] = MetricMap{
+					vtype: prometheus.GaugeValue,
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, variableLabels, serverLabels),
+					conversion: func(in interface{}) (float64, bool) {
+						return dbToFloat64(in)
+					},
+				}
+			case HISTOGRAM:
+				thisMap[columnName] = MetricMap{
+					histogram: true,
+					vtype:     prometheus.UntypedValue,
+					desc:      prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, variableLabels, serverLabels),
+					conversion: func(in interface{}) (float64, bool) {
+						return dbToFloat64(in)
+					},
+				}
+				thisMap[columnName+"_bucket"] = MetricMap{
+					histogram: true,
+					discard:   true,
+				}
+				thisMap[columnName+"_sum"] = MetricMap{
+					histogram: true,
+					discard:   true,
+				}
+				thisMap[columnName+"_count"] = MetricMap{
+					histogram: true,
+					discard:   true,
+				}
+			case MAPPEDMETRIC:
+				thisMap[columnName] = MetricMap{
+					vtype: prometheus.GaugeValue,
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, variableLabels, serverLabels),
+					conversion: func(in interface{}) (float64, bool) {
+						text, ok := in.(string)
+						if !ok {
+							return math.NaN(), false
+						}
+
+						val, ok := columnMapping.mapping[text]
+						if !ok {
+							return math.NaN(), false
+						}
+						return val, true
+					},
+				}
+			case DURATION:
+				thisMap[columnName] = MetricMap{
+					vtype: prometheus.GaugeValue,
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s_milliseconds", namespace, columnName), columnMapping.description, variableLabels, serverLabels),
+					conversion: func(in interface{}) (float64, bool) {
+						var durationString string
+						switch t := in.(type) {
+						case []byte:
+							durationString = string(t)
+						case string:
+							durationString = t
+						default:
+							level.Error(logger).Log("msg", "Duration conversion metric was not a string")
+							return math.NaN(), false
+						}
+
+						if durationString == "-1" {
+							return math.NaN(), false
+						}
+
+						d, err := time.ParseDuration(durationString)
+						if err != nil {
+							level.Error(logger).Log("msg", "Failed converting result to metric", "column", columnName, "in", in, "err", err)
+							return math.NaN(), false
+						}
+						return float64(d / time.Millisecond), true
+					},
+				}
+			}
+		}
+
+		metricMap[namespace] = MetricMapNamespace{variableLabels, thisMap}
+	}
+
+	return metricMap
 }

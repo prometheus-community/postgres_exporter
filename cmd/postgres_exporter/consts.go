@@ -1,0 +1,18 @@
+package main
+
+const (
+	// DISCARD ignores a column
+	DISCARD ColumnUsage = iota
+	// LABEL identifies a column as a label
+	LABEL ColumnUsage = iota
+	// COUNTER identifies a column as a counter
+	COUNTER ColumnUsage = iota
+	// GAUGE identifies a column as a gauge
+	GAUGE ColumnUsage = iota
+	// MAPPEDMETRIC identifies a column as a mapping of text values
+	MAPPEDMETRIC ColumnUsage = iota
+	// DURATION identifies a column as a text duration (and converted to milliseconds)
+	DURATION ColumnUsage = iota
+	// HISTOGRAM identifies a column as a histogram
+	HISTOGRAM ColumnUsage = iota
+)

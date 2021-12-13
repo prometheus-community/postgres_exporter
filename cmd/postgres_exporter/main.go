@@ -30,19 +30,12 @@ import (
 )
 
 var (
-	listenAddress          = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").Envar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
-	webConfig              = webflag.AddFlags(kingpin.CommandLine)
-	metricPath             = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").Envar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
-	disableDefaultMetrics  = kingpin.Flag("disable-default-metrics", "Do not include default metrics.").Default("false").Envar("PG_EXPORTER_DISABLE_DEFAULT_METRICS").Bool()
-	disableSettingsMetrics = kingpin.Flag("disable-settings-metrics", "Do not include pg_settings metrics.").Default("false").Envar("PG_EXPORTER_DISABLE_SETTINGS_METRICS").Bool()
-	autoDiscoverDatabases  = kingpin.Flag("auto-discover-databases", "Whether to discover the databases on a server dynamically.").Default("false").Envar("PG_EXPORTER_AUTO_DISCOVER_DATABASES").Bool()
-	queriesPath            = kingpin.Flag("extend.query-path", "Path to custom queries to run.").Default("").Envar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
-	onlyDumpMaps           = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
-	constantLabelsList     = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,).").Default("").Envar("PG_EXPORTER_CONSTANT_LABELS").String()
-	excludeDatabases       = kingpin.Flag("exclude-databases", "A list of databases to remove when autoDiscoverDatabases is enabled").Default("").Envar("PG_EXPORTER_EXCLUDE_DATABASES").String()
-	includeDatabases       = kingpin.Flag("include-databases", "A list of databases to include when autoDiscoverDatabases is enabled").Default("").Envar("PG_EXPORTER_INCLUDE_DATABASES").String()
-	metricPrefix           = kingpin.Flag("metric-prefix", "A metric prefix can be used to have non-default (not \"pg\") prefixes for each of the metrics").Default("pg").Envar("PG_EXPORTER_METRIC_PREFIX").String()
-	logger                 = log.NewNopLogger()
+	listenAddress = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").Envar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
+	webConfig     = webflag.AddFlags(kingpin.CommandLine)
+	onlyDumpMaps  = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
+	iamRoleArn    = kingpin.Flag("iam-role-arn", "AWS IAM role to assume and query the aurora serverless status").Default("").Envar("PG_IAM_ROLE_ARN").String()
+	tenantID      = kingpin.Flag("tenant-id", "Tenant ID").Default("").Envar("PG_TENANT_ID").String()
+	logger        = log.NewNopLogger()
 )
 
 // Metric name parts.
@@ -74,7 +67,7 @@ func main() {
 	<head><title>Postgres exporter</title></head>
 	<body>
 	<h1>Postgres exporter</h1>
-	<p><a href='` + *metricPath + `'>Metrics</a></p>
+	<p><a href='/metrics'>Metrics</a></p>
 	</body>
 	</html>
 	`)
@@ -84,37 +77,17 @@ func main() {
 		return
 	}
 
-	dsn, err := getDataSources()
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed reading data sources", "err", err.Error())
-		os.Exit(1)
-	}
-
-	if len(dsn) == 0 {
-		level.Error(logger).Log("msg", "Couldn't find environment variables describing the datasource to use")
-		os.Exit(1)
-	}
-
 	opts := []ExporterOpt{
-		DisableDefaultMetrics(*disableDefaultMetrics),
-		DisableSettingsMetrics(*disableSettingsMetrics),
-		AutoDiscoverDatabases(*autoDiscoverDatabases),
-		WithUserQueriesPath(*queriesPath),
-		WithConstantLabels(*constantLabelsList),
-		ExcludeDatabases(*excludeDatabases),
-		IncludeDatabases(*includeDatabases),
+		IamRoleArn(*iamRoleArn),
+		TenantID(*tenantID),
 	}
 
-	exporter := NewExporter(dsn, opts...)
-	defer func() {
-		exporter.servers.Close()
-	}()
-
+	exporter := NewExporter(os.Getenv("DATA_SOURCE_NAME"), opts...)
 	prometheus.MustRegister(version.NewCollector(exporterName))
 
 	prometheus.MustRegister(exporter)
 
-	http.Handle(*metricPath, promhttp.Handler())
+	http.Handle("/metrics", promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=UTF-8") // nolint: errcheck
 		w.Write(landingPage)                                       // nolint: errcheck
