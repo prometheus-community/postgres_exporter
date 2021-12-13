@@ -55,6 +55,7 @@ var (
 	excludeDatabases              = kingpin.Flag("exclude-databases", "A list of databases to remove when autoDiscoverDatabases is enabled").Default("").Envar("PG_EXPORTER_EXCLUDE_DATABASES").String()
 	onlyDumpMaps                  = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
 	constantLabelsList            = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,).").Default("").Envar("PG_EXPORTER_CONSTANT_LABELS").String()
+	connectionRetries             = kingpin.Flag("connection-retries", "Number of retries when connecting to the database.").Default("1").Envar("PG_EXPORTER_CONNECTION_RETRIES").Int()
 	collectCustomQueryLr          = kingpin.Flag("collect.custom_query.lr", "Enable custom queries with low resolution directory.").Default("false").Envar("PG_EXPORTER_EXTEND_QUERY_LR").Bool()
 	collectCustomQueryMr          = kingpin.Flag("collect.custom_query.mr", "Enable custom queries with medium resolution directory.").Default("false").Envar("PG_EXPORTER_EXTEND_QUERY_MR").Bool()
 	collectCustomQueryHr          = kingpin.Flag("collect.custom_query.hr", "Enable custom queries with high resolution directory.").Default("false").Envar("PG_EXPORTER_EXTEND_QUERY_HR").Bool()
@@ -137,8 +138,10 @@ type UserQuery struct {
 type UserQueries map[string]UserQuery
 
 // Regex used to get the "short-version" from the postgres version field.
-var versionRegex = regexp.MustCompile(`^\w+ ((\d+)(\.\d+)?(\.\d+)?)`)
-var lowestSupportedVersion = semver.MustParse("9.1.0")
+var (
+	versionRegex           = regexp.MustCompile(`^\w+ ((\d+)(\.\d+)?(\.\d+)?)`)
+	lowestSupportedVersion = semver.MustParse("9.1.0")
+)
 
 // Parses the version of postgres into the short version string we can use to
 // match behaviors.
@@ -604,7 +607,7 @@ func addQueries(content []byte, pgVersion semver.Version, server *Server) error 
 
 // Turn the MetricMap column mapping into a prometheus descriptor mapping.
 func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metricMaps map[string]intermediateMetricMap) map[string]MetricMapNamespace {
-	var metricMap = make(map[string]MetricMapNamespace)
+	metricMap := make(map[string]MetricMapNamespace)
 
 	for namespace, intermediateMappings := range metricMaps {
 		thisMap := make(map[string]MetricMap)
@@ -990,11 +993,12 @@ func (s *Servers) GetServer(dsn string) (*Server, error) {
 	var err error
 	var ok bool
 	errCount := 0 // start at zero because we increment before doing work
-	retries := 3
+
 	var server *Server
+
 	for {
-		if errCount++; errCount > retries {
-			return nil, err
+		if errCount++; errCount > *connectionRetries {
+			return nil, fmt.Errorf("%q: too many connection retries", err)
 		}
 		s.m.Lock()
 		server, ok = s.servers[dsn]
@@ -1003,6 +1007,7 @@ func (s *Servers) GetServer(dsn string) (*Server, error) {
 			server, err = NewServer(dsn, s.opts...)
 			if err != nil {
 				time.Sleep(time.Duration(errCount) * time.Second)
+
 				continue
 			}
 			s.m.Lock()
@@ -1015,8 +1020,10 @@ func (s *Servers) GetServer(dsn string) (*Server, error) {
 			delete(s.servers, dsn)
 			s.m.Unlock()
 			time.Sleep(time.Duration(errCount) * time.Second)
+
 			continue
 		}
+
 		break
 	}
 	return server, nil
@@ -1305,13 +1312,13 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 	}
 
 	// Make a lookup map for the column indices
-	var columnIdx = make(map[string]int, len(columnNames))
+	columnIdx := make(map[string]int, len(columnNames))
 	for i, n := range columnNames {
 		columnIdx[n] = i
 	}
 
-	var columnData = make([]interface{}, len(columnNames))
-	var scanArgs = make([]interface{}, len(columnNames))
+	columnData := make([]interface{}, len(columnNames))
+	scanArgs := make([]interface{}, len(columnNames))
 	for i := range columnData {
 		scanArgs[i] = &columnData[i]
 	}
@@ -1672,7 +1679,6 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 
 func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 	server, err := e.servers.GetServer(dsn)
-
 	if err != nil {
 		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), err.Error())}
 	}
@@ -1697,7 +1703,7 @@ func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 // reading secrets from files wins over secrets in environment variables
 // DATA_SOURCE_NAME > DATA_SOURCE_{USER|PASS}_FILE > DATA_SOURCE_{USER|PASS}
 func getDataSources() []string {
-	var dsn = os.Getenv("DATA_SOURCE_NAME")
+	dsn := os.Getenv("DATA_SOURCE_NAME")
 	if len(dsn) == 0 {
 		var user string
 		var pass string
