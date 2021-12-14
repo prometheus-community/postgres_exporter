@@ -14,14 +14,12 @@
 package main
 
 import (
-	"database/sql"
-	"errors"
 	"fmt"
 	"log"
-	"regexp"
 	"time"
 
-	"github.com/blang/semver"
+	"github.com/aws/aws-sdk-go/service/cloudwatch"
+	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -54,21 +52,6 @@ func TenantID(s string) ExporterOpt {
 	return func(e *Exporter) {
 		e.tenantID = s
 	}
-}
-
-// Regex used to get the "short-version" from the postgres version field.
-var versionRegex = regexp.MustCompile(`^\w+ ((\d+)(\.\d+)?(\.\d+)?)`)
-var lowestSupportedVersion = semver.MustParse("9.1.0")
-
-// Parses the version of postgres into the short version string we can use to
-// match behaviors.
-func parseVersion(versionString string) (semver.Version, error) {
-	submatches := versionRegex.FindStringSubmatch(versionString)
-	if len(submatches) > 1 {
-		return semver.ParseTolerant(submatches[1])
-	}
-	return semver.Version{},
-		errors.New(fmt.Sprintln("Could not find a postgres version in string:", versionString))
 }
 
 // NewExporter returns a new PostgreSQL exporter for the provided DSN.
@@ -145,30 +128,24 @@ func newDesc(subsystem, name, help string, labels prometheus.Labels) *prometheus
 	)
 }
 
-func checkPostgresVersion(db *sql.DB, server string) (semver.Version, string, error) {
-	level.Debug(logger).Log("msg", "Querying PostgreSQL version", "server", server)
-	versionRow := db.QueryRow("SELECT version();")
-	var versionString string
-	err := versionRow.Scan(&versionString)
-	if err != nil {
-		return semver.Version{}, "", fmt.Errorf("Error scanning version string on %q: %v", server, err)
-	}
-	semanticVersion, err := parseVersion(versionString)
-	if err != nil {
-		return semver.Version{}, "", fmt.Errorf("Error parsing version string on %q: %v", server, err)
-	}
-
-	return semanticVersion, versionString, nil
-}
-
 func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
-	rdsCapacity, err := e.rdsCapacity()
+	sess, err := NewAWSSession(e.iamRoleArn)
 	if err != nil {
-		log.Panicf("error check rds status: %w", err)
+		log.Panicf("error to create the aws session: %v", err)
 	}
-	rdsConnections, err := e.rdsConnections()
+
+	rdsClient := rds.New(sess)
+
+	rdsCapacity, err := RdsCurrentCapacity(e.tenantID, rdsClient)
 	if err != nil {
-		log.Panicf("error check rds status: %w", err)
+		log.Panicf("error check rds status: %v", err)
+	}
+
+	cloudWatchClient := cloudwatch.New(sess)
+
+	rdsConnections, err := RdsCurrentConnections(e.tenantID, cloudWatchClient)
+	if err != nil {
+		log.Panicf("error check rds status: %v", err)
 	}
 
 	level.Info(logger).Log("msg", fmt.Sprintf("rdsCapacity: %d - rdsConnections: %d", rdsCapacity, rdsConnections))
@@ -188,14 +165,8 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 
 	server, err := NewServer(e.dsn)
 	if err != nil {
-		log.Panicf("error to open database connection: %w", err)
+		log.Panicf("error to open database connection: %v", err)
 	}
-	semanticVersion, versionString, err := checkPostgresVersion(server.db, server.String())
-	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
-		"Version string as reported by postgres", []string{"version", "short_version"}, server.labels)
-
-	ch <- prometheus.MustNewConstMetric(versionDesc,
-		prometheus.UntypedValue, 1, versionString, semanticVersion.String())
 
 	defer func(begun time.Time) {
 		e.duration.Set(time.Since(begun).Seconds())

@@ -38,21 +38,6 @@ var (
 	logger        = log.NewNopLogger()
 )
 
-// Metric name parts.
-const (
-	// Namespace for all metrics.
-	namespace = "pg"
-	// Subsystems.
-	exporter = "exporter"
-	// The name of the exporter.
-	exporterName = "postgres_exporter"
-	// Metric label used for static string data thats handy to send to Prometheus
-	// e.g. version
-	staticLabelName = "static"
-	// Metric label used for server identification.
-	serverLabelName = "server"
-)
-
 func main() {
 	kingpin.Version(version.Print(exporterName))
 	promlogConfig := &promlog.Config{}

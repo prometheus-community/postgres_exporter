@@ -44,7 +44,7 @@ type MetricMap struct {
 
 // Query within a namespace mapping and emit metrics. Returns fatal errors if
 // the scrape fails, and a slice of errors if they were non-fatal.
-func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNamespace) ([]prometheus.Metric, []error, error) {
+func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNamespace, serverLabels prometheus.Labels) ([]prometheus.Metric, []error, error) {
 	// Check for a query override for this namespace
 	query, found := queries[namespace]
 
@@ -63,9 +63,9 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 	var rows *sql.Rows
 	var err error
 
-	rows, err = server.db.Query(query)
+	rows, err = server.Query(query)
 	if err != nil {
-		return []prometheus.Metric{}, []error{}, fmt.Errorf("Error running query on database %q: %s %v", server, namespace, err)
+		return []prometheus.Metric{}, []error{}, fmt.Errorf("Error running query: %s %v", namespace, err)
 	}
 	defer rows.Close() // nolint: errcheck
 
@@ -179,7 +179,7 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 			} else {
 				// Unknown metric. Report as untyped if scan to float64 works, else note an error too.
 				metricLabel := fmt.Sprintf("%s_%s", namespace, columnName)
-				desc := prometheus.NewDesc(metricLabel, fmt.Sprintf("Unknown metric from %s", namespace), mapping.labels, server.labels)
+				desc := prometheus.NewDesc(metricLabel, fmt.Sprintf("Unknown metric from %s", namespace), mapping.labels, serverLabels)
 
 				// Its not an error to fail here, since the values are
 				// unexpected anyway.
@@ -198,14 +198,14 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 
 // Iterate through all the namespace mappings in the exporter and run their
 // queries.
-func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[string]error {
+func QueryNamespaceMappings(ch chan<- prometheus.Metric, server *Server, serverLabels prometheus.Labels) map[string]error {
 	// Return a map of namespace -> errors
 	namespaceErrors := make(map[string]error)
 
-	for namespace, mapping := range makeDescMap(server.labels, metricMaps) {
+	for namespace, mapping := range makeDescMap(serverLabels, metricMaps) {
 		level.Debug(logger).Log("msg", "Querying namespace", "namespace", namespace)
 
-		metrics, nonFatalErrors, err := queryNamespaceMapping(server, namespace, mapping)
+		metrics, nonFatalErrors, err := queryNamespaceMapping(server, namespace, mapping, serverLabels)
 		// Serious error - a namespace disappeared
 		if err != nil {
 			namespaceErrors[namespace] = err
@@ -223,6 +223,13 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 			ch <- metric
 		}
 	}
+
+	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
+		"Version string as reported by postgres", []string{"version", "short_version"}, serverLabels)
+
+	// Emit the metric info in the channel
+	ch <- prometheus.MustNewConstMetric(versionDesc,
+		prometheus.UntypedValue, 1, server.versionString, server.semanticVersion.String())
 
 	return namespaceErrors
 }

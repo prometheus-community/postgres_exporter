@@ -296,3 +296,9 @@ $(1)_precheck:
 		exit 1; \
 	fi
 endef
+
+.PHONY: generate
+generate: deps
+	$(call print-target)
+	GO111MODULE=on go generate ./...
+

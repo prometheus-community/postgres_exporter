@@ -15,4 +15,16 @@ const (
 	DURATION ColumnUsage = iota
 	// HISTOGRAM identifies a column as a histogram
 	HISTOGRAM ColumnUsage = iota
+
+	// Namespace for all metrics.
+	namespace = "pg"
+	// Subsystems.
+	exporter = "exporter"
+	// The name of the exporter.
+	exporterName = "postgres_exporter"
+	// Metric label used for static string data thats handy to send to Prometheus
+	// e.g. version
+	staticLabelName = "static"
+	// Metric label used for server identification.
+	serverLabelName = "server"
 )

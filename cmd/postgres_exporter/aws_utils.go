@@ -1,44 +1,42 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	stscredsv2 "github.com/aws/aws-sdk-go-v2/credentials/stscreds"
-	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
-	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
-	"github.com/aws/aws-sdk-go-v2/service/rds"
-	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/cloudwatch"
+	"github.com/aws/aws-sdk-go/service/cloudwatch/cloudwatchiface"
+	"github.com/aws/aws-sdk-go/service/rds"
+	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 )
 
-func (e *Exporter) rdsCapacity() (int32, error) {
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		return 0, fmt.Errorf("error load default config: %w", err)
-	}
+func NewAWSSession(iamRoleArn string) (*session.Session, error) {
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
 
-	stsSvc := sts.NewFromConfig(cfg)
-
-	cfg2, err := config.LoadDefaultConfig(
-		context.Background(),
-		config.WithCredentialsProvider(aws.NewCredentialsCache(
-			stscredsv2.NewAssumeRoleProvider(
-				stsSvc,
-				e.iamRoleArn,
-			)),
+	sessRole, err := session.NewSession(&aws.Config{
+		Credentials: stscreds.NewCredentials(
+			sess,
+			iamRoleArn,
+			func(provider *stscreds.AssumeRoleProvider) {
+				provider.RoleSessionName = "postgres-exporter"
+			},
 		),
-	)
+		Region: sess.Config.Region,
+	})
 	if err != nil {
-		return 0, fmt.Errorf("error assume role: %w", err)
+		return nil, err
 	}
+	return sessRole, nil
+}
 
-	rdsClient := rds.NewFromConfig(cfg2)
-
-	output, err := rdsClient.DescribeDBClusters(context.TODO(), &rds.DescribeDBClustersInput{
-		DBClusterIdentifier: aws.String(fmt.Sprintf("tenant-%s", e.tenantID)),
+func RdsCurrentCapacity(tenantID string, rdsClient rdsiface.RDSAPI) (int64, error) {
+	output, err := rdsClient.DescribeDBClusters(&rds.DescribeDBClustersInput{
+		DBClusterIdentifier: aws.String(getTenant(tenantID)),
 	})
 	if err != nil {
 		return 0, fmt.Errorf("error describe cluster: %w", err)
@@ -47,41 +45,19 @@ func (e *Exporter) rdsCapacity() (int32, error) {
 	return *output.DBClusters[0].Capacity, nil
 }
 
-func (e *Exporter) rdsConnections() (int64, error) {
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		return 0, fmt.Errorf("error load default config: %w", err)
-	}
-
-	stsSvc := sts.NewFromConfig(cfg)
-
-	cfg2, err := config.LoadDefaultConfig(
-		context.Background(),
-		config.WithCredentialsProvider(aws.NewCredentialsCache(
-			stscredsv2.NewAssumeRoleProvider(
-				stsSvc,
-				e.iamRoleArn,
-			)),
-		),
-	)
-	if err != nil {
-		return 0, fmt.Errorf("error assume role: %w", err)
-	}
-
-	cloudwatchClient := cloudwatch.NewFromConfig(cfg2)
-
-	output, err := cloudwatchClient.GetMetricStatistics(context.TODO(), &cloudwatch.GetMetricStatisticsInput{
+func RdsCurrentConnections(tenantID string, cloudwatchClient cloudwatchiface.CloudWatchAPI) (int64, error) {
+	output, err := cloudwatchClient.GetMetricStatistics(&cloudwatch.GetMetricStatisticsInput{
 		StartTime:  aws.Time(time.Now().UTC().Add(time.Second * -60)),
 		EndTime:    aws.Time(time.Now().UTC()),
 		MetricName: aws.String("DatabaseConnections"),
 		Namespace:  aws.String("AWS/RDS"),
-		Period:     aws.Int32(60),
-		Dimensions: []types.Dimension{{
+		Period:     aws.Int64(60),
+		Dimensions: []*cloudwatch.Dimension{{
 			Name:  aws.String("DBClusterIdentifier"),
-			Value: aws.String(fmt.Sprintf("tenant-%s", e.tenantID)),
+			Value: aws.String(getTenant(tenantID)),
 		}},
-		Statistics: []types.Statistic{"Maximum"},
-		Unit:       types.StandardUnitCount,
+		Statistics: []*string{aws.String(cloudwatch.StatisticMaximum)},
+		Unit:       aws.String(cloudwatch.StandardUnitCount),
 	})
 
 	if err != nil {
@@ -92,4 +68,8 @@ func (e *Exporter) rdsConnections() (int64, error) {
 		return 0, nil
 	}
 	return int64(*output.Datapoints[0].Maximum), nil
+}
+
+func getTenant(tenantID string) string {
+	return fmt.Sprintf("tenant-%s", tenantID)
 }
