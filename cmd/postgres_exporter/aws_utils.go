@@ -1,4 +1,4 @@
-package main
+package postgres_exporter
 
 import (
 	"fmt"

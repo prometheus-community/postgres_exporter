@@ -1,4 +1,4 @@
-package main_test
+package postgres_exporter_test
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	. "github.com/golang/mock/mockgen/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/thiagosantosleite/postgres_exporter/cmd/test/mocks"
+	"github.com/thiagosantosleite/postgres_exporter/cmd/tests/mocks"
 )
 
 var errDummy = fmt.Errorf("dummyError")

@@ -1,8 +1,9 @@
-package main_test
+package postgres_exporter_test
 
 import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
+
 	//. "github.com/onsi/gomega"
 	. "github.com/golang/mock/mockgen/model"
 )

@@ -1,4 +1,4 @@
-package main
+package postgres_exporter
 
 const (
 	// DISCARD ignores a column

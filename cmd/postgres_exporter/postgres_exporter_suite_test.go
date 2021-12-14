@@ -1,4 +1,4 @@
-package main_test
+package postgres_exporter_test
 
 import (
 	"testing"
