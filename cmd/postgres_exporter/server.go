@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"regexp"
 	"sync"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/go-kit/kit/log/level"
@@ -28,86 +29,100 @@ import (
 // Server describes a connection to Postgres.
 // Also it contains metrics map and query overrides.
 type Server struct {
-	db              *sql.DB
-	runonserver     string
-	dsn             string
-	semanticVersion semver.Version
-	versionString   string
+	Db  *sql.DB
+	Dsn string
 
-	// Last version used to calculate metric map. If mismatch on scrape,
-	// then maps are recalculated.
-	lastMapVersion semver.Version
-	// Currently active metric map
-	metricMap map[string]MetricMapNamespace
 	// Currently active query overrides
 	mappingMtx sync.RWMutex
+
+	NsMap       NamespaceMetricsAPI
+	SettMetrics SettingsMetricsAPI
 }
+
+// compile-time check that type implements interface.
+var _ ServerAPI = (*Server)(nil)
 
 // ServerOpt configures a server.
 type ServerOpt func(*Server)
 
-// NewServer establishes a new connection using DSN.
-func NewServer(dsn string) (*Server, error) {
+// Open establishes a new connection using DSN.
+func (s *Server) Open() error {
 
-	db, err := sql.Open("postgres", dsn)
+	db, err := sql.Open("postgres", s.Dsn)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	s.Db = db
+
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 
 	level.Info(logger).Log("msg", "Established new database connection")
 
-	// Get postgresql version
-	semanticVersion, versionString, err := checkPostgresVersion(db)
-	if err != nil {
-		level.Info(logger).Log("err", err)
-	}
-
-	s := &Server{
-		db:              db,
-		dsn:             dsn,
-		semanticVersion: semanticVersion,
-		versionString:   versionString,
-	}
-
-	return s, nil
+	return nil
 }
 
 // Close disconnects from Postgres.
 func (s *Server) Close() error {
-	return s.db.Close()
+	return s.Db.Close()
 }
 
 func (s *Server) Query(query string) (*sql.Rows, error) {
-	return s.db.Query(query)
+	return s.Db.Query(query)
 }
 
 // Scrape loads metrics.
-func (s *Server) Scrape(ch chan<- prometheus.Metric) error {
-	fingerprint, err := parseFingerprint(s.dsn)
+func (s *Server) Scrape(ch chan<- prometheus.Metric, totalScrapes, rdsDatabaseConnections, rdsCurrentCapacity float64) error {
+	// track scrap duration and send it in the channel
+	defer func(begun time.Time) {
+		duration := time.Since(begun).Seconds()
+
+		s.NsMap.SetInternalMetrics(ch, duration, totalScrapes, rdsDatabaseConnections, rdsCurrentCapacity)
+	}(time.Now())
+
+	fingerprint, err := ParseFingerprint(s.Dsn)
 	if err != nil {
 		return err
 	}
 
 	serverLabels := prometheus.Labels{
-		serverLabelName: fingerprint,
+		ServerLabelName: fingerprint,
 	}
 
 	s.mappingMtx.RLock()
-
 	defer s.mappingMtx.RUnlock()
 
-	if err = querySettings(ch, s, serverLabels); err != nil {
+	if err = s.SettMetrics.QuerySettings(ch, s.Db, serverLabels); err != nil {
 		err = fmt.Errorf("error retrieving settings: %s", err)
 	}
 
-	errMap := QueryNamespaceMappings(ch, s, serverLabels)
+	semanticVersion, versionString, err := s.checkPostgresVersion()
+	if err != nil {
+		level.Info(logger).Log("err", err)
+	}
+
+	errMap := s.NsMap.QueryNamespaceMappings(ch, s.Db, serverLabels, Queries(), MetricMaps(), semanticVersion, versionString)
 	if len(errMap) > 0 {
 		err = fmt.Errorf("queryNamespaceMappings returned %d errors", len(errMap))
 	}
 
 	return err
+}
+
+func (s *Server) checkPostgresVersion() (semver.Version, string, error) {
+	level.Debug(logger).Log("msg", "Querying PostgreSQL version")
+	versionRow := s.Db.QueryRow("SELECT version();")
+	var versionString string
+	err := versionRow.Scan(&versionString)
+	if err != nil {
+		return semver.Version{}, "", fmt.Errorf("Error scanning version string: %v", err)
+	}
+	semanticVersion, err := parseVersion(versionString)
+	if err != nil {
+		return semver.Version{}, "", fmt.Errorf("Error parsing version string: %v", err)
+	}
+
+	return semanticVersion, versionString, nil
 }
 
 // Regex used to get the "short-version" from the postgres version field.
@@ -123,20 +138,4 @@ func parseVersion(versionString string) (semver.Version, error) {
 	}
 	return semver.Version{},
 		errors.New(fmt.Sprintln("Could not find a postgres version in string:", versionString))
-}
-
-func checkPostgresVersion(db *sql.DB) (semver.Version, string, error) {
-	level.Debug(logger).Log("msg", "Querying PostgreSQL version")
-	versionRow := db.QueryRow("SELECT version();")
-	var versionString string
-	err := versionRow.Scan(&versionString)
-	if err != nil {
-		return semver.Version{}, "", fmt.Errorf("Error scanning version string: %v", err)
-	}
-	semanticVersion, err := parseVersion(versionString)
-	if err != nil {
-		return semver.Version{}, "", fmt.Errorf("Error parsing version string: %v", err)
-	}
-
-	return semanticVersion, versionString, nil
 }

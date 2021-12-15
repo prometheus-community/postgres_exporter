@@ -14,6 +14,7 @@
 package postgres_exporter
 
 import (
+	"database/sql"
 	"fmt"
 	"math"
 	"strconv"
@@ -23,9 +24,14 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+type SettingsMetrics struct{}
+
+// compile-time check that type implements interface.
+var _ SettingsMetricsAPI = (*SettingsMetrics)(nil)
+
 // Query the pg_settings view containing runtime variables
-func querySettings(ch chan<- prometheus.Metric, server *Server, serverLabels prometheus.Labels) error {
-	level.Debug(logger).Log("msg", "Querying pg_setting view", "server", server)
+func (s *SettingsMetrics) QuerySettings(ch chan<- prometheus.Metric, db *sql.DB, serverLabels prometheus.Labels) error {
+	level.Debug(logger).Log("msg", "Querying pg_setting view")
 
 	// pg_settings docs: https://www.postgresql.org/docs/current/static/view-pg-settings.html
 	//
@@ -33,9 +39,10 @@ func querySettings(ch chan<- prometheus.Metric, server *Server, serverLabels pro
 	// types in normaliseUnit() below
 	query := "SELECT name, setting, COALESCE(unit, ''), short_desc, vartype FROM pg_settings WHERE vartype IN ('bool', 'integer', 'real');"
 
-	rows, err := server.Query(query)
+	rows, err := db.Query(query)
 	if err != nil {
-		return fmt.Errorf("Error running query: %s %v", namespace, err)
+		fmt.Println(err)
+		return fmt.Errorf("Error running query: %s %v", Namespace, err)
 	}
 	defer rows.Close() // nolint: errcheck
 
@@ -43,7 +50,7 @@ func querySettings(ch chan<- prometheus.Metric, server *Server, serverLabels pro
 		s := &pgSetting{}
 		err = rows.Scan(&s.name, &s.setting, &s.unit, &s.shortDesc, &s.vartype)
 		if err != nil {
-			return fmt.Errorf("Error retrieving rows from namespace %v: %v", namespace, err)
+			return fmt.Errorf("Error retrieving rows from namespace %v: %v", Namespace, err)
 		}
 
 		ch <- s.metric(serverLabels)

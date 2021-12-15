@@ -17,14 +17,14 @@ const (
 	HISTOGRAM ColumnUsage = iota
 
 	// Namespace for all metrics.
-	namespace = "pg"
+	Namespace = "pg"
 	// Subsystems.
 	exporter = "exporter"
 	// The name of the exporter.
-	exporterName = "postgres_exporter"
+	ExporterName = "postgres_exporter"
 	// Metric label used for static string data thats handy to send to Prometheus
 	// e.g. version
-	staticLabelName = "static"
+	StaticLabelName = "static"
 	// Metric label used for server identification.
-	serverLabelName = "server"
+	ServerLabelName = "server"
 )

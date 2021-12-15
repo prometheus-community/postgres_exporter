@@ -21,10 +21,17 @@ import (
 	"math"
 	"time"
 
+	"github.com/blang/semver"
 	"github.com/go-kit/kit/log/level"
 	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 )
+
+type NamespaceMappings struct {
+}
+
+// compile-time check that type implements interface.
+var _ NamespaceMetricsAPI = (*NamespaceMappings)(nil)
 
 // MetricMapNamespace groups metric maps under a shared set of labels.
 type MetricMapNamespace struct {
@@ -44,9 +51,9 @@ type MetricMap struct {
 
 // Query within a namespace mapping and emit metrics. Returns fatal errors if
 // the scrape fails, and a slice of errors if they were non-fatal.
-func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNamespace, serverLabels prometheus.Labels) ([]prometheus.Metric, []error, error) {
+func (n *NamespaceMappings) queryNamespaceMapping(db *sql.DB, namespace string, mapping MetricMapNamespace, serverLabels prometheus.Labels, queryList map[string]string) ([]prometheus.Metric, []error, error) {
 	// Check for a query override for this namespace
-	query, found := queries[namespace]
+	query, found := queryList[namespace]
 
 	// Was this query disabled (i.e. nothing sensible can be queried on cu
 	// version of PostgreSQL?
@@ -63,11 +70,10 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 	var rows *sql.Rows
 	var err error
 
-	rows, err = server.Query(query)
+	rows, err = db.Query(query)
 	if err != nil {
 		return []prometheus.Metric{}, []error{}, fmt.Errorf("Error running query: %s %v", namespace, err)
 	}
-	defer rows.Close() // nolint: errcheck
 
 	var columnNames []string
 	columnNames, err = rows.Columns()
@@ -100,7 +106,7 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 		// Get the label values for this row.
 		labels := make([]string, len(mapping.labels))
 		for idx, label := range mapping.labels {
-			labels[idx], _ = dbToString(columnData[columnIdx[label]])
+			labels[idx], _ = DbToString(columnData[columnIdx[label]])
 		}
 
 		// Loop over column names, and match to scan data. Unknown columns
@@ -113,7 +119,6 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 				if metricMapping.discard {
 					continue
 				}
-
 				if metricMapping.histogram {
 					var keys []float64
 					err = pq.Array(&keys).Scan(columnData[idx])
@@ -145,7 +150,7 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Missing column: ", namespace, columnName+"_sum")))
 						continue
 					}
-					sum, ok := dbToFloat64(columnData[idx])
+					sum, ok := DbToFloat64(columnData[idx])
 					if !ok {
 						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName+"_sum", columnData[idx])))
 						continue
@@ -156,7 +161,7 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Missing column: ", namespace, columnName+"_count")))
 						continue
 					}
-					count, ok := dbToUint64(columnData[idx])
+					count, ok := DbToUint64(columnData[idx])
 					if !ok {
 						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName+"_count", columnData[idx])))
 						continue
@@ -168,7 +173,7 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 						labels...,
 					)
 				} else {
-					value, ok := dbToFloat64(columnData[idx])
+					value, ok := DbToFloat64(columnData[idx])
 					if !ok {
 						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName, columnData[idx])))
 						continue
@@ -183,7 +188,7 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 
 				// Its not an error to fail here, since the values are
 				// unexpected anyway.
-				value, ok := dbToFloat64(columnData[idx])
+				value, ok := DbToFloat64(columnData[idx])
 				if !ok {
 					nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unparseable column type - discarding: ", namespace, columnName, err)))
 					continue
@@ -198,14 +203,18 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 
 // Iterate through all the namespace mappings in the exporter and run their
 // queries.
-func QueryNamespaceMappings(ch chan<- prometheus.Metric, server *Server, serverLabels prometheus.Labels) map[string]error {
+func (n *NamespaceMappings) QueryNamespaceMappings(ch chan<- prometheus.Metric, db *sql.DB, serverLabels prometheus.Labels, queryList map[string]string,
+	metricMaps map[string]IntermediateMetricMap,
+	semanticVersion semver.Version, versionString string) map[string]error {
+
 	// Return a map of namespace -> errors
 	namespaceErrors := make(map[string]error)
 
-	for namespace, mapping := range makeDescMap(serverLabels, metricMaps) {
+	for namespace, mapping := range n.makeDescMap(serverLabels, metricMaps) {
+
 		level.Debug(logger).Log("msg", "Querying namespace", "namespace", namespace)
 
-		metrics, nonFatalErrors, err := queryNamespaceMapping(server, namespace, mapping, serverLabels)
+		metrics, nonFatalErrors, err := n.queryNamespaceMapping(db, namespace, mapping, serverLabels, queryList)
 		// Serious error - a namespace disappeared
 		if err != nil {
 			namespaceErrors[namespace] = err
@@ -222,20 +231,21 @@ func QueryNamespaceMappings(ch chan<- prometheus.Metric, server *Server, serverL
 		for _, metric := range metrics {
 			ch <- metric
 		}
+
 	}
 
-	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
+	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", Namespace, StaticLabelName),
 		"Version string as reported by postgres", []string{"version", "short_version"}, serverLabels)
 
 	// Emit the metric info in the channel
 	ch <- prometheus.MustNewConstMetric(versionDesc,
-		prometheus.UntypedValue, 1, server.versionString, server.semanticVersion.String())
+		prometheus.UntypedValue, 1, versionString, semanticVersion.String())
 
 	return namespaceErrors
 }
 
 // Turn the MetricMap column mapping into a prometheus descriptor mapping.
-func makeDescMap(serverLabels prometheus.Labels, metricMaps map[string]intermediateMetricMap) map[string]MetricMapNamespace {
+func (n *NamespaceMappings) makeDescMap(serverLabels prometheus.Labels, metricMaps map[string]IntermediateMetricMap) map[string]MetricMapNamespace {
 	var metricMap = make(map[string]MetricMapNamespace)
 
 	for namespace, intermediateMappings := range metricMaps {
@@ -243,17 +253,17 @@ func makeDescMap(serverLabels prometheus.Labels, metricMaps map[string]intermedi
 
 		// Get the constant labels
 		var variableLabels []string
-		for columnName, columnMapping := range intermediateMappings.columnMappings {
-			if columnMapping.usage == LABEL {
+		for columnName, columnMapping := range intermediateMappings.ColumnMappings {
+			if columnMapping.Usage == LABEL {
 				variableLabels = append(variableLabels, columnName)
 			}
 		}
 
-		for columnName, columnMapping := range intermediateMappings.columnMappings {
+		for columnName, columnMapping := range intermediateMappings.ColumnMappings {
 
 			// Determine how to convert the column based on its usage.
 			// nolint: dupl
-			switch columnMapping.usage {
+			switch columnMapping.Usage {
 			case DISCARD, LABEL:
 				thisMap[columnName] = MetricMap{
 					discard: true,
@@ -264,26 +274,26 @@ func makeDescMap(serverLabels prometheus.Labels, metricMaps map[string]intermedi
 			case COUNTER:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.CounterValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, variableLabels, serverLabels),
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.Description, variableLabels, serverLabels),
 					conversion: func(in interface{}) (float64, bool) {
-						return dbToFloat64(in)
+						return DbToFloat64(in)
 					},
 				}
 			case GAUGE:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.GaugeValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, variableLabels, serverLabels),
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.Description, variableLabels, serverLabels),
 					conversion: func(in interface{}) (float64, bool) {
-						return dbToFloat64(in)
+						return DbToFloat64(in)
 					},
 				}
 			case HISTOGRAM:
 				thisMap[columnName] = MetricMap{
 					histogram: true,
 					vtype:     prometheus.UntypedValue,
-					desc:      prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, variableLabels, serverLabels),
+					desc:      prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.Description, variableLabels, serverLabels),
 					conversion: func(in interface{}) (float64, bool) {
-						return dbToFloat64(in)
+						return DbToFloat64(in)
 					},
 				}
 				thisMap[columnName+"_bucket"] = MetricMap{
@@ -301,14 +311,14 @@ func makeDescMap(serverLabels prometheus.Labels, metricMaps map[string]intermedi
 			case MAPPEDMETRIC:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.GaugeValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.description, variableLabels, serverLabels),
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, columnName), columnMapping.Description, variableLabels, serverLabels),
 					conversion: func(in interface{}) (float64, bool) {
 						text, ok := in.(string)
 						if !ok {
 							return math.NaN(), false
 						}
 
-						val, ok := columnMapping.mapping[text]
+						val, ok := columnMapping.Mapping[text]
 						if !ok {
 							return math.NaN(), false
 						}
@@ -318,7 +328,7 @@ func makeDescMap(serverLabels prometheus.Labels, metricMaps map[string]intermedi
 			case DURATION:
 				thisMap[columnName] = MetricMap{
 					vtype: prometheus.GaugeValue,
-					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s_milliseconds", namespace, columnName), columnMapping.description, variableLabels, serverLabels),
+					desc:  prometheus.NewDesc(fmt.Sprintf("%s_%s_milliseconds", namespace, columnName), columnMapping.Description, variableLabels, serverLabels),
 					conversion: func(in interface{}) (float64, bool) {
 						var durationString string
 						switch t := in.(type) {
@@ -350,4 +360,39 @@ func makeDescMap(serverLabels prometheus.Labels, metricMaps map[string]intermedi
 	}
 
 	return metricMap
+}
+
+func (n *NamespaceMappings) SetInternalMetrics(ch chan<- prometheus.Metric, duration, totalScrapes, rdsDatabaseConnections, rdsCurrentCapacity float64) {
+	durationMetric := prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: Namespace,
+		Subsystem: exporter,
+		Name:      "last_scrape_duration_seconds",
+		Help:      "Duration of the last scrape of metrics from PostgresSQL.",
+	})
+	totalScrapesMetric := prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: Namespace,
+		Subsystem: exporter,
+		Name:      "scrapes_total",
+		Help:      "Total number of times PostgresSQL was scraped for metrics.",
+	})
+	rdsCurrentCapacityMetric := prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: Namespace,
+		Name:      "rds_current_capacity",
+		Help:      "Current Aurora capacity units",
+	})
+	rdsDatabaseConnectionsMetric := prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: Namespace,
+		Name:      "rds_database_connections",
+		Help:      "Current Aurora database connections",
+	})
+
+	durationMetric.Set(duration)
+	totalScrapesMetric.Add(totalScrapes)
+	rdsCurrentCapacityMetric.Set(rdsCurrentCapacity)
+	rdsDatabaseConnectionsMetric.Set(rdsDatabaseConnections)
+
+	ch <- durationMetric
+	ch <- totalScrapesMetric
+	ch <- rdsCurrentCapacityMetric
+	ch <- rdsDatabaseConnectionsMetric
 }

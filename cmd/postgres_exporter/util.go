@@ -16,7 +16,6 @@ package postgres_exporter
 import (
 	"fmt"
 	"math"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -25,51 +24,13 @@ import (
 	"github.com/lib/pq"
 )
 
-func contains(a []string, x string) bool {
-	for _, n := range a {
-		if x == n {
-			return true
-		}
-	}
-	return false
-}
-
-// convert a string to the corresponding ColumnUsage
-func stringToColumnUsage(s string) (ColumnUsage, error) {
-	var u ColumnUsage
-	var err error
-	switch s {
-	case "DISCARD":
-		u = DISCARD
-
-	case "LABEL":
-		u = LABEL
-
-	case "COUNTER":
-		u = COUNTER
-
-	case "GAUGE":
-		u = GAUGE
-
-	case "HISTOGRAM":
-		u = HISTOGRAM
-
-	case "MAPPEDMETRIC":
-		u = MAPPEDMETRIC
-
-	case "DURATION":
-		u = DURATION
-
-	default:
-		err = fmt.Errorf("wrong ColumnUsage given : %s", s)
-	}
-
-	return u, err
+func GetTenant(tenantID string) string {
+	return fmt.Sprintf("tenant-%s", tenantID)
 }
 
 // Convert database.sql types to float64s for Prometheus consumption. Null types are mapped to NaN. string and []byte
 // types are mapped as NaN and !ok
-func dbToFloat64(t interface{}) (float64, bool) {
+func DbToFloat64(t interface{}) (float64, bool) {
 	switch v := t.(type) {
 	case int64:
 		return float64(v), true
@@ -107,7 +68,7 @@ func dbToFloat64(t interface{}) (float64, bool) {
 
 // Convert database.sql types to uint64 for Prometheus consumption. Null types are mapped to 0. string and []byte
 // types are mapped as 0 and !ok
-func dbToUint64(t interface{}) (uint64, bool) {
+func DbToUint64(t interface{}) (uint64, bool) {
 	switch v := t.(type) {
 	case uint64:
 		return v, true
@@ -146,7 +107,7 @@ func dbToUint64(t interface{}) (uint64, bool) {
 }
 
 // Convert database.sql to string for Prometheus labels. Null types are mapped to empty strings.
-func dbToString(t interface{}) (string, bool) {
+func DbToString(t interface{}) (string, bool) {
 	switch v := t.(type) {
 	case int64:
 		return fmt.Sprintf("%v", v), true
@@ -171,7 +132,7 @@ func dbToString(t interface{}) (string, bool) {
 	}
 }
 
-func parseFingerprint(url string) (string, error) {
+func ParseFingerprint(url string) (string, error) {
 	dsn, err := pq.ParseURL(url)
 	if err != nil {
 		dsn = url
@@ -205,17 +166,4 @@ func parseFingerprint(url string) (string, error) {
 	}
 
 	return fingerprint, nil
-}
-
-func loggableDSN(dsn string) string {
-	pDSN, err := url.Parse(dsn)
-	if err != nil {
-		return "could not parse DATA_SOURCE_NAME"
-	}
-	// Blank user info if not nil
-	if pDSN.User != nil {
-		pDSN.User = url.UserPassword(pDSN.User.Username(), "PASSWORD_REMOVED")
-	}
-
-	return pDSN.String()
 }

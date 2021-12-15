@@ -11,12 +11,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package postgres_exporter
+package main
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 
+	"github.com/aws/aws-sdk-go/service/cloudwatch"
+	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,6 +29,7 @@ import (
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
+	. "github.com/thiagosantosleite/postgres_exporter/cmd/postgres_exporter"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -39,7 +43,7 @@ var (
 )
 
 func main() {
-	kingpin.Version(version.Print(exporterName))
+	kingpin.Version(version.Print(ExporterName))
 	promlogConfig := &promlog.Config{}
 	flag.AddFlags(kingpin.CommandLine, promlogConfig)
 	kingpin.HelpFlag.Short('h')
@@ -58,17 +62,35 @@ func main() {
 	`)
 
 	if *onlyDumpMaps {
-		dumpMaps()
+		DumpMaps()
 		return
 	}
 
-	opts := []ExporterOpt{
-		IamRoleArn(*iamRoleArn),
-		TenantID(*tenantID),
+	sess, err := NewAWSSession(*iamRoleArn)
+	if err != nil {
+		panic(fmt.Sprintf("error to create the aws session: %v", err))
 	}
 
-	exporter := NewExporter(os.Getenv("DATA_SOURCE_NAME"), opts...)
-	prometheus.MustRegister(version.NewCollector(exporterName))
+	rdsClient := rds.New(sess)
+	cloudWatchClient := cloudwatch.New(sess)
+	rdsMetrics := AwsUtils{
+		RdsClient:        rdsClient,
+		CloudwatchClient: cloudWatchClient,
+	}
+	server := Server{
+		Dsn:         os.Getenv("DATA_SOURCE_NAME"),
+		NsMap:       &NamespaceMappings{},
+		SettMetrics: &SettingsMetrics{},
+	}
+
+	opts := []ExporterOpt{
+		TenantID(*tenantID),
+		RdsMetrics(&rdsMetrics),
+		ServerInstance(&server),
+	}
+
+	exporter := NewExporter(opts...)
+	prometheus.MustRegister(version.NewCollector(ExporterName))
 
 	prometheus.MustRegister(exporter)
 

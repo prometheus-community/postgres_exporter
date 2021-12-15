@@ -3,15 +3,14 @@ package postgres_exporter_test
 import (
 	"fmt"
 
-	. "."
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/golang/mock/gomock"
-	. "github.com/golang/mock/mockgen/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/thiagosantosleite/postgres_exporter/cmd/tests/mocks"
+	. "github.com/thiagosantosleite/postgres_exporter/cmd/postgres_exporter"
+	"github.com/thiagosantosleite/postgres_exporter/cmd/postgres_exporter/mocks"
 )
 
 var errDummy = fmt.Errorf("dummyError")
@@ -22,6 +21,8 @@ var _ = Describe("AwsUtils", func() {
 			ctrl           *gomock.Controller
 			cloudWatchMock *mocks.MockCloudWatchAPI
 			rdsMock        *mocks.MockRDSAPI
+
+			a AwsUtils
 		)
 
 		const tenantID = "dummy"
@@ -31,6 +32,11 @@ var _ = Describe("AwsUtils", func() {
 			ctrl = gomock.NewController(GinkgoT())
 			rdsMock = mocks.NewMockRDSAPI(ctrl)
 			cloudWatchMock = mocks.NewMockCloudWatchAPI(ctrl)
+
+			a = AwsUtils{
+				RdsClient:        rdsMock,
+				CloudwatchClient: cloudWatchMock,
+			}
 		})
 
 		AfterEach(func() {
@@ -40,7 +46,7 @@ var _ = Describe("AwsUtils", func() {
 		It("should fail if DescribeDBClusters fails", func() {
 			rdsMock.EXPECT().DescribeDBClusters(gomock.Any()).Return(nil, errDummy)
 
-			_, err := RdsCurrentCapacity(tenantID, rdsMock)
+			_, err := a.RdsCurrentCapacity(tenantID)
 			Expect(err).To(MatchError(errDummy))
 		})
 
@@ -51,14 +57,14 @@ var _ = Describe("AwsUtils", func() {
 				}},
 			}, nil)
 
-			_, err := RdsCurrentCapacity(tenantID, rdsMock)
+			_, err := a.RdsCurrentCapacity(tenantID)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should fail if GetMetricStatistics fails", func() {
 			cloudWatchMock.EXPECT().GetMetricStatistics(gomock.Any()).Return(nil, errDummy)
 
-			_, err := RdsCurrentConnections(tenantID, cloudWatchMock)
+			_, err := a.RdsCurrentConnections(tenantID)
 			Expect(err).To(MatchError(errDummy))
 		})
 
@@ -67,7 +73,7 @@ var _ = Describe("AwsUtils", func() {
 				Datapoints: []*cloudwatch.Datapoint{},
 			}, nil)
 
-			_, err := RdsCurrentConnections(tenantID, cloudWatchMock)
+			_, err := a.RdsCurrentConnections(tenantID)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -78,7 +84,7 @@ var _ = Describe("AwsUtils", func() {
 				}},
 			}, nil)
 
-			_, err := RdsCurrentConnections(tenantID, cloudWatchMock)
+			_, err := a.RdsCurrentConnections(tenantID)
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})

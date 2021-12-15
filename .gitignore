@@ -1,6 +1,4 @@
 /.build
-/postgres_exporter
-/postgres_exporter_integration_test
 *.tar.gz
 *.test
 *-stamp
@@ -20,3 +18,29 @@
 /.metrics.*.removed
 /tools/src
 /vendor
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Test binary, built with `go test -c`
+*.test
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+.bin
+
+# Lambda artifacts
+.artifacts
+
+# Local environement variables setup
+.envrc
+
+# Generated mock files
+mocks/
+
+*_generated.go
+gomock_reflect_*.go
