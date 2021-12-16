@@ -118,7 +118,7 @@ endif
 %: common-% ;
 
 .PHONY: common-all
-common-all: precheck style check_license lint unused build test
+common-all: precheck style lint build test
 
 .PHONY: common-style
 common-style:
@@ -129,17 +129,6 @@ common-style:
 		echo "Please ensure you are using $$($(GO) version) for formatting code."; \
 		exit 1; \
 	fi
-
-.PHONY: common-check_license
-common-check_license:
-	@echo ">> checking license header"
-	@licRes=$$(for file in $$(find . -type f -iname '*.go' ! -path './vendor/*') ; do \
-               awk 'NR<=3' $$file | grep -Eq "(Copyright|generated|GENERATED)" || echo $$file; \
-       done); \
-       if [ -n "$${licRes}" ]; then \
-               echo "license header checking failed:"; echo "$${licRes}"; \
-               exit 1; \
-       fi
 
 .PHONY: common-deps
 common-deps:
@@ -201,25 +190,6 @@ endif
 # For backward-compatibility.
 .PHONY: common-staticcheck
 common-staticcheck: lint
-
-.PHONY: common-unused
-common-unused: $(GOVENDOR)
-ifdef GOVENDOR
-	@echo ">> running check for unused packages"
-	@$(GOVENDOR) list +unused | grep . && exit 1 || echo 'No unused packages'
-else
-ifdef GO111MODULE
-	@echo ">> running check for unused/missing packages in go.mod"
-	GO111MODULE=$(GO111MODULE) $(GO) mod tidy
-ifeq (,$(wildcard vendor))
-	@git diff --exit-code -- go.sum go.mod
-else
-	@echo ">> running check for unused packages in vendor/"
-	GO111MODULE=$(GO111MODULE) $(GO) mod vendor
-	@git diff --exit-code -- go.sum go.mod vendor/
-endif
-endif
-endif
 
 .PHONY: common-build
 common-build: promu

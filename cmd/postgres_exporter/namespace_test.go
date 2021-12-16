@@ -87,7 +87,7 @@ var _ = Describe("namespace", func() {
 			ctrl.Finish()
 		})
 
-		It("should pass if QueryNamespaceMappings works even with errors", func() {
+		It("should pass if QueryNamespaceMappings works", func() {
 			db, mock, _ := sqlmock.New()
 
 			defer db.Close()
@@ -147,7 +147,7 @@ var _ = Describe("namespace", func() {
 			Expect(reflect.DeepEqual(list, metricsOutputError)).To(BeTrue())
 		})
 
-		It("should pass with namespace and query not found", func() {
+		It("should pass with namespace not found", func() {
 			db, mock, _ := sqlmock.New()
 
 			defer db.Close()

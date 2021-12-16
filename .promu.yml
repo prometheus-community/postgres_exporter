@@ -5,7 +5,7 @@ repository:
 build:
     binaries:
         - name: postgres_exporter
-          path: ./cmd/postgres_exporter
+          path: ./cmd/postgres_exporter/
     flags: -a -tags 'netgo static_build'
     ldflags: |
         -X github.com/prometheus/common/version.Version={{.Version}}
@@ -17,3 +17,7 @@ tarball:
     files:
         - LICENSE
         - NOTICE
+crossbuild:
+    platforms:
+        - linux/amd64
+        - linux/arm64
