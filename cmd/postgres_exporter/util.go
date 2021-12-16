@@ -24,10 +24,6 @@ import (
 	"github.com/lib/pq"
 )
 
-func GetTenant(tenantID string) string {
-	return fmt.Sprintf("tenant-%s", tenantID)
-}
-
 // Convert database.sql types to float64s for Prometheus consumption. Null types are mapped to NaN. string and []byte
 // types are mapped as NaN and !ok
 func DbToFloat64(t interface{}) (float64, bool) {

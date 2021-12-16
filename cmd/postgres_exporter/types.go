@@ -32,8 +32,8 @@ type ServerAPI interface {
 
 // RDSMetricsAPI interface for database metrics
 type RDSMetricsAPI interface {
-	RdsCurrentCapacity(tenantID string) (int64, error)
-	RdsCurrentConnections(tenantID string) (int64, error)
+	RdsCurrentCapacity(clusterID string) (int64, error)
+	RdsCurrentConnections(clusterID string) (int64, error)
 }
 
 // NamespaceMetricsAPI interface for collect server metrics

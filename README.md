@@ -45,8 +45,8 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `iam-role-arn`
   A list of databases to remove when autoDiscoverDatabases is enabled.
 
-* `tenant-id`
-  A list of databases to only include when autoDiscoverDatabases is enabled.
+* `cluster-id`
+  Aurora cluster ID
 
 * `log.level`
   Set logging level: one of `debug`, `info`, `warn`, `error`.
@@ -69,8 +69,8 @@ The following environment variables configure the exporter:
 * `PG_IAM_ROLE_ARN`
   AWS IAM role arn 
 
-* `PG_TENANT_ID`
-  Tenant ID
+* `PG_CLUSTER_ID`
+  Cluster ID
 
 ### Setting the Postgres server's data source name
 

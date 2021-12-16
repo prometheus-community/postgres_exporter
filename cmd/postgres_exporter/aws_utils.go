@@ -21,9 +21,9 @@ type AwsUtils struct {
 // compile-time check that type implements interface.
 var _ RDSMetricsAPI = (*AwsUtils)(nil)
 
-func (a *AwsUtils) RdsCurrentCapacity(tenantID string) (int64, error) {
+func (a *AwsUtils) RdsCurrentCapacity(clusterID string) (int64, error) {
 	output, err := a.RdsClient.DescribeDBClusters(&rds.DescribeDBClustersInput{
-		DBClusterIdentifier: aws.String(GetTenant(tenantID)),
+		DBClusterIdentifier: aws.String(clusterID),
 	})
 	if err != nil {
 		return 0, fmt.Errorf("error describe cluster: %w", err)
@@ -32,7 +32,7 @@ func (a *AwsUtils) RdsCurrentCapacity(tenantID string) (int64, error) {
 	return *output.DBClusters[0].Capacity, nil
 }
 
-func (a *AwsUtils) RdsCurrentConnections(tenantID string) (int64, error) {
+func (a *AwsUtils) RdsCurrentConnections(clusterID string) (int64, error) {
 	output, err := a.CloudwatchClient.GetMetricStatistics(&cloudwatch.GetMetricStatisticsInput{
 		StartTime:  aws.Time(time.Now().UTC().Add(time.Second * -60)),
 		EndTime:    aws.Time(time.Now().UTC()),
@@ -41,7 +41,7 @@ func (a *AwsUtils) RdsCurrentConnections(tenantID string) (int64, error) {
 		Period:     aws.Int64(60),
 		Dimensions: []*cloudwatch.Dimension{{
 			Name:  aws.String("DBClusterIdentifier"),
-			Value: aws.String(GetTenant(tenantID)),
+			Value: aws.String(clusterID),
 		}},
 		Statistics: []*string{aws.String(cloudwatch.StatisticMaximum)},
 		Unit:       aws.String(cloudwatch.StandardUnitCount),

@@ -97,9 +97,9 @@ BIN_DIR                 ?= $(shell pwd)
 DOCKER_IMAGE_TAG        ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 DOCKERFILE_PATH         ?= ./Dockerfile
 DOCKERBUILD_CONTEXT     ?= ./
-DOCKER_REPO             ?= prom
+DOCKER_REPO             ?= thiagosantosleite
 
-DOCKER_ARCHS            ?= amd64
+DOCKER_ARCHS            ?= arm64
 
 BUILD_DOCKER_ARCHS = $(addprefix common-docker-,$(DOCKER_ARCHS))
 PUBLISH_DOCKER_ARCHS = $(addprefix common-docker-publish-,$(DOCKER_ARCHS))
@@ -175,17 +175,7 @@ common-vet:
 
 .PHONY: common-lint
 common-lint: $(GOLANGCI_LINT)
-ifdef GOLANGCI_LINT
-	@echo ">> running golangci-lint"
-ifdef GO111MODULE
-# 'go list' needs to be executed before staticcheck to prepopulate the modules cache.
-# Otherwise staticcheck might fail randomly for some reason not yet explained.
-	GO111MODULE=$(GO111MODULE) $(GO) list -e -compiled -test=true -export=false -deps=true -find=false -tags= -- ./... > /dev/null
-	GO111MODULE=$(GO111MODULE) $(GOLANGCI_LINT) run $(GOLANGCI_LINT_OPTS) $(pkgs)
-else
-	$(GOLANGCI_LINT) run $(pkgs)
-endif
-endif
+	golangci-lint run 
 
 # For backward-compatibility.
 .PHONY: common-staticcheck

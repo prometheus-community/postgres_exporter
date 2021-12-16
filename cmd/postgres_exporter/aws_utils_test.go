@@ -25,8 +25,7 @@ var _ = Describe("AwsUtils", func() {
 			a AwsUtils
 		)
 
-		const tenantID = "dummy"
-		const iamRoleArn = "dummy"
+		const clusterID = "dummy"
 
 		BeforeEach(func() {
 			ctrl = gomock.NewController(GinkgoT())
@@ -46,7 +45,7 @@ var _ = Describe("AwsUtils", func() {
 		It("should fail if DescribeDBClusters fails", func() {
 			rdsMock.EXPECT().DescribeDBClusters(gomock.Any()).Return(nil, errDummy)
 
-			_, err := a.RdsCurrentCapacity(tenantID)
+			_, err := a.RdsCurrentCapacity(clusterID)
 			Expect(err).To(MatchError(errDummy))
 		})
 
@@ -57,14 +56,14 @@ var _ = Describe("AwsUtils", func() {
 				}},
 			}, nil)
 
-			_, err := a.RdsCurrentCapacity(tenantID)
+			_, err := a.RdsCurrentCapacity(clusterID)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should fail if GetMetricStatistics fails", func() {
 			cloudWatchMock.EXPECT().GetMetricStatistics(gomock.Any()).Return(nil, errDummy)
 
-			_, err := a.RdsCurrentConnections(tenantID)
+			_, err := a.RdsCurrentConnections(clusterID)
 			Expect(err).To(MatchError(errDummy))
 		})
 
@@ -73,7 +72,7 @@ var _ = Describe("AwsUtils", func() {
 				Datapoints: []*cloudwatch.Datapoint{},
 			}, nil)
 
-			_, err := a.RdsCurrentConnections(tenantID)
+			_, err := a.RdsCurrentConnections(clusterID)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -84,7 +83,7 @@ var _ = Describe("AwsUtils", func() {
 				}},
 			}, nil)
 
-			_, err := a.RdsCurrentConnections(tenantID)
+			_, err := a.RdsCurrentConnections(clusterID)
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})

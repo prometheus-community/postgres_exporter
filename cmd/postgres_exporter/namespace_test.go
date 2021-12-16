@@ -32,7 +32,6 @@ var _ = Describe("namespace", func() {
 		BeforeEach(func() {
 			ctrl = gomock.NewController(GinkgoT())
 
-			nsMap = NamespaceMappings{}
 			serverLabels = prometheus.Labels{
 				ServerLabelName: "hostname:5432",
 			}
@@ -262,7 +261,6 @@ var _ = Describe("namespace", func() {
 
 		BeforeEach(func() {
 			ctrl = gomock.NewController(GinkgoT())
-			nsMap = NamespaceMappings{}
 
 			metricsOutput = []string{
 				`Desc{fqName: "pg_exporter_last_scrape_duration_seconds", help: "Duration of the last scrape of metrics from PostgresSQL.", constLabels: {}, variableLabels: []}`,

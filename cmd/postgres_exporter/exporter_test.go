@@ -25,7 +25,7 @@ var _ = Describe("Exporter", func() {
 			server = mocks.NewMockServerAPI(ctrl)
 
 			e = Exporter{
-				TenantID:     "dummy",
+				ClusterID:    "dummy",
 				RdsMetrics:   rdsMetrics,
 				Server:       server,
 				TotalScrapes: 0,
@@ -38,19 +38,19 @@ var _ = Describe("Exporter", func() {
 
 		It("should works if NewExporter works", func() {
 			opts := []ExporterOpt{
-				TenantID("dummy"),
+				ClusterID("dummy"),
 				RdsMetrics(rdsMetrics),
 				ServerInstance(server),
 			}
 			exporter := NewExporter(opts...)
-			Expect(exporter.TenantID == e.TenantID).To(BeTrue())
+			Expect(exporter.ClusterID == e.ClusterID).To(BeTrue())
 		})
 
 		It("should works if Scrape works", func() {
 			ch := make(chan prometheus.Metric)
 
-			rdsMetrics.EXPECT().RdsCurrentCapacity(e.TenantID).Return(int64(2), nil)
-			rdsMetrics.EXPECT().RdsCurrentConnections(e.TenantID).Return(int64(10), nil)
+			rdsMetrics.EXPECT().RdsCurrentCapacity(e.ClusterID).Return(int64(2), nil)
+			rdsMetrics.EXPECT().RdsCurrentConnections(e.ClusterID).Return(int64(10), nil)
 
 			server.EXPECT().Open().Return(nil)
 			server.EXPECT().Scrape(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
@@ -63,7 +63,7 @@ var _ = Describe("Exporter", func() {
 		It("should fail if RdsCurrentCapacity fail", func() {
 			ch := make(chan prometheus.Metric)
 
-			rdsMetrics.EXPECT().RdsCurrentCapacity(e.TenantID).Return(int64(2), errDummy)
+			rdsMetrics.EXPECT().RdsCurrentCapacity(e.ClusterID).Return(int64(2), errDummy)
 
 			err := e.Scrape(ch)
 			Expect(err).To(HaveOccurred())
@@ -72,8 +72,8 @@ var _ = Describe("Exporter", func() {
 		It("should fail if RdsCurrentConnections fail", func() {
 			ch := make(chan prometheus.Metric)
 
-			rdsMetrics.EXPECT().RdsCurrentCapacity(e.TenantID).Return(int64(2), nil)
-			rdsMetrics.EXPECT().RdsCurrentConnections(e.TenantID).Return(int64(0), errDummy)
+			rdsMetrics.EXPECT().RdsCurrentCapacity(e.ClusterID).Return(int64(2), nil)
+			rdsMetrics.EXPECT().RdsCurrentConnections(e.ClusterID).Return(int64(0), errDummy)
 
 			err := e.Scrape(ch)
 			Expect(err).To(HaveOccurred())
@@ -82,8 +82,8 @@ var _ = Describe("Exporter", func() {
 		It("should fail if Open fail", func() {
 			ch := make(chan prometheus.Metric)
 
-			rdsMetrics.EXPECT().RdsCurrentCapacity(e.TenantID).Return(int64(2), nil)
-			rdsMetrics.EXPECT().RdsCurrentConnections(e.TenantID).Return(int64(10), nil)
+			rdsMetrics.EXPECT().RdsCurrentCapacity(e.ClusterID).Return(int64(2), nil)
+			rdsMetrics.EXPECT().RdsCurrentConnections(e.ClusterID).Return(int64(10), nil)
 
 			server.EXPECT().Open().Return(errDummy)
 
@@ -94,8 +94,8 @@ var _ = Describe("Exporter", func() {
 		It("should fail if scrape fail", func() {
 			ch := make(chan prometheus.Metric)
 
-			rdsMetrics.EXPECT().RdsCurrentCapacity(e.TenantID).Return(int64(2), nil)
-			rdsMetrics.EXPECT().RdsCurrentConnections(e.TenantID).Return(int64(10), nil)
+			rdsMetrics.EXPECT().RdsCurrentCapacity(e.ClusterID).Return(int64(2), nil)
+			rdsMetrics.EXPECT().RdsCurrentConnections(e.ClusterID).Return(int64(10), nil)
 
 			server.EXPECT().Open().Return(nil)
 			server.EXPECT().Scrape(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(errDummy)
@@ -107,8 +107,8 @@ var _ = Describe("Exporter", func() {
 		It("should fail if close fail", func() {
 			ch := make(chan prometheus.Metric)
 
-			rdsMetrics.EXPECT().RdsCurrentCapacity(e.TenantID).Return(int64(2), nil)
-			rdsMetrics.EXPECT().RdsCurrentConnections(e.TenantID).Return(int64(10), nil)
+			rdsMetrics.EXPECT().RdsCurrentCapacity(e.ClusterID).Return(int64(2), nil)
+			rdsMetrics.EXPECT().RdsCurrentConnections(e.ClusterID).Return(int64(10), nil)
 
 			server.EXPECT().Open().Return(nil)
 			server.EXPECT().Scrape(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
@@ -121,8 +121,8 @@ var _ = Describe("Exporter", func() {
 		It("should works with aurora serverless sleeping", func() {
 			ch := make(chan prometheus.Metric)
 
-			rdsMetrics.EXPECT().RdsCurrentCapacity(e.TenantID).Return(int64(0), nil)
-			rdsMetrics.EXPECT().RdsCurrentConnections(e.TenantID).Return(int64(0), nil)
+			rdsMetrics.EXPECT().RdsCurrentCapacity(e.ClusterID).Return(int64(0), nil)
+			rdsMetrics.EXPECT().RdsCurrentConnections(e.ClusterID).Return(int64(0), nil)
 
 			err := e.Scrape(ch)
 			Expect(err).ToNot(HaveOccurred())

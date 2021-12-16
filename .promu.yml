@@ -4,8 +4,8 @@ repository:
     path: github.com/thiagosantosleite/postgres_exporter
 build:
     binaries:
-        - name: postgres_exporter
-          path: ./cmd/postgres_exporter/
+        - name: .build/postgres_exporter
+          path: ./cmd
     flags: -a -tags 'netgo static_build'
     ldflags: |
         -X github.com/prometheus/common/version.Version={{.Version}}
@@ -19,5 +19,4 @@ tarball:
         - NOTICE
 crossbuild:
     platforms:
-        - linux/amd64
         - linux/arm64

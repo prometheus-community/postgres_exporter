@@ -219,12 +219,12 @@ func (n *NamespaceMappings) QueryNamespaceMappings(ch chan<- prometheus.Metric, 
 		// Serious error - a namespace disappeared
 		if err != nil {
 			namespaceErrors[namespace] = err
-			level.Info(logger).Log("err", err)
+			level.Info(logger).Log("msg", err)
 		}
 		// Non-serious errors - likely version or parsing problems.
 		if len(nonFatalErrors) > 0 {
 			for _, err := range nonFatalErrors {
-				level.Info(logger).Log("err", err)
+				level.Info(logger).Log("msg", err)
 			}
 		}
 
@@ -338,7 +338,7 @@ func (n *NamespaceMappings) makeDescMap(serverLabels prometheus.Labels, metricMa
 						case string:
 							durationString = t
 						default:
-							level.Error(logger).Log("msg", "Duration conversion metric was not a string")
+							level.Info(logger).Log("msg", "Duration conversion metric was not a string")
 							return math.NaN(), false
 						}
 
@@ -348,7 +348,7 @@ func (n *NamespaceMappings) makeDescMap(serverLabels prometheus.Labels, metricMa
 
 						d, err := time.ParseDuration(durationString)
 						if err != nil {
-							level.Error(logger).Log("msg", "Failed converting result to metric", "column", columnName, "in", in, "err", err)
+							level.Info(logger).Log("msg", "Failed converting result to metric", "column", columnName, "in", in, "err", err)
 							return math.NaN(), false
 						}
 						return float64(d / time.Millisecond), true

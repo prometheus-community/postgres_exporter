@@ -1,0 +1,8 @@
+linters-settings:
+  errcheck:
+    ignore: github.com/go-kit/kit/log:.*
+  forbidigo:
+    forbid:
+      - ^print.*$
+      - 'fmt\.Print.*'
+      

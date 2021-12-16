@@ -26,7 +26,6 @@ var _ = Describe("PgSetting", func() {
 
 		BeforeEach(func() {
 			ctrl = gomock.NewController(GinkgoT())
-			s = SettingsMetrics{}
 
 			serverLabels = prometheus.Labels{
 				ServerLabelName: "hostname:5432",
@@ -90,7 +89,10 @@ var _ = Describe("PgSetting", func() {
 			list := []string{}
 
 			go func() {
-				s.QuerySettings(ch, db, serverLabels)
+				err := s.QuerySettings(ch, db, serverLabels)
+				if err != nil {
+					return
+				}
 				close(ch)
 			}()
 
@@ -115,8 +117,7 @@ var _ = Describe("PgSetting", func() {
 
 			ch := make(chan prometheus.Metric)
 
-			var err error
-			err = s.QuerySettings(ch, db, serverLabels)
+			err := s.QuerySettings(ch, db, serverLabels)
 
 			Expect(err).To(MatchError(err))
 		})

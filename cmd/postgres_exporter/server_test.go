@@ -66,9 +66,10 @@ var _ = Describe("Server", func() {
 			rows.Next()
 
 			var name string
-			rows.Scan(&name)
+			err := rows.Scan(&name)
 
 			Expect(reflect.DeepEqual("dummy", name)).To(BeTrue())
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should fail if Query fails", func() {

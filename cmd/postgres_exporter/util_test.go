@@ -237,12 +237,4 @@ var _ = Describe("Util", func() {
 		})
 	})
 
-	Context("GetTenant", func() {
-		It("Should pass if GetTenant works", func() {
-			ret := GetTenant("dummy")
-			Expect(ret).To(Equal("tenant-dummy"))
-		})
-
-	})
-
 })
