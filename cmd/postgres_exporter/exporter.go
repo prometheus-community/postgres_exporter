@@ -26,11 +26,11 @@ var logger = log.NewNopLogger()
 
 // Exporter collects Postgres metrics. It implements prometheus.Collector.
 type Exporter struct {
-	tenantID     string
-	totalScrapes int64
+	TenantID     string
+	TotalScrapes int64
 
-	rdsMetrics RDSMetricsAPI
-	server     ServerAPI
+	RdsMetrics RDSMetricsAPI
+	Server     ServerAPI
 }
 
 // ExporterOpt configures Exporter.
@@ -39,21 +39,21 @@ type ExporterOpt func(*Exporter)
 // Tenant ID.
 func TenantID(s string) ExporterOpt {
 	return func(e *Exporter) {
-		e.tenantID = s
+		e.TenantID = s
 	}
 }
 
 // RDS Metrics.
 func RdsMetrics(s RDSMetricsAPI) ExporterOpt {
 	return func(e *Exporter) {
-		e.rdsMetrics = s
+		e.RdsMetrics = s
 	}
 }
 
 // Server Instance.
 func ServerInstance(s ServerAPI) ExporterOpt {
 	return func(e *Exporter) {
-		e.server = s
+		e.Server = s
 	}
 }
 
@@ -68,7 +68,7 @@ func NewExporter(opts ...ExporterOpt) *Exporter {
 		opt(e)
 	}
 
-	e.totalScrapes = 0
+	e.TotalScrapes = 0
 
 	return e
 }
@@ -79,8 +79,10 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements prometheus.Collector.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
-	e.scrape(ch)
-
+	err := e.Scrape(ch)
+	if err != nil {
+		panic(e)
+	}
 }
 
 func newDesc(subsystem, name, help string, labels prometheus.Labels) *prometheus.Desc {
@@ -90,30 +92,35 @@ func newDesc(subsystem, name, help string, labels prometheus.Labels) *prometheus
 	)
 }
 
-func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
-	rdsCurrentCapacity, err := e.rdsMetrics.RdsCurrentCapacity(e.tenantID)
+func (e *Exporter) Scrape(ch chan<- prometheus.Metric) error {
+	rdsCurrentCapacity, err := e.RdsMetrics.RdsCurrentCapacity(e.TenantID)
 	if err != nil {
-		panic(fmt.Sprintf("error check rds status: %v", err))
+		return fmt.Errorf("error check rds status: %v", err)
 	}
 
-	rdsDatabaseConnections, err := e.rdsMetrics.RdsCurrentConnections(e.tenantID)
+	rdsDatabaseConnections, err := e.RdsMetrics.RdsCurrentConnections(e.TenantID)
 	if err != nil {
-		panic(fmt.Sprintf("error check rds status: %v", err))
+		return fmt.Errorf("error check rds status: %v", err)
 	}
 
 	if rdsCurrentCapacity == 0 || rdsDatabaseConnections == 0 {
-		level.Info(logger).Log("msg", fmt.Sprintf("database is not available, nothing to do - rdsCapacity: %d rdsConnections: %d", rdsCurrentCapacity, rdsDatabaseConnections))
-		return
+		level.Info(logger).Log("error", fmt.Sprintf("database is not available, nothing to do - rdsCapacity: %d rdsConnections: %d", rdsCurrentCapacity, rdsDatabaseConnections))
+		return nil
 	}
 	level.Info(logger).Log("msg", fmt.Sprintf("database is up (capacity %d) and with connections(%d), collecting data", rdsCurrentCapacity, rdsDatabaseConnections))
 
-	e.totalScrapes++
+	e.TotalScrapes++
 
-	err = e.server.Open()
+	err = e.Server.Open()
 	if err != nil {
-		panic(fmt.Sprintf("error to open database connection: %v", err))
+		level.Info(logger).Log("Error", fmt.Sprintf("error to open database connection: %v", err))
+		return err
 	}
 
-	e.server.Scrape(ch, float64(e.totalScrapes), float64(rdsDatabaseConnections), float64(rdsCurrentCapacity))
-	e.server.Close()
+	err = e.Server.Scrape(ch, float64(e.TotalScrapes), float64(rdsDatabaseConnections), float64(rdsCurrentCapacity))
+	if err != nil {
+		return err
+	}
+
+	return e.Server.Close()
 }

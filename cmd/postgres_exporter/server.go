@@ -73,17 +73,18 @@ func (s *Server) Query(query string) (*sql.Rows, error) {
 
 // Scrape loads metrics.
 func (s *Server) Scrape(ch chan<- prometheus.Metric, totalScrapes, rdsDatabaseConnections, rdsCurrentCapacity float64) error {
+	fingerprint, err := ParseFingerprint(s.Dsn)
+	if err != nil {
+		return err
+	}
+
 	// track scrap duration and send it in the channel
 	defer func(begun time.Time) {
 		duration := time.Since(begun).Seconds()
 
 		s.NsMap.SetInternalMetrics(ch, duration, totalScrapes, rdsDatabaseConnections, rdsCurrentCapacity)
-	}(time.Now())
 
-	fingerprint, err := ParseFingerprint(s.Dsn)
-	if err != nil {
-		return err
-	}
+	}(time.Now())
 
 	serverLabels := prometheus.Labels{
 		ServerLabelName: fingerprint,
@@ -93,20 +94,20 @@ func (s *Server) Scrape(ch chan<- prometheus.Metric, totalScrapes, rdsDatabaseCo
 	defer s.mappingMtx.RUnlock()
 
 	if err = s.SettMetrics.QuerySettings(ch, s.Db, serverLabels); err != nil {
-		err = fmt.Errorf("error retrieving settings: %s", err)
+		return fmt.Errorf("error retrieving settings: %s", err)
 	}
 
 	semanticVersion, versionString, err := s.checkPostgresVersion()
 	if err != nil {
-		level.Info(logger).Log("err", err)
+		return fmt.Errorf("error checking postgres version: %s", err)
 	}
 
 	errMap := s.NsMap.QueryNamespaceMappings(ch, s.Db, serverLabels, Queries(), MetricMaps(), semanticVersion, versionString)
 	if len(errMap) > 0 {
-		err = fmt.Errorf("queryNamespaceMappings returned %d errors", len(errMap))
+		return fmt.Errorf("queryNamespaceMappings returned %d errors", len(errMap))
 	}
 
-	return err
+	return nil
 }
 
 func (s *Server) checkPostgresVersion() (semver.Version, string, error) {

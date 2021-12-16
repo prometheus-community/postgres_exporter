@@ -39,6 +39,12 @@ var _ = Describe("Util", func() {
 			_, err := ParseFingerprint("postgresql://xxxxxx")
 			Expect(err).ToNot(HaveOccurred())
 		})
+
+		It("Should fail if invalid url", func() {
+			_, err := ParseFingerprint("/postgresql/dummy")
+			Expect(err).To(HaveOccurred())
+		})
+
 	})
 
 	Context("DbToString", func() {
@@ -82,6 +88,11 @@ var _ = Describe("Util", func() {
 			Expect(ok).To(BeTrue())
 			Expect(ret).To(Equal("true"))
 		})
+		It("Should pass if DbToString parse bool", func() {
+			ret, ok := DbToString(false)
+			Expect(ok).To(BeTrue())
+			Expect(ret).To(Equal("false"))
+		})
 		It("Should fail if DbToString fails to parse", func() {
 			ret, ok := DbToString(fmt.Errorf("dummy"))
 			Expect(ok).To(BeFalse())
@@ -90,6 +101,12 @@ var _ = Describe("Util", func() {
 	})
 
 	Context("DbToUint64", func() {
+		It("Should pass if DbToUint64 parse uint64", func() {
+			ret, ok := DbToUint64(uint64(1))
+			Expect(ok).To(BeTrue())
+			Expect(ret).To(Equal(uint64(1)))
+		})
+
 		It("Should pass if DbToUint64 parse int64", func() {
 			ret, ok := DbToUint64(int64(1))
 			Expect(ok).To(BeTrue())
@@ -120,15 +137,31 @@ var _ = Describe("Util", func() {
 			Expect(ret).To(Equal(uint64(0)))
 		})
 
+		It("Should pass if DbToUint64 parse []byte", func() {
+			ret, ok := DbToUint64([]byte{50})
+			Expect(ok).To(BeTrue())
+			Expect(ret).To(Equal(uint64(2)))
+		})
+
 		It("Should pass if DbToUint64 parse string", func() {
 			ret, ok := DbToUint64("123")
 			Expect(ok).To(BeTrue())
 			Expect(ret).To(Equal(uint64(123)))
 		})
+		It("Should pass if DbToUint64 parse string", func() {
+			ret, ok := DbToUint64("abc")
+			Expect(ok).To(BeFalse())
+			Expect(ret).To(Equal(uint64(0)))
+		})
 		It("Should pass if DbToUint64 parse bool", func() {
 			ret, ok := DbToUint64(true)
 			Expect(ok).To(BeTrue())
 			Expect(ret).To(Equal(uint64(1)))
+		})
+		It("Should pass if DbToUint64 parse bool", func() {
+			ret, ok := DbToUint64(false)
+			Expect(ok).To(BeTrue())
+			Expect(ret).To(Equal(uint64(0)))
 		})
 		It("Should fail if DbToUint64 fails to parse", func() {
 			ret, ok := DbToUint64(fmt.Errorf("dummy"))
@@ -168,15 +201,34 @@ var _ = Describe("Util", func() {
 			Expect(math.IsNaN(ret)).To(BeTrue())
 		})
 
+		It("Should pass if DbToFloat64 parse []byte", func() {
+			ret, ok := DbToFloat64([]byte{50})
+			Expect(ok).To(BeTrue())
+			Expect(ret).To(Equal(float64(2)))
+		})
+
 		It("Should pass if DbToFloat64 parse string", func() {
 			ret, ok := DbToFloat64("123")
 			Expect(ok).To(BeTrue())
 			Expect(ret).To(Equal(float64(123)))
 		})
+
+		It("Should pass if DbToFloat64 parse string", func() {
+			ret, ok := DbToFloat64("abc")
+			Expect(ok).To(BeFalse())
+			Expect(math.IsNaN(ret)).To(BeTrue())
+		})
+
 		It("Should pass if DbToFloat64 parse bool", func() {
 			ret, ok := DbToFloat64(true)
 			Expect(ok).To(BeTrue())
 			Expect(ret).To(Equal(float64(1)))
+		})
+
+		It("Should pass if DbToFloat64 parse bool", func() {
+			ret, ok := DbToFloat64(false)
+			Expect(ok).To(BeTrue())
+			Expect(ret).To(Equal(float64(0)))
 		})
 		It("Should fail if DbToFloat64 fails to parse", func() {
 			ret, ok := DbToFloat64(fmt.Errorf("dummy"))

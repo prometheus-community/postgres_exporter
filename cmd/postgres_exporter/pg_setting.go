@@ -41,7 +41,6 @@ func (s *SettingsMetrics) QuerySettings(ch chan<- prometheus.Metric, db *sql.DB,
 
 	rows, err := db.Query(query)
 	if err != nil {
-		fmt.Println(err)
 		return fmt.Errorf("Error running query: %s %v", Namespace, err)
 	}
 	defer rows.Close() // nolint: errcheck

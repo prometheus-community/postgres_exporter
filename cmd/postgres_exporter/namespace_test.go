@@ -19,13 +19,14 @@ var _ = Describe("namespace", func() {
 		var (
 			ctrl *gomock.Controller
 
-			nsMap           NamespaceMappings
-			serverLabels    prometheus.Labels
-			queries         map[string]string
-			metricMaps      map[string]IntermediateMetricMap
-			metricsOutput   []string
-			semanticVersion semver.Version
-			versionString   string
+			nsMap              NamespaceMappings
+			serverLabels       prometheus.Labels
+			queries            map[string]string
+			metricMaps         map[string]IntermediateMetricMap
+			metricsOutput      []string
+			metricsOutputError []string
+			semanticVersion    semver.Version
+			versionString      string
 		)
 
 		BeforeEach(func() {
@@ -69,6 +70,10 @@ var _ = Describe("namespace", func() {
 				`Desc{fqName: "pg_static", help: "Version string as reported by postgres", constLabels: {server="hostname:5432"}, variableLabels: [version short_version]}`,
 			}
 
+			metricsOutputError = []string{
+				`Desc{fqName: "pg_static", help: "Version string as reported by postgres", constLabels: {server="hostname:5432"}, variableLabels: [version short_version]}`,
+			}
+
 			semanticVersion = semver.Version{
 				Major: 10,
 				Minor: 1,
@@ -82,7 +87,7 @@ var _ = Describe("namespace", func() {
 			ctrl.Finish()
 		})
 
-		It("should pass if QueryNamespaceMappings works even with non fatal errors", func() {
+		It("should pass if QueryNamespaceMappings works even with errors", func() {
 			db, mock, _ := sqlmock.New()
 
 			defer db.Close()
@@ -110,6 +115,139 @@ var _ = Describe("namespace", func() {
 				list = append(list, ret.Desc().String())
 			}
 			Expect(reflect.DeepEqual(list, metricsOutput)).To(BeTrue())
+		})
+
+		It("should pass with namespace found with empty query", func() {
+			db, mock, _ := sqlmock.New()
+
+			defer db.Close()
+
+			rows := sqlmock.NewRows([]string{"col1", "col2", "col3", "col4", "col5", "col6"}).
+				AddRow("dummy", 1, 1, 1, 1, pq.Array([]float64{235, 401})).
+				AddRow("dummy", 1, 1, 1, 1, pq.Array([]float64{235, 401}))
+
+			mock.ExpectQuery(queries["dummy"]).WillReturnRows(rows)
+
+			ch := make(chan prometheus.Metric)
+			list := []string{}
+
+			go func() {
+				nsMap.QueryNamespaceMappings(ch, db, serverLabels, map[string]string{"tablexpto": ""}, metricMaps, semanticVersion, versionString)
+				close(ch)
+			}()
+
+			for {
+				res, ok := <-ch
+				if ok == false {
+					break
+				}
+				ret := prometheus.Metric(res)
+				list = append(list, ret.Desc().String())
+			}
+			Expect(reflect.DeepEqual(list, metricsOutputError)).To(BeTrue())
+		})
+
+		It("should pass with namespace and query not found", func() {
+			db, mock, _ := sqlmock.New()
+
+			defer db.Close()
+
+			rows := sqlmock.NewRows([]string{"col1", "col2", "col3", "col4", "col5", "col6"}).
+				AddRow("dummy", 1, 1, 1, 1, pq.Array([]float64{235, 401})).
+				AddRow("dummy", 1, 1, 1, 1, pq.Array([]float64{235, 401}))
+
+			mock.ExpectQuery(queries["dummy"]).WillReturnRows(rows)
+
+			ch := make(chan prometheus.Metric)
+			list := []string{}
+
+			go func() {
+				nsMap.QueryNamespaceMappings(ch, db, serverLabels, map[string]string{"notFound": ""}, metricMaps, semanticVersion, versionString)
+				close(ch)
+			}()
+
+			for {
+				res, ok := <-ch
+				if ok == false {
+					break
+				}
+				ret := prometheus.Metric(res)
+				list = append(list, ret.Desc().String())
+			}
+			Expect(reflect.DeepEqual(list, metricsOutputError)).To(BeTrue())
+		})
+
+		It("should pass with query error", func() {
+			db, mock, _ := sqlmock.New()
+			defer db.Close()
+
+			mock.ExpectQuery(queries["tablexpto"]).WillReturnError(errDummy)
+
+			ch := make(chan prometheus.Metric)
+			list := []string{}
+
+			go func() {
+				nsMap.QueryNamespaceMappings(ch, db, serverLabels, queries, metricMaps, semanticVersion, versionString)
+				close(ch)
+			}()
+
+			for {
+				res, ok := <-ch
+				if ok == false {
+					break
+				}
+				ret := prometheus.Metric(res)
+				list = append(list, ret.Desc().String())
+			}
+			Expect(reflect.DeepEqual(list, metricsOutputError)).To(BeTrue())
+		})
+
+		It("should pass multiple histogram", func() {
+			db, mock, _ := sqlmock.New()
+
+			iqueries := map[string]string{"tablexpto": `
+							SELECT  col1,
+									col1_bucket,
+									col1_sum,
+									col1_count									
+							FROM tablexpto`,
+			}
+
+			mmaps := map[string]IntermediateMetricMap{
+				"tablexpto": {
+					map[string]ColumnMapping{
+						"col1":        {HISTOGRAM, "col1", nil},
+						"col1_bucket": {LABEL, "col1_bucket", nil},
+						"col1_sum":    {LABEL, "col1_sum", nil},
+						"col1_count":  {LABEL, "col1_count", nil},
+					},
+				},
+			}
+
+			defer db.Close()
+
+			rows := sqlmock.NewRows([]string{"col1", "col1_bucket", "col1_sum", "col1_count"}).
+				AddRow(pq.Array([]float64{235, 401}), pq.Array([]float64{235, 401}), pq.Array([]float64{235, 401}), 1000)
+
+			mock.ExpectQuery(iqueries["tablexpto"]).WillReturnRows(rows)
+
+			ch := make(chan prometheus.Metric)
+			list := []string{}
+
+			go func() {
+				nsMap.QueryNamespaceMappings(ch, db, serverLabels, iqueries, mmaps, semanticVersion, versionString)
+				close(ch)
+			}()
+
+			for {
+				res, ok := <-ch
+				if ok == false {
+					break
+				}
+				ret := prometheus.Metric(res)
+				list = append(list, ret.Desc().String())
+			}
+			Expect(reflect.DeepEqual(list, metricsOutputError)).To(BeTrue())
 		})
 
 	})
@@ -159,6 +297,7 @@ var _ = Describe("namespace", func() {
 
 			Expect(reflect.DeepEqual(list, metricsOutput)).To(BeTrue())
 		})
+
 	})
 
 })

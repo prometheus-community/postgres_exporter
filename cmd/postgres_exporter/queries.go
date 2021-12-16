@@ -13,8 +13,6 @@
 
 package postgres_exporter
 
-import "fmt"
-
 // ColumnUsage should be one of several enum values which describe how a
 // queried row is to be converted to a Prometheus metric.
 type ColumnUsage int
@@ -276,21 +274,5 @@ func Queries() map[string]string {
 				buffers_alloc,
 				stats_reset
 			FROM pg_stat_bgwriter`,
-	}
-}
-
-func DumpMaps() {
-	for name, cmap := range MetricMaps() {
-		query, ok := Queries()[name]
-		if !ok {
-			fmt.Println(name)
-		} else {
-			fmt.Println(name, query)
-		}
-
-		for column, details := range cmap.ColumnMappings {
-			fmt.Printf("  %-40s %v\n", column, details)
-		}
-		fmt.Println()
 	}
 }

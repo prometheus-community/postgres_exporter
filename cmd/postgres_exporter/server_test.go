@@ -22,6 +22,9 @@ var _ = Describe("Server", func() {
 
 			nsMap       *mocks.MockNamespaceMetricsAPI
 			settMetrics *mocks.MockSettingsMetricsAPI
+
+			errorList      map[string]error
+			errorListEmpty map[string]error
 		)
 
 		BeforeEach(func() {
@@ -35,6 +38,9 @@ var _ = Describe("Server", func() {
 				NsMap:       nsMap,
 				SettMetrics: settMetrics,
 			}
+
+			errorList = map[string]error{"dummy1": errDummy, "dummy2": errDummy}
+			errorListEmpty = map[string]error{}
 		})
 
 		AfterEach(func() {
@@ -75,6 +81,36 @@ var _ = Describe("Server", func() {
 			Expect(err).To(MatchError(errDummy))
 		})
 
+		It("should fail if QuerySettings fails", func() {
+			db, _, _ := sqlmock.New()
+			s.Db = db
+
+			ch := make(chan prometheus.Metric)
+
+			settMetrics.EXPECT().QuerySettings(gomock.Any(), gomock.Any(), gomock.Any()).Return(errDummy)
+			nsMap.EXPECT().SetInternalMetrics(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
+
+			err := s.Scrape(ch, 1000, 1000, 2)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should fail if QueryNamespaceMappings fails", func() {
+			db, mock, _ := sqlmock.New()
+			s.Db = db
+			r := sqlmock.NewRows([]string{"version"}).
+				AddRow("PostgreSQL 10.14 on x86_64-pc-linux-gnu, compiled by x86_64-unknown-linux-gnu-gcc (GCC) 4.9.4, 64-bit")
+
+			ch := make(chan prometheus.Metric)
+
+			settMetrics.EXPECT().QuerySettings(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			mock.ExpectQuery(regexp.QuoteMeta("SELECT version();")).WillReturnRows(r)
+			nsMap.EXPECT().QueryNamespaceMappings(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(errorList)
+			nsMap.EXPECT().SetInternalMetrics(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
+
+			err := s.Scrape(ch, 1000, 1000, 2)
+			Expect(err).To(HaveOccurred())
+		})
+
 		It("should works if Scrape works", func() {
 			db, mock, _ := sqlmock.New()
 			s.Db = db
@@ -83,8 +119,8 @@ var _ = Describe("Server", func() {
 
 			ch := make(chan prometheus.Metric)
 
-			settMetrics.EXPECT().QuerySettings(gomock.Any(), gomock.Any(), gomock.Any())
-			nsMap.EXPECT().QueryNamespaceMappings(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
+			settMetrics.EXPECT().QuerySettings(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			nsMap.EXPECT().QueryNamespaceMappings(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(errorListEmpty)
 			nsMap.EXPECT().SetInternalMetrics(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 			mock.ExpectQuery(regexp.QuoteMeta("SELECT version();")).WillReturnRows(r)
 
@@ -100,8 +136,8 @@ var _ = Describe("Server", func() {
 
 			ch := make(chan prometheus.Metric)
 
-			settMetrics.EXPECT().QuerySettings(gomock.Any(), gomock.Any(), gomock.Any())
-			nsMap.EXPECT().QueryNamespaceMappings(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
+			settMetrics.EXPECT().QuerySettings(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			nsMap.EXPECT().QueryNamespaceMappings(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(errorListEmpty)
 			nsMap.EXPECT().SetInternalMetrics(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 			mock.ExpectQuery(regexp.QuoteMeta("SELECT version();")).WillReturnRows(r)
 
@@ -117,8 +153,7 @@ var _ = Describe("Server", func() {
 
 			ch := make(chan prometheus.Metric)
 
-			settMetrics.EXPECT().QuerySettings(gomock.Any(), gomock.Any(), gomock.Any())
-			nsMap.EXPECT().QueryNamespaceMappings(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
+			settMetrics.EXPECT().QuerySettings(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 			nsMap.EXPECT().SetInternalMetrics(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 			mock.ExpectQuery(regexp.QuoteMeta("SELECT version();")).WillReturnRows(r)
 
@@ -126,16 +161,23 @@ var _ = Describe("Server", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should fails with invalid postgres version", func() {
+		It("should fail if query fails", func() {
 			db, mock, _ := sqlmock.New()
 			s.Db = db
 
 			ch := make(chan prometheus.Metric)
 
-			settMetrics.EXPECT().QuerySettings(gomock.Any(), gomock.Any(), gomock.Any())
-			nsMap.EXPECT().QueryNamespaceMappings(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
+			settMetrics.EXPECT().QuerySettings(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 			nsMap.EXPECT().SetInternalMetrics(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 			mock.ExpectQuery(regexp.QuoteMeta("SELECT version();")).WillReturnError(errDummy)
+
+			err := s.Scrape(ch, 1000, 1000, 2)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should fails is dns is invalid", func() {
+			ch := make(chan prometheus.Metric)
+			s.Dsn = "&&&'#%"
 
 			err := s.Scrape(ch, 1000, 1000, 2)
 			Expect(err).To(HaveOccurred())

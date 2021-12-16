@@ -40,6 +40,17 @@ var _ = Describe("PgSetting", func() {
 				`Desc{fqName: "pg_settings_log_rotation_age_seconds", help: "aaa [Units converted to seconds.]", constLabels: {server="hostname:5432"}, variableLabels: []}`,
 				`Desc{fqName: "pg_settings_pg_stat_statements_save", help: "aaa", constLabels: {server="hostname:5432"}, variableLabels: []}`,
 				`Desc{fqName: "pg_settings_seq_page_cost", help: "aaa", constLabels: {server="hostname:5432"}, variableLabels: []}`,
+				`Desc{fqName: "pg_settings_dummy_seconds", help: "aaa [Units converted to seconds.]", constLabels: {server="hostname:5432"}, variableLabels: []}`,
+				`Desc{fqName: "pg_settings_dummy_seconds", help: "aaa [Units converted to seconds.]", constLabels: {server="hostname:5432"}, variableLabels: []}`,
+				`Desc{fqName: "pg_settings_dummy_bytes", help: "aaa [Units converted to bytes.]", constLabels: {server="hostname:5432"}, variableLabels: []}`,
+				`Desc{fqName: "pg_settings_dummy_bytes", help: "aaa [Units converted to bytes.]", constLabels: {server="hostname:5432"}, variableLabels: []}`,
+				`Desc{fqName: "pg_settings_dummy_bytes", help: "aaa [Units converted to bytes.]", constLabels: {server="hostname:5432"}, variableLabels: []}`,
+				`Desc{fqName: "pg_settings_dummy_bytes", help: "aaa [Units converted to bytes.]", constLabels: {server="hostname:5432"}, variableLabels: []}`,
+				`Desc{fqName: "pg_settings_dummy_bytes", help: "aaa [Units converted to bytes.]", constLabels: {server="hostname:5432"}, variableLabels: []}`,
+				`Desc{fqName: "pg_settings_dummy_bytes", help: "aaa [Units converted to bytes.]", constLabels: {server="hostname:5432"}, variableLabels: []}`,
+				`Desc{fqName: "pg_settings_dummy_bytes", help: "aaa [Units converted to bytes.]", constLabels: {server="hostname:5432"}, variableLabels: []}`,
+				`Desc{fqName: "pg_settings_dummy_bytes", help: "aaa [Units converted to bytes.]", constLabels: {server="hostname:5432"}, variableLabels: []}`,
+				`Desc{fqName: "pg_settings_dummy_bytes", help: "aaa [Units converted to bytes.]", constLabels: {server="hostname:5432"}, variableLabels: []}`,
 			}
 
 		})
@@ -60,7 +71,18 @@ var _ = Describe("PgSetting", func() {
 				AddRow("effective_cache_size", "271158", "8kB", "aaa", "integer").
 				AddRow("log_rotation_age", "271158", "min", "aaa", "integer").
 				AddRow("pg_stat_statements.save", "on", "", "aaa", "bool").
-				AddRow("seq_page_cost", "1", "", "aaa", "real")
+				AddRow("seq_page_cost", "1", "", "aaa", "real").
+				AddRow("dummy", "1", "h", "aaa", "integer").
+				AddRow("dummy", "1", "d", "aaa", "integer").
+				AddRow("dummy", "1", "MB", "aaa", "integer").
+				AddRow("dummy", "1", "GB", "aaa", "integer").
+				AddRow("dummy", "1", "TB", "aaa", "integer").
+				AddRow("dummy", "1", "8kB", "aaa", "integer").
+				AddRow("dummy", "1", "16kB", "aaa", "integer").
+				AddRow("dummy", "1", "32kB", "aaa", "integer").
+				AddRow("dummy", "1", "16MB", "aaa", "integer").
+				AddRow("dummy", "1", "32MB", "aaa", "integer").
+				AddRow("dummy", "1", "64MB", "aaa", "integer")
 
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT name, setting, COALESCE(unit, ''), short_desc, vartype FROM pg_settings WHERE vartype IN ('bool', 'integer', 'real')`)).WillReturnRows(rows)
 
@@ -80,7 +102,23 @@ var _ = Describe("PgSetting", func() {
 				ret := prometheus.Metric(res)
 				list = append(list, ret.Desc().String())
 			}
+
 			Expect(reflect.DeepEqual(list, metricDesc)).To(BeTrue())
+		})
+
+		It("should fail if Query fail", func() {
+			db, mock, _ := sqlmock.New()
+
+			defer db.Close()
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT name, setting, COALESCE(unit, ''), short_desc, vartype FROM pg_settings WHERE vartype IN ('bool', 'integer', 'real')`)).WillReturnError(errDummy)
+
+			ch := make(chan prometheus.Metric)
+
+			var err error
+			err = s.QuerySettings(ch, db, serverLabels)
+
+			Expect(err).To(MatchError(err))
 		})
 
 	})

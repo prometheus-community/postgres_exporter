@@ -17,7 +17,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"math"
 	"time"
 
@@ -63,7 +62,8 @@ func (n *NamespaceMappings) queryNamespaceMapping(db *sql.DB, namespace string, 
 	}
 
 	if !found {
-		log.Fatalf("query not found for namespace: %s", namespace)
+		// Return success (no pertinent data)
+		return []prometheus.Metric{}, []error{}, nil
 	}
 
 	// Don't fail on a bad scrape of one metric
@@ -114,6 +114,7 @@ func (n *NamespaceMappings) queryNamespaceMapping(db *sql.DB, namespace string, 
 		// converted to float64s. NULLs are allowed and treated as NaN.
 		for idx, columnName := range columnNames {
 			var metric prometheus.Metric
+
 			if metricMapping, ok := mapping.columnMappings[columnName]; ok {
 				// Is this a metricy metric?
 				if metricMapping.discard {

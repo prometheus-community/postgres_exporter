@@ -36,7 +36,6 @@ import (
 var (
 	listenAddress = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").Envar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
 	webConfig     = webflag.AddFlags(kingpin.CommandLine)
-	onlyDumpMaps  = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
 	iamRoleArn    = kingpin.Flag("iam-role-arn", "AWS IAM role to assume and query the aurora serverless status").Default("").Envar("PG_IAM_ROLE_ARN").String()
 	tenantID      = kingpin.Flag("tenant-id", "Tenant ID").Default("").Envar("PG_TENANT_ID").String()
 	logger        = log.NewNopLogger()
@@ -60,11 +59,6 @@ func main() {
 	</body>
 	</html>
 	`)
-
-	if *onlyDumpMaps {
-		DumpMaps()
-		return
-	}
 
 	sess, err := NewAWSSession(*iamRoleArn)
 	if err != nil {
