@@ -39,10 +39,6 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `help`
   Show context-sensitive help (also try --help-long and --help-man).
 
-* `dumpmaps`
-  Do not run - print the internal representation of the metric maps. Useful when debugging a custom
-  queries file.
-
 * `version`
   Show application version.
 
