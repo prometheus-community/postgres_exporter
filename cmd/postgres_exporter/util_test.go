@@ -5,10 +5,10 @@ import (
 	"math"
 	"time"
 
+	. "github.com/everestsystems/postgres_exporter/cmd/postgres_exporter"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/thiagosantosleite/postgres_exporter/cmd/postgres_exporter"
 )
 
 var _ = Describe("Util", func() {

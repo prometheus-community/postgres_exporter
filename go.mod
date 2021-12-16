@@ -1,4 +1,4 @@
-module github.com/thiagosantosleite/postgres_exporter
+module github.com/everestsystems/postgres_exporter
 
 go 1.17
 

@@ -10,8 +10,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
 
-	. "github.com/thiagosantosleite/postgres_exporter/cmd/postgres_exporter"
-	"github.com/thiagosantosleite/postgres_exporter/cmd/postgres_exporter/mocks"
+	. "github.com/everestsystems/postgres_exporter/cmd/postgres_exporter"
+	"github.com/everestsystems/postgres_exporter/cmd/postgres_exporter/mocks"
 )
 
 var _ = Describe("Server", func() {

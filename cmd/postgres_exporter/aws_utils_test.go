@@ -6,11 +6,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/aws/aws-sdk-go/service/rds"
+	. "github.com/everestsystems/postgres_exporter/cmd/postgres_exporter"
+	"github.com/everestsystems/postgres_exporter/cmd/postgres_exporter/mocks"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/thiagosantosleite/postgres_exporter/cmd/postgres_exporter"
-	"github.com/thiagosantosleite/postgres_exporter/cmd/postgres_exporter/mocks"
 )
 
 var errDummy = fmt.Errorf("dummyError")

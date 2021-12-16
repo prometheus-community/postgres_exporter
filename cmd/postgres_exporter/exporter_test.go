@@ -1,13 +1,13 @@
 package postgres_exporter_test
 
 import (
+	. "github.com/everestsystems/postgres_exporter/cmd/postgres_exporter"
+	"github.com/everestsystems/postgres_exporter/cmd/postgres_exporter/mocks"
+	. "github.com/everestsystems/postgres_exporter/cmd/postgres_exporter/mocks"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
-	. "github.com/thiagosantosleite/postgres_exporter/cmd/postgres_exporter"
-	"github.com/thiagosantosleite/postgres_exporter/cmd/postgres_exporter/mocks"
-	. "github.com/thiagosantosleite/postgres_exporter/cmd/postgres_exporter/mocks"
 )
 
 var _ = Describe("Exporter", func() {

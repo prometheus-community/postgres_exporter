@@ -97,7 +97,7 @@ BIN_DIR                 ?= $(shell pwd)
 DOCKER_IMAGE_TAG        ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 DOCKERFILE_PATH         ?= ./Dockerfile
 DOCKERBUILD_CONTEXT     ?= ./
-DOCKER_REPO             ?= thiagosantosleite
+DOCKER_REPO             ?= everestsystems
 
 DOCKER_ARCHS            ?= arm64
 
@@ -264,7 +264,7 @@ generate: deps
 
 TMP_COVER_FILE="/tmp/go-cover.tmp"
 TMP_COVER_HTML_FILE="/tmp/index.html"
-CVPKG="github.com/thiagosantosleite/postgres_exporter/cmd/postgres_exporter"
+CVPKG="github.com/everestsystems/postgres_exporter/cmd/postgres_exporter"
 
 run_tests:
 	@echo -e "\n======================="

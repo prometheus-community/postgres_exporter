@@ -20,6 +20,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/aws/aws-sdk-go/service/rds"
+	. "github.com/everestsystems/postgres_exporter/cmd/postgres_exporter"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
@@ -29,7 +30,6 @@ import (
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
-	. "github.com/thiagosantosleite/postgres_exporter/cmd/postgres_exporter"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 

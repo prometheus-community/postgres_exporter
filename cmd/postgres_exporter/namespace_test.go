@@ -10,8 +10,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	. "github.com/everestsystems/postgres_exporter/cmd/postgres_exporter"
 	. "github.com/onsi/gomega"
-	. "github.com/thiagosantosleite/postgres_exporter/cmd/postgres_exporter"
 )
 
 var _ = Describe("namespace", func() {
