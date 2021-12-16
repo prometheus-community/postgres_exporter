@@ -1,12 +1,24 @@
-ARG ARCH="arm64"
-ARG OS="linux"
-FROM quay.io/prometheus/busybox-${OS}-${ARCH}:latest
-LABEL maintainer="The Prometheus Authors <prometheus-developers@googlegroups.com>"
+FROM --platform=arm64 golang:1.17.5-alpine3.15 as stage
+ENV ARCH="arm64"
+ENV OS="linux"
 
-ARG ARCH="arm64"
-ARG OS="linux"
-COPY .build/postgres_exporter /bin/postgres_exporter
+RUN apk add git make curl && \ 
+        git clone https://github.com/everestsystems/postgres_exporter.git && \
+        pwd && \
+        cd /go/postgres_exporter && \
+        make build
+
+FROM --platform=arm64 golang:1.17.5-alpine3.15
+ENV ARCH="arm64"
+ENV OS="linux"
+
+COPY --from=stage  /go/postgres_exporter/postgres_exporter . 
+
+ENV PG_IAM_ROLE_ARN=arn:aws:iam::680189258452:role/tenant-cff0019d-41c0-46fd-8c8f-cc6ee9786162
+ENV PG_TENANT_ID=cff0019d-41c0-46fd-8c8f-cc6ee9786162
+ENV PG_CLUSTER_ID=tenant-cff0019d-41c0-46fd-8c8f-cc6ee9786162
 
 EXPOSE     9187
-USER       nobody
-ENTRYPOINT [ "/bin/postgres_exporter" ]
+#USER       nobody
+
+ENTRYPOINT [ "/go/postgres_exporter" ]
