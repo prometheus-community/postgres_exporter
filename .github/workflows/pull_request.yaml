@@ -1,0 +1,93 @@
+name: Pull request
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".vscode/**"
+
+jobs:
+  Lint:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install go
+        uses: actions/setup-go@v2
+        with:
+          go-version: "^1.16"
+
+      # Fix issue with golangci-lint-action https://github.com/golangci/golangci-lint-action/issues/81
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+
+      - name: Download mods
+        run: |
+          git config --global url."https://everestaws:${{ secrets.GPR_TOKEN }}@github.com".insteadOf "https://github.com"
+          go mod download
+
+      - name: generate
+        run: make generate
+
+      - name: Lint
+        run: make lint
+
+  Unit_tests:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: "^1.16"
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+
+      - name: Download mods
+        run: |
+          git config --global url."https://everestaws:${{ secrets.GPR_TOKEN }}@github.com".insteadOf "https://github.com"
+          go mod download
+
+      - name: Generate go code
+        run: make generate
+
+      - name: Run unit tests
+        run: make coverage
+
+      - name: Convert coverage to lcov
+        uses: jandelgado/gcov2lcov-action@v1.0.8
+        with:
+          infile: /tmp/go-cover.tmp
+          outfile: coverage.lcov
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ./base-coverage.lcov
+          key: ${{ runner.os }}-go-main-base-coverage
+          restore-keys: ${{ runner.os }}-go-main-base-coverage
+
+      - name: Report code coverage
+        uses: eberlitz/lcov-reporter-action@v0.2.30
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          lcov-file: coverage.lcov
+          lcov-base: ./base-coverage.lcov
