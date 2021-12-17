@@ -32,7 +32,6 @@ jobs:
 
       - name: Download mods
         run: |
-          git config --global url."https://everestaws:${{ secrets.GPR_TOKEN }}@github.com".insteadOf "https://github.com"
           go mod download
 
       - name: generate
@@ -63,7 +62,6 @@ jobs:
 
       - name: Download mods
         run: |
-          git config --global url."https://everestaws:${{ secrets.GPR_TOKEN }}@github.com".insteadOf "https://github.com"
           go mod download
 
       - name: Generate go code
