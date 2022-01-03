@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         go-version:
-          - 1.16
+          - 1.17
         postgresql-image:
           - postgres:10
           - postgres:11
@@ -55,8 +55,8 @@ jobs:
         bin/golangci-lint run -c=.golangci.yml --out-format=line-number | env REVIEWDOG_GITHUB_API_TOKEN=${{ secrets.GITHUB_TOKEN }} bin/reviewdog -f=golangci-lint -level=error -reporter=github-pr-review
     - name: Run Tests
       run: |
-        sudo chown 999:999 testdata/ssl/*
-        sudo chmod 600 testdata/ssl/*
+        sudo chown 999:999 testdata/ssl/server/*
+        sudo chmod 600 testdata/ssl/server/*
         docker-compose up -d
         make
         make test
