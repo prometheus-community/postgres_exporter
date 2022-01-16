@@ -576,14 +576,14 @@ func (e *Exporter) setupInternalMetrics() {
 		Namespace:   namespace,
 		Subsystem:   exporter,
 		Name:        "last_scrape_duration_seconds",
-		Help:        "Duration of the last scrape of metrics from PostgresSQL.",
+		Help:        "Duration of the last scrape of metrics from PostgreSQL.",
 		ConstLabels: e.constantLabels,
 	})
 	e.totalScrapes = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace:   namespace,
 		Subsystem:   exporter,
 		Name:        "scrapes_total",
-		Help:        "Total number of times PostgresSQL was scraped for metrics.",
+		Help:        "Total number of times PostgreSQL was scraped for metrics.",
 		ConstLabels: e.constantLabels,
 	})
 	e.error = prometheus.NewGauge(prometheus.GaugeOpts{
