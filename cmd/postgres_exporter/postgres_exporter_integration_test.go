@@ -14,6 +14,7 @@
 // These are specialized integration tests. We only build them when we're doing
 // a lot of additional work to keep the external docker environment they require
 // working.
+//go:build integration
 // +build integration
 
 package main
