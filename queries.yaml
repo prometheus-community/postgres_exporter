@@ -1,5 +1,124 @@
+#
+# This is a user-defined metrics mapping for postgres_exporter.
+#
+# It supplements the built-in set of metrics that postgres_exporter scrapes
+# with additional user-defined queries.
+#
+# Each top-level entry in the map defines a set of metrics whose values and
+# optionally labels (dimensions) are provided by a single SQL query. Each
+# result column of the query either supplies a value for a metric or adds a
+# Prometheus label (dimension) to qualify the metric.
+#
+# The emitted metrics are named {group_name}_{query_result_column_name}.
+#
+# Each entry in the top-level map must have a map value with keys:
+#
+#   query      SQL query string that is executed verbatim on the server
+#              to capture metrics values and any qualifying LABEL values
+#              specified by the 'metrics' key. Value required.
+#
+#              Each result column maps to a Prometheus metric or a label
+#              depending on the configuration in the 'metrics' map.
+#
+#   master     Boolean flag controlling whether this query is run only
+#              on the default database postgres_exporter connects to.
+#              Only has an effect if auto-discover databases is on. Defaults to
+#              false.
+#
+#   metrics    Map of query result column names to metric type and description.
+#              Optional. If no entry is present for a given result column name
+#              the metric type is assumed to be COUNTER and no description
+#              for the metric is supplied to the scraper.
+#
+# Each of the 'metrics' entries has a key that exactly matches a result column
+# name. Entries that don't match any column are ignored. Use `AS` to alias
+# column names explicitly in your queries to ensure they are predictable. The
+# value is a map with keys:
+#
+#   usage        String 'COUNTER', 'GAUGE', 'DISCARD', 'HISTOGRAM', 'DURATION',
+#                'MAPPEDMETRIC' or 'LABEL'. Defines how values in this column
+#                are mapped to the metrics output.
+#
+#   description  Short text description of the metric for display in tools that
+#                consume Prometheus metrics.
+#
+# Usage types:
+#
+#   GAUGE        Prometheus metric type. A numeric value that may increase or
+#                decrease between scrapes.
+#
+#                The postgres type must be an integer or floating point type,
+#                timestamp (which will be converted to floating point unix
+#                epoch seconds with fractional milliseconds), or boolean
+#                (converted to 0 or 1).
+#
+#                String values will be parsed as floating point numbers - so
+#                they should be avoided.
+#
+#                Time intervals should be exposed as fractional epoch seconds
+#                using `extract(epoch from some_interval_value)`. This will
+#                preserve fractional milliseconds. pg_exporter will NOT handle
+#                ISO8601 interval string representations.
+#
+#   COUNTER      Prometheus metric type. A monotonically increasing value.
+#                Decreases are treated as counter resets.
+#
+#                Same data type handling as GAUGE.
+#
+#   DURATION     Converter that produces a GAUGE typed metric from a time
+#                interval string representation compatible with golang's
+#                time.ParseDuration function. Little-used.
+#
+#   HISTOGRAM    A Prometheus histogram metric per Prometheus documentation.
+#
+#   LABEL        Instead of using the value as a metric, use this column as
+#                the value of a Prometheus label. All other metrics collected
+#                for this query will have this label. Add multiple labels for
+#                multiple dimensions.
+#
+#                Unlike metrics values, labels may be strings - you may use the
+#                "text" or "varchar" database types.
+#
+#   DISCARD      This column should be ignored.
+#
+#   (default)    If no usage for a metric is specified, it is assumed to be
+#                a GAUGE.
+#
+# Metrics queries return one or more columns. Each column is bound to a result
+# metric or label depending on the configuration in the
+# metrics['column_name'].usage mapping for the column. Use `AS` to alias column
+# names in the query to predictably match the names in the metrics map and avoid
+# problems with "?column?" names, duplicate column names, etc.
+#
+# Metrics queries may return zero or more rows. If zero rows are returned, no
+# values will be scraped for the set of metrics. If one or more rows are
+# returned, each column is bound to a metric value or label dimension as
+# specified by the 'metrics' key. Since Prometheus expects each metric to be
+# unique in a given scrape, queries that return multiple rows should bind at
+# least one result column to a LABEL that makes each row a distinct metrics
+# dimension. For example, per-table metrics should bind the table's qualified
+# name to a LABEL.
+#
+# If auto-discover-databases is enabled, the exporter will run this query once
+# for each discovered database unless overridden by a 'master: true' setting on
+# the metric. The 'master' setting restricts the metric to run *only* on the
+# default database that postgres_exporter connects to with the user-supplied
+# connection string. Metrics queries not constrained to the master connection
+# should include a LABEL bound to the result of the SQL current_database()
+# function to ensure that the metrics are unique within a given scrape.
+#
+#
+
+
 pg_replication:
   query: "SELECT CASE WHEN NOT pg_is_in_recovery() THEN 0 ELSE GREATEST (0, EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp()))) END AS lag"
+  #
+  # WARNING: "master" means the default database postgres_fdw connects to, NOT
+  # the replication master in a primary/replica deployment!
+  #
+  # Use "master: true" for queries that only need to run once for the whole
+  # server, rather than for each database.
+  #
   master: true
   metrics:
     - lag:
@@ -15,6 +134,9 @@ pg_postmaster:
         description: "Time at which postmaster started"
 
 pg_stat_user_tables:
+  # Note that this query exposes current_database() as a column named
+  # 'datname'. It does not have 'master: true' set, so it'll run for each
+  # database discovered in pg_database (after applying include/exclude lists).
   query: |
    SELECT
      current_database() datname,
@@ -42,9 +164,13 @@ pg_stat_user_tables:
    FROM
      pg_stat_user_tables
   metrics:
+    # The 'datname' column is mapped to a metric dimension, so each database
+    # produces a unique metric even if they have tables with identical names.
     - datname:
         usage: "LABEL"
         description: "Name of current database"
+    # This metric is multi-dimensional since it's also qualified by database
+    # schema and table name.
     - schemaname:
         usage: "LABEL"
         description: "Name of the schema that this table is in"

@@ -54,7 +54,8 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
   Use the flag if you don't want to scrape `pg_settings`.
 
 * `auto-discover-databases`
-  Whether to discover the databases on a server dynamically.
+  Whether to discover the databases on a server dynamically. If enabled, each query is run once
+  per discovered database. See [Automatically discover databases](#automatically-discover-databases).
 
 * `extend.query-path`
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
@@ -195,6 +196,15 @@ flag. This removes all built-in metrics, and uses only metrics defined by querie
 To scrape metrics from all databases on a database server, the database DSN's can be dynamically discovered via the
 `--auto-discover-databases` flag. When true, `SELECT datname FROM pg_database WHERE datallowconn = true AND datistemplate = false and datname != current_database()` is run for all configured DSN's. From the
 result a new set of DSN's is created for which the metrics are scraped.
+
+Setting the `master` flag on a metric to `true` disables scraping of each
+discovered database for the metric. The metric will be scraped only once for
+the default database that `postgres_exporter` connects to.
+
+For any query that is run on all autodiscovered databases it is **strongly
+recommended** that each metric has the value of `current_database()` mapped as
+a `LABEL` so that it emits distinct dimensions for each database scraped. See
+the examples in `queries.yaml` for details.
 
 In addition, the option `--exclude-databases` adds the possibily to filter the result from the auto discovery to discard databases you do not need.
 
