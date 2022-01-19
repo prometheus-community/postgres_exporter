@@ -48,13 +48,13 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
   Path under which to expose metrics. Default is `/metrics`.
 
 * `disable-default-metrics`
-  Use only metrics supplied from `queries.yaml` via `--extend.query-path`.
+  Use only metrics supplied from `queries.yaml` via `--extend.query-path`.  Default is `false`.
 
 * `disable-settings-metrics`
-  Use the flag if you don't want to scrape `pg_settings`.
+  Use the flag if you don't want to scrape `pg_settings`.  Default is `false`.
 
 * `auto-discover-databases`
-  Whether to discover the databases on a server dynamically.
+  Whether to discover the databases on a server dynamically.  Default is `false`.
 
 * `extend.query-path`
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
