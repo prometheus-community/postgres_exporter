@@ -21,6 +21,12 @@ docker run \
   quay.io/prometheuscommunity/postgres-exporter
 ```
 
+## Installation
+
+### Ansible
+
+For automated installs with [Ansible](https://www.ansible.com/), there is the [Ansible Role: postgres exporter](https://github.com/zhan9san/ansible-postgres-exporter).
+
 ## Building and running
 
     git clone https://github.com/prometheus-community/postgres_exporter.git
