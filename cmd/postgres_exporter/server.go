@@ -15,6 +15,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -31,6 +32,7 @@ type Server struct {
 	labels      prometheus.Labels
 	master      bool
 	runonserver string
+	datname     string
 
 	// Last version used to calculate metric map. If mismatch on scrape,
 	// then maps are recalculated.
@@ -57,6 +59,22 @@ func ServerWithLabels(labels prometheus.Labels) ServerOpt {
 	}
 }
 
+func currentDatabase(db *sql.DB) (string, error) {
+	rows, err := db.Query("SELECT current_database()")
+	if err != nil {
+		return "", fmt.Errorf("Error retrieving database: %v", err)
+	}
+	defer rows.Close() // nolint: errcheck
+
+	var databaseName string
+	rows.Next()
+	err = rows.Scan(&databaseName)
+	if err != nil {
+		return databaseName, errors.New(fmt.Sprintln("Error retrieving rows:", err))
+	}
+	return databaseName, nil
+}
+
 // NewServer establishes a new connection using DSN.
 func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 	fingerprint, err := parseFingerprint(dsn)
@@ -73,6 +91,11 @@ func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 
 	level.Info(logger).Log("msg", "Established new database connection", "fingerprint", fingerprint)
 
+	datname, err := currentDatabase(db)
+	if err != nil {
+		return nil, err
+	}
+
 	s := &Server{
 		db:     db,
 		master: false,
@@ -80,6 +103,7 @@ func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 			serverLabelName: fingerprint,
 		},
 		metricCache: make(map[string]cachedMetrics),
+		datname:     datname,
 	}
 
 	for _, opt := range opts {

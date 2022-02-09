@@ -132,6 +132,7 @@ func (s *IntegrationSuite) TestUnknownMetricParsingDoesntCrash(c *C) {
 		emptyMaps[k] = intermediateMetricMap{
 			map[string]ColumnMapping{},
 			true,
+			nil,
 			0,
 		}
 	}

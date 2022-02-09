@@ -193,7 +193,7 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 		level.Debug(logger).Log("msg", "Querying namespace", "namespace", namespace)
 
 		if mapping.master && !server.master {
-			level.Debug(logger).Log("msg", "Query skipped...")
+			level.Debug(logger).Log("msg", "Query skipped (not the master server)...")
 			continue
 		}
 
@@ -205,6 +205,10 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 				level.Debug(logger).Log("msg", "Query skipped for this database version", "version", server.lastMapVersion.String(), "target_version", server.runonserver)
 				continue
 			}
+		}
+		if mapping.databases != nil && !mapping.databases.MatchString(server.datname) {
+			level.Debug(logger).Log("msg", "Query skipped (not matching database filter)...")
+			continue
 		}
 
 		scrapeMetric := false

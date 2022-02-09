@@ -20,11 +20,13 @@ import (
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log/level"
 	"gopkg.in/yaml.v2"
+	"regexp"
 )
 
 // UserQuery represents a user defined query
 type UserQuery struct {
 	Query        string    `yaml:"query"`
+	Databases    string    `yaml:"databases"`
 	Metrics      []Mapping `yaml:"metrics"`
 	Master       bool      `yaml:"master"`        // Querying only for master database
 	CacheSeconds uint64    `yaml:"cache_seconds"` // Number of seconds to cache the namespace result metrics for.
@@ -226,6 +228,9 @@ func parseUserQueries(content []byte) (map[string]intermediateMetricMap, map[str
 				columnMappings: newMetricMap,
 				master:         specs.Master,
 				cacheSeconds:   specs.CacheSeconds,
+			}
+			if len(specs.Databases) > 0 {
+				metricMap.databases = regexp.MustCompile(specs.Databases)
 			}
 			metricMaps[metric] = metricMap
 		}

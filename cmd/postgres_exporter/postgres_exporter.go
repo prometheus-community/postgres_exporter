@@ -111,6 +111,7 @@ func (cm *ColumnMapping) UnmarshalYAML(unmarshal func(interface{}) error) error 
 type intermediateMetricMap struct {
 	columnMappings map[string]ColumnMapping
 	master         bool
+	databases      *regexp.Regexp
 	cacheSeconds   uint64
 }
 
@@ -119,6 +120,7 @@ type MetricMapNamespace struct {
 	labels         []string             // Label names for this namespace
 	columnMappings map[string]MetricMap // Column mappings in this namespace
 	master         bool                 // Call query only for master database
+	databases      *regexp.Regexp       // Call query only for databases matching this regex
 	cacheSeconds   uint64               // Number of seconds this metric namespace can be cached. 0 disables.
 }
 
@@ -186,6 +188,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 			"stats_reset":    {COUNTER, "Time at which these statistics were last reset", nil, nil},
 		},
 		true,
+		nil,
 		0,
 	},
 	"pg_stat_database_conflicts": {
@@ -199,6 +202,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 			"confl_deadlock":   {COUNTER, "Number of queries in this database that have been canceled due to deadlocks", nil, nil},
 		},
 		true,
+		nil,
 		0,
 	},
 	"pg_locks": {
@@ -208,6 +212,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 			"count":   {GAUGE, "Number of locks", nil, nil},
 		},
 		true,
+		nil,
 		0,
 	},
 	"pg_stat_replication": {
@@ -254,6 +259,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 			"replay_lag":               {DISCARD, "Time elapsed between flushing recent WAL locally and receiving notification that this standby server has written, flushed and applied it. This can be used to gauge the delay that synchronous_commit level remote_apply incurred while committing if this server was configured as a synchronous standby.", nil, semver.MustParseRange(">=10.0.0")},
 		},
 		true,
+		nil,
 		0,
 	},
 	"pg_replication_slots": {
@@ -264,6 +270,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 			"pg_wal_lsn_diff": {GAUGE, "Replication lag in bytes", nil, nil},
 		},
 		true,
+		nil,
 		0,
 	},
 	"pg_stat_archiver": {
@@ -278,6 +285,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 			"last_archive_age":   {GAUGE, "Time in seconds since last WAL segment was successfully archived", nil, nil},
 		},
 		true,
+		nil,
 		0,
 	},
 	"pg_stat_activity": {
@@ -290,6 +298,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 			"max_tx_duration":  {GAUGE, "max duration in seconds any active transaction has been running", nil, nil},
 		},
 		true,
+		nil,
 		0,
 	},
 }
@@ -424,7 +433,7 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 			}
 		}
 
-		metricMap[namespace] = MetricMapNamespace{variableLabels, thisMap, intermediateMappings.master, intermediateMappings.cacheSeconds}
+		metricMap[namespace] = MetricMapNamespace{variableLabels, thisMap, intermediateMappings.master, intermediateMappings.databases, intermediateMappings.cacheSeconds}
 	}
 
 	return metricMap
