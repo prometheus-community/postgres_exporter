@@ -30,7 +30,7 @@ var pgDatabase = map[string]*prometheus.Desc{
 	"size_bytes": prometheus.NewDesc(
 		"pg_database_size_bytes",
 		"Disk space used by the database",
-		[]string{"datname"}, nil,
+		[]string{"datname", "server"}, nil,
 	),
 }
 
@@ -53,7 +53,7 @@ func (PGDatabaseCollector) Update(ctx context.Context, db *sql.DB, server string
 		}
 		metrics = append(metrics, prometheus.MustNewConstMetric(
 			pgDatabase["size_bytes"],
-			prometheus.GaugeValue, float64(size), datname,
+			prometheus.GaugeValue, float64(size), datname, server,
 		))
 	}
 	if err := rows.Err(); err != nil {
