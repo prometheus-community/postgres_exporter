@@ -38,8 +38,8 @@ const (
 	// Namespace for all metrics.
 	namespace = "pg"
 
-	defaultEnabled  = true
-	defaultDisabled = false
+	defaultEnabled = true
+	// defaultDisabled = false
 )
 
 var (
