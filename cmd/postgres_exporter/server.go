@@ -14,16 +14,13 @@
 package main
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/blang/semver"
 	"github.com/go-kit/log/level"
-	"github.com/prometheus-community/postgres_exporter/collector"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -129,17 +126,6 @@ func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool
 	errMap := queryNamespaceMappings(ch, s)
 	if len(errMap) > 0 {
 		err = fmt.Errorf("queryNamespaceMappings returned %d errors", len(errMap))
-	}
-
-	{
-		pgdb := collector.NewPGDatabaseCollector()
-		metrics, err := pgdb.Update(context.TODO(), s.db, s.String())
-		if err != nil {
-			log.Printf("Failed to scrape pg_database metrics: %s", err)
-		}
-		for _, m := range metrics {
-			ch <- m
-		}
 	}
 
 	return err

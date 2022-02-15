@@ -19,6 +19,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/prometheus-community/postgres_exporter/collector"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/promlog"
@@ -113,6 +114,13 @@ func main() {
 	prometheus.MustRegister(version.NewCollector(exporterName))
 
 	prometheus.MustRegister(exporter)
+
+	pe, err := collector.NewPostgresCollector(logger, dsn)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create PostgresCollector", "err", err.Error())
+		os.Exit(1)
+	}
+	prometheus.MustRegister(pe)
 
 	http.Handle(*metricPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

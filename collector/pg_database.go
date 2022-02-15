@@ -1,4 +1,4 @@
-// Copyright 2021 The Prometheus Authors
+// Copyright 2022 The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -15,15 +15,21 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 
+	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type PGDatabaseCollector struct{}
+func init() {
+	registerCollector("database", defaultEnabled, NewPGDatabaseCollector)
+}
 
-func NewPGDatabaseCollector() *PGDatabaseCollector {
-	return &PGDatabaseCollector{}
+type PGDatabaseCollector struct {
+	log log.Logger
+}
+
+func NewPGDatabaseCollector(logger log.Logger) (Collector, error) {
+	return &PGDatabaseCollector{log: logger}, nil
 }
 
 var pgDatabase = map[string]*prometheus.Desc{
@@ -34,14 +40,17 @@ var pgDatabase = map[string]*prometheus.Desc{
 	),
 }
 
-func (PGDatabaseCollector) Update(ctx context.Context, db *sql.DB, server string) ([]prometheus.Metric, error) {
-	metrics := []prometheus.Metric{}
+func (PGDatabaseCollector) Update(ctx context.Context, server *server, ch chan<- prometheus.Metric) error {
+	db, err := server.GetDB()
+	if err != nil {
+		return err
+	}
 	rows, err := db.QueryContext(ctx,
 		`SELECT pg_database.datname
 		,pg_database_size(pg_database.datname)
 		FROM pg_database;`)
 	if err != nil {
-		return metrics, err
+		return err
 	}
 	defer rows.Close()
 
@@ -49,15 +58,16 @@ func (PGDatabaseCollector) Update(ctx context.Context, db *sql.DB, server string
 		var datname string
 		var size int64
 		if err := rows.Scan(&datname, &size); err != nil {
-			return metrics, err
+			return err
 		}
-		metrics = append(metrics, prometheus.MustNewConstMetric(
+
+		ch <- prometheus.MustNewConstMetric(
 			pgDatabase["size_bytes"],
-			prometheus.GaugeValue, float64(size), datname, server,
-		))
+			prometheus.GaugeValue, float64(size), datname, server.GetName(),
+		)
 	}
 	if err := rows.Err(); err != nil {
-		return metrics, err
+		return err
 	}
-	return metrics, nil
+	return nil
 }
