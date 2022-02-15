@@ -1,3 +1,7 @@
+## master / unreleased
+
+* [ENHANCEMENT] Add pg_database_size_bytes metric #613
+
 ## 0.10.1 / 2022-01-14
 
 * [BUGFIX] Fix broken log-level for values other than debug. #560
