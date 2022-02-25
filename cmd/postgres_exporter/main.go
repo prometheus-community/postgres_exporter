@@ -85,16 +85,17 @@ func main() {
 		return
 	}
 
-	dsn, err := getDataSources()
+	dsns, err := getDataSources()
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed reading data sources", "err", err.Error())
 		os.Exit(1)
 	}
 
-	if len(dsn) == 0 {
-		level.Error(logger).Log("msg", "Couldn't find environment variables describing the datasource to use")
-		os.Exit(1)
-	}
+	// TODO(@sysadmind): Remove this with multi-target support
+	// if len(dsn) == 0 {
+	// 	level.Error(logger).Log("msg", "Couldn't find environment variables describing the datasource to use")
+	// 	os.Exit(1)
+	// }
 
 	opts := []ExporterOpt{
 		DisableDefaultMetrics(*disableDefaultMetrics),
@@ -106,7 +107,7 @@ func main() {
 		IncludeDatabases(*includeDatabases),
 	}
 
-	exporter := NewExporter(dsn, opts...)
+	exporter := NewExporter(dsns, opts...)
 	defer func() {
 		exporter.servers.Close()
 	}()
@@ -115,6 +116,12 @@ func main() {
 
 	prometheus.MustRegister(exporter)
 
+	// TODO(@sysadmind): Remove this with multi-target support. We are removing multiple DSN support
+	dsn := ""
+	if len(dsns) > 0 {
+		dsn = dsns[0]
+	}
+
 	pe, err := collector.NewPostgresCollector(
 		logger,
 		dsn,
@@ -122,15 +129,17 @@ func main() {
 	)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create PostgresCollector", "err", err.Error())
-		os.Exit(1)
+	} else {
+		prometheus.MustRegister(pe)
 	}
-	prometheus.MustRegister(pe)
 
 	http.Handle(*metricPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=UTF-8") // nolint: errcheck
 		w.Write(landingPage)                                       // nolint: errcheck
 	})
+
+	http.HandleFunc("/probe", handleProbe(logger))
 
 	level.Info(logger).Log("msg", "Listening on address", "address", *listenAddress)
 	srv := &http.Server{Addr: *listenAddress}

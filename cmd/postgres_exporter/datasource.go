@@ -162,6 +162,12 @@ func getDataSources() ([]string, error) {
 		uri = os.Getenv("DATA_SOURCE_URI")
 	}
 
+	// No datasources found. This allows us to support the multi-target pattern
+	// withouth an explicit datasource.
+	if uri == "" {
+		return []string{}, nil
+	}
+
 	dsn = "postgresql://" + ui + "@" + uri
 
 	return []string{dsn}, nil

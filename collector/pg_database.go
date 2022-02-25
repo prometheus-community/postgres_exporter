@@ -15,6 +15,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -36,15 +37,11 @@ var pgDatabase = map[string]*prometheus.Desc{
 	"size_bytes": prometheus.NewDesc(
 		"pg_database_size_bytes",
 		"Disk space used by the database",
-		[]string{"datname", "server"}, nil,
+		[]string{"datname"}, nil,
 	),
 }
 
-func (PGDatabaseCollector) Update(ctx context.Context, server *server, ch chan<- prometheus.Metric) error {
-	db, err := server.GetDB()
-	if err != nil {
-		return err
-	}
+func (PGDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
 	rows, err := db.QueryContext(ctx,
 		`SELECT pg_database.datname
 		,pg_database_size(pg_database.datname)
@@ -63,7 +60,7 @@ func (PGDatabaseCollector) Update(ctx context.Context, server *server, ch chan<-
 
 		ch <- prometheus.MustNewConstMetric(
 			pgDatabase["size_bytes"],
-			prometheus.GaugeValue, float64(size), datname, server.GetName(),
+			prometheus.GaugeValue, float64(size), datname,
 		)
 	}
 	if err := rows.Err(); err != nil {
