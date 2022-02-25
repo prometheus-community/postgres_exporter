@@ -22,10 +22,9 @@ import (
 )
 
 type server struct {
-	dsn       string
-	name      string
-	db        *sql.DB
-	isPrimary bool // Certain queries are only run on the primary server
+	dsn  string
+	name string
+	db   *sql.DB
 }
 
 func makeServer(dsn string) (*server, error) {

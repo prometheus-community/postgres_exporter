@@ -87,10 +87,6 @@ type PostgresCollector struct {
 	logger     log.Logger
 
 	servers map[string]*server
-
-	// autoDiscoverDatabases will cause the collector to query the database
-	// to find other servers and also scrape them.
-	autoDiscoverDatabases bool
 }
 
 type Option func(*PostgresCollector) error
@@ -146,12 +142,6 @@ func NewPostgresCollector(logger log.Logger, dsns []string, filters []string, op
 		if err != nil {
 			return nil, err
 		}
-		// Manually provided servers are always classified as "primary"
-		s.isPrimary = true
-
-		// TODO(@sysadmind): We need to discover the downstream servers and add them here.
-		// if p.autoDiscoverDatabases {
-		// }
 
 		servers[dsn] = s
 	}
@@ -159,13 +149,6 @@ func NewPostgresCollector(logger log.Logger, dsns []string, filters []string, op
 	p.servers = servers
 
 	return p, nil
-}
-
-func WithAutoDiscoverDatabases(discover bool) Option {
-	return func(p *PostgresCollector) error {
-		p.autoDiscoverDatabases = discover
-		return nil
-	}
 }
 
 // Describe implements the prometheus.Collector interface.

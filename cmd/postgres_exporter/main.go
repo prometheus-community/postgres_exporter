@@ -119,7 +119,6 @@ func main() {
 		logger,
 		dsn,
 		[]string{},
-		collector.WithAutoDiscoverDatabases(*autoDiscoverDatabases),
 	)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create PostgresCollector", "err", err.Error())
