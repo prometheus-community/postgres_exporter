@@ -584,7 +584,7 @@
         {
           "alias": "Buffers Allocated",
           "dsType": "prometheus",
-          "expr": "irate(pg_stat_bgwriter_buffers_alloc{instance='$instance'}[5m])",
+          "expr": "irate(pg_stat_bgwriter_buffers_alloc_total{instance='$instance'}[5m])",
           "format": "time_series",
           "groupBy": [
             {
@@ -636,7 +636,7 @@
         {
           "alias": "Buffers Allocated",
           "dsType": "prometheus",
-          "expr": "irate(pg_stat_bgwriter_buffers_backend_fsync{instance='$instance'}[5m])",
+          "expr": "irate(pg_stat_bgwriter_buffers_backend_fsync_total{instance='$instance'}[5m])",
           "format": "time_series",
           "groupBy": [
             {
@@ -688,7 +688,7 @@
         {
           "alias": "Buffers Allocated",
           "dsType": "prometheus",
-          "expr": "irate(pg_stat_bgwriter_buffers_backend{instance='$instance'}[5m])",
+          "expr": "irate(pg_stat_bgwriter_buffers_backend_total{instance='$instance'}[5m])",
           "format": "time_series",
           "groupBy": [
             {
@@ -740,7 +740,7 @@
         {
           "alias": "Buffers Allocated",
           "dsType": "prometheus",
-          "expr": "irate(pg_stat_bgwriter_buffers_clean{instance='$instance'}[5m])",
+          "expr": "irate(pg_stat_bgwriter_buffers_clean_total{instance='$instance'}[5m])",
           "format": "time_series",
           "groupBy": [
             {
@@ -792,7 +792,7 @@
         {
           "alias": "Buffers Allocated",
           "dsType": "prometheus",
-          "expr": "irate(pg_stat_bgwriter_buffers_checkpoint{instance='$instance'}[5m])",
+          "expr": "irate(pg_stat_bgwriter_buffers_checkpoint_total{instance='$instance'}[5m])",
           "format": "time_series",
           "groupBy": [
             {

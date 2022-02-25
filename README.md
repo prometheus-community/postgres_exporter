@@ -41,6 +41,12 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `help`
   Show context-sensitive help (also try --help-long and --help-man).
 
+* `collector.database`
+  Enable the pg_database collector. Default is `enabled`
+
+* `collector.bgwriter`
+  Enable the pg_stat_bgwriter collector. Default is `enabled`
+
 * `web.listen-address`
   Address to listen on for web interface and telemetry. Default is `:9187`.
 

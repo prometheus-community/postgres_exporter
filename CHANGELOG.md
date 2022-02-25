@@ -1,5 +1,6 @@
 ## master / unreleased
 
+* [CHANGE] pg_stat_bgwriter counter metrics had the `_total` suffix added #556
 * [ENHANCEMENT] Add pg_database_size_bytes metric #613
 
 ## 0.10.1 / 2022-01-14
