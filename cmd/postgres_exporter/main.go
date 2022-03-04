@@ -20,6 +20,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus-community/postgres_exporter/collector"
+	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/promlog"
@@ -31,6 +32,11 @@ import (
 )
 
 var (
+	c = config.ConfigHandler{
+		Config: &config.Config{},
+	}
+
+	configFile             = kingpin.Flag("config.file", "Promehteus exporter configuration file.").Default("postres_exporter.yml").String()
 	listenAddress          = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").Envar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
 	webConfig              = webflag.AddFlags(kingpin.CommandLine)
 	metricPath             = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").Envar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
@@ -83,6 +89,11 @@ func main() {
 	if *onlyDumpMaps {
 		dumpMaps()
 		return
+	}
+
+	if err := c.ReloadConfig(*configFile, logger); err != nil {
+		// This is not fatal, but it means that auth must be provided for every dsn.
+		level.Error(logger).Log("msg", "Error loading config", "err", err)
 	}
 
 	dsns, err := getDataSources()

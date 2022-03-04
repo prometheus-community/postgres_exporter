@@ -14,11 +14,14 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus-community/postgres_exporter/collector"
+	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -26,15 +29,38 @@ import (
 func handleProbe(logger log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		conf := c.GetConfig()
 		params := r.URL.Query()
 		target := params.Get("target")
 		if target == "" {
 			http.Error(w, "target is required", http.StatusBadRequest)
 			return
 		}
+		var authModule config.AuthModule
+		authModuleName := params.Get("auth_module")
+		if authModuleName == "" {
+			level.Info(logger).Log("msg", "no auth_module specified, using default")
+		} else {
+			var ok bool
+			authModule, ok = conf.AuthModules[authModuleName]
+			if !ok {
+				http.Error(w, fmt.Sprintf("auth_module %s not found", authModuleName), http.StatusBadRequest)
+				return
+			}
+			if authModule.UserPass.Username == "" || authModule.UserPass.Password == "" {
+				http.Error(w, fmt.Sprintf("auth_module %s has no username or password", authModuleName), http.StatusBadRequest)
+				return
+			}
+		}
+
+		dsn, err := authModule.ConfigureTarget(target)
+		if err != nil {
+			level.Error(logger).Log("msg", "failed to configure target", "err", err)
+			http.Error(w, fmt.Sprintf("could not configure dsn for target: %v", err), http.StatusBadRequest)
+			return
+		}
 
 		// TODO: Timeout
-		// TODO: Auth Module
 
 		probeSuccessGauge := prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "probe_success",
@@ -46,18 +72,14 @@ func handleProbe(logger log.Logger) http.HandlerFunc {
 		})
 
 		tl := log.With(logger, "target", target)
-		_ = tl
 
 		start := time.Now()
 		registry := prometheus.NewRegistry()
 		registry.MustRegister(probeSuccessGauge)
 		registry.MustRegister(probeDurationGauge)
 
-		// TODO(@sysadmind): this is a temp hack until we have a proper auth module
-		target = "postgres://postgres:test@localhost:5432/circle_test?sslmode=disable"
-
 		// Run the probe
-		pc, err := collector.NewProbeCollector(tl, registry, target)
+		pc, err := collector.NewProbeCollector(tl, registry, dsn)
 		if err != nil {
 			probeSuccessGauge.Set(0)
 			probeDurationGauge.Set(time.Since(start).Seconds())
