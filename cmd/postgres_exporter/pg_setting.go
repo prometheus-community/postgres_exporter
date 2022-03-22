@@ -18,9 +18,15 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+)
+
+var (
+	// cache the first server setting when there are multiple servers
+	shortDescCache sync.Map
 )
 
 // Query the pg_settings view containing runtime variables
@@ -44,6 +50,15 @@ func querySettings(ch chan<- prometheus.Metric, server *Server) error {
 		err = rows.Scan(&s.name, &s.setting, &s.unit, &s.shortDesc, &s.vartype)
 		if err != nil {
 			return fmt.Errorf("Error retrieving rows on %q: %s %v", server, namespace, err)
+		}
+
+		// once the first server setting shortDesc cached, the other server re-use the first cache
+		if v, ok := shortDescCache.Load(s.name); !ok {
+			shortDescCache.Store(s.name, s.shortDesc)
+		} else {
+			if shortDesc, ok := v.(string); ok {
+				s.shortDesc = shortDesc
+			}
 		}
 
 		ch <- s.metric(server.labels)
