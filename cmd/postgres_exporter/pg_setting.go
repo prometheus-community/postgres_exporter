@@ -53,6 +53,10 @@ func querySettings(ch chan<- prometheus.Metric, server *Server) error {
 			return fmt.Errorf("Error retrieving rows on %q: %s %v", server, namespace, err)
 		}
 
+		if *stripSettingsSuffix {
+			s.stripUnitSuffix()
+		}
+
 		ch <- s.metric(server.labels)
 	}
 
@@ -103,7 +107,7 @@ func (s *pgSetting) metric(labels prometheus.Labels) prometheus.Metric {
 // Removes units from any of the setting values.
 // This is mostly because of a irregularity regarding AWS RDS Aurora
 // https://github.com/prometheus-community/postgres_exporter/issues/619
-func (s *pgSetting) sanitizeValue() {
+func (s *pgSetting) stripUnitSuffix() {
 	for _, unit := range settingUnits {
 		if strings.HasSuffix(s.setting, unit) {
 			endPos := len(s.setting) - len(unit) - 1
@@ -116,7 +120,6 @@ func (s *pgSetting) sanitizeValue() {
 // TODO: fix linter override
 // nolint: nakedret
 func (s *pgSetting) normaliseUnit() (val float64, unit string, err error) {
-	s.sanitizeValue()
 
 	val, err = strconv.ParseFloat(s.setting, 64)
 	if err != nil {

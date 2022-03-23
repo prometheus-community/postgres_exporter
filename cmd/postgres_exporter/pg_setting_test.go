@@ -17,6 +17,8 @@
 package main
 
 import (
+	"testing"
+
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	. "gopkg.in/check.v1"
@@ -267,4 +269,32 @@ type fixture struct {
 	n normalised
 	d string
 	v float64
+}
+
+func Test_pgSetting_sanitizeValue(t *testing.T) {
+	tests := []struct {
+		name    string
+		setting *pgSetting
+		want    string
+	}{
+		{
+			name: "RDS Shared Buffers",
+			setting: &pgSetting{
+				name:      "shared_buffers",
+				setting:   "88413056kB",
+				unit:      "8kB",
+				shortDesc: "Sets the number of shared memory buffers used by the server.",
+				vartype:   "integer",
+			},
+			want: "88413056",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setting.stripUnitSuffix()
+			if got := tt.setting.setting; got != tt.want {
+				t.Errorf("sanitizeValue() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

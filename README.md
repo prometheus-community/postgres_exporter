@@ -82,6 +82,9 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `include-databases`
   A list of databases to only include when autoDiscoverDatabases is enabled.
 
+* `strip-settings-suffix`
+  Whether to strip unit siffixes (i.e. KB) from pg_settings metrics.
+
 * `log.level`
   Set logging level: one of `debug`, `info`, `warn`, `error`.
 
