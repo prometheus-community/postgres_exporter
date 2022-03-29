@@ -1,0 +1,11 @@
+groups:
+- name: postgres_rules
+  rules:
+  - expr: sum(pg_stat_database_numbackends)
+    record: instance:pg_running_queries:sum
+  - expr: (pg_statio_user_tables_heap_blks_hit - pg_statio_user_tables_heap_blks_read) / pg_statio_user_tables_heap_blks_hit * 100 >= 0
+    record: instance:pg_table_cache_hitrate
+  - expr: pg_stat_user_tables_idx_scan / (pg_stat_user_tables_seq_scan + pg_stat_user_tables_idx_scan) * 100 >= 0
+    record: instance:pg_table_index_usage_rate
+  - expr: (pg_statio_user_tables_idx_blks_hit - pg_statio_user_tables_idx_blks_read) / pg_statio_user_tables_idx_blks_hit * 100 >= 0
+    record: instance:pg_index_cache_hitrate
