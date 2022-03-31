@@ -1006,7 +1006,9 @@ func (s *Servers) GetServer(dsn string) (*Server, error) {
 		if !ok {
 			server, err = NewServer(dsn, s.opts...)
 			if err != nil {
-				time.Sleep(time.Duration(errCount) * time.Second)
+				if errCount != *connectionRetries {
+					time.Sleep(time.Duration(1) * time.Second)
+				}
 
 				continue
 			}
@@ -1019,7 +1021,9 @@ func (s *Servers) GetServer(dsn string) (*Server, error) {
 			s.m.Lock()
 			delete(s.servers, dsn)
 			s.m.Unlock()
-			time.Sleep(time.Duration(errCount) * time.Second)
+			if errCount != *connectionRetries {
+				time.Sleep(time.Duration(1) * time.Second)
+			}
 
 			continue
 		}
@@ -1046,10 +1050,12 @@ type Exporter struct {
 	// only, since it just points to the global.
 	builtinMetricMaps map[string]intermediateMetricMap
 
-	disableDefaultMetrics, disableSettingsMetrics, autoDiscoverDatabases bool
+	disableDefaultMetrics, disableSettingsMetrics bool
+	autoDiscoverDatabases                         bool
 
 	excludeDatabases   []string
 	dsn                []string
+	collectorName      string
 	userQueriesPath    map[MetricResolution]string
 	userQueriesEnabled map[MetricResolution]bool
 	constantLabels     prometheus.Labels
@@ -1102,7 +1108,7 @@ func WithUserQueriesPath(p map[MetricResolution]string) ExporterOpt {
 	}
 }
 
-// WithUserQueriesPath configures user's queries path.
+// WithUserQueriesEnabled enables user's queries.
 func WithUserQueriesEnabled(p map[MetricResolution]bool) ExporterOpt {
 	return func(e *Exporter) {
 		e.userQueriesEnabled = p
@@ -1113,6 +1119,14 @@ func WithUserQueriesEnabled(p map[MetricResolution]bool) ExporterOpt {
 func WithConstantLabels(s string) ExporterOpt {
 	return func(e *Exporter) {
 		e.constantLabels = parseConstLabels(s)
+		e.constantLabels["collector"] = e.collectorName
+	}
+}
+
+// WithCollectorName configures collectorname for labels.
+func WithCollectorName(s string) ExporterOpt {
+	return func(e *Exporter) {
+		e.constantLabels["collector"] = s
 	}
 }
 
@@ -1143,9 +1157,10 @@ func parseConstLabels(s string) prometheus.Labels {
 }
 
 // NewExporter returns a new PostgreSQL exporter for the provided DSN.
-func NewExporter(dsn []string, opts ...ExporterOpt) *Exporter {
+func NewExporter(dsn []string, collectorName string, opts ...ExporterOpt) *Exporter {
 	e := &Exporter{
 		dsn:               dsn,
+		collectorName:     collectorName,
 		builtinMetricMaps: builtinMetricMaps,
 	}
 
@@ -1217,6 +1232,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 
 	go func() {
 		for m := range metricCh {
+			log.Debugln(m.Desc())
 			ch <- m.Desc()
 		}
 		close(doneCh)
@@ -1536,11 +1552,10 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 		}
 	}
 
-	// Output the version as a special metric only for master database
-	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
-		"Version string as reported by postgres", []string{"version", "short_version"}, labels)
-
 	if !e.disableDefaultMetrics && master {
+		// Output the version as a special metric only for master database
+		versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
+			"Version string as reported by postgres", []string{"version", "short_version"}, labels)
 		ch <- prometheus.MustNewConstMetric(versionDesc,
 			prometheus.UntypedValue, 1, versionString, semanticVersion.String())
 	}
@@ -1641,12 +1656,12 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			continue
 		}
 
-		dsns[dsn] = struct{}{}
 		server, err := e.servers.GetServer(dsn)
 		if err != nil {
 			log.Errorf("Error opening connection to database (%s): %v", loggableDSN(dsn), err)
 			continue
 		}
+		dsns[dsn] = struct{}{}
 
 		// If autoDiscoverDatabases is true, set first dsn as master database (Default: false)
 		server.masterMtx.Lock()
@@ -1775,24 +1790,16 @@ func main() {
 		log.Fatal("couldn't find environment variables describing the datasource to use")
 	}
 
-	queriesEnabled := map[MetricResolution]bool{
-		HR: *collectCustomQueryHr,
-		MR: *collectCustomQueryMr,
-		LR: *collectCustomQueryLr,
-	}
-
 	queriesPath := map[MetricResolution]string{
 		HR: *collectCustomQueryHrDirectory,
 		MR: *collectCustomQueryMrDirectory,
 		LR: *collectCustomQueryLrDirectory,
 	}
 
-	exporter := NewExporter(dsn,
+	exporter := NewExporter(dsn, "exporter",
 		DisableDefaultMetrics(*disableDefaultMetrics),
 		DisableSettingsMetrics(*disableSettingsMetrics),
 		AutoDiscoverDatabases(*autoDiscoverDatabases),
-		WithUserQueriesEnabled(queriesEnabled),
-		WithUserQueriesPath(queriesPath),
 		WithConstantLabels(*constantLabelsList),
 		ExcludeDatabases(*excludeDatabases),
 	)
@@ -1800,21 +1807,74 @@ func main() {
 		exporter.servers.Close()
 	}()
 
-	prometheus.MustRegister(exporter)
+	hrExporter := NewExporter(dsn, "custom_query.hr",
+		DisableDefaultMetrics(true),
+		DisableSettingsMetrics(true),
+		AutoDiscoverDatabases(*autoDiscoverDatabases),
+		WithUserQueriesEnabled(map[MetricResolution]bool{
+			HR: *collectCustomQueryHr,
+			MR: false,
+			LR: false,
+		}),
+		WithUserQueriesPath(queriesPath),
+		WithConstantLabels(*constantLabelsList),
+		ExcludeDatabases(*excludeDatabases),
+	)
+	defer func() {
+		hrExporter.servers.Close()
+	}()
+
+	mrExporter := NewExporter(dsn, "custom_query.mr",
+		DisableDefaultMetrics(true),
+		DisableSettingsMetrics(true),
+		AutoDiscoverDatabases(*autoDiscoverDatabases),
+		WithUserQueriesEnabled(map[MetricResolution]bool{
+			HR: false,
+			MR: *collectCustomQueryMr,
+			LR: false,
+		}),
+		WithUserQueriesPath(queriesPath),
+		WithConstantLabels(*constantLabelsList),
+		ExcludeDatabases(*excludeDatabases),
+	)
+	defer func() {
+		mrExporter.servers.Close()
+	}()
+
+	lrExporter := NewExporter(dsn, "custom_query.lr",
+		DisableDefaultMetrics(true),
+		DisableSettingsMetrics(true),
+		AutoDiscoverDatabases(*autoDiscoverDatabases),
+		WithUserQueriesEnabled(map[MetricResolution]bool{
+			HR: false,
+			MR: false,
+			LR: *collectCustomQueryLr,
+		}),
+		WithUserQueriesPath(queriesPath),
+		WithConstantLabels(*constantLabelsList),
+		ExcludeDatabases(*excludeDatabases),
+	)
+	defer func() {
+		lrExporter.servers.Close()
+	}()
 
 	version.Branch = Branch
 	version.BuildDate = BuildDate
 	version.Revision = Revision
 	version.Version = VersionShort
-	prometheus.MustRegister(version.NewCollector("postgres_exporter"))
+	versionCollector := version.NewCollector("postgres_exporter")
 
 	psCollector := prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{})
 	goCollector := prometheus.NewGoCollector()
 
 	exporter_shared.RunServer("PostgreSQL", *listenAddress, *metricPath, newHandler(map[string]prometheus.Collector{
 		"exporter":         exporter,
+		"custom_query.hr":  hrExporter,
+		"custom_query.mr":  mrExporter,
+		"custom_query.lr":  lrExporter,
 		"standard.process": psCollector,
 		"standard.go":      goCollector,
+		"version":          versionCollector,
 	}))
 }
 
