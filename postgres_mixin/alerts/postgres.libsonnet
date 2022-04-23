@@ -61,8 +61,8 @@
               summary: 'PostgreSQL high number of slow on {{ $labels.cluster }} for database {{ $labels.datname }} ',
             },
             expr: |||
-              avg(
-                rate by (datname) (
+              avg by (datname) (
+                rate (
                   pg_stat_activity_max_tx_duration{datname!~"template.*",%(postgresExporterSelector)s}[2m]
                 )
               ) > 2 * 60
