@@ -421,3 +421,58 @@ func (s *FunctionalSuite) TestParseUserQueries(c *C) {
 		}
 	}
 }
+
+func (s *FunctionalSuite) TestLoggableDSN(c *C) {
+	type TestCase struct {
+		input    string
+		expected string
+	}
+
+	cases := []TestCase{
+		{
+			input:    "host=host.example.com user=postgres port=5432 password=s3cr3t",
+			expected: "host=host.example.com user=postgres port=5432 password=PASSWORD_REMOVED",
+		},
+
+		{
+			input:    "host=host.example.com user=postgres port=5432 password=\"s3cr 3t\"",
+			expected: "host=host.example.com user=postgres port=5432 password=PASSWORD_REMOVED",
+		},
+
+		{
+			input:    "password=abcde host=host.example.com user=postgres port=5432",
+			expected: "password=PASSWORD_REMOVED host=host.example.com user=postgres port=5432",
+		},
+
+		{
+			input:    "password=abcde host=host.example.com user=postgres port=5432 password=\"s3cr 3t\"",
+			expected: "password=PASSWORD_REMOVED host=host.example.com user=postgres port=5432 password=PASSWORD_REMOVED",
+		},
+
+		{
+			input:    "postgresql://host.example.com:5432/tsdb?user=postgres",
+			expected: "postgresql://host.example.com:5432/tsdb?user=postgres",
+		},
+
+		{
+			input:    "postgresql://user:s3cret@host.example.com:5432/tsdb?user=postgres",
+			expected: "postgresql://user:PASSWORD_REMOVED@host.example.com:5432/tsdb?user=postgres",
+		},
+
+		{
+			input:    "postgresql://host.example.com:5432/tsdb?user=postgres&password=s3cr3t",
+			expected: "postgresql://host.example.com:5432/tsdb?password=PASSWORD_REMOVED&user=postgres",
+		},
+
+		{
+			input:    "host=host.example.com user=postgres port=5432",
+			expected: "host=host.example.com user=postgres port=5432",
+		},
+	}
+
+	for _, cs := range cases {
+		loggable := loggableDSN(cs.input)
+		c.Assert(loggable, Equals, cs.expected)
+	}
+
+}
