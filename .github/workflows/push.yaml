@@ -1,0 +1,23 @@
+name: Push
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  on-success:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    steps:
+    - name: Upload master to Quay.io
+      uses: fjogeleit/http-request-action@master
+      with:
+        url: 'https://sysdig-jenkins.internal.sysdig.com/view/Integrations/job/integrations-postgresql-exporter/buildWithParameters?token=${{ secrets.JENKINS_PROMCAT_LAUNCH_TOKEN }}&EXPORTER=postgresql-exporter&DRY_RUN=false'
+        method: 'POST'
+        username: david.lorite@sysdig.com
+        password: ${{ secrets.JENKINS_PROMCAT_API_TOKEN }}
