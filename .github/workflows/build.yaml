@@ -18,11 +18,12 @@ jobs:
     name: ${{ matrix.docker }}
     steps:
     - name: build
-      uses: sysdiglabs/exporter-builder@v0.4
+      uses: sysdiglabs/exporter-builder@v0.5
       with:
         exporter: postgresql-exporter
         artifactory_token: ${{ secrets.ARTI_TOKEN }}
         artifactory_username: david.lorite@sysdig.com
+        sysdig_secure_token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
         tag_name: dev
         target: ${{ matrix.docker }}
         repository: artifactory.internal.sysdig.com
