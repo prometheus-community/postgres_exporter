@@ -60,7 +60,7 @@ func handleProbe(logger log.Logger) http.HandlerFunc {
 			return
 		}
 
-		// TODO: Timeout
+		// TODO(@sysadmind): Timeout
 
 		probeSuccessGauge := prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "probe_success",
@@ -86,22 +86,14 @@ func handleProbe(logger log.Logger) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		// TODO(@sysadmind): Remove the registry.MustRegister() call below and instead handle the collection here. That will allow
+		// for the passing of context, handling of timeouts, and more control over the collection.
+		// The current NewProbeCollector() implementation relies on the MustNewConstMetric() call to create the metrics which is not
+		// ideal to use without the registry.MustRegister() call.
 		_ = ctx
 
-		// TODO: Which way should this be? Register or handle the collection manually?
-		// Also, what about the context?
-
-		// Option 1: Register the collector
 		registry.MustRegister(pc)
-
-		// Option 2: Handle the collection manually. This allows us to collect duration metrics.
-		// The collectors themselves already support their own duration metrics.
-		// err = pc.Update(ctx)
-		// if err != nil {
-		// 	probeSuccessGauge.Set(0)
-		// } else {
-		// 	probeSuccessGauge.Set(1)
-		// }
 
 		duration := time.Since(start).Seconds()
 		probeDurationGauge.Set(duration)

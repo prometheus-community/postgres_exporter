@@ -22,27 +22,23 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"gopkg.in/yaml.v3"
 )
 
 var (
-	configReloadSuccess = prometheus.NewGauge(prometheus.GaugeOpts{
+	configReloadSuccess = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: "postgres_exporter",
 		Name:      "config_last_reload_successful",
 		Help:      "Postgres exporter config loaded successfully.",
 	})
 
-	configReloadSeconds = prometheus.NewGauge(prometheus.GaugeOpts{
+	configReloadSeconds = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: "postgres_exporter",
 		Name:      "config_last_reload_success_timestamp_seconds",
 		Help:      "Timestamp of the last successful configuration reload.",
 	})
 )
-
-func init() {
-	prometheus.MustRegister(configReloadSuccess)
-	prometheus.MustRegister(configReloadSeconds)
-}
 
 type Config struct {
 	AuthModules map[string]AuthModule `yaml:"auth_modules"`

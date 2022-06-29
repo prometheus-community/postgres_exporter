@@ -102,12 +102,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// TODO(@sysadmind): Remove this with multi-target support
-	// if len(dsn) == 0 {
-	// 	level.Error(logger).Log("msg", "Couldn't find environment variables describing the datasource to use")
-	// 	os.Exit(1)
-	// }
-
 	opts := []ExporterOpt{
 		DisableDefaultMetrics(*disableDefaultMetrics),
 		DisableSettingsMetrics(*disableSettingsMetrics),

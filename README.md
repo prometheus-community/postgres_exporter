@@ -21,6 +21,36 @@ docker run \
   quay.io/prometheuscommunity/postgres-exporter
 ```
 
+## Multi-Target Support (BETA)
+**This Feature is in beta and may require changes in future releases. Feedback is welcome.**
+
+This exporter supports the [multi-target pattern](https://prometheus.io/docs/guides/multi-target-exporter/). This allows running a single instance of this exporter for multiple postgres targets. Using the milti-target funcationality of this exporter is **optional** and meant for users where it is impossible to install the exporter as a sidecar. For example SaaS-managed services.
+
+To use the multi-target functionality, send an http request to the endpoint `/probe?target=foo:5432` where target is set to the DSN of the postgres instance to scrape metrics from.
+
+To avoid putting sensitive information like username and password in the URL, preconfigured auth modules are supported via the [auth_modules](#auth_modules) section of the config file. auth_modules for DSNs can be used with the `/probe` endpoint by specifying the `?auth_module=foo` http parameter.
+
+## Configuration File
+
+The configuration file controls the behavior of the exporter. It can be set using the `--config.file` command line flag and defaults to `postres_exporter.yml`.
+
+### auth_modules
+This section defines preset authentication and connection parameters for use in the [multi-target endpoint](#multi-target-support-beta). `auth_modules` is a map of modules with the key being the identifier which can be used in the `/probe` endpoint.
+Currently only the `userpass` type is supported.
+
+Example:
+```yaml
+auth_modules:
+  foo1: # Set this to any name you want
+    type: userpass
+    userpass:
+      username: first
+      password: firstpass
+    options:
+      # options become key=value parameters of the DSN
+      sslmode: disable
+```
+
 ## Building and running
 
     git clone https://github.com/prometheus-community/postgres_exporter.git
