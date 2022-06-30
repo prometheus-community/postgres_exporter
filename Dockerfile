@@ -7,12 +7,8 @@ ARG TARGETARCH
 WORKDIR /go/src/github.com/prometheus-community/postgres_exporter
 
 FROM base as builder
-COPY go.mod go.sum ./
-RUN go mod download
-COPY cmd ./cmd
-COPY .promu.yml .promu.yml
-COPY Makefile Makefile
-COPY Makefile.common Makefile.common
+COPY . .
+RUN go mod tidy
 RUN make build
 RUN cp postgres_exporter /bin/postgres_exporter
 
