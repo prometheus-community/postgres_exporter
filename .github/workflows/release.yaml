@@ -1,0 +1,24 @@
+name: Release
+on:
+  release:
+    types: [released]
+jobs:
+  buildDockerImage:
+    strategy:
+      matrix:
+        docker: ['scratch','ubi']
+    name: Build docker image ${{ matrix.docker }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Release if tagged
+      if: "!startswith(github.ref, 'refs/tags/v')"
+      run: exit 78
+    - name: build
+      uses: sysdiglabs/exporter-builder@v0.4
+      with:
+        exporter: postgresql-exporter
+        artifactory_token: ${{ secrets.ARTI_TOKEN }}
+        artifactory_username: david.lorite@sysdig.com
+        tag_name: ${{ github.event.release.tag_name }}
+        target: ${{ matrix.docker }}
+        repository: artifactory.internal.sysdig.com

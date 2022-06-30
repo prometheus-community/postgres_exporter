@@ -1,0 +1,56 @@
+string projectName = "prometheus-integrations"
+
+pipeline {
+    agent none
+
+
+    options {
+        skipDefaultCheckout()
+    }
+
+    environment {
+        registryCredential = 'jenkins-artifactory'
+        ARTIFACTORY_URL = 'docker.internal.sysdig.com'
+    }
+
+    parameters {
+        booleanParam(name: 'DRY_RUN', defaultValue: true, description: 'Perform a dry run (does not push images)')
+        string(name: 'EXPORTER', defaultValue: "exporter", description: 'Exporter name')
+    }
+    
+    stages {
+        stage('Pull image from artifactory') {
+            agent any
+            steps {
+                script {
+                    docker.withRegistry("https://${env.ARTIFACTORY_URL}",  registryCredential) {        
+                        sh """docker pull ${env.ARTIFACTORY_URL}/${env.EXPORTER}:latest"""
+                        env.VERSION = sh(script:"""docker inspect --format '{{ index .Config.Labels "release" }}' ${env.ARTIFACTORY_URL}/${env.EXPORTER}:latest""", returnStdout: true).trim()
+                        echo "VERSION = ${env.VERSION}"
+                        sh """docker pull ${env.ARTIFACTORY_URL}/${env.EXPORTER}:${env.VERSION}"""
+                        sh """docker pull ${env.ARTIFACTORY_URL}/${env.EXPORTER}:${env.VERSION}-ubi"""
+                    }
+                }
+            }
+        }
+        stage('Push image to Quay'){
+            agent any
+            steps {
+                script {
+                    if (params.DRY_RUN) {
+                        echo "docker push quay.io/sysdig/${env.EXPORTER}:${env.VERSION}"
+                    } else {
+                    docker.withRegistry("https://quay.io", "QUAY") {
+                        sh """docker tag ${env.ARTIFACTORY_URL}/${env.EXPORTER}:${env.VERSION} quay.io/sysdig/${env.EXPORTER}:${env.VERSION}"""
+                        sh """docker tag ${env.ARTIFACTORY_URL}/${env.EXPORTER}:${env.VERSION} quay.io/sysdig/${env.EXPORTER}:latest"""
+                        sh """docker tag ${env.ARTIFACTORY_URL}/${env.EXPORTER}:${env.VERSION}-ubi quay.io/sysdig/${env.EXPORTER}:${env.VERSION}-ubi"""
+                        sh """docker push quay.io/sysdig/${env.EXPORTER}:${env.VERSION}"""
+                        sh """docker push quay.io/sysdig/${env.EXPORTER}:latest"""
+                        sh """docker push quay.io/sysdig/${env.EXPORTER}:${env.VERSION}-ubi"""
+                        }
+                    }
+                }
+            }
+        }
+    } //stages
+}

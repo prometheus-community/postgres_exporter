@@ -1,12 +1,29 @@
-ARG ARCH="amd64"
-ARG OS="linux"
-FROM quay.io/prometheus/busybox-${OS}-${ARCH}:latest
-LABEL maintainer="The Prometheus Authors <prometheus-developers@googlegroups.com>"
+FROM golang:1.17.2 as base
+ARG VERSION
+ARG GIT_COMMIT
+ARG DATE
+ARG TARGETARCH
 
-ARG ARCH="amd64"
-ARG OS="linux"
-COPY .build/${OS}-${ARCH}/postgres_exporter /bin/postgres_exporter
+WORKDIR /go/src/github.com/prometheus-community/postgres_exporter
 
+FROM base as builder
+COPY go.mod go.sum ./
+RUN go mod download
+COPY cmd ./cmd
+COPY .promu.yml .promu.yml
+COPY Makefile Makefile
+COPY Makefile.common Makefile.common
+RUN make build
+RUN cp postgres_exporter /bin/postgres_exporter
+
+FROM scratch as scratch
+COPY --from=builder /bin/postgres_exporter /bin/postgres_exporter
 EXPOSE     9187
-USER       nobody
+USER       59000:59000
+ENTRYPOINT [ "/bin/postgres_exporter" ]
+
+FROM quay.io/sysdig/sysdig-mini-ubi:1.3.1 as ubi
+COPY --from=builder /bin/postgres_exporter /bin/postgres_exporter
+EXPOSE     9187
+USER       59000:59000
 ENTRYPOINT [ "/bin/postgres_exporter" ]
