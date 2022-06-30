@@ -37,7 +37,7 @@ assignees: ''
 insert list of flags used here
 ```
 
-* PostgresSQL version:
+* PostgreSQL version:
 
 	insert PostgreSQL version here
 

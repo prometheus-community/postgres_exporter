@@ -7,7 +7,7 @@
 
 Prometheus exporter for PostgreSQL server metrics.
 
-CI Tested PostgreSQL versions: `9.4`, `9.5`, `9.6`, `10`, `11`, `12`, `13`
+CI Tested PostgreSQL versions: `9.4`, `9.5`, `9.6`, `10`, `11`, `12`, `13`, `14`
 
 ## Quick Start
 This package is available for Docker:
@@ -41,6 +41,12 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `help`
   Show context-sensitive help (also try --help-long and --help-man).
 
+* `collector.database`
+  Enable the pg_database collector. Default is `enabled`
+
+* `collector.bgwriter`
+  Enable the pg_stat_bgwriter collector. Default is `enabled`
+
 * `web.listen-address`
   Address to listen on for web interface and telemetry. Default is `:9187`.
 
@@ -48,13 +54,13 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
   Path under which to expose metrics. Default is `/metrics`.
 
 * `disable-default-metrics`
-  Use only metrics supplied from `queries.yaml` via `--extend.query-path`.
+  Use only metrics supplied from `queries.yaml` via `--extend.query-path`.  Default is `false`.
 
 * `disable-settings-metrics`
-  Use the flag if you don't want to scrape `pg_settings`.
+  Use the flag if you don't want to scrape `pg_settings`.  Default is `false`.
 
 * `auto-discover-databases`
-  Whether to discover the databases on a server dynamically.
+  Whether to discover the databases on a server dynamically.  Default is `false`.
 
 * `extend.query-path`
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
@@ -186,8 +192,8 @@ The -extend.query-path command-line argument specifies a YAML file containing ad
 Some examples are provided in [queries.yaml](queries.yaml).
 
 ### Disabling default metrics
-To work with non-officially-supported postgres versions you can try disabling (e.g. 8.2.15)
-or a variant of postgres (e.g. Greenplum) you can disable the default metrics with the `--disable-default-metrics`
+To work with non-officially-supported postgres versions (e.g. 8.2.15),
+or variants of postgres (e.g. Greenplum), you can disable the default metrics with the `--disable-default-metrics`
 flag. This removes all built-in metrics, and uses only metrics defined by queries in the `queries.yaml` file you supply
 (so you must supply one, otherwise the exporter will return nothing but internal statuses and not your database).
 
@@ -203,14 +209,10 @@ If you want to include only subset of databases, you can use option `--include-d
 
 ### Running as non-superuser
 
-To be able to collect metrics from `pg_stat_activity` and `pg_stat_replication`
-as  non-superuser you have to create functions and views as a superuser, and
-assign permissions separately to those.
-
-In PostgreSQL, views run with the permissions of the user that created them so
-they can act as security barriers. Functions need to be created to share this
-data with the non-superuser. Only creating the views will leave out the most
-important bits of data.
+To be able to collect metrics from `pg_stat*` views as non-superuser in PostgreSQL
+server versions >= 10 you can grant the `pg_monitor` or `pg_read_all_stats` [built-in roles](https://www.postgresql.org/docs/current/predefined-roles.html) to the user. If
+you need to monitor older PostgreSQL servers, you will have to create functions
+and views as a superuser, and assign permissions separately to those.
 
 ```sql
 -- To use IF statements, hence to be able to check if the user exists before
@@ -239,9 +241,23 @@ ALTER USER postgres_exporter SET SEARCH_PATH TO postgres_exporter,pg_catalog;
 -- If deploying as non-superuser (for example in AWS RDS), uncomment the GRANT
 -- line below and replace <MASTER_USER> with your root user.
 -- GRANT postgres_exporter TO <MASTER_USER>;
+
+GRANT CONNECT ON DATABASE postgres TO postgres_exporter;
+```
+
+Run following command if you use PostgreSQL versions >= 10
+```sql
+GRANT pg_monitor to postgres_exporter;
+```
+
+Run following SQL commands only if you use PostgreSQL versions older than 10.
+In PostgreSQL, views run with the permissions of the user that created them so
+they can act as security barriers. Functions need to be created to share this
+data with the non-superuser. Only creating the views will leave out the most
+important bits of data.
+```sql
 CREATE SCHEMA IF NOT EXISTS postgres_exporter;
 GRANT USAGE ON SCHEMA postgres_exporter TO postgres_exporter;
-GRANT CONNECT ON DATABASE postgres TO postgres_exporter;
 
 CREATE OR REPLACE FUNCTION get_pg_stat_activity() RETURNS SETOF pg_stat_activity AS
 $$ SELECT * FROM pg_catalog.pg_stat_activity; $$
@@ -267,6 +283,7 @@ AS
 
 GRANT SELECT ON postgres_exporter.pg_stat_replication TO postgres_exporter;
 
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 CREATE OR REPLACE FUNCTION get_pg_stat_statements() RETURNS SETOF pg_stat_statements AS
 $$ SELECT * FROM public.pg_stat_statements; $$
 LANGUAGE sql

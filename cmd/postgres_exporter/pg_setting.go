@@ -19,8 +19,15 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+)
+
+var (
+	settingUnits = []string{
+		"ms", "s", "min", "h", "d",
+		"B", "kB", "MB", "GB", "TB",
+	}
 )
 
 // Query the pg_settings view containing runtime variables
@@ -31,7 +38,7 @@ func querySettings(ch chan<- prometheus.Metric, server *Server) error {
 	//
 	// NOTE: If you add more vartypes here, you must update the supported
 	// types in normaliseUnit() below
-	query := "SELECT name, setting, COALESCE(unit, ''), short_desc, vartype FROM pg_settings WHERE vartype IN ('bool', 'integer', 'real');"
+	query := "SELECT name, setting, COALESCE(unit, ''), short_desc, vartype FROM pg_settings WHERE vartype IN ('bool', 'integer', 'real') AND name != 'sync_commit_cancel_wait';"
 
 	rows, err := server.db.Query(query)
 	if err != nil {
@@ -93,9 +100,24 @@ func (s *pgSetting) metric(labels prometheus.Labels) prometheus.Metric {
 	return prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, val)
 }
 
+// Removes units from any of the setting values.
+// This is mostly because of a irregularity regarding AWS RDS Aurora
+// https://github.com/prometheus-community/postgres_exporter/issues/619
+func (s *pgSetting) sanitizeValue() {
+	for _, unit := range settingUnits {
+		if strings.HasSuffix(s.setting, unit) {
+			endPos := len(s.setting) - len(unit) - 1
+			s.setting = s.setting[:endPos]
+			return
+		}
+	}
+}
+
 // TODO: fix linter override
 // nolint: nakedret
 func (s *pgSetting) normaliseUnit() (val float64, unit string, err error) {
+	s.sanitizeValue()
+
 	val, err = strconv.ParseFloat(s.setting, 64)
 	if err != nil {
 		return val, unit, fmt.Errorf("Error converting setting %q value %q to float: %s", s.name, s.setting, err)

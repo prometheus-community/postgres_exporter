@@ -1,3 +1,12 @@
+## master / unreleased
+
+* [CHANGE] pg_stat_bgwriter counter metrics had the `_total` suffix added #556
+* [ENHANCEMENT] Add pg_database_size_bytes metric #613
+
+## 0.10.1 / 2022-01-14
+
+* [BUGFIX] Fix broken log-level for values other than debug. #560
+
 ## 0.10.0 / 2021-07-08
 
 * [ENHANCEMENT] Add ability to set included databases when autoDiscoverDatabases is enabled #499
