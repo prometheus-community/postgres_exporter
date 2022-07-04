@@ -162,7 +162,14 @@ func getDataSources() ([]string, error) {
 		uri = os.Getenv("DATA_SOURCE_URI")
 	}
 
-	dsn = "postgresql://" + ui + "@" + uri
+	if len(uri) != 0 {
+		dsn = "postgresql://"
+		if len(ui) != 0 {
+			dsn += ui + "@"
+		}
+		dsn += uri
+		return []string{dsn}, nil
+	}
 
-	return []string{dsn}, nil
+	return nil, nil
 }
