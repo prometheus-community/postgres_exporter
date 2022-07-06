@@ -1,0 +1,57 @@
+pg_vacuum_dead_rows:
+  query: |
+    SELECT
+      c.oid AS "oid",
+      n.nspname AS "schema",
+      c.relname AS "table",
+      GREATEST(pg_stat_get_dead_tuples(c.oid), pg_stat_get_dead_tuples(t.oid)) AS "dead_rows"
+    FROM pg_class c
+    LEFT JOIN pg_class AS t ON c.reltoastrelid = t.oid
+    JOIN pg_namespace n on c.relnamespace = n.oid
+    WHERE c.relkind IN ('r', 'm')
+    AND GREATEST(pg_stat_get_dead_tuples(c.oid), pg_stat_get_dead_tuples(t.oid)) > 0
+    AND n.nspname <> 'pg_catalog'
+    AND n.nspname <> 'information_schema'
+    ORDER BY dead_rows DESC
+  metrics:
+    - oid:
+        usage: ""
+        description: ""
+    - schema:
+        usage: ""
+        description: ""
+    - table:
+        usage: ""
+        description: ""
+    - dead_rows:
+        usage: ""
+        description: ""
+
+pg_vacuum_disk_usage:
+  query: |
+    SELECT
+      c.oid AS "oid",
+      n.nspname AS "schema",
+      c.relname AS "table",
+      GREATEST(pg_stat_get_dead_tuples(c.oid), pg_stat_get_dead_tuples(t.oid)) AS "dead_rows"
+    FROM pg_class c
+    LEFT JOIN pg_class AS t ON c.reltoastrelid = t.oid
+    JOIN pg_namespace n on c.relnamespace = n.oid
+    WHERE c.relkind IN ('r', 'm')
+    AND GREATEST(pg_stat_get_dead_tuples(c.oid), pg_stat_get_dead_tuples(t.oid)) > 0
+    AND n.nspname <> 'pg_catalog'
+    AND n.nspname <> 'information_schema'
+    ORDER BY dead_rows DESC
+  metrics:
+    - oid:
+        usage: ""
+        description: ""
+    - schema:
+        usage: ""
+        description: ""
+    - table:
+        usage: ""
+        description: ""
+    - dead_rows:
+        usage: ""
+        description: ""
