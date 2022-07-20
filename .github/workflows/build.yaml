@@ -18,7 +18,7 @@ jobs:
     name: ${{ matrix.docker }}
     steps:
     - name: build
-      uses: sysdiglabs/exporter-builder@v0.5
+      uses: sysdiglabs/exporter-builder@v0.6
       with:
         exporter: postgresql-exporter
         artifactory_token: ${{ secrets.ARTI_TOKEN }}
