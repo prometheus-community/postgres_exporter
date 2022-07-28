@@ -32,7 +32,7 @@ To avoid putting sensitive information like username and password in the URL, pr
 
 ## Configuration File
 
-The configuration file controls the behavior of the exporter. It can be set using the `--config.file` command line flag and defaults to `postres_exporter.yml`.
+The configuration file controls the behavior of the exporter. It can be set using the `--config.file` command line flag and defaults to `postgres_exporter.yml`.
 
 ### auth_modules
 This section defines preset authentication and connection parameters for use in the [multi-target endpoint](#multi-target-support-beta). `auth_modules` is a map of modules with the key being the identifier which can be used in the `/probe` endpoint.

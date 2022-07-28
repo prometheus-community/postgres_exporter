@@ -36,7 +36,7 @@ var (
 		Config: &config.Config{},
 	}
 
-	configFile             = kingpin.Flag("config.file", "Promehteus exporter configuration file.").Default("postres_exporter.yml").String()
+	configFile             = kingpin.Flag("config.file", "Postgres exporter configuration file.").Default("postgres_exporter.yml").String()
 	listenAddress          = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").Envar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
 	webConfig              = webflag.AddFlags(kingpin.CommandLine)
 	metricPath             = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").Envar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
