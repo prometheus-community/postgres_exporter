@@ -1,7 +1,15 @@
 ## master / unreleased
 
-* [CHANGE] pg_stat_bgwriter counter metrics had the `_total` suffix added #556
+## 0.11.0 / 2022-07-28
+
+NOTE: pg_stat_bgwriter counter metrics had the `_total` suffix added #556
+
+* [CHANGE] refactor pg_stat_bgwriter metrics into standalone collector #556
+* [FEATURE] Add pg_database collector #613
 * [ENHANCEMENT] Add pg_database_size_bytes metric #613
+* [BUGFIX] Avoid parsing error from bogus Azure Flexible Server custom GUC #587
+* [BUGFIX] Fix pg_stat_archiver error in 9.4 and earlier. #599
+* [BUGFIX] Sanitize setting values because of Aurora irregularity #620
 
 ## 0.10.1 / 2022-01-14
 
