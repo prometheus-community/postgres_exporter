@@ -123,7 +123,7 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, db *sql.DB, ch chan<-
 	var cpt int
 	var cpr int
 	var cpwt float64
-	var cpst int
+	var cpst float64
 	var bcp int
 	var bc int
 	var mwc int
