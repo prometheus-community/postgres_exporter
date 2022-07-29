@@ -1,0 +1,7 @@
+auth_modules:
+  foo:
+    pretendauth:
+      username: test
+      password: pass
+    options:
+      extra: "1"
