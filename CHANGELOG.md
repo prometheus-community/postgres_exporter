@@ -1,5 +1,10 @@
 ## master / unreleased
 
+## 0.11.1 / 2022-08-01
+
+* [BUGFIX] Fix checkpoint_write_time value type #666
+* [BUGFIX] Fix checkpoint_sync_time value type #667
+
 ## 0.11.0 / 2022-07-28
 
 NOTE: pg_stat_bgwriter counter metrics had the `_total` suffix added #556
