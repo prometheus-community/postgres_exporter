@@ -1,5 +1,17 @@
 ## master / unreleased
 
+## 0.12.0-rc.0 / 2022-08-26
+
+BREAKING CHANGES:
+
+This release changes support for multiple postgres servers to use the
+multi-target exporter pattern. This makes it much easier to monitor multiple
+PostgreSQL servers from a single exporter by passing the target via URL
+params. See the Multi-Target Support section of the README.
+
+* [CHANGE] Add multi-target support #618
+* [BUGFIX] Add dsn type for handling datasources #678
+
 ## 0.11.1 / 2022-08-01
 
 * [BUGFIX] Fix checkpoint_write_time value type #666
