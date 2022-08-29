@@ -17,7 +17,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/blang/semver"
+	"github.com/blang/semver/v4"
 	"github.com/go-kit/log/level"
 	"gopkg.in/yaml.v2"
 )
