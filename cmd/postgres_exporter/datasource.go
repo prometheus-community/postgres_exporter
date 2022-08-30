@@ -164,7 +164,7 @@ func getDataSources() ([]string, error) {
 	}
 
 	// No datasources found. This allows us to support the multi-target pattern
-	// withouth an explicit datasource.
+	// without an explicit datasource.
 	if uri == "" {
 		return []string{}, nil
 	}
