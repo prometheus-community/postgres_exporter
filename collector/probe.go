@@ -16,11 +16,10 @@ package collector
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -31,7 +30,7 @@ type ProbeCollector struct {
 	db         *sql.DB
 }
 
-func NewProbeCollector(logger log.Logger, registry *prometheus.Registry, dsn string) (*ProbeCollector, error) {
+func NewProbeCollector(logger log.Logger, registry *prometheus.Registry, dsn config.DSN) (*ProbeCollector, error) {
 	collectors := make(map[string]Collector)
 	initiatedCollectorsMtx.Lock()
 	defer initiatedCollectorsMtx.Unlock()
@@ -55,11 +54,7 @@ func NewProbeCollector(logger log.Logger, registry *prometheus.Registry, dsn str
 		}
 	}
 
-	if !strings.HasPrefix(dsn, "postgres://") {
-		dsn = fmt.Sprintf("postgres://%s", dsn)
-	}
-
-	db, err := sql.Open("postgres", dsn)
+	db, err := sql.Open("postgres", dsn.GetConnectionString())
 	if err != nil {
 		return nil, err
 	}

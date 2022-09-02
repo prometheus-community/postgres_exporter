@@ -15,9 +15,7 @@ package config
 
 import (
 	"fmt"
-	"net/url"
 	"os"
-	"strings"
 	"sync"
 
 	"github.com/go-kit/log"
@@ -97,26 +95,26 @@ func (ch *ConfigHandler) ReloadConfig(f string, logger log.Logger) error {
 	return nil
 }
 
-func (m AuthModule) ConfigureTarget(target string) (string, error) {
-	// ip:port urls do not parse properly and that is the typical way users interact with postgres
-	t := fmt.Sprintf("exporter://%s", target)
-	u, err := url.Parse(t)
+func (m AuthModule) ConfigureTarget(target string) (DSN, error) {
+	dsn, err := dsnFromString(target)
 	if err != nil {
-		return "", err
+		return DSN{}, err
 	}
 
+	// Set the credentials from the authentication module
+	// TODO(@sysadmind): What should the order of precedence be?
 	if m.Type == "userpass" {
-		u.User = url.UserPassword(m.UserPass.Username, m.UserPass.Password)
+		if m.UserPass.Username != "" {
+			dsn.username = m.UserPass.Username
+		}
+		if m.UserPass.Password != "" {
+			dsn.password = m.UserPass.Password
+		}
 	}
 
-	query := u.Query()
 	for k, v := range m.Options {
-		query.Set(k, v)
+		dsn.query.Set(k, v)
 	}
-	u.RawQuery = query.Encode()
 
-	parsed := u.String()
-	trim := strings.TrimPrefix(parsed, "exporter://")
-
-	return trim, nil
+	return dsn, nil
 }
