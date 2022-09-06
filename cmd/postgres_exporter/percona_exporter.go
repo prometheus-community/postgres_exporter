@@ -28,7 +28,7 @@ var (
 	collectCustomQueryHrDirectory = kingpin.Flag("collect.custom_query.hr.directory", "Path to custom queries with high resolution directory.").Envar("PG_EXPORTER_EXTEND_QUERY_HR_PATH").String()
 )
 
-func initializePerconaExporters(dsn []string, opts []ExporterOpt) func() {
+func initializePerconaExporters(dsn []string, opts []ExporterOpt) (func(), *Exporter, *Exporter, *Exporter) {
 	queriesPath := map[MetricResolution]string{
 		HR: *collectCustomQueryHrDirectory,
 		MR: *collectCustomQueryMrDirectory,
@@ -96,7 +96,7 @@ func initializePerconaExporters(dsn []string, opts []ExporterOpt) func() {
 		hrExporter.servers.Close()
 		mrExporter.servers.Close()
 		lrExporter.servers.Close()
-	}
+	}, hrExporter, mrExporter, lrExporter
 }
 
 func (e *Exporter) loadCustomQueries(res MetricResolution, version semver.Version, server *Server) {
