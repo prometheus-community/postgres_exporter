@@ -14,11 +14,9 @@
 package main
 
 import (
-	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"regexp"
 	"strings"
@@ -435,6 +433,10 @@ type cachedMetrics struct {
 
 // Exporter collects Postgres metrics. It implements prometheus.Collector.
 type Exporter struct {
+	collectorName      string
+	userQueriesPath    map[MetricResolution]string
+	userQueriesEnabled map[MetricResolution]bool
+
 	// Holds a reference to the build in column mappings. Currently this is for testing purposes
 	// only, since it just points to the global.
 	builtinMetricMaps map[string]intermediateMetricMap
@@ -444,7 +446,6 @@ type Exporter struct {
 	excludeDatabases []string
 	includeDatabases []string
 	dsn              []string
-	userQueriesPath  string
 	constantLabels   prometheus.Labels
 	duration         prometheus.Gauge
 	error            prometheus.Gauge
@@ -464,6 +465,20 @@ type ExporterOpt func(*Exporter)
 func DisableDefaultMetrics(b bool) ExporterOpt {
 	return func(e *Exporter) {
 		e.disableDefaultMetrics = b
+	}
+}
+
+// CollectorName configures collector name.
+func CollectorName(name string) ExporterOpt {
+	return func(e *Exporter) {
+		e.collectorName = name
+	}
+}
+
+// WithUserQueriesEnabled enables user's queries.
+func WithUserQueriesEnabled(p map[MetricResolution]bool) ExporterOpt {
+	return func(e *Exporter) {
+		e.userQueriesEnabled = p
 	}
 }
 
@@ -498,7 +513,7 @@ func IncludeDatabases(s string) ExporterOpt {
 }
 
 // WithUserQueriesPath configures user's queries path.
-func WithUserQueriesPath(p string) ExporterOpt {
+func WithUserQueriesPath(p map[MetricResolution]string) ExporterOpt {
 	return func(e *Exporter) {
 		e.userQueriesPath = p
 	}
@@ -508,6 +523,9 @@ func WithUserQueriesPath(p string) ExporterOpt {
 func WithConstantLabels(s string) ExporterOpt {
 	return func(e *Exporter) {
 		e.constantLabels = parseConstLabels(s)
+		if e.collectorName != "" {
+			e.constantLabels["collector"] = e.collectorName
+		}
 	}
 }
 
@@ -656,25 +674,14 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 
 		server.lastMapVersion = semanticVersion
 
-		if e.userQueriesPath != "" {
-			// Clear the metric while a reload is happening
+		if e.userQueriesPath[HR] != "" || e.userQueriesPath[MR] != "" || e.userQueriesPath[LR] != "" {
+			// Clear the metric while reload
 			e.userQueriesError.Reset()
+		}
 
-			// Calculate the hashsum of the useQueries
-			userQueriesData, err := ioutil.ReadFile(e.userQueriesPath)
-			if err != nil {
-				level.Error(logger).Log("msg", "Failed to reload user queries", "path", e.userQueriesPath, "err", err)
-				e.userQueriesError.WithLabelValues(e.userQueriesPath, "").Set(1)
-			} else {
-				hashsumStr := fmt.Sprintf("%x", sha256.Sum256(userQueriesData))
-
-				if err := addQueries(userQueriesData, semanticVersion, server); err != nil {
-					level.Error(logger).Log("msg", "Failed to reload user queries", "path", e.userQueriesPath, "err", err)
-					e.userQueriesError.WithLabelValues(e.userQueriesPath, hashsumStr).Set(1)
-				} else {
-					// Mark user queries as successfully loaded
-					e.userQueriesError.WithLabelValues(e.userQueriesPath, hashsumStr).Set(0)
-				}
+		for res := range e.userQueriesPath {
+			if e.userQueriesEnabled[res] {
+				e.loadCustomQueries(res, semanticVersion, server)
 			}
 		}
 

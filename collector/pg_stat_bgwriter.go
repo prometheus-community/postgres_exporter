@@ -101,6 +101,72 @@ var statBGWriter = map[string]*prometheus.Desc{
 		[]string{"server"},
 		prometheus.Labels{},
 	),
+	"percona_checkpoints_timed": prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, bgWriterSubsystem, "checkpoints_timed"),
+		"Number of scheduled checkpoints that have been performed",
+		[]string{"server"},
+		prometheus.Labels{},
+	),
+	"percona_checkpoints_req": prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, bgWriterSubsystem, "checkpoints_req"),
+		"Number of requested checkpoints that have been performed",
+		[]string{"server"},
+		prometheus.Labels{},
+	),
+	"percona_checkpoint_write_time": prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, bgWriterSubsystem, "checkpoint_write_time"),
+		"Total amount of time that has been spent in the portion of checkpoint processing where files are written to disk, in milliseconds",
+		[]string{"server"},
+		prometheus.Labels{},
+	),
+	"percona_checkpoint_sync_time": prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, bgWriterSubsystem, "checkpoint_sync_time"),
+		"Total amount of time that has been spent in the portion of checkpoint processing where files are synchronized to disk, in milliseconds",
+		[]string{"server"},
+		prometheus.Labels{},
+	),
+	"percona_buffers_checkpoint": prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, bgWriterSubsystem, "buffers_checkpoint"),
+		"Number of buffers written during checkpoints",
+		[]string{"server"},
+		prometheus.Labels{},
+	),
+	"percona_buffers_clean": prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, bgWriterSubsystem, "buffers_clean"),
+		"Number of buffers written by the background writer",
+		[]string{"server"},
+		prometheus.Labels{},
+	),
+	"percona_maxwritten_clean": prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, bgWriterSubsystem, "maxwritten_clean"),
+		"Number of times the background writer stopped a cleaning scan because it had written too many buffers",
+		[]string{"server"},
+		prometheus.Labels{},
+	),
+	"percona_buffers_backend": prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, bgWriterSubsystem, "buffers_backend"),
+		"Number of buffers written directly by a backend",
+		[]string{"server"},
+		prometheus.Labels{},
+	),
+	"percona_buffers_backend_fsync": prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, bgWriterSubsystem, "buffers_backend_fsync"),
+		"Number of times a backend had to execute its own fsync call (normally the background writer handles those even when the backend does its own write)",
+		[]string{"server"},
+		prometheus.Labels{},
+	),
+	"percona_buffers_alloc": prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, bgWriterSubsystem, "buffers_alloc"),
+		"Number of buffers allocated",
+		[]string{"server"},
+		prometheus.Labels{},
+	),
+	"percona_stats_reset": prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, bgWriterSubsystem, "stats_reset"),
+		"Time at which these statistics were last reset",
+		[]string{"server"},
+		prometheus.Labels{},
+	),
 }
 
 func (PGStatBGWriterCollector) Update(ctx context.Context, server *server, ch chan<- prometheus.Metric) error {
@@ -203,6 +269,73 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, server *server, ch ch
 	)
 	ch <- prometheus.MustNewConstMetric(
 		statBGWriter["stats_reset"],
+		prometheus.CounterValue,
+		float64(sr.Unix()),
+		server.GetName(),
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		statBGWriter["percona_checkpoints_timed"],
+		prometheus.CounterValue,
+		float64(cpt),
+		server.GetName(),
+	)
+	ch <- prometheus.MustNewConstMetric(
+		statBGWriter["percona_checkpoints_req"],
+		prometheus.CounterValue,
+		float64(cpr),
+		server.GetName(),
+	)
+	ch <- prometheus.MustNewConstMetric(
+		statBGWriter["percona_checkpoint_write_time"],
+		prometheus.CounterValue,
+		float64(cpwt),
+		server.GetName(),
+	)
+	ch <- prometheus.MustNewConstMetric(
+		statBGWriter["percona_checkpoint_sync_time"],
+		prometheus.CounterValue,
+		float64(cpst),
+		server.GetName(),
+	)
+	ch <- prometheus.MustNewConstMetric(
+		statBGWriter["percona_buffers_checkpoint"],
+		prometheus.CounterValue,
+		float64(bcp),
+		server.GetName(),
+	)
+	ch <- prometheus.MustNewConstMetric(
+		statBGWriter["percona_buffers_clean"],
+		prometheus.CounterValue,
+		float64(bc),
+		server.GetName(),
+	)
+	ch <- prometheus.MustNewConstMetric(
+		statBGWriter["percona_maxwritten_clean"],
+		prometheus.CounterValue,
+		float64(mwc),
+		server.GetName(),
+	)
+	ch <- prometheus.MustNewConstMetric(
+		statBGWriter["percona_buffers_backend"],
+		prometheus.CounterValue,
+		float64(bb),
+		server.GetName(),
+	)
+	ch <- prometheus.MustNewConstMetric(
+		statBGWriter["percona_buffers_backend_fsync"],
+		prometheus.CounterValue,
+		float64(bbf),
+		server.GetName(),
+	)
+	ch <- prometheus.MustNewConstMetric(
+		statBGWriter["percona_buffers_alloc"],
+		prometheus.CounterValue,
+		float64(ba),
+		server.GetName(),
+	)
+	ch <- prometheus.MustNewConstMetric(
+		statBGWriter["percona_stats_reset"],
 		prometheus.CounterValue,
 		float64(sr.Unix()),
 		server.GetName(),

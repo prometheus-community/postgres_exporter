@@ -124,7 +124,7 @@ endif
 %: common-% ;
 
 .PHONY: common-all
-common-all: precheck style check_license lint yamllint unused build test
+common-all: precheck style lint unused build test
 
 .PHONY: common-style
 common-style:
@@ -135,17 +135,6 @@ common-style:
 		echo "Please ensure you are using $$($(GO) version) for formatting code."; \
 		exit 1; \
 	fi
-
-.PHONY: common-check_license
-common-check_license:
-	@echo ">> checking license header"
-	@licRes=$$(for file in $$(find . -type f -iname '*.go' ! -path './vendor/*') ; do \
-               awk 'NR<=3' $$file | grep -Eq "(Copyright|generated|GENERATED)" || echo $$file; \
-       done); \
-       if [ -n "$${licRes}" ]; then \
-               echo "license header checking failed:"; echo "$${licRes}"; \
-               exit 1; \
-       fi
 
 .PHONY: common-deps
 common-deps:
@@ -202,15 +191,6 @@ ifdef GO111MODULE
 else
 	$(GOLANGCI_LINT) run $(pkgs)
 endif
-endif
-
-.PHONY: common-yamllint
-common-yamllint:
-	@echo ">> running yamllint on all YAML files in the repository"
-ifeq (, $(shell which yamllint))
-	@echo "yamllint not installed so skipping"
-else
-	yamllint .
 endif
 
 # For backward-compatibility.

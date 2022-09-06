@@ -1,0 +1,1638 @@
+# HELP go_gc_duration_seconds A summary of the pause duration of garbage collection cycles.
+# TYPE go_gc_duration_seconds summary
+go_gc_duration_seconds{quantile="0"} 1.711e-05
+go_gc_duration_seconds{quantile="0.25"} 2.7717e-05
+go_gc_duration_seconds{quantile="0.5"} 3.9651e-05
+go_gc_duration_seconds{quantile="0.75"} 7.6418e-05
+go_gc_duration_seconds{quantile="1"} 0.00445376
+go_gc_duration_seconds_sum 0.053608842
+go_gc_duration_seconds_count 737
+# HELP go_goroutines Number of goroutines that currently exist.
+# TYPE go_goroutines gauge
+go_goroutines 24
+# HELP go_info Information about the Go environment.
+# TYPE go_info gauge
+go_info{version="go1.18.1"} 1
+# HELP go_memstats_alloc_bytes Number of bytes allocated and still in use.
+# TYPE go_memstats_alloc_bytes gauge
+go_memstats_alloc_bytes 2.16544e+06
+# HELP go_memstats_alloc_bytes_total Total number of bytes allocated, even if freed.
+# TYPE go_memstats_alloc_bytes_total counter
+go_memstats_alloc_bytes_total 1.294317752e+09
+# HELP go_memstats_buck_hash_sys_bytes Number of bytes used by the profiling bucket hash table.
+# TYPE go_memstats_buck_hash_sys_bytes gauge
+go_memstats_buck_hash_sys_bytes 1.587226e+06
+# HELP go_memstats_frees_total Total number of frees.
+# TYPE go_memstats_frees_total counter
+go_memstats_frees_total 1.4051273e+07
+# HELP go_memstats_gc_cpu_fraction The fraction of this program's available CPU time used by the GC since the program started.
+# TYPE go_memstats_gc_cpu_fraction gauge
+go_memstats_gc_cpu_fraction 9.458160543185982e-05
+# HELP go_memstats_gc_sys_bytes Number of bytes used for garbage collection system metadata.
+# TYPE go_memstats_gc_sys_bytes gauge
+go_memstats_gc_sys_bytes 5.079808e+06
+# HELP go_memstats_heap_alloc_bytes Number of heap bytes allocated and still in use.
+# TYPE go_memstats_heap_alloc_bytes gauge
+go_memstats_heap_alloc_bytes 2.16544e+06
+# HELP go_memstats_heap_idle_bytes Number of heap bytes waiting to be used.
+# TYPE go_memstats_heap_idle_bytes gauge
+go_memstats_heap_idle_bytes 7.266304e+06
+# HELP go_memstats_heap_inuse_bytes Number of heap bytes that are in use.
+# TYPE go_memstats_heap_inuse_bytes gauge
+go_memstats_heap_inuse_bytes 4.399104e+06
+# HELP go_memstats_heap_objects Number of allocated objects.
+# TYPE go_memstats_heap_objects gauge
+go_memstats_heap_objects 13067
+# HELP go_memstats_heap_released_bytes Number of heap bytes released to OS.
+# TYPE go_memstats_heap_released_bytes gauge
+go_memstats_heap_released_bytes 6.26688e+06
+# HELP go_memstats_heap_sys_bytes Number of heap bytes obtained from system.
+# TYPE go_memstats_heap_sys_bytes gauge
+go_memstats_heap_sys_bytes 1.1665408e+07
+# HELP go_memstats_last_gc_time_seconds Number of seconds since 1970 of last garbage collection.
+# TYPE go_memstats_last_gc_time_seconds gauge
+go_memstats_last_gc_time_seconds 1.6534228318017354e+09
+# HELP go_memstats_lookups_total Total number of pointer lookups.
+# TYPE go_memstats_lookups_total counter
+go_memstats_lookups_total 0
+# HELP go_memstats_mallocs_total Total number of mallocs.
+# TYPE go_memstats_mallocs_total counter
+go_memstats_mallocs_total 1.406434e+07
+# HELP go_memstats_mcache_inuse_bytes Number of bytes in use by mcache structures.
+# TYPE go_memstats_mcache_inuse_bytes gauge
+go_memstats_mcache_inuse_bytes 7200
+# HELP go_memstats_mcache_sys_bytes Number of bytes used for mcache structures obtained from system.
+# TYPE go_memstats_mcache_sys_bytes gauge
+go_memstats_mcache_sys_bytes 15600
+# HELP go_memstats_mspan_inuse_bytes Number of bytes in use by mspan structures.
+# TYPE go_memstats_mspan_inuse_bytes gauge
+go_memstats_mspan_inuse_bytes 107576
+# HELP go_memstats_mspan_sys_bytes Number of bytes used for mspan structures obtained from system.
+# TYPE go_memstats_mspan_sys_bytes gauge
+go_memstats_mspan_sys_bytes 146880
+# HELP go_memstats_next_gc_bytes Number of heap bytes when next garbage collection will take place.
+# TYPE go_memstats_next_gc_bytes gauge
+go_memstats_next_gc_bytes 4.2164e+06
+# HELP go_memstats_other_sys_bytes Number of bytes used for other system allocations.
+# TYPE go_memstats_other_sys_bytes gauge
+go_memstats_other_sys_bytes 1.379902e+06
+# HELP go_memstats_stack_inuse_bytes Number of bytes in use by the stack allocator.
+# TYPE go_memstats_stack_inuse_bytes gauge
+go_memstats_stack_inuse_bytes 917504
+# HELP go_memstats_stack_sys_bytes Number of bytes obtained from system for stack allocator.
+# TYPE go_memstats_stack_sys_bytes gauge
+go_memstats_stack_sys_bytes 917504
+# HELP go_memstats_sys_bytes Number of bytes obtained from system.
+# TYPE go_memstats_sys_bytes gauge
+go_memstats_sys_bytes 2.0792328e+07
+# HELP go_threads Number of OS threads created.
+# TYPE go_threads gauge
+go_threads 9
+# HELP pg_database_size_bytes Disk space used by the database
+# TYPE pg_database_size_bytes gauge
+pg_database_size_bytes{collector="custom_query.mr",datname="pmm-managed",server="127.0.0.1:5432"} 8.835743e+06
+pg_database_size_bytes{collector="custom_query.mr",datname="postgres",server="127.0.0.1:5432"} 7.869087e+06
+pg_database_size_bytes{collector="custom_query.mr",datname="template0",server="127.0.0.1:5432"} 7.717379e+06
+pg_database_size_bytes{collector="custom_query.mr",datname="template1",server="127.0.0.1:5432"} 7.717379e+06
+# HELP pg_exporter_last_scrape_duration_seconds Duration of the last scrape of metrics from PostgresSQL.
+# TYPE pg_exporter_last_scrape_duration_seconds gauge
+pg_exporter_last_scrape_duration_seconds{collector="custom_query.hr"} 0.031032888
+pg_exporter_last_scrape_duration_seconds{collector="custom_query.lr"} 0.028413681
+pg_exporter_last_scrape_duration_seconds{collector="custom_query.mr"} 0.076106239
+pg_exporter_last_scrape_duration_seconds{collector="exporter"} 0.076724395
+# HELP pg_exporter_last_scrape_error Whether the last scrape of metrics from PostgreSQL resulted in an error (1 for error, 0 for success).
+# TYPE pg_exporter_last_scrape_error gauge
+pg_exporter_last_scrape_error{collector="custom_query.hr"} 0
+pg_exporter_last_scrape_error{collector="custom_query.lr"} 0
+pg_exporter_last_scrape_error{collector="custom_query.mr"} 0
+pg_exporter_last_scrape_error{collector="exporter"} 0
+# HELP pg_exporter_scrapes_total Total number of times PostgresSQL was scraped for metrics.
+# TYPE pg_exporter_scrapes_total counter
+pg_exporter_scrapes_total{collector="custom_query.hr"} 638
+pg_exporter_scrapes_total{collector="custom_query.lr"} 54
+pg_exporter_scrapes_total{collector="custom_query.mr"} 320
+pg_exporter_scrapes_total{collector="exporter"} 638
+# HELP pg_exporter_user_queries_load_error Whether the user queries file was loaded and parsed successfully (1 for error, 0 for success).
+# TYPE pg_exporter_user_queries_load_error gauge
+pg_exporter_user_queries_load_error{collector="custom_query.hr",filename="/usr/local/percona/pmm2/collectors/custom-queries/postgresql/high-resolution/example-queries-postgres.yml",hashsum="d497a1386bdf51904e434ea4a3827557a1d9a2a9ed054272d776443157331899"} 0
+pg_exporter_user_queries_load_error{collector="custom_query.hr",filename="/usr/local/percona/pmm2/collectors/custom-queries/postgresql/high-resolution/queries-postgres-uptime.yml",hashsum="088cda481b62888aa2674b361c8a390586d96f02f9be384f475dcf1d6e3997fc"} 0
+pg_exporter_user_queries_load_error{collector="custom_query.lr",filename="/usr/local/percona/pmm2/collectors/custom-queries/postgresql/low-resolution/example-queries-postgres.yml",hashsum="d497a1386bdf51904e434ea4a3827557a1d9a2a9ed054272d776443157331899"} 0
+pg_exporter_user_queries_load_error{collector="custom_query.mr",filename="/usr/local/percona/pmm2/collectors/custom-queries/postgresql/medium-resolution/example-queries-postgres.yml",hashsum="d497a1386bdf51904e434ea4a3827557a1d9a2a9ed054272d776443157331899"} 0
+pg_exporter_user_queries_load_error{collector="custom_query.mr",filename="/usr/local/percona/pmm2/collectors/custom-queries/postgresql/medium-resolution/queries.yaml",hashsum="1a22e5d3278b8f4bf9b8d1ed94918a530fb70d6f1c6ffd1a81db411d1fc332ac"} 0
+# HELP pg_locks_count Number of locks
+# TYPE pg_locks_count gauge
+pg_locks_count{collector="exporter",datname="pmm-managed",mode="accessexclusivelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="pmm-managed",mode="accesssharelock",server="127.0.0.1:5432"} 12
+pg_locks_count{collector="exporter",datname="pmm-managed",mode="exclusivelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="pmm-managed",mode="rowexclusivelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="pmm-managed",mode="rowsharelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="pmm-managed",mode="sharelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="pmm-managed",mode="sharerowexclusivelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="pmm-managed",mode="shareupdateexclusivelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="postgres",mode="accessexclusivelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="postgres",mode="accesssharelock",server="127.0.0.1:5432"} 1
+pg_locks_count{collector="exporter",datname="postgres",mode="exclusivelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="postgres",mode="rowexclusivelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="postgres",mode="rowsharelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="postgres",mode="sharelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="postgres",mode="sharerowexclusivelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="postgres",mode="shareupdateexclusivelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="template0",mode="accessexclusivelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="template0",mode="accesssharelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="template0",mode="exclusivelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="template0",mode="rowexclusivelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="template0",mode="rowsharelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="template0",mode="sharelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="template0",mode="sharerowexclusivelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="template0",mode="shareupdateexclusivelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="template1",mode="accessexclusivelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="template1",mode="accesssharelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="template1",mode="exclusivelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="template1",mode="rowexclusivelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="template1",mode="rowsharelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="template1",mode="sharelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="template1",mode="sharerowexclusivelock",server="127.0.0.1:5432"} 0
+pg_locks_count{collector="exporter",datname="template1",mode="shareupdateexclusivelock",server="127.0.0.1:5432"} 0
+# HELP pg_postmaster_start_time_seconds Time at which postmaster started
+# TYPE pg_postmaster_start_time_seconds gauge
+pg_postmaster_start_time_seconds{collector="custom_query.mr",server="127.0.0.1:5432"} 1.653392259e+09
+# HELP pg_postmaster_uptime_seconds Service uptime
+# TYPE pg_postmaster_uptime_seconds gauge
+pg_postmaster_uptime_seconds{collector="custom_query.hr",server="127.0.0.1:5432"} 30573.962546
+# HELP pg_replication_lag Replication lag behind master in seconds
+# TYPE pg_replication_lag gauge
+pg_replication_lag{collector="custom_query.mr",server="127.0.0.1:5432"} 0
+# HELP pg_settings_allow_system_table_mods Allows modifications of the structure of system tables.
+# TYPE pg_settings_allow_system_table_mods gauge
+pg_settings_allow_system_table_mods{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_archive_timeout_seconds Forces a switch to the next WAL file if a new file has not been started within N seconds. [Units converted to seconds.]
+# TYPE pg_settings_archive_timeout_seconds gauge
+pg_settings_archive_timeout_seconds{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_array_nulls Enable input of NULL elements in arrays.
+# TYPE pg_settings_array_nulls gauge
+pg_settings_array_nulls{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_authentication_timeout_seconds Sets the maximum allowed time to complete client authentication. [Units converted to seconds.]
+# TYPE pg_settings_authentication_timeout_seconds gauge
+pg_settings_authentication_timeout_seconds{collector="exporter",server="127.0.0.1:5432"} 60
+# HELP pg_settings_autovacuum Starts the autovacuum subprocess.
+# TYPE pg_settings_autovacuum gauge
+pg_settings_autovacuum{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_autovacuum_analyze_scale_factor Number of tuple inserts, updates, or deletes prior to analyze as a fraction of reltuples.
+# TYPE pg_settings_autovacuum_analyze_scale_factor gauge
+pg_settings_autovacuum_analyze_scale_factor{collector="exporter",server="127.0.0.1:5432"} 0.1
+# HELP pg_settings_autovacuum_analyze_threshold Minimum number of tuple inserts, updates, or deletes prior to analyze.
+# TYPE pg_settings_autovacuum_analyze_threshold gauge
+pg_settings_autovacuum_analyze_threshold{collector="exporter",server="127.0.0.1:5432"} 50
+# HELP pg_settings_autovacuum_freeze_max_age Age at which to autovacuum a table to prevent transaction ID wraparound.
+# TYPE pg_settings_autovacuum_freeze_max_age gauge
+pg_settings_autovacuum_freeze_max_age{collector="exporter",server="127.0.0.1:5432"} 2e+08
+# HELP pg_settings_autovacuum_max_workers Sets the maximum number of simultaneously running autovacuum worker processes.
+# TYPE pg_settings_autovacuum_max_workers gauge
+pg_settings_autovacuum_max_workers{collector="exporter",server="127.0.0.1:5432"} 3
+# HELP pg_settings_autovacuum_multixact_freeze_max_age Multixact age at which to autovacuum a table to prevent multixact wraparound.
+# TYPE pg_settings_autovacuum_multixact_freeze_max_age gauge
+pg_settings_autovacuum_multixact_freeze_max_age{collector="exporter",server="127.0.0.1:5432"} 4e+08
+# HELP pg_settings_autovacuum_naptime_seconds Time to sleep between autovacuum runs. [Units converted to seconds.]
+# TYPE pg_settings_autovacuum_naptime_seconds gauge
+pg_settings_autovacuum_naptime_seconds{collector="exporter",server="127.0.0.1:5432"} 60
+# HELP pg_settings_autovacuum_vacuum_cost_delay_seconds Vacuum cost delay in milliseconds, for autovacuum. [Units converted to seconds.]
+# TYPE pg_settings_autovacuum_vacuum_cost_delay_seconds gauge
+pg_settings_autovacuum_vacuum_cost_delay_seconds{collector="exporter",server="127.0.0.1:5432"} 0.02
+# HELP pg_settings_autovacuum_vacuum_cost_limit Vacuum cost amount available before napping, for autovacuum.
+# TYPE pg_settings_autovacuum_vacuum_cost_limit gauge
+pg_settings_autovacuum_vacuum_cost_limit{collector="exporter",server="127.0.0.1:5432"} -1
+# HELP pg_settings_autovacuum_vacuum_scale_factor Number of tuple updates or deletes prior to vacuum as a fraction of reltuples.
+# TYPE pg_settings_autovacuum_vacuum_scale_factor gauge
+pg_settings_autovacuum_vacuum_scale_factor{collector="exporter",server="127.0.0.1:5432"} 0.2
+# HELP pg_settings_autovacuum_vacuum_threshold Minimum number of tuple updates or deletes prior to vacuum.
+# TYPE pg_settings_autovacuum_vacuum_threshold gauge
+pg_settings_autovacuum_vacuum_threshold{collector="exporter",server="127.0.0.1:5432"} 50
+# HELP pg_settings_autovacuum_work_mem_bytes Sets the maximum memory to be used by each autovacuum worker process. [Units converted to bytes.]
+# TYPE pg_settings_autovacuum_work_mem_bytes gauge
+pg_settings_autovacuum_work_mem_bytes{collector="exporter",server="127.0.0.1:5432"} -1
+# HELP pg_settings_backend_flush_after_bytes Number of pages after which previously performed writes are flushed to disk. [Units converted to bytes.]
+# TYPE pg_settings_backend_flush_after_bytes gauge
+pg_settings_backend_flush_after_bytes{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_bgwriter_delay_seconds Background writer sleep time between rounds. [Units converted to seconds.]
+# TYPE pg_settings_bgwriter_delay_seconds gauge
+pg_settings_bgwriter_delay_seconds{collector="exporter",server="127.0.0.1:5432"} 0.2
+# HELP pg_settings_bgwriter_flush_after_bytes Number of pages after which previously performed writes are flushed to disk. [Units converted to bytes.]
+# TYPE pg_settings_bgwriter_flush_after_bytes gauge
+pg_settings_bgwriter_flush_after_bytes{collector="exporter",server="127.0.0.1:5432"} 524288
+# HELP pg_settings_bgwriter_lru_maxpages Background writer maximum number of LRU pages to flush per round.
+# TYPE pg_settings_bgwriter_lru_maxpages gauge
+pg_settings_bgwriter_lru_maxpages{collector="exporter",server="127.0.0.1:5432"} 100
+# HELP pg_settings_bgwriter_lru_multiplier Multiple of the average buffer usage to free per round.
+# TYPE pg_settings_bgwriter_lru_multiplier gauge
+pg_settings_bgwriter_lru_multiplier{collector="exporter",server="127.0.0.1:5432"} 2
+# HELP pg_settings_block_size Shows the size of a disk block.
+# TYPE pg_settings_block_size gauge
+pg_settings_block_size{collector="exporter",server="127.0.0.1:5432"} 8192
+# HELP pg_settings_bonjour Enables advertising the server via Bonjour.
+# TYPE pg_settings_bonjour gauge
+pg_settings_bonjour{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_check_function_bodies Check function bodies during CREATE FUNCTION.
+# TYPE pg_settings_check_function_bodies gauge
+pg_settings_check_function_bodies{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_checkpoint_completion_target Time spent flushing dirty buffers during checkpoint, as fraction of checkpoint interval.
+# TYPE pg_settings_checkpoint_completion_target gauge
+pg_settings_checkpoint_completion_target{collector="exporter",server="127.0.0.1:5432"} 0.5
+# HELP pg_settings_checkpoint_flush_after_bytes Number of pages after which previously performed writes are flushed to disk. [Units converted to bytes.]
+# TYPE pg_settings_checkpoint_flush_after_bytes gauge
+pg_settings_checkpoint_flush_after_bytes{collector="exporter",server="127.0.0.1:5432"} 262144
+# HELP pg_settings_checkpoint_timeout_seconds Sets the maximum time between automatic WAL checkpoints. [Units converted to seconds.]
+# TYPE pg_settings_checkpoint_timeout_seconds gauge
+pg_settings_checkpoint_timeout_seconds{collector="exporter",server="127.0.0.1:5432"} 300
+# HELP pg_settings_checkpoint_warning_seconds Enables warnings if checkpoint segments are filled more frequently than this. [Units converted to seconds.]
+# TYPE pg_settings_checkpoint_warning_seconds gauge
+pg_settings_checkpoint_warning_seconds{collector="exporter",server="127.0.0.1:5432"} 30
+# HELP pg_settings_commit_delay Sets the delay in microseconds between transaction commit and flushing WAL to disk.
+# TYPE pg_settings_commit_delay gauge
+pg_settings_commit_delay{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_commit_siblings Sets the minimum concurrent open transactions before performing commit_delay.
+# TYPE pg_settings_commit_siblings gauge
+pg_settings_commit_siblings{collector="exporter",server="127.0.0.1:5432"} 5
+# HELP pg_settings_cpu_index_tuple_cost Sets the planner's estimate of the cost of processing each index entry during an index scan.
+# TYPE pg_settings_cpu_index_tuple_cost gauge
+pg_settings_cpu_index_tuple_cost{collector="exporter",server="127.0.0.1:5432"} 0.005
+# HELP pg_settings_cpu_operator_cost Sets the planner's estimate of the cost of processing each operator or function call.
+# TYPE pg_settings_cpu_operator_cost gauge
+pg_settings_cpu_operator_cost{collector="exporter",server="127.0.0.1:5432"} 0.0025
+# HELP pg_settings_cpu_tuple_cost Sets the planner's estimate of the cost of processing each tuple (row).
+# TYPE pg_settings_cpu_tuple_cost gauge
+pg_settings_cpu_tuple_cost{collector="exporter",server="127.0.0.1:5432"} 0.01
+# HELP pg_settings_cursor_tuple_fraction Sets the planner's estimate of the fraction of a cursor's rows that will be retrieved.
+# TYPE pg_settings_cursor_tuple_fraction gauge
+pg_settings_cursor_tuple_fraction{collector="exporter",server="127.0.0.1:5432"} 0.1
+# HELP pg_settings_data_checksums Shows whether data checksums are turned on for this cluster.
+# TYPE pg_settings_data_checksums gauge
+pg_settings_data_checksums{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_data_directory_mode Mode of the data directory.
+# TYPE pg_settings_data_directory_mode gauge
+pg_settings_data_directory_mode{collector="exporter",server="127.0.0.1:5432"} 700
+# HELP pg_settings_data_sync_retry Whether to continue running after a failure to sync data files.
+# TYPE pg_settings_data_sync_retry gauge
+pg_settings_data_sync_retry{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_db_user_namespace Enables per-database user names.
+# TYPE pg_settings_db_user_namespace gauge
+pg_settings_db_user_namespace{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_deadlock_timeout_seconds Sets the time to wait on a lock before checking for deadlock. [Units converted to seconds.]
+# TYPE pg_settings_deadlock_timeout_seconds gauge
+pg_settings_deadlock_timeout_seconds{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_debug_assertions Shows whether the running server has assertion checks enabled.
+# TYPE pg_settings_debug_assertions gauge
+pg_settings_debug_assertions{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_debug_pretty_print Indents parse and plan tree displays.
+# TYPE pg_settings_debug_pretty_print gauge
+pg_settings_debug_pretty_print{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_debug_print_parse Logs each query's parse tree.
+# TYPE pg_settings_debug_print_parse gauge
+pg_settings_debug_print_parse{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_debug_print_plan Logs each query's execution plan.
+# TYPE pg_settings_debug_print_plan gauge
+pg_settings_debug_print_plan{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_debug_print_rewritten Logs each query's rewritten parse tree.
+# TYPE pg_settings_debug_print_rewritten gauge
+pg_settings_debug_print_rewritten{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_default_statistics_target Sets the default statistics target.
+# TYPE pg_settings_default_statistics_target gauge
+pg_settings_default_statistics_target{collector="exporter",server="127.0.0.1:5432"} 100
+# HELP pg_settings_default_transaction_deferrable Sets the default deferrable status of new transactions.
+# TYPE pg_settings_default_transaction_deferrable gauge
+pg_settings_default_transaction_deferrable{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_default_transaction_read_only Sets the default read-only status of new transactions.
+# TYPE pg_settings_default_transaction_read_only gauge
+pg_settings_default_transaction_read_only{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_default_with_oids Create new tables with OIDs by default.
+# TYPE pg_settings_default_with_oids gauge
+pg_settings_default_with_oids{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_effective_cache_size_bytes Sets the planner's assumption about the total size of the data caches. [Units converted to bytes.]
+# TYPE pg_settings_effective_cache_size_bytes gauge
+pg_settings_effective_cache_size_bytes{collector="exporter",server="127.0.0.1:5432"} 4.294967296e+09
+# HELP pg_settings_effective_io_concurrency Number of simultaneous requests that can be handled efficiently by the disk subsystem.
+# TYPE pg_settings_effective_io_concurrency gauge
+pg_settings_effective_io_concurrency{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_enable_bitmapscan Enables the planner's use of bitmap-scan plans.
+# TYPE pg_settings_enable_bitmapscan gauge
+pg_settings_enable_bitmapscan{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_enable_gathermerge Enables the planner's use of gather merge plans.
+# TYPE pg_settings_enable_gathermerge gauge
+pg_settings_enable_gathermerge{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_enable_hashagg Enables the planner's use of hashed aggregation plans.
+# TYPE pg_settings_enable_hashagg gauge
+pg_settings_enable_hashagg{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_enable_hashjoin Enables the planner's use of hash join plans.
+# TYPE pg_settings_enable_hashjoin gauge
+pg_settings_enable_hashjoin{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_enable_indexonlyscan Enables the planner's use of index-only-scan plans.
+# TYPE pg_settings_enable_indexonlyscan gauge
+pg_settings_enable_indexonlyscan{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_enable_indexscan Enables the planner's use of index-scan plans.
+# TYPE pg_settings_enable_indexscan gauge
+pg_settings_enable_indexscan{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_enable_material Enables the planner's use of materialization.
+# TYPE pg_settings_enable_material gauge
+pg_settings_enable_material{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_enable_mergejoin Enables the planner's use of merge join plans.
+# TYPE pg_settings_enable_mergejoin gauge
+pg_settings_enable_mergejoin{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_enable_nestloop Enables the planner's use of nested-loop join plans.
+# TYPE pg_settings_enable_nestloop gauge
+pg_settings_enable_nestloop{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_enable_parallel_append Enables the planner's use of parallel append plans.
+# TYPE pg_settings_enable_parallel_append gauge
+pg_settings_enable_parallel_append{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_enable_parallel_hash Enables the planner's use of parallel hash plans.
+# TYPE pg_settings_enable_parallel_hash gauge
+pg_settings_enable_parallel_hash{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_enable_partition_pruning Enable plan-time and run-time partition pruning.
+# TYPE pg_settings_enable_partition_pruning gauge
+pg_settings_enable_partition_pruning{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_enable_partitionwise_aggregate Enables partitionwise aggregation and grouping.
+# TYPE pg_settings_enable_partitionwise_aggregate gauge
+pg_settings_enable_partitionwise_aggregate{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_enable_partitionwise_join Enables partitionwise join.
+# TYPE pg_settings_enable_partitionwise_join gauge
+pg_settings_enable_partitionwise_join{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_enable_seqscan Enables the planner's use of sequential-scan plans.
+# TYPE pg_settings_enable_seqscan gauge
+pg_settings_enable_seqscan{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_enable_sort Enables the planner's use of explicit sort steps.
+# TYPE pg_settings_enable_sort gauge
+pg_settings_enable_sort{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_enable_tidscan Enables the planner's use of TID scan plans.
+# TYPE pg_settings_enable_tidscan gauge
+pg_settings_enable_tidscan{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_escape_string_warning Warn about backslash escapes in ordinary string literals.
+# TYPE pg_settings_escape_string_warning gauge
+pg_settings_escape_string_warning{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_exit_on_error Terminate session on any error.
+# TYPE pg_settings_exit_on_error gauge
+pg_settings_exit_on_error{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_extra_float_digits Sets the number of digits displayed for floating-point values.
+# TYPE pg_settings_extra_float_digits gauge
+pg_settings_extra_float_digits{collector="exporter",server="127.0.0.1:5432"} 2
+# HELP pg_settings_from_collapse_limit Sets the FROM-list size beyond which subqueries are not collapsed.
+# TYPE pg_settings_from_collapse_limit gauge
+pg_settings_from_collapse_limit{collector="exporter",server="127.0.0.1:5432"} 8
+# HELP pg_settings_fsync Forces synchronization of updates to disk.
+# TYPE pg_settings_fsync gauge
+pg_settings_fsync{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_full_page_writes Writes full pages to WAL when first modified after a checkpoint.
+# TYPE pg_settings_full_page_writes gauge
+pg_settings_full_page_writes{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_geqo Enables genetic query optimization.
+# TYPE pg_settings_geqo gauge
+pg_settings_geqo{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_geqo_effort GEQO: effort is used to set the default for other GEQO parameters.
+# TYPE pg_settings_geqo_effort gauge
+pg_settings_geqo_effort{collector="exporter",server="127.0.0.1:5432"} 5
+# HELP pg_settings_geqo_generations GEQO: number of iterations of the algorithm.
+# TYPE pg_settings_geqo_generations gauge
+pg_settings_geqo_generations{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_geqo_pool_size GEQO: number of individuals in the population.
+# TYPE pg_settings_geqo_pool_size gauge
+pg_settings_geqo_pool_size{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_geqo_seed GEQO: seed for random path selection.
+# TYPE pg_settings_geqo_seed gauge
+pg_settings_geqo_seed{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_geqo_selection_bias GEQO: selective pressure within the population.
+# TYPE pg_settings_geqo_selection_bias gauge
+pg_settings_geqo_selection_bias{collector="exporter",server="127.0.0.1:5432"} 2
+# HELP pg_settings_geqo_threshold Sets the threshold of FROM items beyond which GEQO is used.
+# TYPE pg_settings_geqo_threshold gauge
+pg_settings_geqo_threshold{collector="exporter",server="127.0.0.1:5432"} 12
+# HELP pg_settings_gin_fuzzy_search_limit Sets the maximum allowed result for exact search by GIN.
+# TYPE pg_settings_gin_fuzzy_search_limit gauge
+pg_settings_gin_fuzzy_search_limit{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_gin_pending_list_limit_bytes Sets the maximum size of the pending list for GIN index. [Units converted to bytes.]
+# TYPE pg_settings_gin_pending_list_limit_bytes gauge
+pg_settings_gin_pending_list_limit_bytes{collector="exporter",server="127.0.0.1:5432"} 4.194304e+06
+# HELP pg_settings_hot_standby Allows connections and queries during recovery.
+# TYPE pg_settings_hot_standby gauge
+pg_settings_hot_standby{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_hot_standby_feedback Allows feedback from a hot standby to the primary that will avoid query conflicts.
+# TYPE pg_settings_hot_standby_feedback gauge
+pg_settings_hot_standby_feedback{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_idle_in_transaction_session_timeout_seconds Sets the maximum allowed duration of any idling transaction. [Units converted to seconds.]
+# TYPE pg_settings_idle_in_transaction_session_timeout_seconds gauge
+pg_settings_idle_in_transaction_session_timeout_seconds{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_ignore_checksum_failure Continues processing after a checksum failure.
+# TYPE pg_settings_ignore_checksum_failure gauge
+pg_settings_ignore_checksum_failure{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_ignore_system_indexes Disables reading from system indexes.
+# TYPE pg_settings_ignore_system_indexes gauge
+pg_settings_ignore_system_indexes{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_integer_datetimes Datetimes are integer based.
+# TYPE pg_settings_integer_datetimes gauge
+pg_settings_integer_datetimes{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_jit Allow JIT compilation.
+# TYPE pg_settings_jit gauge
+pg_settings_jit{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_jit_above_cost Perform JIT compilation if query is more expensive.
+# TYPE pg_settings_jit_above_cost gauge
+pg_settings_jit_above_cost{collector="exporter",server="127.0.0.1:5432"} 100000
+# HELP pg_settings_jit_debugging_support Register JIT compiled function with debugger.
+# TYPE pg_settings_jit_debugging_support gauge
+pg_settings_jit_debugging_support{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_jit_dump_bitcode Write out LLVM bitcode to facilitate JIT debugging.
+# TYPE pg_settings_jit_dump_bitcode gauge
+pg_settings_jit_dump_bitcode{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_jit_expressions Allow JIT compilation of expressions.
+# TYPE pg_settings_jit_expressions gauge
+pg_settings_jit_expressions{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_jit_inline_above_cost Perform JIT inlining if query is more expensive.
+# TYPE pg_settings_jit_inline_above_cost gauge
+pg_settings_jit_inline_above_cost{collector="exporter",server="127.0.0.1:5432"} 500000
+# HELP pg_settings_jit_optimize_above_cost Optimize JITed functions if query is more expensive.
+# TYPE pg_settings_jit_optimize_above_cost gauge
+pg_settings_jit_optimize_above_cost{collector="exporter",server="127.0.0.1:5432"} 500000
+# HELP pg_settings_jit_profiling_support Register JIT compiled function with perf profiler.
+# TYPE pg_settings_jit_profiling_support gauge
+pg_settings_jit_profiling_support{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_jit_tuple_deforming Allow JIT compilation of tuple deforming.
+# TYPE pg_settings_jit_tuple_deforming gauge
+pg_settings_jit_tuple_deforming{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_join_collapse_limit Sets the FROM-list size beyond which JOIN constructs are not flattened.
+# TYPE pg_settings_join_collapse_limit gauge
+pg_settings_join_collapse_limit{collector="exporter",server="127.0.0.1:5432"} 8
+# HELP pg_settings_krb_caseins_users Sets whether Kerberos and GSSAPI user names should be treated as case-insensitive.
+# TYPE pg_settings_krb_caseins_users gauge
+pg_settings_krb_caseins_users{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_lo_compat_privileges Enables backward compatibility mode for privilege checks on large objects.
+# TYPE pg_settings_lo_compat_privileges gauge
+pg_settings_lo_compat_privileges{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_lock_timeout_seconds Sets the maximum allowed duration of any wait for a lock. [Units converted to seconds.]
+# TYPE pg_settings_lock_timeout_seconds gauge
+pg_settings_lock_timeout_seconds{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_log_autovacuum_min_duration_seconds Sets the minimum execution time above which autovacuum actions will be logged. [Units converted to seconds.]
+# TYPE pg_settings_log_autovacuum_min_duration_seconds gauge
+pg_settings_log_autovacuum_min_duration_seconds{collector="exporter",server="127.0.0.1:5432"} -1
+# HELP pg_settings_log_checkpoints Logs each checkpoint.
+# TYPE pg_settings_log_checkpoints gauge
+pg_settings_log_checkpoints{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_log_connections Logs each successful connection.
+# TYPE pg_settings_log_connections gauge
+pg_settings_log_connections{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_log_disconnections Logs end of a session, including duration.
+# TYPE pg_settings_log_disconnections gauge
+pg_settings_log_disconnections{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_log_duration Logs the duration of each completed SQL statement.
+# TYPE pg_settings_log_duration gauge
+pg_settings_log_duration{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_log_executor_stats Writes executor performance statistics to the server log.
+# TYPE pg_settings_log_executor_stats gauge
+pg_settings_log_executor_stats{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_log_file_mode Sets the file permissions for log files.
+# TYPE pg_settings_log_file_mode gauge
+pg_settings_log_file_mode{collector="exporter",server="127.0.0.1:5432"} 600
+# HELP pg_settings_log_hostname Logs the host name in the connection logs.
+# TYPE pg_settings_log_hostname gauge
+pg_settings_log_hostname{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_log_lock_waits Logs long lock waits.
+# TYPE pg_settings_log_lock_waits gauge
+pg_settings_log_lock_waits{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_log_min_duration_statement_seconds Sets the minimum execution time above which statements will be logged. [Units converted to seconds.]
+# TYPE pg_settings_log_min_duration_statement_seconds gauge
+pg_settings_log_min_duration_statement_seconds{collector="exporter",server="127.0.0.1:5432"} -1
+# HELP pg_settings_log_parser_stats Writes parser performance statistics to the server log.
+# TYPE pg_settings_log_parser_stats gauge
+pg_settings_log_parser_stats{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_log_planner_stats Writes planner performance statistics to the server log.
+# TYPE pg_settings_log_planner_stats gauge
+pg_settings_log_planner_stats{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_log_replication_commands Logs each replication command.
+# TYPE pg_settings_log_replication_commands gauge
+pg_settings_log_replication_commands{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_log_rotation_age_seconds Automatic log file rotation will occur after N minutes. [Units converted to seconds.]
+# TYPE pg_settings_log_rotation_age_seconds gauge
+pg_settings_log_rotation_age_seconds{collector="exporter",server="127.0.0.1:5432"} 86400
+# HELP pg_settings_log_rotation_size_bytes Automatic log file rotation will occur after N kilobytes. [Units converted to bytes.]
+# TYPE pg_settings_log_rotation_size_bytes gauge
+pg_settings_log_rotation_size_bytes{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_log_statement_stats Writes cumulative performance statistics to the server log.
+# TYPE pg_settings_log_statement_stats gauge
+pg_settings_log_statement_stats{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_log_temp_files_bytes Log the use of temporary files larger than this number of kilobytes. [Units converted to bytes.]
+# TYPE pg_settings_log_temp_files_bytes gauge
+pg_settings_log_temp_files_bytes{collector="exporter",server="127.0.0.1:5432"} -1
+# HELP pg_settings_log_truncate_on_rotation Truncate existing log files of same name during log rotation.
+# TYPE pg_settings_log_truncate_on_rotation gauge
+pg_settings_log_truncate_on_rotation{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_logging_collector Start a subprocess to capture stderr output and/or csvlogs into log files.
+# TYPE pg_settings_logging_collector gauge
+pg_settings_logging_collector{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_maintenance_work_mem_bytes Sets the maximum memory to be used for maintenance operations. [Units converted to bytes.]
+# TYPE pg_settings_maintenance_work_mem_bytes gauge
+pg_settings_maintenance_work_mem_bytes{collector="exporter",server="127.0.0.1:5432"} 6.7108864e+07
+# HELP pg_settings_max_connections Sets the maximum number of concurrent connections.
+# TYPE pg_settings_max_connections gauge
+pg_settings_max_connections{collector="exporter",server="127.0.0.1:5432"} 100
+# HELP pg_settings_max_files_per_process Sets the maximum number of simultaneously open files for each server process.
+# TYPE pg_settings_max_files_per_process gauge
+pg_settings_max_files_per_process{collector="exporter",server="127.0.0.1:5432"} 1000
+# HELP pg_settings_max_function_args Shows the maximum number of function arguments.
+# TYPE pg_settings_max_function_args gauge
+pg_settings_max_function_args{collector="exporter",server="127.0.0.1:5432"} 100
+# HELP pg_settings_max_identifier_length Shows the maximum identifier length.
+# TYPE pg_settings_max_identifier_length gauge
+pg_settings_max_identifier_length{collector="exporter",server="127.0.0.1:5432"} 63
+# HELP pg_settings_max_index_keys Shows the maximum number of index keys.
+# TYPE pg_settings_max_index_keys gauge
+pg_settings_max_index_keys{collector="exporter",server="127.0.0.1:5432"} 32
+# HELP pg_settings_max_locks_per_transaction Sets the maximum number of locks per transaction.
+# TYPE pg_settings_max_locks_per_transaction gauge
+pg_settings_max_locks_per_transaction{collector="exporter",server="127.0.0.1:5432"} 64
+# HELP pg_settings_max_logical_replication_workers Maximum number of logical replication worker processes.
+# TYPE pg_settings_max_logical_replication_workers gauge
+pg_settings_max_logical_replication_workers{collector="exporter",server="127.0.0.1:5432"} 4
+# HELP pg_settings_max_parallel_maintenance_workers Sets the maximum number of parallel processes per maintenance operation.
+# TYPE pg_settings_max_parallel_maintenance_workers gauge
+pg_settings_max_parallel_maintenance_workers{collector="exporter",server="127.0.0.1:5432"} 2
+# HELP pg_settings_max_parallel_workers Sets the maximum number of parallel workers that can be active at one time.
+# TYPE pg_settings_max_parallel_workers gauge
+pg_settings_max_parallel_workers{collector="exporter",server="127.0.0.1:5432"} 8
+# HELP pg_settings_max_parallel_workers_per_gather Sets the maximum number of parallel processes per executor node.
+# TYPE pg_settings_max_parallel_workers_per_gather gauge
+pg_settings_max_parallel_workers_per_gather{collector="exporter",server="127.0.0.1:5432"} 2
+# HELP pg_settings_max_pred_locks_per_page Sets the maximum number of predicate-locked tuples per page.
+# TYPE pg_settings_max_pred_locks_per_page gauge
+pg_settings_max_pred_locks_per_page{collector="exporter",server="127.0.0.1:5432"} 2
+# HELP pg_settings_max_pred_locks_per_relation Sets the maximum number of predicate-locked pages and tuples per relation.
+# TYPE pg_settings_max_pred_locks_per_relation gauge
+pg_settings_max_pred_locks_per_relation{collector="exporter",server="127.0.0.1:5432"} -2
+# HELP pg_settings_max_pred_locks_per_transaction Sets the maximum number of predicate locks per transaction.
+# TYPE pg_settings_max_pred_locks_per_transaction gauge
+pg_settings_max_pred_locks_per_transaction{collector="exporter",server="127.0.0.1:5432"} 64
+# HELP pg_settings_max_prepared_transactions Sets the maximum number of simultaneously prepared transactions.
+# TYPE pg_settings_max_prepared_transactions gauge
+pg_settings_max_prepared_transactions{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_max_replication_slots Sets the maximum number of simultaneously defined replication slots.
+# TYPE pg_settings_max_replication_slots gauge
+pg_settings_max_replication_slots{collector="exporter",server="127.0.0.1:5432"} 10
+# HELP pg_settings_max_stack_depth_bytes Sets the maximum stack depth, in kilobytes. [Units converted to bytes.]
+# TYPE pg_settings_max_stack_depth_bytes gauge
+pg_settings_max_stack_depth_bytes{collector="exporter",server="127.0.0.1:5432"} 2.097152e+06
+# HELP pg_settings_max_standby_archive_delay_seconds Sets the maximum delay before canceling queries when a hot standby server is processing archived WAL data. [Units converted to seconds.]
+# TYPE pg_settings_max_standby_archive_delay_seconds gauge
+pg_settings_max_standby_archive_delay_seconds{collector="exporter",server="127.0.0.1:5432"} 30
+# HELP pg_settings_max_standby_streaming_delay_seconds Sets the maximum delay before canceling queries when a hot standby server is processing streamed WAL data. [Units converted to seconds.]
+# TYPE pg_settings_max_standby_streaming_delay_seconds gauge
+pg_settings_max_standby_streaming_delay_seconds{collector="exporter",server="127.0.0.1:5432"} 30
+# HELP pg_settings_max_sync_workers_per_subscription Maximum number of table synchronization workers per subscription.
+# TYPE pg_settings_max_sync_workers_per_subscription gauge
+pg_settings_max_sync_workers_per_subscription{collector="exporter",server="127.0.0.1:5432"} 2
+# HELP pg_settings_max_wal_senders Sets the maximum number of simultaneously running WAL sender processes.
+# TYPE pg_settings_max_wal_senders gauge
+pg_settings_max_wal_senders{collector="exporter",server="127.0.0.1:5432"} 10
+# HELP pg_settings_max_wal_size_bytes Sets the WAL size that triggers a checkpoint. [Units converted to bytes.]
+# TYPE pg_settings_max_wal_size_bytes gauge
+pg_settings_max_wal_size_bytes{collector="exporter",server="127.0.0.1:5432"} 1.073741824e+09
+# HELP pg_settings_max_worker_processes Maximum number of concurrent worker processes.
+# TYPE pg_settings_max_worker_processes gauge
+pg_settings_max_worker_processes{collector="exporter",server="127.0.0.1:5432"} 8
+# HELP pg_settings_min_parallel_index_scan_size_bytes Sets the minimum amount of index data for a parallel scan. [Units converted to bytes.]
+# TYPE pg_settings_min_parallel_index_scan_size_bytes gauge
+pg_settings_min_parallel_index_scan_size_bytes{collector="exporter",server="127.0.0.1:5432"} 524288
+# HELP pg_settings_min_parallel_table_scan_size_bytes Sets the minimum amount of table data for a parallel scan. [Units converted to bytes.]
+# TYPE pg_settings_min_parallel_table_scan_size_bytes gauge
+pg_settings_min_parallel_table_scan_size_bytes{collector="exporter",server="127.0.0.1:5432"} 8.388608e+06
+# HELP pg_settings_min_wal_size_bytes Sets the minimum size to shrink the WAL to. [Units converted to bytes.]
+# TYPE pg_settings_min_wal_size_bytes gauge
+pg_settings_min_wal_size_bytes{collector="exporter",server="127.0.0.1:5432"} 8.388608e+07
+# HELP pg_settings_old_snapshot_threshold_seconds Time before a snapshot is too old to read pages changed after the snapshot was taken. [Units converted to seconds.]
+# TYPE pg_settings_old_snapshot_threshold_seconds gauge
+pg_settings_old_snapshot_threshold_seconds{collector="exporter",server="127.0.0.1:5432"} -1
+# HELP pg_settings_operator_precedence_warning Emit a warning for constructs that changed meaning since PostgreSQL 9.4.
+# TYPE pg_settings_operator_precedence_warning gauge
+pg_settings_operator_precedence_warning{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_parallel_leader_participation Controls whether Gather and Gather Merge also run subplans.
+# TYPE pg_settings_parallel_leader_participation gauge
+pg_settings_parallel_leader_participation{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_parallel_setup_cost Sets the planner's estimate of the cost of starting up worker processes for parallel query.
+# TYPE pg_settings_parallel_setup_cost gauge
+pg_settings_parallel_setup_cost{collector="exporter",server="127.0.0.1:5432"} 1000
+# HELP pg_settings_parallel_tuple_cost Sets the planner's estimate of the cost of passing each tuple (row) from worker to master backend.
+# TYPE pg_settings_parallel_tuple_cost gauge
+pg_settings_parallel_tuple_cost{collector="exporter",server="127.0.0.1:5432"} 0.1
+# HELP pg_settings_pg_stat_statements_max Sets the maximum number of statements tracked by pg_stat_statements.
+# TYPE pg_settings_pg_stat_statements_max gauge
+pg_settings_pg_stat_statements_max{collector="exporter",server="127.0.0.1:5432"} 10000
+# HELP pg_settings_pg_stat_statements_save Save pg_stat_statements statistics across server shutdowns.
+# TYPE pg_settings_pg_stat_statements_save gauge
+pg_settings_pg_stat_statements_save{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_pg_stat_statements_track_utility Selects whether utility commands are tracked by pg_stat_statements.
+# TYPE pg_settings_pg_stat_statements_track_utility gauge
+pg_settings_pg_stat_statements_track_utility{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_port Sets the TCP port the server listens on.
+# TYPE pg_settings_port gauge
+pg_settings_port{collector="exporter",server="127.0.0.1:5432"} 5432
+# HELP pg_settings_post_auth_delay_seconds Waits N seconds on connection startup after authentication. [Units converted to seconds.]
+# TYPE pg_settings_post_auth_delay_seconds gauge
+pg_settings_post_auth_delay_seconds{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_pre_auth_delay_seconds Waits N seconds on connection startup before authentication. [Units converted to seconds.]
+# TYPE pg_settings_pre_auth_delay_seconds gauge
+pg_settings_pre_auth_delay_seconds{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_quote_all_identifiers When generating SQL fragments, quote all identifiers.
+# TYPE pg_settings_quote_all_identifiers gauge
+pg_settings_quote_all_identifiers{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_random_page_cost Sets the planner's estimate of the cost of a nonsequentially fetched disk page.
+# TYPE pg_settings_random_page_cost gauge
+pg_settings_random_page_cost{collector="exporter",server="127.0.0.1:5432"} 4
+# HELP pg_settings_restart_after_crash Reinitialize server after backend crash.
+# TYPE pg_settings_restart_after_crash gauge
+pg_settings_restart_after_crash{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_row_security Enable row security.
+# TYPE pg_settings_row_security gauge
+pg_settings_row_security{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_segment_size_bytes Shows the number of pages per disk file. [Units converted to bytes.]
+# TYPE pg_settings_segment_size_bytes gauge
+pg_settings_segment_size_bytes{collector="exporter",server="127.0.0.1:5432"} 1.073741824e+09
+# HELP pg_settings_seq_page_cost Sets the planner's estimate of the cost of a sequentially fetched disk page.
+# TYPE pg_settings_seq_page_cost gauge
+pg_settings_seq_page_cost{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_server_version_num Shows the server version as an integer.
+# TYPE pg_settings_server_version_num gauge
+pg_settings_server_version_num{collector="exporter",server="127.0.0.1:5432"} 110015
+# HELP pg_settings_shared_buffers_bytes Sets the number of shared memory buffers used by the server. [Units converted to bytes.]
+# TYPE pg_settings_shared_buffers_bytes gauge
+pg_settings_shared_buffers_bytes{collector="exporter",server="127.0.0.1:5432"} 1.34217728e+08
+# HELP pg_settings_ssl Enables SSL connections.
+# TYPE pg_settings_ssl gauge
+pg_settings_ssl{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_ssl_passphrase_command_supports_reload Also use ssl_passphrase_command during server reload.
+# TYPE pg_settings_ssl_passphrase_command_supports_reload gauge
+pg_settings_ssl_passphrase_command_supports_reload{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_ssl_prefer_server_ciphers Give priority to server ciphersuite order.
+# TYPE pg_settings_ssl_prefer_server_ciphers gauge
+pg_settings_ssl_prefer_server_ciphers{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_standard_conforming_strings Causes '...' strings to treat backslashes literally.
+# TYPE pg_settings_standard_conforming_strings gauge
+pg_settings_standard_conforming_strings{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_statement_timeout_seconds Sets the maximum allowed duration of any statement. [Units converted to seconds.]
+# TYPE pg_settings_statement_timeout_seconds gauge
+pg_settings_statement_timeout_seconds{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_superuser_reserved_connections Sets the number of connection slots reserved for superusers.
+# TYPE pg_settings_superuser_reserved_connections gauge
+pg_settings_superuser_reserved_connections{collector="exporter",server="127.0.0.1:5432"} 3
+# HELP pg_settings_synchronize_seqscans Enable synchronized sequential scans.
+# TYPE pg_settings_synchronize_seqscans gauge
+pg_settings_synchronize_seqscans{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_syslog_sequence_numbers Add sequence number to syslog messages to avoid duplicate suppression.
+# TYPE pg_settings_syslog_sequence_numbers gauge
+pg_settings_syslog_sequence_numbers{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_syslog_split_messages Split messages sent to syslog by lines and to fit into 1024 bytes.
+# TYPE pg_settings_syslog_split_messages gauge
+pg_settings_syslog_split_messages{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_tcp_keepalives_count Maximum number of TCP keepalive retransmits.
+# TYPE pg_settings_tcp_keepalives_count gauge
+pg_settings_tcp_keepalives_count{collector="exporter",server="127.0.0.1:5432"} 9
+# HELP pg_settings_tcp_keepalives_idle_seconds Time between issuing TCP keepalives. [Units converted to seconds.]
+# TYPE pg_settings_tcp_keepalives_idle_seconds gauge
+pg_settings_tcp_keepalives_idle_seconds{collector="exporter",server="127.0.0.1:5432"} 7200
+# HELP pg_settings_tcp_keepalives_interval_seconds Time between TCP keepalive retransmits. [Units converted to seconds.]
+# TYPE pg_settings_tcp_keepalives_interval_seconds gauge
+pg_settings_tcp_keepalives_interval_seconds{collector="exporter",server="127.0.0.1:5432"} 75
+# HELP pg_settings_temp_buffers_bytes Sets the maximum number of temporary buffers used by each session. [Units converted to bytes.]
+# TYPE pg_settings_temp_buffers_bytes gauge
+pg_settings_temp_buffers_bytes{collector="exporter",server="127.0.0.1:5432"} 8.388608e+06
+# HELP pg_settings_temp_file_limit_bytes Limits the total size of all temporary files used by each process. [Units converted to bytes.]
+# TYPE pg_settings_temp_file_limit_bytes gauge
+pg_settings_temp_file_limit_bytes{collector="exporter",server="127.0.0.1:5432"} -1
+# HELP pg_settings_trace_notify Generates debugging output for LISTEN and NOTIFY.
+# TYPE pg_settings_trace_notify gauge
+pg_settings_trace_notify{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_trace_sort Emit information about resource usage in sorting.
+# TYPE pg_settings_trace_sort gauge
+pg_settings_trace_sort{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_track_activities Collects information about executing commands.
+# TYPE pg_settings_track_activities gauge
+pg_settings_track_activities{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_track_activity_query_size_bytes Sets the size reserved for pg_stat_activity.query, in bytes. [Units converted to bytes.]
+# TYPE pg_settings_track_activity_query_size_bytes gauge
+pg_settings_track_activity_query_size_bytes{collector="exporter",server="127.0.0.1:5432"} 1024
+# HELP pg_settings_track_commit_timestamp Collects transaction commit time.
+# TYPE pg_settings_track_commit_timestamp gauge
+pg_settings_track_commit_timestamp{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_track_counts Collects statistics on database activity.
+# TYPE pg_settings_track_counts gauge
+pg_settings_track_counts{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_track_io_timing Collects timing statistics for database I/O activity.
+# TYPE pg_settings_track_io_timing gauge
+pg_settings_track_io_timing{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_transaction_deferrable Whether to defer a read-only serializable transaction until it can be executed with no possible serialization failures.
+# TYPE pg_settings_transaction_deferrable gauge
+pg_settings_transaction_deferrable{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_transaction_read_only Sets the current transaction's read-only status.
+# TYPE pg_settings_transaction_read_only gauge
+pg_settings_transaction_read_only{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_transform_null_equals Treats "expr=NULL" as "expr IS NULL".
+# TYPE pg_settings_transform_null_equals gauge
+pg_settings_transform_null_equals{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_unix_socket_permissions Sets the access permissions of the Unix-domain socket.
+# TYPE pg_settings_unix_socket_permissions gauge
+pg_settings_unix_socket_permissions{collector="exporter",server="127.0.0.1:5432"} 777
+# HELP pg_settings_update_process_title Updates the process title to show the active SQL command.
+# TYPE pg_settings_update_process_title gauge
+pg_settings_update_process_title{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_vacuum_cleanup_index_scale_factor Number of tuple inserts prior to index cleanup as a fraction of reltuples.
+# TYPE pg_settings_vacuum_cleanup_index_scale_factor gauge
+pg_settings_vacuum_cleanup_index_scale_factor{collector="exporter",server="127.0.0.1:5432"} 0.1
+# HELP pg_settings_vacuum_cost_delay_seconds Vacuum cost delay in milliseconds. [Units converted to seconds.]
+# TYPE pg_settings_vacuum_cost_delay_seconds gauge
+pg_settings_vacuum_cost_delay_seconds{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_vacuum_cost_limit Vacuum cost amount available before napping.
+# TYPE pg_settings_vacuum_cost_limit gauge
+pg_settings_vacuum_cost_limit{collector="exporter",server="127.0.0.1:5432"} 200
+# HELP pg_settings_vacuum_cost_page_dirty Vacuum cost for a page dirtied by vacuum.
+# TYPE pg_settings_vacuum_cost_page_dirty gauge
+pg_settings_vacuum_cost_page_dirty{collector="exporter",server="127.0.0.1:5432"} 20
+# HELP pg_settings_vacuum_cost_page_hit Vacuum cost for a page found in the buffer cache.
+# TYPE pg_settings_vacuum_cost_page_hit gauge
+pg_settings_vacuum_cost_page_hit{collector="exporter",server="127.0.0.1:5432"} 1
+# HELP pg_settings_vacuum_cost_page_miss Vacuum cost for a page not found in the buffer cache.
+# TYPE pg_settings_vacuum_cost_page_miss gauge
+pg_settings_vacuum_cost_page_miss{collector="exporter",server="127.0.0.1:5432"} 10
+# HELP pg_settings_vacuum_defer_cleanup_age Number of transactions by which VACUUM and HOT cleanup should be deferred, if any.
+# TYPE pg_settings_vacuum_defer_cleanup_age gauge
+pg_settings_vacuum_defer_cleanup_age{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_vacuum_freeze_min_age Minimum age at which VACUUM should freeze a table row.
+# TYPE pg_settings_vacuum_freeze_min_age gauge
+pg_settings_vacuum_freeze_min_age{collector="exporter",server="127.0.0.1:5432"} 5e+07
+# HELP pg_settings_vacuum_freeze_table_age Age at which VACUUM should scan whole table to freeze tuples.
+# TYPE pg_settings_vacuum_freeze_table_age gauge
+pg_settings_vacuum_freeze_table_age{collector="exporter",server="127.0.0.1:5432"} 1.5e+08
+# HELP pg_settings_vacuum_multixact_freeze_min_age Minimum age at which VACUUM should freeze a MultiXactId in a table row.
+# TYPE pg_settings_vacuum_multixact_freeze_min_age gauge
+pg_settings_vacuum_multixact_freeze_min_age{collector="exporter",server="127.0.0.1:5432"} 5e+06
+# HELP pg_settings_vacuum_multixact_freeze_table_age Multixact age at which VACUUM should scan whole table to freeze tuples.
+# TYPE pg_settings_vacuum_multixact_freeze_table_age gauge
+pg_settings_vacuum_multixact_freeze_table_age{collector="exporter",server="127.0.0.1:5432"} 1.5e+08
+# HELP pg_settings_wal_block_size Shows the block size in the write ahead log.
+# TYPE pg_settings_wal_block_size gauge
+pg_settings_wal_block_size{collector="exporter",server="127.0.0.1:5432"} 8192
+# HELP pg_settings_wal_buffers_bytes Sets the number of disk-page buffers in shared memory for WAL. [Units converted to bytes.]
+# TYPE pg_settings_wal_buffers_bytes gauge
+pg_settings_wal_buffers_bytes{collector="exporter",server="127.0.0.1:5432"} 4.194304e+06
+# HELP pg_settings_wal_compression Compresses full-page writes written in WAL file.
+# TYPE pg_settings_wal_compression gauge
+pg_settings_wal_compression{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_wal_keep_segments Sets the number of WAL files held for standby servers.
+# TYPE pg_settings_wal_keep_segments gauge
+pg_settings_wal_keep_segments{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_wal_log_hints Writes full pages to WAL when first modified after a checkpoint, even for a non-critical modification.
+# TYPE pg_settings_wal_log_hints gauge
+pg_settings_wal_log_hints{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_settings_wal_receiver_status_interval_seconds Sets the maximum interval between WAL receiver status reports to the primary. [Units converted to seconds.]
+# TYPE pg_settings_wal_receiver_status_interval_seconds gauge
+pg_settings_wal_receiver_status_interval_seconds{collector="exporter",server="127.0.0.1:5432"} 10
+# HELP pg_settings_wal_receiver_timeout_seconds Sets the maximum wait time to receive data from the primary. [Units converted to seconds.]
+# TYPE pg_settings_wal_receiver_timeout_seconds gauge
+pg_settings_wal_receiver_timeout_seconds{collector="exporter",server="127.0.0.1:5432"} 60
+# HELP pg_settings_wal_retrieve_retry_interval_seconds Sets the time to wait before retrying to retrieve WAL after a failed attempt. [Units converted to seconds.]
+# TYPE pg_settings_wal_retrieve_retry_interval_seconds gauge
+pg_settings_wal_retrieve_retry_interval_seconds{collector="exporter",server="127.0.0.1:5432"} 5
+# HELP pg_settings_wal_segment_size_bytes Shows the size of write ahead log segments. [Units converted to bytes.]
+# TYPE pg_settings_wal_segment_size_bytes gauge
+pg_settings_wal_segment_size_bytes{collector="exporter",server="127.0.0.1:5432"} 1.6777216e+07
+# HELP pg_settings_wal_sender_timeout_seconds Sets the maximum time to wait for WAL replication. [Units converted to seconds.]
+# TYPE pg_settings_wal_sender_timeout_seconds gauge
+pg_settings_wal_sender_timeout_seconds{collector="exporter",server="127.0.0.1:5432"} 60
+# HELP pg_settings_wal_writer_delay_seconds Time between WAL flushes performed in the WAL writer. [Units converted to seconds.]
+# TYPE pg_settings_wal_writer_delay_seconds gauge
+pg_settings_wal_writer_delay_seconds{collector="exporter",server="127.0.0.1:5432"} 0.2
+# HELP pg_settings_wal_writer_flush_after_bytes Amount of WAL written out by WAL writer that triggers a flush. [Units converted to bytes.]
+# TYPE pg_settings_wal_writer_flush_after_bytes gauge
+pg_settings_wal_writer_flush_after_bytes{collector="exporter",server="127.0.0.1:5432"} 1.048576e+06
+# HELP pg_settings_work_mem_bytes Sets the maximum memory to be used for query workspaces. [Units converted to bytes.]
+# TYPE pg_settings_work_mem_bytes gauge
+pg_settings_work_mem_bytes{collector="exporter",server="127.0.0.1:5432"} 4.194304e+06
+# HELP pg_settings_zero_damaged_pages Continues processing past damaged page headers.
+# TYPE pg_settings_zero_damaged_pages gauge
+pg_settings_zero_damaged_pages{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_stat_activity_count number of connections in this state
+# TYPE pg_stat_activity_count gauge
+pg_stat_activity_count{collector="exporter",datname="pmm-managed",server="127.0.0.1:5432",state="active"} 0
+pg_stat_activity_count{collector="exporter",datname="pmm-managed",server="127.0.0.1:5432",state="disabled"} 0
+pg_stat_activity_count{collector="exporter",datname="pmm-managed",server="127.0.0.1:5432",state="fastpath function call"} 0
+pg_stat_activity_count{collector="exporter",datname="pmm-managed",server="127.0.0.1:5432",state="idle"} 4
+pg_stat_activity_count{collector="exporter",datname="pmm-managed",server="127.0.0.1:5432",state="idle in transaction"} 0
+pg_stat_activity_count{collector="exporter",datname="pmm-managed",server="127.0.0.1:5432",state="idle in transaction (aborted)"} 0
+pg_stat_activity_count{collector="exporter",datname="postgres",server="127.0.0.1:5432",state="active"} 1
+pg_stat_activity_count{collector="exporter",datname="postgres",server="127.0.0.1:5432",state="disabled"} 0
+pg_stat_activity_count{collector="exporter",datname="postgres",server="127.0.0.1:5432",state="fastpath function call"} 0
+pg_stat_activity_count{collector="exporter",datname="postgres",server="127.0.0.1:5432",state="idle"} 1
+pg_stat_activity_count{collector="exporter",datname="postgres",server="127.0.0.1:5432",state="idle in transaction"} 0
+pg_stat_activity_count{collector="exporter",datname="postgres",server="127.0.0.1:5432",state="idle in transaction (aborted)"} 0
+pg_stat_activity_count{collector="exporter",datname="template0",server="127.0.0.1:5432",state="active"} 0
+pg_stat_activity_count{collector="exporter",datname="template0",server="127.0.0.1:5432",state="disabled"} 0
+pg_stat_activity_count{collector="exporter",datname="template0",server="127.0.0.1:5432",state="fastpath function call"} 0
+pg_stat_activity_count{collector="exporter",datname="template0",server="127.0.0.1:5432",state="idle"} 0
+pg_stat_activity_count{collector="exporter",datname="template0",server="127.0.0.1:5432",state="idle in transaction"} 0
+pg_stat_activity_count{collector="exporter",datname="template0",server="127.0.0.1:5432",state="idle in transaction (aborted)"} 0
+pg_stat_activity_count{collector="exporter",datname="template1",server="127.0.0.1:5432",state="active"} 0
+pg_stat_activity_count{collector="exporter",datname="template1",server="127.0.0.1:5432",state="disabled"} 0
+pg_stat_activity_count{collector="exporter",datname="template1",server="127.0.0.1:5432",state="fastpath function call"} 0
+pg_stat_activity_count{collector="exporter",datname="template1",server="127.0.0.1:5432",state="idle"} 0
+pg_stat_activity_count{collector="exporter",datname="template1",server="127.0.0.1:5432",state="idle in transaction"} 0
+pg_stat_activity_count{collector="exporter",datname="template1",server="127.0.0.1:5432",state="idle in transaction (aborted)"} 0
+# HELP pg_stat_activity_max_tx_duration max duration in seconds any active transaction has been running
+# TYPE pg_stat_activity_max_tx_duration gauge
+pg_stat_activity_max_tx_duration{collector="exporter",datname="pmm-managed",server="127.0.0.1:5432",state="active"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="pmm-managed",server="127.0.0.1:5432",state="disabled"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="pmm-managed",server="127.0.0.1:5432",state="fastpath function call"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="pmm-managed",server="127.0.0.1:5432",state="idle"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="pmm-managed",server="127.0.0.1:5432",state="idle in transaction"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="pmm-managed",server="127.0.0.1:5432",state="idle in transaction (aborted)"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="postgres",server="127.0.0.1:5432",state="active"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="postgres",server="127.0.0.1:5432",state="disabled"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="postgres",server="127.0.0.1:5432",state="fastpath function call"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="postgres",server="127.0.0.1:5432",state="idle"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="postgres",server="127.0.0.1:5432",state="idle in transaction"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="postgres",server="127.0.0.1:5432",state="idle in transaction (aborted)"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="template0",server="127.0.0.1:5432",state="active"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="template0",server="127.0.0.1:5432",state="disabled"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="template0",server="127.0.0.1:5432",state="fastpath function call"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="template0",server="127.0.0.1:5432",state="idle"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="template0",server="127.0.0.1:5432",state="idle in transaction"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="template0",server="127.0.0.1:5432",state="idle in transaction (aborted)"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="template1",server="127.0.0.1:5432",state="active"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="template1",server="127.0.0.1:5432",state="disabled"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="template1",server="127.0.0.1:5432",state="fastpath function call"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="template1",server="127.0.0.1:5432",state="idle"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="template1",server="127.0.0.1:5432",state="idle in transaction"} 0
+pg_stat_activity_max_tx_duration{collector="exporter",datname="template1",server="127.0.0.1:5432",state="idle in transaction (aborted)"} 0
+# HELP pg_stat_archiver_archived_count Number of WAL files that have been successfully archived
+# TYPE pg_stat_archiver_archived_count counter
+pg_stat_archiver_archived_count{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_stat_archiver_failed_count Number of failed attempts for archiving WAL files
+# TYPE pg_stat_archiver_failed_count counter
+pg_stat_archiver_failed_count{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_stat_archiver_last_archive_age Time in seconds since last WAL segment was successfully archived
+# TYPE pg_stat_archiver_last_archive_age gauge
+pg_stat_archiver_last_archive_age{collector="exporter",server="127.0.0.1:5432"} NaN
+# HELP pg_stat_bgwriter_buffers_alloc Number of buffers allocated
+# TYPE pg_stat_bgwriter_buffers_alloc counter
+pg_stat_bgwriter_buffers_alloc{collector="exporter",server="127.0.0.1:5432"} 2780
+# HELP pg_stat_bgwriter_buffers_backend Number of buffers written directly by a backend
+# TYPE pg_stat_bgwriter_buffers_backend counter
+pg_stat_bgwriter_buffers_backend{collector="exporter",server="127.0.0.1:5432"} 134
+# HELP pg_stat_bgwriter_buffers_backend_fsync Number of times a backend had to execute its own fsync call (normally the background writer handles those even when the backend does its own write)
+# TYPE pg_stat_bgwriter_buffers_backend_fsync counter
+pg_stat_bgwriter_buffers_backend_fsync{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_stat_bgwriter_buffers_checkpoint Number of buffers written during checkpoints
+# TYPE pg_stat_bgwriter_buffers_checkpoint counter
+pg_stat_bgwriter_buffers_checkpoint{collector="exporter",server="127.0.0.1:5432"} 313
+# HELP pg_stat_bgwriter_buffers_clean Number of buffers written by the background writer
+# TYPE pg_stat_bgwriter_buffers_clean counter
+pg_stat_bgwriter_buffers_clean{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_stat_bgwriter_checkpoint_sync_time Total amount of time that has been spent in the portion of checkpoint processing where files are synchronized to disk, in milliseconds
+# TYPE pg_stat_bgwriter_checkpoint_sync_time counter
+pg_stat_bgwriter_checkpoint_sync_time{collector="exporter",server="127.0.0.1:5432"} 289
+# HELP pg_stat_bgwriter_checkpoint_write_time Total amount of time that has been spent in the portion of checkpoint processing where files are written to disk, in milliseconds
+# TYPE pg_stat_bgwriter_checkpoint_write_time counter
+pg_stat_bgwriter_checkpoint_write_time{collector="exporter",server="127.0.0.1:5432"} 14240
+# HELP pg_stat_bgwriter_checkpoints_req Number of requested checkpoints that have been performed
+# TYPE pg_stat_bgwriter_checkpoints_req counter
+pg_stat_bgwriter_checkpoints_req{collector="exporter",server="127.0.0.1:5432"} 11
+# HELP pg_stat_bgwriter_checkpoints_timed Number of scheduled checkpoints that have been performed
+# TYPE pg_stat_bgwriter_checkpoints_timed counter
+pg_stat_bgwriter_checkpoints_timed{collector="exporter",server="127.0.0.1:5432"} 101
+# HELP pg_stat_bgwriter_maxwritten_clean Number of times the background writer stopped a cleaning scan because it had written too many buffers
+# TYPE pg_stat_bgwriter_maxwritten_clean counter
+pg_stat_bgwriter_maxwritten_clean{collector="exporter",server="127.0.0.1:5432"} 0
+# HELP pg_stat_bgwriter_stats_reset Time at which these statistics were last reset
+# TYPE pg_stat_bgwriter_stats_reset counter
+pg_stat_bgwriter_stats_reset{collector="exporter",server="127.0.0.1:5432"} 1.652203015e+09
+# HELP pg_stat_database_blk_read_time Time spent reading data file blocks by backends in this database, in milliseconds
+# TYPE pg_stat_database_blk_read_time counter
+pg_stat_database_blk_read_time{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_blk_read_time{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 0
+pg_stat_database_blk_read_time{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_blk_read_time{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 0
+# HELP pg_stat_database_blk_write_time Time spent writing data file blocks by backends in this database, in milliseconds
+# TYPE pg_stat_database_blk_write_time counter
+pg_stat_database_blk_write_time{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_blk_write_time{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 0
+pg_stat_database_blk_write_time{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_blk_write_time{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 0
+# HELP pg_stat_database_blks_hit Number of times disk blocks were found already in the buffer cache, so that a read was not necessary (this only includes hits in the PostgreSQL buffer cache, not the operating system's file system cache)
+# TYPE pg_stat_database_blks_hit counter
+pg_stat_database_blks_hit{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_blks_hit{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 3.9363176e+07
+pg_stat_database_blks_hit{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_blks_hit{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 1.0442909e+07
+# HELP pg_stat_database_blks_read Number of disk blocks read in this database
+# TYPE pg_stat_database_blks_read counter
+pg_stat_database_blks_read{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_blks_read{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 779
+pg_stat_database_blks_read{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_blks_read{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 729
+# HELP pg_stat_database_conflicts Number of queries canceled due to conflicts with recovery in this database. (Conflicts occur only on standby servers; see pg_stat_database_conflicts for details.)
+# TYPE pg_stat_database_conflicts counter
+pg_stat_database_conflicts{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_conflicts{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 0
+pg_stat_database_conflicts{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_conflicts{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 0
+# HELP pg_stat_database_conflicts_confl_bufferpin Number of queries in this database that have been canceled due to pinned buffers
+# TYPE pg_stat_database_conflicts_confl_bufferpin counter
+pg_stat_database_conflicts_confl_bufferpin{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_conflicts_confl_bufferpin{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 0
+pg_stat_database_conflicts_confl_bufferpin{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_conflicts_confl_bufferpin{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 0
+# HELP pg_stat_database_conflicts_confl_deadlock Number of queries in this database that have been canceled due to deadlocks
+# TYPE pg_stat_database_conflicts_confl_deadlock counter
+pg_stat_database_conflicts_confl_deadlock{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_conflicts_confl_deadlock{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 0
+pg_stat_database_conflicts_confl_deadlock{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_conflicts_confl_deadlock{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 0
+# HELP pg_stat_database_conflicts_confl_lock Number of queries in this database that have been canceled due to lock timeouts
+# TYPE pg_stat_database_conflicts_confl_lock counter
+pg_stat_database_conflicts_confl_lock{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_conflicts_confl_lock{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 0
+pg_stat_database_conflicts_confl_lock{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_conflicts_confl_lock{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 0
+# HELP pg_stat_database_conflicts_confl_snapshot Number of queries in this database that have been canceled due to old snapshots
+# TYPE pg_stat_database_conflicts_confl_snapshot counter
+pg_stat_database_conflicts_confl_snapshot{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_conflicts_confl_snapshot{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 0
+pg_stat_database_conflicts_confl_snapshot{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_conflicts_confl_snapshot{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 0
+# HELP pg_stat_database_conflicts_confl_tablespace Number of queries in this database that have been canceled due to dropped tablespaces
+# TYPE pg_stat_database_conflicts_confl_tablespace counter
+pg_stat_database_conflicts_confl_tablespace{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_conflicts_confl_tablespace{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 0
+pg_stat_database_conflicts_confl_tablespace{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_conflicts_confl_tablespace{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 0
+# HELP pg_stat_database_deadlocks Number of deadlocks detected in this database
+# TYPE pg_stat_database_deadlocks counter
+pg_stat_database_deadlocks{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_deadlocks{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 0
+pg_stat_database_deadlocks{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_deadlocks{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 0
+# HELP pg_stat_database_numbackends Number of backends currently connected to this database. This is the only column in this view that returns a value reflecting current state; all other columns return the accumulated values since the last reset.
+# TYPE pg_stat_database_numbackends gauge
+pg_stat_database_numbackends{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_numbackends{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 2
+pg_stat_database_numbackends{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_numbackends{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 5
+# HELP pg_stat_database_stats_reset Time at which these statistics were last reset
+# TYPE pg_stat_database_stats_reset counter
+pg_stat_database_stats_reset{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} NaN
+pg_stat_database_stats_reset{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 1.652203015e+09
+pg_stat_database_stats_reset{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} NaN
+pg_stat_database_stats_reset{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 1.653392185e+09
+# HELP pg_stat_database_temp_bytes Total amount of data written to temporary files by queries in this database. All temporary files are counted, regardless of why the temporary file was created, and regardless of the log_temp_files setting.
+# TYPE pg_stat_database_temp_bytes counter
+pg_stat_database_temp_bytes{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_temp_bytes{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 0
+pg_stat_database_temp_bytes{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_temp_bytes{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 0
+# HELP pg_stat_database_temp_files Number of temporary files created by queries in this database. All temporary files are counted, regardless of why the temporary file was created (e.g., sorting or hashing), and regardless of the log_temp_files setting.
+# TYPE pg_stat_database_temp_files counter
+pg_stat_database_temp_files{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_temp_files{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 0
+pg_stat_database_temp_files{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_temp_files{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 0
+# HELP pg_stat_database_tup_deleted Number of rows deleted by queries in this database
+# TYPE pg_stat_database_tup_deleted counter
+pg_stat_database_tup_deleted{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_tup_deleted{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 0
+pg_stat_database_tup_deleted{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_tup_deleted{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 287
+# HELP pg_stat_database_tup_fetched Number of rows fetched by queries in this database
+# TYPE pg_stat_database_tup_fetched counter
+pg_stat_database_tup_fetched{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_tup_fetched{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 2.2538965e+07
+pg_stat_database_tup_fetched{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_tup_fetched{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 5.006609e+06
+# HELP pg_stat_database_tup_inserted Number of rows inserted by queries in this database
+# TYPE pg_stat_database_tup_inserted counter
+pg_stat_database_tup_inserted{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_tup_inserted{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 45
+pg_stat_database_tup_inserted{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_tup_inserted{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 1609
+# HELP pg_stat_database_tup_returned Number of rows returned by queries in this database
+# TYPE pg_stat_database_tup_returned counter
+pg_stat_database_tup_returned{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_tup_returned{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 2.7595554e+07
+pg_stat_database_tup_returned{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_tup_returned{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 1.6754938e+07
+# HELP pg_stat_database_tup_updated Number of rows updated by queries in this database
+# TYPE pg_stat_database_tup_updated counter
+pg_stat_database_tup_updated{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_tup_updated{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 9
+pg_stat_database_tup_updated{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_tup_updated{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 1584
+# HELP pg_stat_database_xact_commit Number of transactions in this database that have been committed
+# TYPE pg_stat_database_xact_commit counter
+pg_stat_database_xact_commit{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_xact_commit{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 523898
+pg_stat_database_xact_commit{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_xact_commit{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 162807
+# HELP pg_stat_database_xact_rollback Number of transactions in this database that have been rolled back
+# TYPE pg_stat_database_xact_rollback counter
+pg_stat_database_xact_rollback{collector="exporter",datid="13024",datname="template0",server="127.0.0.1:5432"} 0
+pg_stat_database_xact_rollback{collector="exporter",datid="13025",datname="postgres",server="127.0.0.1:5432"} 2
+pg_stat_database_xact_rollback{collector="exporter",datid="16703",datname="template1",server="127.0.0.1:5432"} 0
+pg_stat_database_xact_rollback{collector="exporter",datid="16969",datname="pmm-managed",server="127.0.0.1:5432"} 11
+# HELP pg_stat_user_tables_analyze_count Number of times this table has been manually analyzed
+# TYPE pg_stat_user_tables_analyze_count counter
+pg_stat_user_tables_analyze_count{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_analyze_count{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_analyze_count{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_analyze_count{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_analyze_count{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_analyze_count{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_analyze_count{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_analyze_count{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_analyze_count{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_analyze_count{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_analyze_count{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_analyze_count{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_analyze_count{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_analyze_count{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_analyze_count{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_analyze_count{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_analyze_count{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_analyze_count{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_analyze_count{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 0
+# HELP pg_stat_user_tables_autoanalyze_count Number of times this table has been analyzed by the autovacuum daemon
+# TYPE pg_stat_user_tables_autoanalyze_count counter
+pg_stat_user_tables_autoanalyze_count{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autoanalyze_count{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 14
+pg_stat_user_tables_autoanalyze_count{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autoanalyze_count{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autoanalyze_count{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autoanalyze_count{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autoanalyze_count{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autoanalyze_count{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autoanalyze_count{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autoanalyze_count{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autoanalyze_count{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autoanalyze_count{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autoanalyze_count{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autoanalyze_count{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autoanalyze_count{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autoanalyze_count{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 1
+pg_stat_user_tables_autoanalyze_count{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autoanalyze_count{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autoanalyze_count{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 0
+# HELP pg_stat_user_tables_autovacuum_count Number of times this table has been vacuumed by the autovacuum daemon
+# TYPE pg_stat_user_tables_autovacuum_count counter
+pg_stat_user_tables_autovacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autovacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autovacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autovacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autovacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autovacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autovacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autovacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autovacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autovacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autovacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autovacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autovacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autovacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autovacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autovacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autovacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autovacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_autovacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 0
+# HELP pg_stat_user_tables_idx_scan Number of index scans initiated on this table
+# TYPE pg_stat_user_tables_idx_scan counter
+pg_stat_user_tables_idx_scan{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 24
+pg_stat_user_tables_idx_scan{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 270
+pg_stat_user_tables_idx_scan{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_scan{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_scan{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_scan{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_scan{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_scan{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_scan{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_scan{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_scan{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_scan{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 5120
+pg_stat_user_tables_idx_scan{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} NaN
+pg_stat_user_tables_idx_scan{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_scan{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_scan{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 9
+pg_stat_user_tables_idx_scan{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 4
+pg_stat_user_tables_idx_scan{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 2704
+pg_stat_user_tables_idx_scan{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} NaN
+# HELP pg_stat_user_tables_idx_tup_fetch Number of live rows fetched by index scans
+# TYPE pg_stat_user_tables_idx_tup_fetch counter
+pg_stat_user_tables_idx_tup_fetch{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 24
+pg_stat_user_tables_idx_tup_fetch{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 263
+pg_stat_user_tables_idx_tup_fetch{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_tup_fetch{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_tup_fetch{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_tup_fetch{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_tup_fetch{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_tup_fetch{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_tup_fetch{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_tup_fetch{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_tup_fetch{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_tup_fetch{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 5115
+pg_stat_user_tables_idx_tup_fetch{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} NaN
+pg_stat_user_tables_idx_tup_fetch{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_tup_fetch{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_tup_fetch{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 9
+pg_stat_user_tables_idx_tup_fetch{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_idx_tup_fetch{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 2682
+pg_stat_user_tables_idx_tup_fetch{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} NaN
+# HELP pg_stat_user_tables_last_analyze Last time at which this table was manually analyzed
+# TYPE pg_stat_user_tables_last_analyze gauge
+pg_stat_user_tables_last_analyze{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_analyze{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_analyze{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_analyze{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_analyze{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_analyze{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_analyze{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_analyze{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_analyze{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_analyze{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_analyze{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_analyze{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_analyze{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_analyze{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_analyze{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_analyze{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_analyze{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_analyze{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_analyze{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 0
+# HELP pg_stat_user_tables_last_autoanalyze Last time at which this table was analyzed by the autovacuum daemon
+# TYPE pg_stat_user_tables_last_autoanalyze gauge
+pg_stat_user_tables_last_autoanalyze{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autoanalyze{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 1.653422518e+09
+pg_stat_user_tables_last_autoanalyze{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autoanalyze{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autoanalyze{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autoanalyze{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autoanalyze{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autoanalyze{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autoanalyze{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autoanalyze{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autoanalyze{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autoanalyze{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autoanalyze{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autoanalyze{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autoanalyze{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autoanalyze{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 1.653392243e+09
+pg_stat_user_tables_last_autoanalyze{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autoanalyze{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autoanalyze{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 0
+# HELP pg_stat_user_tables_last_autovacuum Last time at which this table was vacuumed by the autovacuum daemon
+# TYPE pg_stat_user_tables_last_autovacuum gauge
+pg_stat_user_tables_last_autovacuum{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autovacuum{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autovacuum{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autovacuum{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autovacuum{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autovacuum{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autovacuum{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autovacuum{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autovacuum{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autovacuum{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autovacuum{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autovacuum{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autovacuum{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autovacuum{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autovacuum{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autovacuum{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autovacuum{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autovacuum{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_autovacuum{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 0
+# HELP pg_stat_user_tables_last_vacuum Last time at which this table was manually vacuumed (not counting VACUUM FULL)
+# TYPE pg_stat_user_tables_last_vacuum gauge
+pg_stat_user_tables_last_vacuum{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_vacuum{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_vacuum{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_vacuum{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_vacuum{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_vacuum{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_vacuum{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_vacuum{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_vacuum{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_vacuum{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_vacuum{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_vacuum{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_vacuum{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_vacuum{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_vacuum{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_vacuum{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_vacuum{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_vacuum{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_last_vacuum{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 0
+# HELP pg_stat_user_tables_n_dead_tup Estimated number of dead rows
+# TYPE pg_stat_user_tables_n_dead_tup gauge
+pg_stat_user_tables_n_dead_tup{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 16
+pg_stat_user_tables_n_dead_tup{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 18
+pg_stat_user_tables_n_dead_tup{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_dead_tup{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_dead_tup{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_dead_tup{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_dead_tup{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_dead_tup{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_dead_tup{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_dead_tup{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_dead_tup{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_dead_tup{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_dead_tup{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_dead_tup{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_dead_tup{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_dead_tup{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_dead_tup{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_dead_tup{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 5
+pg_stat_user_tables_n_dead_tup{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 4
+# HELP pg_stat_user_tables_n_live_tup Estimated number of live rows
+# TYPE pg_stat_user_tables_n_live_tup gauge
+pg_stat_user_tables_n_live_tup{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_live_tup{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 9
+pg_stat_user_tables_n_live_tup{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_live_tup{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_live_tup{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_live_tup{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_live_tup{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_live_tup{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_live_tup{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_live_tup{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_live_tup{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_live_tup{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 2
+pg_stat_user_tables_n_live_tup{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_live_tup{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_live_tup{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_live_tup{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 63
+pg_stat_user_tables_n_live_tup{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_live_tup{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 2
+pg_stat_user_tables_n_live_tup{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 1
+# HELP pg_stat_user_tables_n_mod_since_analyze Estimated number of rows changed since last analyze
+# TYPE pg_stat_user_tables_n_mod_since_analyze gauge
+pg_stat_user_tables_n_mod_since_analyze{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 24
+pg_stat_user_tables_n_mod_since_analyze{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 28
+pg_stat_user_tables_n_mod_since_analyze{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_mod_since_analyze{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_mod_since_analyze{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_mod_since_analyze{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_mod_since_analyze{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_mod_since_analyze{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_mod_since_analyze{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_mod_since_analyze{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_mod_since_analyze{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_mod_since_analyze{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 2
+pg_stat_user_tables_n_mod_since_analyze{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_mod_since_analyze{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_mod_since_analyze{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_mod_since_analyze{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 2
+pg_stat_user_tables_n_mod_since_analyze{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_mod_since_analyze{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 10
+pg_stat_user_tables_n_mod_since_analyze{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 23
+# HELP pg_stat_user_tables_n_tup_del Number of rows deleted
+# TYPE pg_stat_user_tables_n_tup_del counter
+pg_stat_user_tables_n_tup_del{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 8
+pg_stat_user_tables_n_tup_del{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 8
+pg_stat_user_tables_n_tup_del{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_del{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_del{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_del{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_del{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_del{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_del{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_del{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_del{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_del{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_del{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_del{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_del{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_del{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_del{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_del{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 4
+pg_stat_user_tables_n_tup_del{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 0
+# HELP pg_stat_user_tables_n_tup_hot_upd Number of rows HOT updated (i.e., with no separate index update required)
+# TYPE pg_stat_user_tables_n_tup_hot_upd counter
+pg_stat_user_tables_n_tup_hot_upd{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 8
+pg_stat_user_tables_n_tup_hot_upd{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 840
+pg_stat_user_tables_n_tup_hot_upd{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_hot_upd{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_hot_upd{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_hot_upd{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_hot_upd{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_hot_upd{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_hot_upd{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_hot_upd{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_hot_upd{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_hot_upd{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_hot_upd{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_hot_upd{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_hot_upd{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_hot_upd{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_hot_upd{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_hot_upd{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_hot_upd{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 22
+# HELP pg_stat_user_tables_n_tup_ins Number of rows inserted
+# TYPE pg_stat_user_tables_n_tup_ins counter
+pg_stat_user_tables_n_tup_ins{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 8
+pg_stat_user_tables_n_tup_ins{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 18
+pg_stat_user_tables_n_tup_ins{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_ins{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_ins{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_ins{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_ins{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_ins{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_ins{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_ins{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_ins{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_ins{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 2
+pg_stat_user_tables_n_tup_ins{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_ins{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_ins{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_ins{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 63
+pg_stat_user_tables_n_tup_ins{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_ins{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 7
+pg_stat_user_tables_n_tup_ins{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 1
+# HELP pg_stat_user_tables_n_tup_upd Number of rows updated
+# TYPE pg_stat_user_tables_n_tup_upd counter
+pg_stat_user_tables_n_tup_upd{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 8
+pg_stat_user_tables_n_tup_upd{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 840
+pg_stat_user_tables_n_tup_upd{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_upd{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_upd{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_upd{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_upd{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_upd{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_upd{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_upd{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_upd{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_upd{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_upd{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_upd{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_upd{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_upd{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_upd{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_upd{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_n_tup_upd{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 22
+# HELP pg_stat_user_tables_seq_scan Number of sequential scans initiated on this table
+# TYPE pg_stat_user_tables_seq_scan counter
+pg_stat_user_tables_seq_scan{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 58
+pg_stat_user_tables_seq_scan{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 6463
+pg_stat_user_tables_seq_scan{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 9
+pg_stat_user_tables_seq_scan{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 2
+pg_stat_user_tables_seq_scan{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 10
+pg_stat_user_tables_seq_scan{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 11
+pg_stat_user_tables_seq_scan{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 23
+pg_stat_user_tables_seq_scan{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 11
+pg_stat_user_tables_seq_scan{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 1
+pg_stat_user_tables_seq_scan{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 5
+pg_stat_user_tables_seq_scan{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 2
+pg_stat_user_tables_seq_scan{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 5
+pg_stat_user_tables_seq_scan{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 51
+pg_stat_user_tables_seq_scan{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 5
+pg_stat_user_tables_seq_scan{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 15
+pg_stat_user_tables_seq_scan{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 1
+pg_stat_user_tables_seq_scan{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 11
+pg_stat_user_tables_seq_scan{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 114
+pg_stat_user_tables_seq_scan{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 942
+# HELP pg_stat_user_tables_seq_tup_read Number of live rows fetched by sequential scans
+# TYPE pg_stat_user_tables_seq_tup_read counter
+pg_stat_user_tables_seq_tup_read{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_seq_tup_read{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 39648
+pg_stat_user_tables_seq_tup_read{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_seq_tup_read{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_seq_tup_read{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_seq_tup_read{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_seq_tup_read{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_seq_tup_read{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_seq_tup_read{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_seq_tup_read{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_seq_tup_read{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_seq_tup_read{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_seq_tup_read{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_seq_tup_read{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_seq_tup_read{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_seq_tup_read{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_seq_tup_read{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_seq_tup_read{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 134
+pg_stat_user_tables_seq_tup_read{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 942
+# HELP pg_stat_user_tables_vacuum_count Number of times this table has been manually vacuumed (not counting VACUUM FULL)
+# TYPE pg_stat_user_tables_vacuum_count counter
+pg_stat_user_tables_vacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_vacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_vacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_vacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_vacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_vacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_vacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_vacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_vacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_vacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_vacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_vacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_vacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_vacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_vacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_vacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_vacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_vacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 0
+pg_stat_user_tables_vacuum_count{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 0
+# HELP pg_static Version string as reported by postgres
+# TYPE pg_static untyped
+pg_static{collector="exporter",server="127.0.0.1:5432",short_version="11.15.0",version="PostgreSQL 11.15 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 7.3.1 20180303 (Red Hat 7.3.1-5), 64-bit"} 1
+# HELP pg_statio_user_tables_heap_blks_hit Number of buffer hits in this table
+# TYPE pg_statio_user_tables_heap_blks_hit counter
+pg_statio_user_tables_heap_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 57
+pg_statio_user_tables_heap_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 8536
+pg_statio_user_tables_heap_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 5127
+pg_statio_user_tables_heap_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 71
+pg_statio_user_tables_heap_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 2842
+pg_statio_user_tables_heap_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 963
+# HELP pg_statio_user_tables_heap_blks_read Number of disk blocks read from this table
+# TYPE pg_statio_user_tables_heap_blks_read counter
+pg_statio_user_tables_heap_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 1
+pg_statio_user_tables_heap_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 2
+pg_statio_user_tables_heap_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 2
+pg_statio_user_tables_heap_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 2
+pg_statio_user_tables_heap_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_heap_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 2
+pg_statio_user_tables_heap_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 2
+# HELP pg_statio_user_tables_idx_blks_hit Number of buffer hits in all indexes on this table
+# TYPE pg_statio_user_tables_idx_blks_hit counter
+pg_statio_user_tables_idx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 91
+pg_statio_user_tables_idx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 336
+pg_statio_user_tables_idx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 3
+pg_statio_user_tables_idx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 2
+pg_statio_user_tables_idx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 7
+pg_statio_user_tables_idx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 8
+pg_statio_user_tables_idx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 19
+pg_statio_user_tables_idx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 8
+pg_statio_user_tables_idx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_idx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 3
+pg_statio_user_tables_idx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_idx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 5272
+pg_statio_user_tables_idx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} NaN
+pg_statio_user_tables_idx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 3
+pg_statio_user_tables_idx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 12
+pg_statio_user_tables_idx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 79
+pg_statio_user_tables_idx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 16
+pg_statio_user_tables_idx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 2784
+pg_statio_user_tables_idx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} NaN
+# HELP pg_statio_user_tables_idx_blks_read Number of disk blocks read from all indexes on this table
+# TYPE pg_statio_user_tables_idx_blks_read counter
+pg_statio_user_tables_idx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 3
+pg_statio_user_tables_idx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 5
+pg_statio_user_tables_idx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 1
+pg_statio_user_tables_idx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 2
+pg_statio_user_tables_idx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 2
+pg_statio_user_tables_idx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 2
+pg_statio_user_tables_idx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 2
+pg_statio_user_tables_idx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 2
+pg_statio_user_tables_idx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 1
+pg_statio_user_tables_idx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 1
+pg_statio_user_tables_idx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_idx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 16
+pg_statio_user_tables_idx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} NaN
+pg_statio_user_tables_idx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 1
+pg_statio_user_tables_idx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 2
+pg_statio_user_tables_idx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} 4
+pg_statio_user_tables_idx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 2
+pg_statio_user_tables_idx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 8
+pg_statio_user_tables_idx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} NaN
+# HELP pg_statio_user_tables_tidx_blks_hit Number of buffer hits in this table's TOAST table indexes (if any)
+# TYPE pg_statio_user_tables_tidx_blks_hit counter
+pg_statio_user_tables_tidx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 22
+pg_statio_user_tables_tidx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} NaN
+pg_statio_user_tables_tidx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 0
+# HELP pg_statio_user_tables_tidx_blks_read Number of disk blocks read from this table's TOAST table indexes (if any)
+# TYPE pg_statio_user_tables_tidx_blks_read counter
+pg_statio_user_tables_tidx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 2
+pg_statio_user_tables_tidx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} NaN
+pg_statio_user_tables_tidx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_tidx_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 0
+# HELP pg_statio_user_tables_toast_blks_hit Number of buffer hits in this table's TOAST table (if any)
+# TYPE pg_statio_user_tables_toast_blks_hit counter
+pg_statio_user_tables_toast_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 42
+pg_statio_user_tables_toast_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} NaN
+pg_statio_user_tables_toast_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_hit{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 0
+# HELP pg_statio_user_tables_toast_blks_read Number of disk blocks read from this table's TOAST table (if any)
+# TYPE pg_statio_user_tables_toast_blks_read counter
+pg_statio_user_tables_toast_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="action_results",schemaname="public",server="127.0.0.1:5432"} 6
+pg_statio_user_tables_toast_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="agents",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="artifacts",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="backup_locations",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="check_settings",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="ia_channels",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="ia_rules",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="ia_templates",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="job_logs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="jobs",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="kubernetes_clusters",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="nodes",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="percona_sso_details",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="restore_history",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="scheduled_tasks",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="schema_migrations",schemaname="public",server="127.0.0.1:5432"} NaN
+pg_statio_user_tables_toast_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="service_software_versions",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="services",schemaname="public",server="127.0.0.1:5432"} 0
+pg_statio_user_tables_toast_blks_read{collector="custom_query.mr",datname="pmm-managed",relname="settings",schemaname="public",server="127.0.0.1:5432"} 0
+# HELP pg_up Whether the last scrape of metrics from PostgreSQL was able to connect to the server (1 for yes, 0 for no).
+# TYPE pg_up gauge
+pg_up{collector="custom_query.hr"} 1
+pg_up{collector="custom_query.lr"} 1
+pg_up{collector="custom_query.mr"} 1
+pg_up{collector="exporter"} 1
+# HELP postgres_exporter_build_info A metric with a constant '1' value labeled by version, revision, branch, and goversion from which postgres_exporter was built.
+# TYPE postgres_exporter_build_info gauge
+postgres_exporter_build_info{branch="",goversion="go1.18.1",revision="",version="0.0.1"} 1
+# HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.
+# TYPE process_cpu_seconds_total counter
+process_cpu_seconds_total 16.06
+# HELP process_max_fds Maximum number of open file descriptors.
+# TYPE process_max_fds gauge
+process_max_fds 1.048576e+06
+# HELP process_open_fds Number of open file descriptors.
+# TYPE process_open_fds gauge
+process_open_fds 16
+# HELP process_resident_memory_bytes Resident memory size in bytes.
+# TYPE process_resident_memory_bytes gauge
+process_resident_memory_bytes 1.8341888e+07
+# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
+# TYPE process_start_time_seconds gauge
+process_start_time_seconds 1.65342124309e+09
+# HELP process_virtual_memory_bytes Virtual memory size in bytes.
+# TYPE process_virtual_memory_bytes gauge
+process_virtual_memory_bytes 7.3322496e+08
+# HELP process_virtual_memory_max_bytes Maximum amount of virtual memory available in bytes.
+# TYPE process_virtual_memory_max_bytes gauge
+process_virtual_memory_max_bytes 1.8446744073709552e+19
