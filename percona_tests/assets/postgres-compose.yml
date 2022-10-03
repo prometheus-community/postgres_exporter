@@ -1,0 +1,30 @@
+---
+version: '3.7'
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:11}
+    container_name: postgres-test-srv
+    command: >
+      -c shared_preload_libraries='${PG_PRELOADED_LIBS:-pg_stat_statements}'
+      -c track_activity_query_size=2048
+      -c pg_stat_statements.max=10000
+      -c pg_stat_monitor.pgsm_query_max_len=10000
+      -c pg_stat_statements.track=all
+      -c pg_stat_statements.save=off
+      -c track_io_timing=on
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres-test-srv-vol:/docker-entrypoint-initdb.d/
+    networks:
+      - postgres-test-srv-net
+
+volumes:
+  postgres-test-srv-vol:
+
+networks:
+  postgres-test-srv-net:

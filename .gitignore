@@ -20,3 +20,9 @@
 /.metrics.*.removed
 /tools/src
 /vendor
+/percona_tests/assets/postgres_exporter
+/percona_tests/assets/postgres_exporter_percona
+/percona_tests/assets/metrics.new.txt
+/percona_tests/assets/metrics.old.txt
+/percona_tests/assets/metrics.names.new.txt
+/percona_tests/assets/metrics.names.old.txt
