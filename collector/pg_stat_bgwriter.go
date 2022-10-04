@@ -18,7 +18,6 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -29,7 +28,7 @@ func init() {
 type PGStatBGWriterCollector struct {
 }
 
-func NewPGStatBGWriterCollector(logger log.Logger) (Collector, error) {
+func NewPGStatBGWriterCollector(collectorConfig) (Collector, error) {
 	return &PGStatBGWriterCollector{}, nil
 }
 

@@ -30,7 +30,7 @@ type ProbeCollector struct {
 	db         *sql.DB
 }
 
-func NewProbeCollector(logger log.Logger, registry *prometheus.Registry, dsn config.DSN) (*ProbeCollector, error) {
+func NewProbeCollector(logger log.Logger, excludeDatabases []string, registry *prometheus.Registry, dsn config.DSN) (*ProbeCollector, error) {
 	collectors := make(map[string]Collector)
 	initiatedCollectorsMtx.Lock()
 	defer initiatedCollectorsMtx.Unlock()
@@ -45,7 +45,11 @@ func NewProbeCollector(logger log.Logger, registry *prometheus.Registry, dsn con
 		if collector, ok := initiatedCollectors[key]; ok {
 			collectors[key] = collector
 		} else {
-			collector, err := factories[key](log.With(logger, "collector", key))
+			collector, err := factories[key](
+				collectorConfig{
+					logger:           log.With(logger, "collector", key),
+					excludeDatabases: excludeDatabases,
+				})
 			if err != nil {
 				return nil, err
 			}
