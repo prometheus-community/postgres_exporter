@@ -14,10 +14,12 @@ import (
 var dumpMetricsFlag = flag.Bool("dumpMetrics", false, "")
 var printExtraMetrics = flag.Bool("extraMetrics", false, "")
 var printMultipleLabels = flag.Bool("multipleLabels", false, "")
+var endpointFlag = flag.String("endpoint", "", "")
 
 type Metric struct {
-	name   string
-	labels string
+	name             string
+	labelsRawStr     string
+	labelsWithValues []string
 }
 
 type MetricsCollection struct {
@@ -86,13 +88,25 @@ func TestDumpMetrics(t *testing.T) {
 		return
 	}
 
-	newMetrics, err := getMetrics(updatedExporterFileName)
+	var ep string
+	switch *endpointFlag {
+	case "hr":
+		ep = highResolutionEndpoint
+	case "mr":
+		ep = medResolutionEndpoint
+	case "lr":
+		ep = lowResolutionEndpoint
+	default:
+		ep = "metrics"
+	}
+
+	newMetrics, err := getMetricsFrom(updatedExporterFileName, ep)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	oldMetrics, err := getMetrics(oldExporterFileName)
+	oldMetrics, err := getMetricsFrom(oldExporterFileName, ep)
 	if err != nil {
 		t.Error(err)
 		return
@@ -202,18 +216,48 @@ func testResolution(t *testing.T, resolutionEp, resolutionName string) {
 
 	missingCount := 0
 	missingMetrics := ""
-	for _, metric := range oldMetricsCollection.MetricNamesWithLabels {
-		if metric == "" || strings.HasPrefix(metric, "# ") {
+	missingLabelsCount := 0
+	missingLabels := ""
+	for _, oldMetric := range oldMetricsCollection.MetricsData {
+		if oldMetric.name == "" || strings.HasPrefix(oldMetric.name, "# ") {
 			continue
 		}
 
-		if !contains(newMetricsCollection.MetricNamesWithLabels, metric) {
+		metricFound := false
+		labelsMatch := false
+		for _, newMetric := range newMetricsCollection.MetricsData {
+			if newMetric.name != oldMetric.name {
+				continue
+			}
+
+			metricFound = true
+
+			if newMetric.labelsRawStr == oldMetric.labelsRawStr {
+				labelsMatch = true
+				break
+			}
+
+			if arrIsSubsetOf(oldMetric.labelsWithValues, newMetric.labelsWithValues) {
+				labelsMatch = true
+				break
+			}
+		}
+
+		if !metricFound {
 			missingCount++
-			missingMetrics += fmt.Sprintf("%s\n", metric)
+			missingMetrics += fmt.Sprintf("%s\n", oldMetric.name)
+		} else if !labelsMatch {
+			missingLabelsCount++
+			missingLabels += fmt.Sprintf("%s\n", oldMetric.name)
 		}
 	}
+
 	if missingCount > 0 {
 		t.Errorf("%d metrics are missing in new exporter for %s resolution:\n%s", missingCount, resolutionName, missingMetrics)
+	}
+
+	if missingLabelsCount > 0 {
+		t.Errorf("%d metrics's labels missing in new exporter for %s resolution:\n%s", missingCount, resolutionName, missingLabels)
 	}
 
 	extraCount := 0
@@ -362,13 +406,13 @@ func parseMetricsCollection(metricRaw string) MetricsCollection {
 	}
 }
 
-func arrIsSubsetOf(a, b []string) bool {
-	if len(a) == 0 {
-		return len(b) == 0
+func arrIsSubsetOf(smaller, larger []string) bool {
+	if len(smaller) == 0 {
+		return len(larger) == 0
 	}
 
-	for _, x := range a {
-		if !contains(b, x) {
+	for _, x := range smaller {
+		if !contains(larger, x) {
 			return false
 		}
 	}
@@ -394,10 +438,10 @@ func groupByMetrics(metrics []Metric) map[string][]string {
 		metric := metrics[i]
 		if _, ok := mtr[metric.name]; ok {
 			labels := mtr[metric.name]
-			labels = append(labels, metric.labels)
+			labels = append(labels, metric.labelsRawStr)
 			mtr[metric.name] = labels
 		} else {
-			mtr[metric.name] = []string{metric.labels}
+			mtr[metric.name] = []string{metric.labelsRawStr}
 		}
 	}
 
@@ -414,16 +458,21 @@ func parseMetrics(metrics []string) []Metric {
 		}
 
 		var mName, mLabels string
+		var labelsArr []string
 		if strings.Contains(metricRawStr, "{") {
 			mName = metricRawStr[:strings.Index(metricRawStr, "{")]
 			mLabels = metricRawStr[strings.Index(metricRawStr, "{")+1 : len(metricRawStr)-1]
+			if mLabels != "" {
+				labelsArr = strings.Split(mLabels, ",")
+			}
 		} else {
 			mName = metricRawStr
 		}
 
 		metric := Metric{
-			name:   mName,
-			labels: mLabels,
+			name:             mName,
+			labelsRawStr:     mLabels,
+			labelsWithValues: labelsArr,
 		}
 
 		metricsData = append(metricsData, metric)

@@ -8,6 +8,7 @@ test-performance:
 extraMetrics = false
 multipleLabels = false
 dumpMetrics = false
+endpoint = ''
 
 test-metrics:
 	go test -v -run '^TestMissingMetrics$$' -args -doRun=true
@@ -22,7 +23,7 @@ test-resolutions:
 	go test -v -run '^TestResolutions$$' -args -doRun=true
 
 dump-metrics:
-	go test -v -run '^TestDumpMetrics$$' -args -doRun=true -extraMetrics=$(extraMetrics) -multipleLabels=$(multipleLabels) -dumpMetrics=$(dumpMetrics)
+	go test -v -run '^TestDumpMetrics$$' -args -doRun=true -extraMetrics=$(extraMetrics) -multipleLabels=$(multipleLabels) -endpoint=$(endpoint) -dumpMetrics=true
 
 test-consistency: test-metrics test-resolutions test-resolutions-duplicates
 
