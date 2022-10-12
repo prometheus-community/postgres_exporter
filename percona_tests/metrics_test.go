@@ -16,6 +16,14 @@ var printExtraMetrics = flag.Bool("extraMetrics", false, "")
 var printMultipleLabels = flag.Bool("multipleLabels", false, "")
 var endpointFlag = flag.String("endpoint", "", "")
 
+const highResolutionEndpoint = "metrics?collect%5B%5D=custom_query.hr&collect%5B%5D=exporter&collect%5B%5D=standard.go&collect%5B%5D=standard.process"
+const medResolutionEndpoint = "metrics?collect%5B%5D=custom_query.mr"
+const lowResolutionEndpoint = "metrics?collect%5B%5D=custom_query.lr"
+
+// that metric is disabled by default in new exporters, so will trigger test
+// however we don't use it at all in our dashboards, so for now - safe to skip it
+const skipMetricName = "go_memstats_gc_cpu_fraction"
+
 type Metric struct {
 	name             string
 	labelsRawStr     string
@@ -118,10 +126,6 @@ func TestDumpMetrics(t *testing.T) {
 	dumpMetricsInfo(oldMetricsCollection, newMetricsCollection)
 }
 
-const highResolutionEndpoint = "metrics?collect%5B%5D=custom_query.hr&collect%5B%5D=exporter&collect%5B%5D=standard.go&collect%5B%5D=standard.process"
-const medResolutionEndpoint = "metrics?collect%5B%5D=custom_query.mr"
-const lowResolutionEndpoint = "metrics?collect%5B%5D=custom_query.lr"
-
 func TestResolutionsMetricDuplicates(t *testing.T) {
 	if !getBool(doRun) {
 		t.Skip("For manual runs only through make")
@@ -219,7 +223,8 @@ func testResolution(t *testing.T, resolutionEp, resolutionName string) {
 	missingLabelsCount := 0
 	missingLabels := ""
 	for _, oldMetric := range oldMetricsCollection.MetricsData {
-		if oldMetric.name == "" || strings.HasPrefix(oldMetric.name, "# ") {
+		// skip empty lines, comments and redundant metrics
+		if oldMetric.name == "" || strings.HasPrefix(oldMetric.name, "# ") || oldMetric.name == skipMetricName {
 			continue
 		}
 
@@ -253,7 +258,7 @@ func testResolution(t *testing.T, resolutionEp, resolutionName string) {
 	}
 
 	if missingCount > 0 {
-		t.Errorf("%d metrics are missing in new exporter for %s resolution:\n%s", missingCount, resolutionName, missingMetrics)
+		t.Errorf("%d metric(s) are missing in new exporter for %s resolution:\n%s", missingCount, resolutionName, missingMetrics)
 	}
 
 	if missingLabelsCount > 0 {
@@ -326,6 +331,10 @@ func testForMissingMetricsLabels(oldMetricsCollection, newMetricsCollection Metr
 func testForMissingMetrics(oldMetricsCollection, newMetricsCollection MetricsCollection) (bool, string) {
 	missingMetrics := make([]string, 0)
 	for metricName := range oldMetricsCollection.LabelsByMetric {
+		if metricName == skipMetricName {
+			continue
+		}
+
 		if _, ok := newMetricsCollection.LabelsByMetric[metricName]; !ok {
 			missingMetrics = append(missingMetrics, metricName)
 		}

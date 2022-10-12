@@ -192,8 +192,8 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, server *server, ch ch
 
 	var cpt int
 	var cpr int
-	var cpwt int
-	var cpst int
+	var cpwt float64
+	var cpst float64
 	var bcp int
 	var bc int
 	var mwc int

@@ -1,4 +1,4 @@
-
+---
 version: '2'
 
 services:
@@ -11,9 +11,9 @@ services:
       POSTGRES_PASSWORD: 'postgres'
       PGDATA: '/var/lib/postgresql/data/pgdata'
     volumes:
-     - '/var/lib/postgresql/data'
+      - '/var/lib/postgresql/data'
     expose:
-     - '5432'
+      - '5432'
 
   pg-slave:
     build: '.'
@@ -25,8 +25,8 @@ services:
       PGDATA: '/var/lib/postgresql/data/pgdata'
       REPLICATE_FROM: 'pg-master'
     volumes:
-     - '/var/lib/postgresql/data'
+      - '/var/lib/postgresql/data'
     expose:
-     - '5432'
+      - '5432'
     links:
-     - 'pg-master'
+      - 'pg-master'

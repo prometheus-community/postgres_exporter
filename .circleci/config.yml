@@ -1,0 +1,102 @@
+---
+version: 2.1
+
+orbs:
+  prometheus: prometheus/prometheus@0.16.0
+
+executors:
+  # This must match .promu.yml.
+  golang:
+    docker:
+    - image: cimg/go:1.18
+
+jobs:
+  test:
+    executor: golang
+
+    steps:
+    - prometheus/setup_environment
+    - run: make
+    - prometheus/store_artifact:
+        file: postgres_exporter
+
+  integration:
+    docker:
+    - image: cimg/go:1.18
+    - image: << parameters.postgres_image >>
+      environment:
+        POSTGRES_DB: circle_test
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: test
+
+    parameters:
+      postgres_image:
+        type: string
+
+    environment:
+      DATA_SOURCE_NAME: 'postgresql://postgres:test@localhost:5432/circle_test?sslmode=disable'
+      GOOPTS: '-v -tags integration'
+
+    steps:
+    - checkout
+    - setup_remote_docker
+    - run: docker version
+    - run: make build
+    - run: make test
+
+workflows:
+  version: 2
+  postgres_exporter:
+    jobs:
+    - test:
+        filters:
+          tags:
+            only: /.*/
+    - integration:
+        matrix:
+          parameters:
+            postgres_image:
+            - circleci/postgres:10
+            - circleci/postgres:11
+            - circleci/postgres:12
+            - circleci/postgres:13
+            - cimg/postgres:14.1
+    - prometheus/build:
+        name: build
+        parallelism: 3
+        promu_opts: "-p linux/amd64 -p windows/amd64 -p linux/arm64 -p darwin/amd64 -p darwin/arm64 -p linux/386"
+        filters:
+          tags:
+            ignore: /^v.*/
+          branches:
+            ignore: /^(main|master|release-.*|.*build-all.*)$/
+    - prometheus/build:
+        name: build_all
+        parallelism: 12
+        filters:
+          branches:
+            only: /^(main|master|release-.*|.*build-all.*)$/
+          tags:
+            only: /^v.*/
+    - prometheus/publish_master:
+        context: org-context
+        docker_hub_organization: prometheuscommunity
+        quay_io_organization: prometheuscommunity
+        requires:
+        - test
+        - build_all
+        filters:
+          branches:
+            only: master
+    - prometheus/publish_release:
+        context: org-context
+        docker_hub_organization: prometheuscommunity
+        quay_io_organization: prometheuscommunity
+        requires:
+        - test
+        - build_all
+        filters:
+          tags:
+            only: /^v.*/
+          branches:
+            ignore: /.*/
