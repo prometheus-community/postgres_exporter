@@ -159,6 +159,15 @@ ifdef GOLANGCI_LINT
 	$(GOLANGCI_LINT) run $(GOLANGCI_LINT_OPTS) $(pkgs)
 endif
 
+.PHONY: common-yamllint
+common-yamllint:
+	@echo ">> running yamllint on all YAML files in the repository"
+ifeq (, $(shell which yamllint))
+	@echo "yamllint not installed so skipping"
+else
+	yamllint .
+endif
+
 # For backward-compatibility.
 .PHONY: common-staticcheck
 common-staticcheck: lint
