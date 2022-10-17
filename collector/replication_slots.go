@@ -29,8 +29,8 @@ type PGReplicationSlotCollector struct {
 	log log.Logger
 }
 
-func NewPGReplicationSlotCollector(logger log.Logger) (Collector, error) {
-	return &PGReplicationSlotCollector{log: logger}, nil
+func NewPGReplicationSlotCollector(config collectorConfig) (Collector, error) {
+	return &PGReplicationSlotCollector{log: config.logger}, nil
 }
 
 var pgReplicationSlot = map[string]*prometheus.Desc{

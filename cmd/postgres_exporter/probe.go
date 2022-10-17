@@ -61,21 +61,9 @@ func handleProbe(logger log.Logger, excludeDatabases []string) http.HandlerFunc 
 
 		// TODO(@sysadmind): Timeout
 
-		// probeSuccessGauge := prometheus.NewGauge(prometheus.GaugeOpts{
-		// 	Name: "probe_success",
-		// 	Help: "Displays whether or not the probe was a success",
-		// })
-		// probeDurationGauge := prometheus.NewGauge(prometheus.GaugeOpts{
-		// 	Name: "probe_duration_seconds",
-		// 	Help: "Returns how long the probe took to complete in seconds",
-		// })
-
 		tl := log.With(logger, "target", target)
 
-		// start := time.Now()
 		registry := prometheus.NewRegistry()
-		// registry.MustRegister(probeSuccessGauge)
-		// registry.MustRegister(probeDurationGauge)
 
 		opts := []ExporterOpt{
 			DisableDefaultMetrics(*disableDefaultMetrics),
@@ -83,7 +71,7 @@ func handleProbe(logger log.Logger, excludeDatabases []string) http.HandlerFunc 
 			AutoDiscoverDatabases(*autoDiscoverDatabases),
 			WithUserQueriesPath(*queriesPath),
 			WithConstantLabels(*constantLabelsList),
-			ExcludeDatabases(*excludeDatabases),
+			ExcludeDatabases(excludeDatabases),
 			IncludeDatabases(*includeDatabases),
 		}
 
