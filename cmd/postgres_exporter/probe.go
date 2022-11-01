@@ -78,6 +78,23 @@ func handleProbe(logger log.Logger) http.HandlerFunc {
 		registry.MustRegister(probeSuccessGauge)
 		registry.MustRegister(probeDurationGauge)
 
+		opts := []ExporterOpt{
+			DisableDefaultMetrics(*disableDefaultMetrics),
+			DisableSettingsMetrics(*disableSettingsMetrics),
+			AutoDiscoverDatabases(*autoDiscoverDatabases),
+			WithUserQueriesPath(*queriesPath),
+			WithConstantLabels(*constantLabelsList),
+			ExcludeDatabases(*excludeDatabases),
+			IncludeDatabases(*includeDatabases),
+		}
+
+		dsns := []string{dsn.GetConnectionString()}
+		exporter := NewExporter(dsns, opts...)
+		defer func() {
+			exporter.servers.Close()
+		}()
+		registry.MustRegister(exporter)
+
 		// Run the probe
 		pc, err := collector.NewProbeCollector(tl, registry, dsn)
 		if err != nil {
