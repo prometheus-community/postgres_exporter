@@ -114,6 +114,7 @@ func handleProbe(logger log.Logger) http.HandlerFunc {
 
 		duration := time.Since(start).Seconds()
 		probeDurationGauge.Set(duration)
+		probeSuccessGauge.Set(1)
 
 		// TODO check success, etc
 		h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
