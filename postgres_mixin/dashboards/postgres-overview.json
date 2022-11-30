@@ -25,7 +25,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Postgres Overview",
+      "datasource": "$datasource",
       "editable": true,
       "error": false,
       "fieldConfig": {
@@ -77,7 +77,7 @@
         {
           "alias": "fetched",
           "dsType": "prometheus",
-          "expr": "sum(irate(pg_stat_database_tup_fetched{datname=~\"$db\",instance=~\"$instance\"}[5m]))",
+          "expr": "sum(irate(pg_stat_database_tup_fetched{datname=~\"$db\", job=~\"$job\", instance=~\"$instance\"}[5m]))",
           "format": "time_series",
           "groupBy": [
             {
@@ -131,7 +131,7 @@
         {
           "alias": "fetched",
           "dsType": "prometheus",
-          "expr": "sum(irate(pg_stat_database_tup_returned{datname=~\"$db\",instance=~\"$instance\"}[5m]))",
+          "expr": "sum(irate(pg_stat_database_tup_returned{datname=~\"$db\", job=~\"$job\", instance=~\"$instance\"}[5m]))",
           "format": "time_series",
           "groupBy": [
             {
@@ -185,7 +185,7 @@
         {
           "alias": "fetched",
           "dsType": "prometheus",
-          "expr": "sum(irate(pg_stat_database_tup_inserted{datname=~\"$db\",instance=~\"$instance\"}[5m]))",
+          "expr": "sum(irate(pg_stat_database_tup_inserted{datname=~\"$db\", job=~\"$job\", instance=~\"$instance\"}[5m]))",
           "format": "time_series",
           "groupBy": [
             {
@@ -239,7 +239,7 @@
         {
           "alias": "fetched",
           "dsType": "prometheus",
-          "expr": "sum(irate(pg_stat_database_tup_updated{datname=~\"$db\",instance=~\"$instance\"}[5m]))",
+          "expr": "sum(irate(pg_stat_database_tup_updated{datname=~\"$db\", job=~\"$job\", instance=~\"$instance\"}[5m]))",
           "format": "time_series",
           "groupBy": [
             {
@@ -293,7 +293,7 @@
         {
           "alias": "fetched",
           "dsType": "prometheus",
-          "expr": "sum(irate(pg_stat_database_tup_deleted{datname=~\"$db\",instance=~\"$instance\"}[5m]))",
+          "expr": "sum(irate(pg_stat_database_tup_deleted{datname=~\"$db\", job=~\"$job\", instance=~\"$instance\"}[5m]))",
           "format": "time_series",
           "groupBy": [
             {
@@ -396,7 +396,7 @@
         "rgba(237, 129, 40, 0.89)",
         "rgba(50, 172, 45, 0.97)"
       ],
-      "datasource": "Postgres Overview",
+      "datasource": "$datasource",
       "decimals": 0,
       "editable": true,
       "error": false,
@@ -460,7 +460,7 @@
       "targets": [
         {
           "dsType": "prometheus",
-          "expr": "sum(irate(pg_stat_database_xact_commit{datname=~\"$db\",instance=~\"$instance\"}[5m])) + sum(irate(pg_stat_database_xact_rollback{datname=~\"$db\",instance=~\"$instance\"}[5m]))",
+          "expr": "sum(irate(pg_stat_database_xact_commit{datname=~\"$db\", job=~\"$job\", instance=~\"$instance\"}[5m])) + sum(irate(pg_stat_database_xact_rollback{datname=~\"$db\", job=~\"$job\", instance=~\"$instance\"}[5m]))",
           "format": "time_series",
           "groupBy": [
             {
@@ -530,7 +530,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Postgres Overview",
+      "datasource": "$datasource",
       "decimals": 1,
       "editable": true,
       "error": false,
@@ -889,7 +889,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Postgres Overview",
+      "datasource": "$datasource",
       "editable": true,
       "error": false,
       "fieldConfig": {
@@ -939,7 +939,7 @@
         {
           "alias": "conflicts",
           "dsType": "prometheus",
-          "expr": "sum(rate(pg_stat_database_deadlocks{datname=~\"$db\",instance=~\"$instance\"}[5m]))",
+          "expr": "sum(rate(pg_stat_database_deadlocks{datname=~\"$db\", job=~\"$job\", instance=~\"$instance\"}[5m]))",
           "format": "time_series",
           "groupBy": [
             {
@@ -991,7 +991,7 @@
         {
           "alias": "deadlocks",
           "dsType": "prometheus",
-          "expr": "sum(rate(pg_stat_database_conflicts{datname=~\"$db\",instance=~\"$instance\"}[5m]))",
+          "expr": "sum(rate(pg_stat_database_conflicts{datname=~\"$db\", job=~\"$job\", instance=~\"$instance\"}[5m]))",
           "format": "time_series",
           "groupBy": [
             {
@@ -1088,7 +1088,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Postgres Overview",
+      "datasource": "$datasource",
       "editable": true,
       "error": false,
       "fieldConfig": {
@@ -1136,7 +1136,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(pg_stat_database_blks_hit{datname=~\"$db\",instance=~\"$instance\"}) / (sum(pg_stat_database_blks_hit{datname=~\"$db\",instance=~\"$instance\"}) + sum(pg_stat_database_blks_read{datname=~\"$db\",instance=~\"$instance\"}))",
+          "expr": "sum(pg_stat_database_blks_hit{datname=~\"$db\", job=~\"$job\", instance=~\"$instance\"}) / (sum(pg_stat_database_blks_hit{datname=~\"$db\", job=~\"$job\", instance=~\"$instance\"}) + sum(pg_stat_database_blks_read{datname=~\"$db\", job=~\"$job\", instance=~\"$instance\"}))",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "cache hit rate",
@@ -1191,7 +1191,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Postgres Overview",
+      "datasource": "$datasource",
       "editable": true,
       "error": false,
       "fieldConfig": {
@@ -1239,7 +1239,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "pg_stat_database_numbackends{datname=~\"$db\",instance=~\"$instance\"}",
+          "expr": "pg_stat_database_numbackends{datname=~\"$db\", job=~\"$job\", instance=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{__name__}}",
@@ -1299,63 +1299,6 @@
   "templating": {
     "list": [
       {
-        "allValue": ".*",
-        "current": {
-          "selected": false,
-          "text": "All",
-          "value": "$__all"
-        },
-        "datasource": "Postgres Overview",
-        "definition": "",
-        "hide": 0,
-        "includeAll": true,
-        "label": null,
-        "multi": false,
-        "name": "instance",
-        "options": [],
-        "query": "label_values(up{job=~\"postgres.*\"},instance)",
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
-        "tagValuesQuery": "",
-        "tags": [],
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
-      },
-      {
-        "allValue": ".*",
-        "current": {
-          "selected": false,
-          "text": "All",
-          "value": "$__all"
-        },
-        "datasource": "Postgres Overview",
-        "definition": "label_values(pg_stat_database_tup_fetched{instance=~\"$instance\",datname!~\"template.*|postgres\"},datname)",
-        "hide": 0,
-        "includeAll": true,
-        "label": "db",
-        "multi": false,
-        "name": "db",
-        "options": [],
-        "query": "label_values(pg_stat_database_tup_fetched{instance=~\"$instance\",datname!~\"template.*|postgres\"},datname)",
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
-        "tagValuesQuery": "",
-        "tags": [],
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
-      },
-      {
-        "current": {
-          "selected": false,
-          "text": "Postgres Overview",
-          "value": "Postgres Overview"
-        },
         "hide": 0,
         "includeAll": false,
         "label": "datasource",
@@ -1391,6 +1334,58 @@
         ],
         "query": "label_values(pg_up, job)",
         "refresh": 0,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": "$datasource",
+        "definition": "",
+        "hide": 0,
+        "includeAll": true,
+        "label": null,
+        "multi": false,
+        "name": "instance",
+        "options": [],
+        "query": "label_values(pg_up{job=~\"$job\"}, instance)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": "$datasource",
+        "definition": "label_values(pg_stat_database_tup_fetched{job=~\"$job\", instance=~\"$instance\",datname!~\"template.*|postgres\"},datname)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "db",
+        "multi": false,
+        "name": "db",
+        "options": [],
+        "query": "label_values(pg_stat_database_tup_fetched{job=~\"$job\", instance=~\"$instance\",datname!~\"template.*|postgres\"},datname)",
+        "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
         "sort": 0,
