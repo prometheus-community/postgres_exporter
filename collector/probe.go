@@ -83,3 +83,7 @@ func (pc *ProbeCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 	wg.Wait()
 }
+
+func (pc *ProbeCollector) Close() error {
+	return pc.db.Close()
+}
