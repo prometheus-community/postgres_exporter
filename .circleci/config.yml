@@ -61,6 +61,7 @@ workflows:
             - circleci/postgres:12
             - circleci/postgres:13
             - cimg/postgres:14.1
+            - cimg/postgres:15.1
     - prometheus/build:
         name: build
         parallelism: 3
