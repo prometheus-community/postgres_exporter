@@ -20,6 +20,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus-community/postgres_exporter/collector"
+	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/promlog"
@@ -31,6 +32,11 @@ import (
 )
 
 var (
+	c = config.ConfigHandler{
+		Config: &config.Config{},
+	}
+
+	configFile             = kingpin.Flag("config.file", "Postgres exporter configuration file.").Default("postgres_exporter.yml").String()
 	listenAddress          = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").Envar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
 	webConfig              = webflag.AddFlags(kingpin.CommandLine)
 	metricPath             = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").Envar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
@@ -85,14 +91,14 @@ func main() {
 		return
 	}
 
-	dsn, err := getDataSources()
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed reading data sources", "err", err.Error())
-		os.Exit(1)
+	if err := c.ReloadConfig(*configFile, logger); err != nil {
+		// This is not fatal, but it means that auth must be provided for every dsn.
+		level.Error(logger).Log("msg", "Error loading config", "err", err)
 	}
 
-	if len(dsn) == 0 {
-		level.Error(logger).Log("msg", "Couldn't find environment variables describing the datasource to use")
+	dsns, err := getDataSources()
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed reading data sources", "err", err.Error())
 		os.Exit(1)
 	}
 
@@ -106,7 +112,7 @@ func main() {
 		IncludeDatabases(*includeDatabases),
 	}
 
-	exporter := NewExporter(dsn, opts...)
+	exporter := NewExporter(dsns, opts...)
 	defer func() {
 		exporter.servers.Close()
 	}()
@@ -115,6 +121,12 @@ func main() {
 
 	prometheus.MustRegister(exporter)
 
+	// TODO(@sysadmind): Remove this with multi-target support. We are removing multiple DSN support
+	dsn := ""
+	if len(dsns) > 0 {
+		dsn = dsns[0]
+	}
+
 	pe, err := collector.NewPostgresCollector(
 		logger,
 		dsn,
@@ -122,15 +134,17 @@ func main() {
 	)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create PostgresCollector", "err", err.Error())
-		os.Exit(1)
+	} else {
+		prometheus.MustRegister(pe)
 	}
-	prometheus.MustRegister(pe)
 
 	http.Handle(*metricPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=UTF-8") // nolint: errcheck
 		w.Write(landingPage)                                       // nolint: errcheck
 	})
+
+	http.HandleFunc("/probe", handleProbe(logger))
 
 	level.Info(logger).Log("msg", "Listening on address", "address", *listenAddress)
 	srv := &http.Server{Addr: *listenAddress}
