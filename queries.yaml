@@ -261,3 +261,18 @@ pg_process_idle:
     - seconds:
         usage: "HISTOGRAM"
         description: "Idle time of server processes"
+
+pg_replication_slots:
+  query: |
+    SELECT
+      slot_name,
+      (pg_current_wal_lsn() - confirmed_flush_lsn) AS lsn_distance
+    FROM
+      pg_replication_slots
+  metrics:
+    - slot_name:
+        usage: "LABEL"
+        description: "Name of replication slot"
+    - lsn_distance:
+        usage: "GAUGE"
+        description: "Distance between current wal lsn and confirmed flushed lsn"
