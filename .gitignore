@@ -20,3 +20,4 @@
 /.metrics.*.removed
 /tools/src
 /vendor
+.env

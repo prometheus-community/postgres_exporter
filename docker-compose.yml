@@ -1,0 +1,12 @@
+version: "3.5"
+
+services:
+  postgres_exporter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: quay.io/prometheuscommunity/postgres-exporter
+    network_mode: host
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${PG_USERNAME:-postgres}:${PG_PASSWORD:-password}@${PG_HOST:-localhost}:${PG_PORT:-5432}/${DB_NAME:-postgres}?sslmode=disable"
+      PG_EXPORTER_WEB_LISTEN_ADDRESS: ":9187"
