@@ -1,4 +1,4 @@
-// Copyright 2022 The Prometheus Authors
+// Copyright 2023 The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -34,9 +34,14 @@ func NewPGReplicationSlotCollector(logger log.Logger) (Collector, error) {
 }
 
 var pgReplicationSlot = map[string]*prometheus.Desc{
-	"lsn_distance": prometheus.NewDesc(
-		"pg_replication_slot_lsn_distance",
-		"Disk space used by the database",
+	"current_wal_lsn": prometheus.NewDesc(
+		"pg_replication_slot_current_wal_lsn",
+		"current wal lsn value",
+		[]string{"slot_name"}, nil,
+	),
+	"confirmed_flush_lsn": prometheus.NewDesc(
+		"pg_replication_slot_confirmed_flush_lsn",
+		"last lsn confirmed flushed to the replication slot",
 		[]string{"slot_name"}, nil,
 	),
 }
@@ -45,7 +50,8 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, db *sql.DB, ch cha
 	rows, err := db.QueryContext(ctx,
 		`SELECT
 			slot_name,
-			(pg_current_wal_lsn() - confirmed_flush_lsn) AS lsn_distance
+			pg_current_wal_lsn() AS current_wal_lsn,
+			confirmed_flush_lsn
 			FROM
 		pg_replication_slots;`)
 	if err != nil {
@@ -55,14 +61,19 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, db *sql.DB, ch cha
 
 	for rows.Next() {
 		var slot_name string
-		var size int64
-		if err := rows.Scan(&slot_name, &size); err != nil {
+		var wal_lsn int64
+		var flush_lsn int64
+		if err := rows.Scan(&slot_name, &wal_lsn, &flush_lsn); err != nil {
 			return err
 		}
 
 		ch <- prometheus.MustNewConstMetric(
-			pgReplicationSlot["size_bytes"],
-			prometheus.GaugeValue, float64(size), slot_name,
+			pgReplicationSlot["current_wal_lsn"],
+			prometheus.GaugeValue, float64(wal_lsn), slot_name,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			pgReplicationSlot["confirmed_flush_lsn"],
+			prometheus.GaugeValue, float64(flush_lsn), slot_name,
 		)
 	}
 	if err := rows.Err(); err != nil {
