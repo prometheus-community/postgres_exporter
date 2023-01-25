@@ -152,9 +152,6 @@ The following environment variables configure the exporter:
 * `DATA_SOURCE_PASS_FILE`
   The same as above but reads the password from a file.
 
-* `PG_EXPORTER_WEB_LISTEN_ADDRESS`
-  Address to listen on for web interface and telemetry. Default is `:9187`.
-
 * `PG_EXPORTER_WEB_TELEMETRY_PATH`
   Path under which to expose metrics. Default is `/metrics`.
 
