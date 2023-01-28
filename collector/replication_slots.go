@@ -78,7 +78,7 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, db *sql.DB, ch cha
 			pgReplicationSlot["current_wal_lsn"],
 			prometheus.GaugeValue, float64(wal_lsn), slot_name,
 		)
-		if (is_active == 1) {
+		if is_active == 1 {
 			ch <- prometheus.MustNewConstMetric(
 				pgReplicationSlot["confirmed_flush_lsn"],
 				prometheus.GaugeValue, float64(flush_lsn), slot_name,
