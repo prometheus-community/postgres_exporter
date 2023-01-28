@@ -69,7 +69,7 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, db *sql.DB, ch cha
 		var slot_name string
 		var wal_lsn int64
 		var flush_lsn int64
-		var is_active int
+		var is_active int64
 		if err := rows.Scan(&slot_name, &wal_lsn, &flush_lsn, &is_active); err != nil {
 			return err
 		}
