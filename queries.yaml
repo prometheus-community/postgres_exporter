@@ -219,6 +219,7 @@ pg_stat_statements:
         description: "Total time the statement spent writing blocks, in milliseconds (if track_io_timing is enabled, otherwise zero)"
 
 pg_process_idle:
+  master: true
   query: |
     WITH
       metrics AS (
