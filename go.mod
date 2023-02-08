@@ -1,6 +1,6 @@
 module github.com/prometheus-community/postgres_exporter
 
-go 1.17
+go 1.19
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
@@ -11,10 +11,10 @@ require (
 	github.com/prometheus/client_golang v1.12.2
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.35.0
-	github.com/prometheus/exporter-toolkit v0.7.1
+	github.com/prometheus/exporter-toolkit v0.7.2
 	github.com/stretchr/testify v1.4.0
 	github.com/tklauser/go-sysconf v0.3.10
-	golang.org/x/sys v0.0.0-20220128215802-99c3d69c2c27
+	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/yaml.v2 v2.4.0
@@ -36,7 +36,7 @@ require (
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e // indirect
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b // indirect
-	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/text v0.3.8 // indirect
 	google.golang.org/appengine v1.6.6 // indirect
 	google.golang.org/protobuf v1.26.0 // indirect
 )
