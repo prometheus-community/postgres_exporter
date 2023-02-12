@@ -56,7 +56,8 @@ postgres_exporter_data_source_name="postgresql://${postgres_exporter_pg_user}:${
 pidfile=/var/run/postgres_exporter.pid
 command="/usr/sbin/daemon"
 procname="/usr/local/bin/postgres_exporter"
-command_args="-p ${pidfile} /usr/bin/env DATA_SOURCE_NAME="${postgres_exporter_data_source_name}" ${procname} \
+command_args="-f -p ${pidfile} -T ${name} \
+    /usr/bin/env DATA_SOURCE_NAME="${postgres_exporter_data_source_name}" ${procname} \
     --web.listen-address=${postgres_exporter_listen_address} \
     ${postgres_exporter_args}"
 
