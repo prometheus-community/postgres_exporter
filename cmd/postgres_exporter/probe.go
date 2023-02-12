@@ -104,6 +104,9 @@ func handleProbe(logger log.Logger) http.HandlerFunc {
 			return
 		}
 
+		// Cleanup underlying connections to prevent connection leaks
+		defer pc.Close()
+
 		// TODO(@sysadmind): Remove the registry.MustRegister() call below and instead handle the collection here. That will allow
 		// for the passing of context, handling of timeouts, and more control over the collection.
 		// The current NewProbeCollector() implementation relies on the MustNewConstMetric() call to create the metrics which is not
