@@ -39,12 +39,19 @@ var pgDatabase = map[string]*prometheus.Desc{
 		"Disk space used by the database",
 		[]string{"datname"}, nil,
 	),
+
+	"xid_ages": prometheus.NewDesc(
+		"pg_database_xid_ages",
+		"Age by the database",
+		[]string{"datname"}, nil,
+	),
 }
 
 func (PGDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
 	rows, err := db.QueryContext(ctx,
 		`SELECT pg_database.datname
 		,pg_database_size(pg_database.datname)
+        ,age(datfrozenxid)
 		FROM pg_database;`)
 	if err != nil {
 		return err
@@ -53,8 +60,11 @@ func (PGDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<- pro
 
 	for rows.Next() {
 		var datname string
-		var size int64
-		if err := rows.Scan(&datname, &size); err != nil {
+		var (
+			size int64
+			age  int64
+		)
+		if err := rows.Scan(&datname, &size, &age); err != nil {
 			return err
 		}
 
@@ -62,9 +72,14 @@ func (PGDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<- pro
 			pgDatabase["size_bytes"],
 			prometheus.GaugeValue, float64(size), datname,
 		)
+		ch <- prometheus.MustNewConstMetric(
+			pgDatabase["xid_ages"],
+			prometheus.GaugeValue, float64(age), datname,
+		)
 	}
 	if err := rows.Err(); err != nil {
 		return err
 	}
+
 	return nil
 }
