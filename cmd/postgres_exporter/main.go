@@ -14,6 +14,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"os"
 
@@ -138,6 +139,12 @@ func main() {
 	}
 
 	http.Handle(*metricPath, promhttp.Handler())
+
+	registries := make(map[string]*prometheus.Registry)
+	http.HandleFunc("/probe", func(w http.ResponseWriter, req *http.Request) {
+		probeHandler(w, req, logger, registries, opts...)
+	})
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=UTF-8") // nolint: errcheck
 		w.Write(landingPage)                                       // nolint: errcheck
@@ -150,4 +157,30 @@ func main() {
 		level.Error(logger).Log("msg", "Error running HTTP server", "err", err)
 		os.Exit(1)
 	}
+}
+
+func probeHandler(w http.ResponseWriter, r *http.Request, logger log.Logger, registries map[string]*prometheus.Registry, opts ...ExporterOpt) {
+
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+	r = r.WithContext(ctx)
+
+	target := r.URL.Query().Get("target")
+	if target == "" {
+		http.Error(w, "Target parameter is missing", http.StatusBadRequest)
+		return
+	}
+
+	registry, target_registered := registries[target]
+	if !target_registered {
+		registry = prometheus.NewPedanticRegistry()
+		exporter := NewExporter([]string{target}, opts...)
+		registry.MustRegister(version.NewCollector(exporterName))
+		registry.MustRegister(exporter)
+		registries[target] = registry
+	}
+
+	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
+	h.ServeHTTP(w, r)
+
 }
