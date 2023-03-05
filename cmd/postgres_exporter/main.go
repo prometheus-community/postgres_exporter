@@ -14,8 +14,10 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -101,13 +103,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	excludedDatabases := strings.Split(*excludeDatabases, ",")
+	logger.Log("msg", "Excluded databases", "databases", fmt.Sprintf("%v", excludedDatabases))
+
 	opts := []ExporterOpt{
 		DisableDefaultMetrics(*disableDefaultMetrics),
 		DisableSettingsMetrics(*disableSettingsMetrics),
 		AutoDiscoverDatabases(*autoDiscoverDatabases),
 		WithUserQueriesPath(*queriesPath),
 		WithConstantLabels(*constantLabelsList),
-		ExcludeDatabases(*excludeDatabases),
+		ExcludeDatabases(excludedDatabases),
 		IncludeDatabases(*includeDatabases),
 	}
 
@@ -128,6 +133,7 @@ func main() {
 
 	pe, err := collector.NewPostgresCollector(
 		logger,
+		excludedDatabases,
 		dsn,
 		[]string{},
 	)
@@ -143,7 +149,7 @@ func main() {
 		w.Write(landingPage)                                       // nolint: errcheck
 	})
 
-	http.HandleFunc("/probe", handleProbe(logger))
+	http.HandleFunc("/probe", handleProbe(logger, excludedDatabases))
 
 	srv := &http.Server{}
 	if err := web.ListenAndServe(srv, webConfig, logger); err != nil {

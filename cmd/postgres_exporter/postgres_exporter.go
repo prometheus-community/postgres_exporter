@@ -484,9 +484,9 @@ func AutoDiscoverDatabases(b bool) ExporterOpt {
 }
 
 // ExcludeDatabases allows to filter out result from AutoDiscoverDatabases
-func ExcludeDatabases(s string) ExporterOpt {
+func ExcludeDatabases(s []string) ExporterOpt {
 	return func(e *Exporter) {
-		e.excludeDatabases = strings.Split(s, ",")
+		e.excludeDatabases = s
 	}
 }
 
