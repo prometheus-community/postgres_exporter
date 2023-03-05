@@ -18,8 +18,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -663,7 +663,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 			e.userQueriesError.Reset()
 
 			// Calculate the hashsum of the useQueries
-			userQueriesData, err := ioutil.ReadFile(e.userQueriesPath)
+			userQueriesData, err := os.ReadFile(e.userQueriesPath)
 			if err != nil {
 				level.Error(logger).Log("msg", "Failed to reload user queries", "path", e.userQueriesPath, "err", err)
 				e.userQueriesError.WithLabelValues(e.userQueriesPath, "").Set(1)
