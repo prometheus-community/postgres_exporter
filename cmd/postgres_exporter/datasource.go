@@ -15,7 +15,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"regexp"
@@ -130,7 +129,7 @@ func getDataSources() ([]string, error) {
 
 	dataSourceUserFile := os.Getenv("DATA_SOURCE_USER_FILE")
 	if len(dataSourceUserFile) != 0 {
-		fileContents, err := ioutil.ReadFile(dataSourceUserFile)
+		fileContents, err := os.ReadFile(dataSourceUserFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed loading data source user file %s: %s", dataSourceUserFile, err.Error())
 		}
@@ -141,7 +140,7 @@ func getDataSources() ([]string, error) {
 
 	dataSourcePassFile := os.Getenv("DATA_SOURCE_PASS_FILE")
 	if len(dataSourcePassFile) != 0 {
-		fileContents, err := ioutil.ReadFile(dataSourcePassFile)
+		fileContents, err := os.ReadFile(dataSourcePassFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed loading data source pass file %s: %s", dataSourcePassFile, err.Error())
 		}
@@ -153,7 +152,7 @@ func getDataSources() ([]string, error) {
 	ui := url.UserPassword(user, pass).String()
 	dataSrouceURIFile := os.Getenv("DATA_SOURCE_URI_FILE")
 	if len(dataSrouceURIFile) != 0 {
-		fileContents, err := ioutil.ReadFile(dataSrouceURIFile)
+		fileContents, err := os.ReadFile(dataSrouceURIFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed loading data source URI file %s: %s", dataSrouceURIFile, err.Error())
 		}
