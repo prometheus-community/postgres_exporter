@@ -85,8 +85,6 @@ func handleProbe(logger log.Logger, excludeDatabases []string) http.HandlerFunc 
 		// Run the probe
 		pc, err := collector.NewProbeCollector(tl, excludeDatabases, registry, dsn)
 		if err != nil {
-			// probeSuccessGauge.Set(0)
-			// probeDurationGauge.Set(time.Since(start).Seconds())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
