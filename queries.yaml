@@ -146,77 +146,58 @@ pg_statio_user_tables:
         usage: "COUNTER"
         description: "Number of buffer hits in this table's TOAST table indexes (if any)"
 
-# WARNING: This set of metrics can be very expensive on a busy server as every unique query executed will create an additional time series
-pg_stat_statements:
-  query: "SELECT t2.rolname, t3.datname, queryid, calls, total_time / 1000 as total_time_seconds, min_time / 1000 as min_time_seconds, max_time / 1000 as max_time_seconds, mean_time / 1000 as mean_time_seconds, stddev_time / 1000 as stddev_time_seconds, rows, shared_blks_hit, shared_blks_read, shared_blks_dirtied, shared_blks_written, local_blks_hit, local_blks_read, local_blks_dirtied, local_blks_written, temp_blks_read, temp_blks_written, blk_read_time / 1000 as blk_read_time_seconds, blk_write_time / 1000 as blk_write_time_seconds FROM pg_stat_statements t1 JOIN pg_roles t2 ON (t1.userid=t2.oid) JOIN pg_database t3 ON (t1.dbid=t3.oid) WHERE t2.rolname != 'rdsadmin'"
-  master: true
-  metrics:
-    - rolname:
-        usage: "LABEL"
-        description: "Name of user"
-    - datname:
-        usage: "LABEL"
-        description: "Name of database"
-    - queryid:
-        usage: "LABEL"
-        description: "Query ID"
-    - calls:
-        usage: "COUNTER"
-        description: "Number of times executed"
-    - total_time_seconds:
-        usage: "COUNTER"
-        description: "Total time spent in the statement, in milliseconds"
-    - min_time_seconds:
-        usage: "GAUGE"
-        description: "Minimum time spent in the statement, in milliseconds"
-    - max_time_seconds:
-        usage: "GAUGE"
-        description: "Maximum time spent in the statement, in milliseconds"
-    - mean_time_seconds:
-        usage: "GAUGE"
-        description: "Mean time spent in the statement, in milliseconds"
-    - stddev_time_seconds:
-        usage: "GAUGE"
-        description: "Population standard deviation of time spent in the statement, in milliseconds"
-    - rows:
-        usage: "COUNTER"
-        description: "Total number of rows retrieved or affected by the statement"
-    - shared_blks_hit:
-        usage: "COUNTER"
-        description: "Total number of shared block cache hits by the statement"
-    - shared_blks_read:
-        usage: "COUNTER"
-        description: "Total number of shared blocks read by the statement"
-    - shared_blks_dirtied:
-        usage: "COUNTER"
-        description: "Total number of shared blocks dirtied by the statement"
-    - shared_blks_written:
-        usage: "COUNTER"
-        description: "Total number of shared blocks written by the statement"
-    - local_blks_hit:
-        usage: "COUNTER"
-        description: "Total number of local block cache hits by the statement"
-    - local_blks_read:
-        usage: "COUNTER"
-        description: "Total number of local blocks read by the statement"
-    - local_blks_dirtied:
-        usage: "COUNTER"
-        description: "Total number of local blocks dirtied by the statement"
-    - local_blks_written:
-        usage: "COUNTER"
-        description: "Total number of local blocks written by the statement"
-    - temp_blks_read:
-        usage: "COUNTER"
-        description: "Total number of temp blocks read by the statement"
-    - temp_blks_written:
-        usage: "COUNTER"
-        description: "Total number of temp blocks written by the statement"
-    - blk_read_time_seconds:
-        usage: "COUNTER"
-        description: "Total time the statement spent reading blocks, in milliseconds (if track_io_timing is enabled, otherwise zero)"
-    - blk_write_time_seconds:
-        usage: "COUNTER"
-        description: "Total time the statement spent writing blocks, in milliseconds (if track_io_timing is enabled, otherwise zero)"
+#
+# WARNING: 
+#   This set of metrics can be very expensive on a busy server as every
+#   unique query executed will create an additional time series
+#
+# pg_stat_statements:
+#   query: |
+#     SELECT
+#       pg_get_userbyid(userid) as user,
+#       pg_database.datname,
+#       pg_stat_statements.queryid,
+#       pg_stat_statements.calls as calls_total,
+#       pg_stat_statements.total_time / 1000.0 as seconds_total,
+#       pg_stat_statements.rows as rows_total,
+#       pg_stat_statements.blk_read_time / 1000.0 as block_read_seconds_total,
+#       pg_stat_statements.blk_write_time / 1000.0 as block_write_seconds_total
+#       FROM pg_stat_statements
+#       JOIN pg_database
+#         ON pg_database.oid = pg_stat_statements.dbid
+#       WHERE
+#         total_time > (
+#           SELECT percentile_cont(0.1)
+#             WITHIN GROUP (ORDER BY total_time)
+#             FROM pg_stat_statements
+#         )
+#       ORDER BY seconds_total DESC
+#       LIMIT 100
+#   metrics:
+#     - user:
+#         usage: "LABEL"
+#         description: "The user who executed the statement"
+#     - datname:
+#         usage: "LABEL"
+#         description: "The database in which the statement was executed"
+#     - queryid:
+#         usage: "LABEL"
+#         description: "Internal hash code, computed from the statement's parse tree"
+#     - calls_total:
+#         usage: "COUNTER"
+#         description: "Number of times executed"
+#     - seconds_total:
+#         usage: "COUNTER"
+#         description: "Total time spent in the statement, in seconds"
+#     - rows_total:
+#         usage: "COUNTER"
+#         description: "Total number of rows retrieved or affected by the statement"
+#     - block_read_seconds_total:
+#         usage: "COUNTER"
+#         description: "Total time the statement spent reading blocks, in seconds"
+#     - block_write_seconds_total:
+#         usage: "COUNTER"
+#         description: "Total time the statement spent writing blocks, in seconds"
 
 pg_process_idle:
   query: |
