@@ -125,7 +125,7 @@ func main() {
 	}
 
 	excludedDatabases := strings.Split(*excludeDatabases, ",")
-	logger.Log("msg", "Excluded databases", "databases", fmt.Sprintf("%v", excludedDatabases))
+	level.Info(logger).Log("msg", "Excluded databases", "databases", fmt.Sprintf("%v", excludedDatabases))
 
 	opts := []ExporterOpt{
 		DisableDefaultMetrics(*disableDefaultMetrics),
