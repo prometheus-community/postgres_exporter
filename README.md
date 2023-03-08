@@ -61,7 +61,7 @@ auth_modules:
 To build the Docker image:
 
     make promu
-    promu crossbuild -p linux/amd64 -p linux/armv7 -p linux/amd64 -p linux/ppc64le
+    promu crossbuild -p linux/amd64 -p linux/armv7 -p linux/arm64 -p linux/ppc64le
     make docker
 
 This will build the docker image as `prometheuscommunity/postgres_exporter:${branch}`.
