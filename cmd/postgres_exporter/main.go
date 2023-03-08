@@ -30,6 +30,7 @@ import (
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	"github.com/prometheus/exporter-toolkit/web/kingpinflag"
+	"go.uber.org/automaxprocs/maxprocs"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -68,6 +69,22 @@ const (
 	serverLabelName = "server"
 )
 
+type AutomaxprocsLog struct {
+	Level   func(log.Logger) log.Logger
+	Keyvals []any
+}
+
+var automaxprocsLogs []AutomaxprocsLog
+
+func init() {
+	_, err := maxprocs.Set(maxprocs.Logger(func(format string, args ...any) {
+		automaxprocsLogs = append(automaxprocsLogs, AutomaxprocsLog{Level: level.Info, Keyvals: []any{"msg", fmt.Sprintf(format, args...)}})
+	}))
+	if err != nil {
+		automaxprocsLogs = append(automaxprocsLogs, AutomaxprocsLog{Level: level.Error, Keyvals: []any{"msg", "failed to set GOMAXPROCS", "err", err}})
+	}
+}
+
 func main() {
 	kingpin.Version(version.Print(exporterName))
 	promlogConfig := &promlog.Config{}
@@ -75,6 +92,10 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 	logger = promlog.New(promlogConfig)
+
+	for _, automaxprocsLog := range automaxprocsLogs {
+		automaxprocsLog.Level(logger).Log(automaxprocsLog.Keyvals...)
+	}
 
 	// landingPage contains the HTML served at '/'.
 	// TODO: Make this nicer and more informative.
