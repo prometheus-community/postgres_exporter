@@ -19,6 +19,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus-community/postgres_exporter/collector"
@@ -30,7 +31,6 @@ import (
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	"github.com/prometheus/exporter-toolkit/web/kingpinflag"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (
@@ -40,7 +40,7 @@ var (
 
 	configFile             = kingpin.Flag("config.file", "Postgres exporter configuration file.").Default("postgres_exporter.yml").String()
 	webConfig              = kingpinflag.AddFlags(kingpin.CommandLine, ":9187")
-	metricPath             = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").Envar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
+	metricsPath            = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").Envar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
 	disableDefaultMetrics  = kingpin.Flag("disable-default-metrics", "Do not include default metrics.").Default("false").Envar("PG_EXPORTER_DISABLE_DEFAULT_METRICS").Bool()
 	disableSettingsMetrics = kingpin.Flag("disable-settings-metrics", "Do not include pg_settings metrics.").Default("false").Envar("PG_EXPORTER_DISABLE_SETTINGS_METRICS").Bool()
 	autoDiscoverDatabases  = kingpin.Flag("auto-discover-databases", "Whether to discover the databases on a server dynamically.").Default("false").Envar("PG_EXPORTER_AUTO_DISCOVER_DATABASES").Bool()
@@ -75,17 +75,6 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 	logger = promlog.New(promlogConfig)
-
-	// landingPage contains the HTML served at '/'.
-	// TODO: Make this nicer and more informative.
-	var landingPage = []byte(`<html>
-	<head><title>Postgres exporter</title></head>
-	<body>
-	<h1>Postgres exporter</h1>
-	<p><a href='` + *metricPath + `'>Metrics</a></p>
-	</body>
-	</html>
-	`)
 
 	if *onlyDumpMaps {
 		dumpMaps()
@@ -143,11 +132,27 @@ func main() {
 		prometheus.MustRegister(pe)
 	}
 
-	http.Handle(*metricPath, promhttp.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=UTF-8") // nolint: errcheck
-		w.Write(landingPage)                                       // nolint: errcheck
-	})
+	http.Handle(*metricsPath, promhttp.Handler())
+
+	if *metricsPath != "/" && *metricsPath != "" {
+		landingConfig := web.LandingConfig{
+			Name:        "Postgres Exporter",
+			Description: "Prometheus PostgreSQL server Exporter",
+			Version:     version.Info(),
+			Links: []web.LandingLinks{
+				{
+					Address: *metricsPath,
+					Text:    "Metrics",
+				},
+			},
+		}
+		landingPage, err := web.NewLandingPage(landingConfig)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+		http.Handle("/", landingPage)
+	}
 
 	http.HandleFunc("/probe", handleProbe(logger, excludedDatabases))
 
