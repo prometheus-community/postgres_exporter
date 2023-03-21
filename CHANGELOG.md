@@ -1,6 +1,6 @@
 ## master / unreleased
 
-## 0.12.0-rc.0 / 2022-08-26
+## 0.12.0 / 2023-03-21
 
 BREAKING CHANGES:
 
@@ -10,7 +10,11 @@ PostgreSQL servers from a single exporter by passing the target via URL
 params. See the Multi-Target Support section of the README.
 
 * [CHANGE] Add multi-target support #618
+* [CHANGE] Add usename and application_name to pg_stat_activity metrics #673
+* [FEATURE] Add replication metrics from pg_replication_slots #747
 * [BUGFIX] Add dsn type for handling datasources #678
+* [BUGFIX] Add 64kB unit for postgres 15 #740
+* [BUGFIX] Add 4kB unit for postgres compiled with small blocks #699
 
 ## 0.11.1 / 2022-08-01
 
