@@ -69,7 +69,7 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, db *sql.DB, ch cha
 		var slot_name string
 		var wal_lsn int64
 		var flush_lsn int64
-		var is_active int64
+		var is_active bool
 		if err := rows.Scan(&slot_name, &wal_lsn, &flush_lsn, &is_active); err != nil {
 			return err
 		}
@@ -78,7 +78,7 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, db *sql.DB, ch cha
 			pgReplicationSlot["current_wal_lsn"],
 			prometheus.GaugeValue, float64(wal_lsn), slot_name,
 		)
-		if is_active == 1 {
+		if is_active {
 			ch <- prometheus.MustNewConstMetric(
 				pgReplicationSlot["confirmed_flush_lsn"],
 				prometheus.GaugeValue, float64(flush_lsn), slot_name,
