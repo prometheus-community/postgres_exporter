@@ -83,7 +83,7 @@ func main() {
 
 	if err := c.ReloadConfig(*configFile, logger); err != nil {
 		// This is not fatal, but it means that auth must be provided for every dsn.
-		level.Error(logger).Log("msg", "Error loading config", "err", err)
+		level.Warn(logger).Log("msg", "Error loading config", "err", err)
 	}
 
 	dsns, err := getDataSources()
@@ -127,7 +127,7 @@ func main() {
 		[]string{},
 	)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create PostgresCollector", "err", err.Error())
+		level.Warn(logger).Log("msg", "Failed to create PostgresCollector", "err", err.Error())
 	} else {
 		prometheus.MustRegister(pe)
 	}
