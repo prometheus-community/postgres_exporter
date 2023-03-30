@@ -77,8 +77,21 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `collector.bgwriter`
   Enable the pg_stat_bgwriter collector. Default is `enabled`
 
+* `collector.replication_slot`
+  Enable the replication_slot collector. Default is `enabled`
+
+* `config.file`
+  Set the config file path. Default is `postgres_exporter.yml`
+
+* `web.systemd-socket`
+  Use systemd socket activation listeners instead of port listeners (Linux only). Default is `false`
+
 * `web.listen-address`
   Address to listen on for web interface and telemetry. Default is `:9187`.
+
+* `web.config.file`
+  Configuration file to use TLS and/or basic authentication. The format of the
+  file is described [in the exporter-toolkit repository](https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md).
 
 * `web.telemetry-path`
   Path under which to expose metrics. Default is `/metrics`.
@@ -117,10 +130,6 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 
 * `log.format`
   Set the log format: one of `logfmt`, `json`.
-
-* `web.config.file`
-  Configuration file to use TLS and/or basic authentication. The format of the
-  file is described [in the exporter-toolkit repository](https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md).
 
 ### Environment Variables
 
