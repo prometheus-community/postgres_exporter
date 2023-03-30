@@ -15,7 +15,6 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/go-kit/log"
@@ -179,7 +178,8 @@ var (
 		pg_stat_user_tables`
 )
 
-func (c *PGStatUserTablesCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
+func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	db := instance.getDB()
 	rows, err := db.QueryContext(ctx,
 		statUserTablesQuery)
 

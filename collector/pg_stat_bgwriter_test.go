@@ -30,6 +30,8 @@ func TestPGStatBGWriterCollector(t *testing.T) {
 	}
 	defer db.Close()
 
+	inst := &instance{db: db}
+
 	columns := []string{
 		"checkpoints_timed",
 		"checkpoints_req",
@@ -57,7 +59,7 @@ func TestPGStatBGWriterCollector(t *testing.T) {
 		defer close(ch)
 		c := PGStatBGWriterCollector{}
 
-		if err := c.Update(context.Background(), db, ch); err != nil {
+		if err := c.Update(context.Background(), inst, ch); err != nil {
 			t.Errorf("Error calling PGStatBGWriterCollector.Update: %s", err)
 		}
 	}()

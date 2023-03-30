@@ -29,6 +29,8 @@ func TestPGStatIOUserTablesCollector(t *testing.T) {
 	}
 	defer db.Close()
 
+	inst := &instance{db: db}
+
 	columns := []string{
 		"datname",
 		"schemaname",
@@ -60,7 +62,7 @@ func TestPGStatIOUserTablesCollector(t *testing.T) {
 		defer close(ch)
 		c := PGStatIOUserTablesCollector{}
 
-		if err := c.Update(context.Background(), db, ch); err != nil {
+		if err := c.Update(context.Background(), inst, ch); err != nil {
 			t.Errorf("Error calling PGStatIOUserTablesCollector.Update: %s", err)
 		}
 	}()

@@ -29,6 +29,8 @@ func TestPgReplicationSlotCollectorActive(t *testing.T) {
 	}
 	defer db.Close()
 
+	inst := &instance{db: db}
+
 	columns := []string{"slot_name", "current_wal_lsn", "confirmed_flush_lsn", "active"}
 	rows := sqlmock.NewRows(columns).
 		AddRow("test_slot", 5, 3, true)
@@ -39,7 +41,7 @@ func TestPgReplicationSlotCollectorActive(t *testing.T) {
 		defer close(ch)
 		c := PGReplicationSlotCollector{}
 
-		if err := c.Update(context.Background(), db, ch); err != nil {
+		if err := c.Update(context.Background(), inst, ch); err != nil {
 			t.Errorf("Error calling PGPostmasterCollector.Update: %s", err)
 		}
 	}()
@@ -68,6 +70,8 @@ func TestPgReplicationSlotCollectorInActive(t *testing.T) {
 	}
 	defer db.Close()
 
+	inst := &instance{db: db}
+
 	columns := []string{"slot_name", "current_wal_lsn", "confirmed_flush_lsn", "active"}
 	rows := sqlmock.NewRows(columns).
 		AddRow("test_slot", 6, 12, false)
@@ -78,7 +82,7 @@ func TestPgReplicationSlotCollectorInActive(t *testing.T) {
 		defer close(ch)
 		c := PGReplicationSlotCollector{}
 
-		if err := c.Update(context.Background(), db, ch); err != nil {
+		if err := c.Update(context.Background(), inst, ch); err != nil {
 			t.Errorf("Error calling PGReplicationSlotCollector.Update: %s", err)
 		}
 	}()

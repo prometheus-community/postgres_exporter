@@ -29,6 +29,8 @@ func TestPgPostmasterCollector(t *testing.T) {
 	}
 	defer db.Close()
 
+	inst := &instance{db: db}
+
 	mock.ExpectQuery(sanitizeQuery(pgPostmasterQuery)).WillReturnRows(sqlmock.NewRows([]string{"pg_postmaster_start_time"}).
 		AddRow(1685739904))
 
@@ -37,7 +39,7 @@ func TestPgPostmasterCollector(t *testing.T) {
 		defer close(ch)
 		c := PGPostmasterCollector{}
 
-		if err := c.Update(context.Background(), db, ch); err != nil {
+		if err := c.Update(context.Background(), inst, ch); err != nil {
 			t.Errorf("Error calling PGPostmasterCollector.Update: %s", err)
 		}
 	}()
