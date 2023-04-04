@@ -225,6 +225,14 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		true,
 		0,
 	},
+	"pg_lock_conflicts": {
+		map[string]ColumnMapping{
+			"blocking_pid": {LABEL, "PID of blocking session", nil, nil},
+			"count":        {GAUGE, "Number of blocked sessions", nil, nil},
+		},
+		true,
+		0,
+	},
 	"pg_stat_replication": {
 		map[string]ColumnMapping{
 			"procpid":                  {DISCARD, "Process ID of a WAL sender process", nil, semver.MustParseRange("<9.2.0")},
