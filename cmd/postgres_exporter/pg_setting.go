@@ -70,7 +70,7 @@ func (s *pgSetting) metric(labels prometheus.Labels) prometheus.Metric {
 		err       error
 		name      = strings.Replace(s.name, ".", "_", -1)
 		unit      = s.unit // nolint: ineffassign
-		shortDesc = s.shortDesc
+		shortDesc = fmt.Sprintf("Server Parameter: %s", s.name)
 		subsystem = "settings"
 		val       float64
 	)
