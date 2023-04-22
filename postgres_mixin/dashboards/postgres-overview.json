@@ -1136,9 +1136,8 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum by (datname) (rate(pg_stat_database_blks_hit{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) / (sum by (datname)(rate(pg_stat_database_blks_hit{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) + sum by (datname)(rate(pg_stat_database_blks_read{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])))",
+          "expr": "round(sum by (datname) (rate(pg_stat_database_blks_hit{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) / (sum by (datname)(rate(pg_stat_database_blks_hit{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) + sum by (datname)(rate(pg_stat_database_blks_read{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])))*100,0.001)",
           "format": "time_series",
-          "intervalFactor": 2,
           "legendFormat": "{{datname}} - cache hit rate",
           "refId": "A",
           "step": 240
@@ -1165,11 +1164,11 @@
       },
       "yaxes": [
         {
-          "format": "percentunit",
+          "format": "percent",
           "label": null,
           "logBase": 1,
-          "max": null,
-          "min": null,
+          "max": 100,
+          "min": 0,
           "show": true
         },
         {
