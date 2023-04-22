@@ -1341,7 +1341,7 @@
         "multi": true,
         "name": "instance",
         "options": [],
-        "query": "label_values(up{job=~\"$job\"},instance)",
+        "query": "label_values(pg_up{job=~\"$job\"},instance)",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
