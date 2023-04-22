@@ -1,0 +1,15 @@
+---
+exclusions:
+  panel-units-rule:
+    reason: Ignoring so far, need to address this in future
+  panel-title-description-rule:
+    reason: Ignoring so far, need to address this in future
+  panel-datasource-rule:
+    reason: "Loki datasource variable is being named as loki_datasource now while linter expects 'datasource'"
+  template-datasource-rule:
+    reason: "Based on new convention we are using variable names prometheus_datasource and loki_datasource where as linter expects 'datasource'"
+  alert-name-camelcase:
+    reason: QPS is a common acronym (Queries Per Second) and should be allowed
+    entries:
+      - alert: PostgreSQLQPS
+    

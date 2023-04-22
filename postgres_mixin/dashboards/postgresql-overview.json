@@ -3,79 +3,260 @@
     "list": [
       {
         "builtIn": 1,
-        "datasource": "-- Grafana --",
+        "datasource": {
+          "type": "datasource",
+          "uid": "grafana"
+        },
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
         "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
         "type": "dashboard"
       }
     ]
   },
   "description": "Performance metrics for Postgres",
   "editable": true,
+  "fiscalYearStartMonth": 0,
   "gnetId": 455,
   "graphTooltip": 0,
-  "id": 1,
-  "iteration": 1603191461722,
+  "id": 38,
   "links": [],
+  "liveNow": false,
   "panels": [
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "$datasource",
-      "editable": true,
-      "error": false,
+      "collapse": false,
+      "collapsed": false,
+      "gridPos": {
+         "h": 2,
+         "w": 8,
+         "x": 0,
+         "y": 0
+      },
+      "panels": [ ],
+      "repeat": null,
+      "repeatIteration": null,
+      "repeatRowId": null,
+      "showTitle": true,
+      "span": 4,
+      "title": "PostgreSQL overview",
+      "titleSize": "h6",
+      "type": "row"
+   },
+    {
+      
+      "datasource": {
+        "uid": "$datasource"
+      },
       "fieldConfig": {
         "defaults": {
-          "custom": {}
+          "color": {
+            "fixedColor": "rgb(31, 120, 193)",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "N/A"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
         },
         "overrides": []
       },
-      "fill": 1,
-      "fillGradient": 0,
-      "grid": {},
       "gridPos": {
         "h": 7,
-        "w": 20,
+        "w": 4,
         "x": 0,
         "y": 0
       },
-      "hiddenSeries": false,
-      "id": 1,
-      "isNew": true,
-      "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": false,
-        "max": true,
-        "min": true,
-        "rightSide": true,
-        "show": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
+      "id": 11,
       "links": [],
-      "nullPointMode": "connected",
+      "maxDataPoints": 100,
       "options": {
-        "alertThreshold": true
+        "colorMode": "none",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
       },
-      "percentage": false,
-      "pluginVersion": "7.2.1",
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
+      "pluginVersion": "9.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "dsType": "prometheus",
+          "expr": "sum(irate(pg_stat_database_xact_commit{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) + sum(irate(pg_stat_database_xact_rollback{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
+          "format": "time_series",
+          "groupBy": [
+            {
+              "params": [
+                "$interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "intervalFactor": 2,
+          "measurement": "postgresql",
+          "policy": "default",
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "xact_commit"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              },
+              {
+                "params": [
+                  "10s"
+                ],
+                "type": "non_negative_derivative"
+              }
+            ]
+          ],
+          "step": 1800,
+          "tags": [
+            {
+              "key": "instance",
+              "operator": "=~",
+              "value": "/^$instance$/"
+            }
+          ]
+        }
+      ],
+      "title": "QPS",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 20,
+        "x": 4,
+        "y": 0
+      },
+      "id": 1,
+      "links": [],
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max",
+            "min"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "9.4.3",
       "targets": [
         {
           "alias": "fetched",
+          "datasource": {
+            "uid": "$datasource"
+          },
           "dsType": "prometheus",
           "expr": "sum(irate(pg_stat_database_tup_fetched{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
           "format": "time_series",
@@ -130,6 +311,9 @@
         },
         {
           "alias": "fetched",
+          "datasource": {
+            "uid": "$datasource"
+          },
           "dsType": "prometheus",
           "expr": "sum(irate(pg_stat_database_tup_returned{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
           "format": "time_series",
@@ -184,6 +368,9 @@
         },
         {
           "alias": "fetched",
+          "datasource": {
+            "uid": "$datasource"
+          },
           "dsType": "prometheus",
           "expr": "sum(irate(pg_stat_database_tup_inserted{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
           "format": "time_series",
@@ -238,6 +425,9 @@
         },
         {
           "alias": "fetched",
+          "datasource": {
+            "uid": "$datasource"
+          },
           "dsType": "prometheus",
           "expr": "sum(irate(pg_stat_database_tup_updated{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
           "format": "time_series",
@@ -292,6 +482,9 @@
         },
         {
           "alias": "fetched",
+          "datasource": {
+            "uid": "$datasource"
+          },
           "dsType": "prometheus",
           "expr": "sum(irate(pg_stat_database_tup_deleted{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
           "format": "time_series",
@@ -345,246 +538,100 @@
           ]
         }
       ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
       "title": "Rows",
-      "tooltip": {
-        "msResolution": true,
-        "shared": true,
-        "sort": 0,
-        "value_type": "cumulative"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
+      "type": "timeseries"
     },
     {
-      "cacheTimeout": null,
-      "colorBackground": false,
-      "colorValue": false,
-      "colors": [
-        "rgba(245, 54, 54, 0.9)",
-        "rgba(237, 129, 40, 0.89)",
-        "rgba(50, 172, 45, 0.97)"
-      ],
-      "datasource": "$datasource",
-      "decimals": 0,
-      "editable": true,
-      "error": false,
+      "datasource": {
+        "uid": "$datasource"
+      },
       "fieldConfig": {
         "defaults": {
-          "custom": {}
-        },
-        "overrides": []
-      },
-      "format": "none",
-      "gauge": {
-        "maxValue": 100,
-        "minValue": 0,
-        "show": false,
-        "thresholdLabels": false,
-        "thresholdMarkers": true
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 4,
-        "x": 20,
-        "y": 0
-      },
-      "height": "55px",
-      "id": 11,
-      "interval": null,
-      "isNew": true,
-      "links": [],
-      "mappingType": 1,
-      "mappingTypes": [
-        {
-          "name": "value to text",
-          "value": 1
-        },
-        {
-          "name": "range to text",
-          "value": 2
-        }
-      ],
-      "maxDataPoints": 100,
-      "nullPointMode": "connected",
-      "nullText": null,
-      "postfix": "",
-      "postfixFontSize": "50%",
-      "prefix": "",
-      "prefixFontSize": "50%",
-      "rangeMaps": [
-        {
-          "from": "null",
-          "text": "N/A",
-          "to": "null"
-        }
-      ],
-      "sparkline": {
-        "fillColor": "rgba(31, 118, 189, 0.18)",
-        "full": true,
-        "lineColor": "rgb(31, 120, 193)",
-        "show": true
-      },
-      "tableColumn": "",
-      "targets": [
-        {
-          "dsType": "prometheus",
-          "expr": "sum(irate(pg_stat_database_xact_commit{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) + sum(irate(pg_stat_database_xact_rollback{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
-          "format": "time_series",
-          "groupBy": [
-            {
-              "params": [
-                "$interval"
-              ],
-              "type": "time"
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
             },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
             }
-          ],
-          "intervalFactor": 2,
-          "measurement": "postgresql",
-          "policy": "default",
-          "refId": "A",
-          "resultFormat": "time_series",
-          "select": [
-            [
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
               {
-                "params": [
-                  "xact_commit"
-                ],
-                "type": "field"
+                "color": "green",
+                "value": null
               },
               {
-                "params": [],
-                "type": "mean"
-              },
-              {
-                "params": [
-                  "10s"
-                ],
-                "type": "non_negative_derivative"
+                "color": "red",
+                "value": 80
               }
             ]
-          ],
-          "step": 1800,
-          "tags": [
-            {
-              "key": "instance",
-              "operator": "=~",
-              "value": "/^$instance$/"
-            }
-          ]
-        }
-      ],
-      "thresholds": "",
-      "title": "QPS",
-      "transparent": true,
-      "type": "singlestat",
-      "valueFontSize": "80%",
-      "valueMaps": [
-        {
-          "op": "=",
-          "text": "N/A",
-          "value": "null"
-        }
-      ],
-      "valueName": "avg"
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "$datasource",
-      "decimals": 1,
-      "editable": true,
-      "error": false,
-      "fieldConfig": {
-        "defaults": {
-          "custom": {}
+          },
+          "unit": "short"
         },
         "overrides": []
       },
-      "fill": 1,
-      "fillGradient": 0,
-      "grid": {},
       "gridPos": {
         "h": 7,
         "w": 12,
         "x": 0,
         "y": 7
       },
-      "hiddenSeries": false,
       "id": 2,
-      "isNew": true,
-      "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": false,
-        "hideZero": true,
-        "max": true,
-        "min": true,
-        "rightSide": false,
-        "show": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
       "links": [],
-      "nullPointMode": "connected",
       "options": {
-        "alertThreshold": true
+        "legend": {
+          "calcs": [
+            "mean",
+            "max",
+            "min"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
-      "percentage": false,
-      "pluginVersion": "7.2.1",
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
+      "pluginVersion": "9.4.3",
       "targets": [
         {
           "alias": "Buffers Allocated",
+          "datasource": {
+            "uid": "$datasource"
+          },
           "dsType": "prometheus",
-          "expr": "irate(pg_stat_bgwriter_buffers_alloc{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
+          "expr": "irate(pg_stat_bgwriter_buffers_alloc_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
           "format": "time_series",
           "groupBy": [
             {
@@ -635,8 +682,11 @@
         },
         {
           "alias": "Buffers Allocated",
+          "datasource": {
+            "uid": "$datasource"
+          },
           "dsType": "prometheus",
-          "expr": "irate(pg_stat_bgwriter_buffers_backend_fsync{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
+          "expr": "irate(pg_stat_bgwriter_buffers_backend_fsync_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
           "format": "time_series",
           "groupBy": [
             {
@@ -687,8 +737,11 @@
         },
         {
           "alias": "Buffers Allocated",
+          "datasource": {
+            "uid": "$datasource"
+          },
           "dsType": "prometheus",
-          "expr": "irate(pg_stat_bgwriter_buffers_backend{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
+          "expr": "irate(pg_stat_bgwriter_buffers_backend_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
           "format": "time_series",
           "groupBy": [
             {
@@ -739,8 +792,11 @@
         },
         {
           "alias": "Buffers Allocated",
+          "datasource": {
+            "uid": "$datasource"
+          },
           "dsType": "prometheus",
-          "expr": "irate(pg_stat_bgwriter_buffers_clean{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
+          "expr": "irate(pg_stat_bgwriter_buffers_clean_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
           "format": "time_series",
           "groupBy": [
             {
@@ -791,8 +847,11 @@
         },
         {
           "alias": "Buffers Allocated",
+          "datasource": {
+            "uid": "$datasource"
+          },
           "dsType": "prometheus",
-          "expr": "irate(pg_stat_bgwriter_buffers_checkpoint{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
+          "expr": "irate(pg_stat_bgwriter_buffers_checkpoint_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
           "format": "time_series",
           "groupBy": [
             {
@@ -842,104 +901,113 @@
           ]
         }
       ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
       "title": "Buffers",
-      "tooltip": {
-        "msResolution": false,
-        "shared": true,
-        "sort": 0,
-        "value_type": "cumulative"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": 0,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
+      "type": "timeseries"
     },
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "$datasource",
-      "editable": true,
-      "error": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
       "fieldConfig": {
         "defaults": {
-          "custom": {}
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deadlocks"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "light-red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
-      "fill": 1,
-      "fillGradient": 0,
-      "grid": {},
       "gridPos": {
         "h": 7,
         "w": 12,
         "x": 12,
         "y": 7
       },
-      "hiddenSeries": false,
       "id": 3,
-      "isNew": true,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": true,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
       "links": [],
-      "nullPointMode": "connected",
       "options": {
-        "alertThreshold": true
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
-      "percentage": false,
-      "pluginVersion": "7.2.1",
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
+      "pluginVersion": "9.4.3",
       "targets": [
         {
           "alias": "conflicts",
+          "datasource": {
+            "uid": "$datasource"
+          },
           "dsType": "prometheus",
-          "expr": "sum(rate(pg_stat_database_deadlocks{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
+          "expr": "sum(pg_stat_database_deadlocks{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"})",
           "format": "time_series",
           "groupBy": [
             {
@@ -959,6 +1027,7 @@
           "legendFormat": "deadlocks",
           "measurement": "postgresql",
           "policy": "default",
+          "range": true,
           "refId": "A",
           "resultFormat": "time_series",
           "select": [
@@ -990,8 +1059,12 @@
         },
         {
           "alias": "deadlocks",
+          "datasource": {
+            "uid": "$datasource"
+          },
           "dsType": "prometheus",
-          "expr": "sum(rate(pg_stat_database_conflicts{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
+          "editorMode": "code",
+          "expr": "sum(pg_stat_database_conflicts{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"})",
           "format": "time_series",
           "groupBy": [
             {
@@ -1011,6 +1084,7 @@
           "legendFormat": "conflicts",
           "measurement": "postgresql",
           "policy": "default",
+          "range": true,
           "refId": "B",
           "resultFormat": "time_series",
           "select": [
@@ -1041,204 +1115,187 @@
           ]
         }
       ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
       "title": "Conflicts/Deadlocks",
-      "tooltip": {
-        "msResolution": false,
-        "shared": true,
-        "sort": 0,
-        "value_type": "cumulative"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": 0,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
+      "type": "timeseries"
     },
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "$datasource",
-      "editable": true,
-      "error": false,
+      "datasource": {
+        "uid": "$datasource"
+      },
       "fieldConfig": {
         "defaults": {
-          "custom": {}
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percent"
         },
         "overrides": []
       },
-      "fill": 1,
-      "fillGradient": 0,
-      "grid": {},
       "gridPos": {
         "h": 7,
         "w": 12,
         "x": 0,
         "y": 14
       },
-      "hiddenSeries": false,
       "id": 12,
-      "isNew": true,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": true,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
       "links": [],
-      "nullPointMode": "connected",
       "options": {
-        "alertThreshold": true
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
-      "percentage": true,
-      "pluginVersion": "7.2.1",
-      "pointradius": 1,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
+      "pluginVersion": "9.4.3",
       "targets": [
         {
-          "expr": "sum by (datname) (rate(pg_stat_database_blks_hit{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) / (sum by (datname)(rate(pg_stat_database_blks_hit{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) + sum by (datname)(rate(pg_stat_database_blks_read{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])))",
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "expr": "round(sum by (datname) (rate(pg_stat_database_blks_hit{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) / (sum by (datname)(rate(pg_stat_database_blks_hit{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) + sum by (datname)(rate(pg_stat_database_blks_read{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])))*100,0.001)",
           "format": "time_series",
-          "intervalFactor": 2,
           "legendFormat": "{{datname}} - cache hit rate",
           "refId": "A",
           "step": 240
         }
       ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
       "title": "Cache hit ratio",
-      "tooltip": {
-        "msResolution": false,
-        "shared": true,
-        "sort": 0,
-        "value_type": "cumulative"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "percentunit",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
+      "type": "timeseries"
     },
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "$datasource",
-      "editable": true,
-      "error": false,
+      "datasource": {
+        "uid": "$datasource"
+      },
       "fieldConfig": {
         "defaults": {
-          "custom": {}
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
         },
         "overrides": []
       },
-      "fill": 1,
-      "fillGradient": 0,
-      "grid": {},
       "gridPos": {
         "h": 7,
         "w": 12,
         "x": 12,
         "y": 14
       },
-      "hiddenSeries": false,
       "id": 13,
-      "isNew": true,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": true,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
       "links": [],
-      "nullPointMode": "connected",
       "options": {
-        "alertThreshold": true
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
-      "percentage": false,
-      "pluginVersion": "7.2.1",
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
+      "pluginVersion": "9.4.3",
       "targets": [
         {
+          "datasource": {
+            "uid": "$datasource"
+          },
           "expr": "pg_stat_database_numbackends{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}",
           "format": "time_series",
           "intervalFactor": 2,
@@ -1247,51 +1304,13 @@
           "step": 240
         }
       ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
       "title": "Number of active connections",
-      "tooltip": {
-        "msResolution": false,
-        "shared": true,
-        "sort": 0,
-        "value_type": "cumulative"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
+      "type": "timeseries"
     }
   ],
   "refresh": false,
-  "schemaVersion": 26,
+  "revision": 1,
+  "schemaVersion": 38,
   "style": "dark",
   "tags": [
     "postgres"
@@ -1310,66 +1329,96 @@
         "regex": "",
         "skipUrlSync": false,
         "type": "datasource"
-      },      
+      },
       {
         "allValue": ".+",
-        "datasource": "$datasource",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "uid": "$datasource"
+        },
         "definition": "label_values(pg_up, job)",
         "hide": 0,
         "includeAll": true,
-        "label": "job",
+        "label": "Job",
         "multi": true,
         "name": "job",
         "options": [],
-        "query": "label_values(pg_up, job)",
-        "refresh": 0,
+        "query": {
+          "query": "label_values(pg_up, job)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
         "sort": 0,
         "tagValuesQuery": "",
-        "tags": [],
         "tagsQuery": "",
         "type": "query",
         "useTags": false
       },
       {
         "allValue": ".+",
-        "datasource": "$datasource",
-        "definition": "",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "uid": "$datasource"
+        },
+        "definition": "label_values(pg_up{job=~\"$job\"},instance)",
         "hide": 0,
         "includeAll": true,
-        "label": "instance",
+        "label": "Instance",
         "multi": true,
         "name": "instance",
         "options": [],
-        "query": "label_values(up{job=~\"$job\"},instance)",
-        "refresh": 1,
+        "query": {
+          "query": "label_values(pg_up{job=~\"$job\"},instance)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
         "sort": 0,
         "tagValuesQuery": "",
-        "tags": [],
         "tagsQuery": "",
         "type": "query",
         "useTags": false
       },
       {
         "allValue": ".+",
-        "datasource": "$datasource",
-        "definition": "label_values(pg_stat_database_tup_fetched{instance=~\"$instance\",datname!~\"template.*|postgres\"},datname)",
+        "datasource": {
+          "uid": "$datasource"
+        },
+        "definition": "label_values(pg_stat_database_tup_fetched{job=~\"$job\",instance=~\"$instance\",datname!~\"template.*|postgres\"},datname)",
         "hide": 0,
         "includeAll": true,
-        "label": "db",
+        "label": "Database",
         "multi": false,
         "name": "db",
         "options": [],
-        "query": "label_values(pg_stat_database_tup_fetched{instance=~\"$instance\",datname!~\"template.*|postgres\"},datname)",
-        "refresh": 1,
+        "query": {
+          "query": "label_values(pg_stat_database_tup_fetched{job=~\"$job\",instance=~\"$instance\",datname!~\"template.*|postgres\"},datname)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
         "sort": 0,
         "tagValuesQuery": "",
-        "tags": [],
         "tagsQuery": "",
         "type": "query",
         "useTags": false
@@ -1408,5 +1457,6 @@
   "timezone": "browser",
   "title": "Postgres Overview",
   "uid": "wGgaPlciz",
-  "version": 5
+  "version": 39,
+  "weekStart": ""
 }
