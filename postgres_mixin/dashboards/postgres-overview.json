@@ -941,7 +941,23 @@
           },
           "unit": "short"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deadlocks"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "light-red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 7,
@@ -971,7 +987,7 @@
             "uid": "$datasource"
           },
           "dsType": "prometheus",
-          "expr": "sum(rate(pg_stat_database_deadlocks{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
+          "expr": "sum(pg_stat_database_deadlocks{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"})",
           "format": "time_series",
           "groupBy": [
             {
@@ -991,6 +1007,7 @@
           "legendFormat": "deadlocks",
           "measurement": "postgresql",
           "policy": "default",
+          "range": true,
           "refId": "A",
           "resultFormat": "time_series",
           "select": [
@@ -1027,7 +1044,7 @@
           },
           "dsType": "prometheus",
           "editorMode": "code",
-          "expr": "sum(rate(pg_stat_database_conflicts{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
+          "expr": "sum(pg_stat_database_conflicts{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"})",
           "format": "time_series",
           "groupBy": [
             {
@@ -1386,7 +1403,7 @@
     ]
   },
   "time": {
-    "from": "now-3h",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {
