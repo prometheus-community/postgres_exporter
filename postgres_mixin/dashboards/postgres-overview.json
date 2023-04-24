@@ -1332,7 +1332,8 @@
         "name": "job",
         "options": [],
         "query": {
-          "query": "label_values(pg_up, job)"
+          "query": "label_values(pg_up, job)",
+          "refId": "StandardVariableQuery"
         },
         "refresh": 1,
         "regex": "",
@@ -1365,7 +1366,8 @@
         "name": "instance",
         "options": [],
         "query": {
-          "query": "label_values(pg_up{job=~\"$job\"},instance)"
+          "query": "label_values(pg_up{job=~\"$job\"},instance)",
+          "refId": "StandardVariableQuery"
         },
         "refresh": 1,
         "regex": "",
@@ -1389,7 +1391,8 @@
         "name": "db",
         "options": [],
         "query": {
-          "query": "label_values(pg_stat_database_tup_fetched{instance=~\"$instance\",datname!~\"template.*|postgres\"},datname)"
+          "query": "label_values(pg_stat_database_tup_fetched{instance=~\"$instance\",datname!~\"template.*|postgres\"},datname)",
+          "refId": "StandardVariableQuery"
         },
         "refresh": 1,
         "regex": "",
