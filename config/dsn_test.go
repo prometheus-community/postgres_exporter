@@ -187,6 +187,19 @@ func Test_dsnFromString(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:  "Alternative URL prefix",
+			input: "postgres://user:s3cret@host.example.com:5432/tsdb?user=postgres",
+			want: DSN{
+				scheme:   "postgres",
+				host:     "host.example.com:5432",
+				path:     "/tsdb",
+				query:    url.Values{},
+				username: "user",
+				password: "s3cret",
+			},
+			wantErr: false,
+		},
+		{
 			name:  "URL with user and password in query string",
 			input: "postgresql://host.example.com:5432/tsdb?user=postgres&password=s3cr3t",
 			want: DSN{
