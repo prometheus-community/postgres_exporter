@@ -75,7 +75,11 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			}
 
 			if dsnURI != nil {
-				dsnURI.Path = databaseName
+				if dsnURI.Host == "" && strings.HasPrefix(dsnURI.Path, "/") {
+					dsnURI.Path = "/" + databaseName
+				} else {
+					dsnURI.Path = databaseName
+				}
 				dsn = dsnURI.String()
 			} else {
 				// replacing one dbname with another is complicated.
