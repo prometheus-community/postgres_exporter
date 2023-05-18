@@ -28,6 +28,7 @@ func init() {
 type PGDatabaseCollector struct {
 	log               log.Logger
 	excludedDatabases []string
+	pgDatabase        map[string]*prometheus.Desc
 }
 
 func NewPGDatabaseCollector(config collectorConfig) (Collector, error) {
@@ -35,18 +36,20 @@ func NewPGDatabaseCollector(config collectorConfig) (Collector, error) {
 	if exclude == nil {
 		exclude = []string{}
 	}
+
+	var pgDatabase = map[string]*prometheus.Desc{
+		"size_bytes": prometheus.NewDesc(
+			"pg_database_size_bytes",
+			"Disk space used by the database",
+			[]string{"datname"}, config.constantLabels,
+		),
+	}
+
 	return &PGDatabaseCollector{
 		log:               config.logger,
 		excludedDatabases: exclude,
+		pgDatabase:        pgDatabase,
 	}, nil
-}
-
-var pgDatabase = map[string]*prometheus.Desc{
-	"size_bytes": prometheus.NewDesc(
-		"pg_database_size_bytes",
-		"Disk space used by the database",
-		[]string{"datname"}, nil,
-	),
 }
 
 // Update implements Collector and exposes database size.
@@ -96,7 +99,7 @@ func (c PGDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<- p
 		}
 
 		ch <- prometheus.MustNewConstMetric(
-			pgDatabase["size_bytes"],
+			c.pgDatabase["size_bytes"],
 			prometheus.GaugeValue, float64(size), datname,
 		)
 	}

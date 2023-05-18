@@ -65,6 +65,7 @@ type Collector interface {
 type collectorConfig struct {
 	logger           log.Logger
 	excludeDatabases []string
+	constantLabels   prometheus.Labels
 }
 
 func registerCollector(name string, isDefaultEnabled bool, createFunc func(collectorConfig) (Collector, error)) {
@@ -89,8 +90,9 @@ func registerCollector(name string, isDefaultEnabled bool, createFunc func(colle
 
 // PostgresCollector implements the prometheus.Collector interface.
 type PostgresCollector struct {
-	Collectors map[string]Collector
-	logger     log.Logger
+	Collectors     map[string]Collector
+	logger         log.Logger
+	constantLabels prometheus.Labels
 
 	db *sql.DB
 }
@@ -98,9 +100,10 @@ type PostgresCollector struct {
 type Option func(*PostgresCollector) error
 
 // NewPostgresCollector creates a new PostgresCollector.
-func NewPostgresCollector(logger log.Logger, excludeDatabases []string, dsn string, filters []string, options ...Option) (*PostgresCollector, error) {
+func NewPostgresCollector(logger log.Logger, excludeDatabases []string, dsn string, filters []string, constantLabels prometheus.Labels, options ...Option) (*PostgresCollector, error) {
 	p := &PostgresCollector{
-		logger: logger,
+		logger:         logger,
+		constantLabels: constantLabels,
 	}
 	// Apply options to customize the collector
 	for _, o := range options {

@@ -125,6 +125,7 @@ func main() {
 		excludedDatabases,
 		dsn,
 		[]string{},
+		ParseConstLabels(*constantLabelsList),
 	)
 	if err != nil {
 		level.Warn(logger).Log("msg", "Failed to create PostgresCollector", "err", err.Error())

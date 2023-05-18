@@ -509,11 +509,11 @@ func WithUserQueriesPath(p string) ExporterOpt {
 // WithConstantLabels configures constant labels.
 func WithConstantLabels(s string) ExporterOpt {
 	return func(e *Exporter) {
-		e.constantLabels = parseConstLabels(s)
+		e.constantLabels = ParseConstLabels(s)
 	}
 }
 
-func parseConstLabels(s string) prometheus.Labels {
+func ParseConstLabels(s string) prometheus.Labels {
 	labels := make(prometheus.Labels)
 
 	s = strings.TrimSpace(s)

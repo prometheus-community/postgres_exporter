@@ -290,7 +290,7 @@ func (s *FunctionalSuite) TestParseConstLabels(c *C) {
 	}
 
 	for _, cs := range cases {
-		labels := parseConstLabels(cs.s)
+		labels := ParseConstLabels(cs.s)
 		if !reflect.DeepEqual(labels, cs.labels) {
 			c.Fatalf("labels not equal (%v -> %v)", labels, cs.labels)
 		}
