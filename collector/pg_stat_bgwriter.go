@@ -106,7 +106,7 @@ func NewPGStatBGWriterCollector(collectorConfig collectorConfig) (Collector, err
 
 const bgWriterSubsystem = "stat_bgwriter"
 
-func (PGStatBGWriterCollector PGStatBGWriterCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
+func (c PGStatBGWriterCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
 	row := db.QueryRowContext(ctx,
 		`SELECT
 			 checkpoints_timed
@@ -140,57 +140,57 @@ func (PGStatBGWriterCollector PGStatBGWriterCollector) Update(ctx context.Contex
 	}
 
 	ch <- prometheus.MustNewConstMetric(
-		PGStatBGWriterCollector.statBGWriter["checkpoints_timed"],
+		c.statBGWriter["checkpoints_timed"],
 		prometheus.CounterValue,
 		float64(cpt),
 	)
 	ch <- prometheus.MustNewConstMetric(
-		PGStatBGWriterCollector.statBGWriter["checkpoints_req"],
+		c.statBGWriter["checkpoints_req"],
 		prometheus.CounterValue,
 		float64(cpr),
 	)
 	ch <- prometheus.MustNewConstMetric(
-		PGStatBGWriterCollector.statBGWriter["checkpoint_write_time"],
+		c.statBGWriter["checkpoint_write_time"],
 		prometheus.CounterValue,
 		float64(cpwt),
 	)
 	ch <- prometheus.MustNewConstMetric(
-		PGStatBGWriterCollector.statBGWriter["checkpoint_sync_time"],
+		c.statBGWriter["checkpoint_sync_time"],
 		prometheus.CounterValue,
 		float64(cpst),
 	)
 	ch <- prometheus.MustNewConstMetric(
-		PGStatBGWriterCollector.statBGWriter["buffers_checkpoint"],
+		c.statBGWriter["buffers_checkpoint"],
 		prometheus.CounterValue,
 		float64(bcp),
 	)
 	ch <- prometheus.MustNewConstMetric(
-		PGStatBGWriterCollector.statBGWriter["buffers_clean"],
+		c.statBGWriter["buffers_clean"],
 		prometheus.CounterValue,
 		float64(bc),
 	)
 	ch <- prometheus.MustNewConstMetric(
-		PGStatBGWriterCollector.statBGWriter["maxwritten_clean"],
+		c.statBGWriter["maxwritten_clean"],
 		prometheus.CounterValue,
 		float64(mwc),
 	)
 	ch <- prometheus.MustNewConstMetric(
-		PGStatBGWriterCollector.statBGWriter["buffers_backend"],
+		c.statBGWriter["buffers_backend"],
 		prometheus.CounterValue,
 		float64(bb),
 	)
 	ch <- prometheus.MustNewConstMetric(
-		PGStatBGWriterCollector.statBGWriter["buffers_backend_fsync"],
+		c.statBGWriter["buffers_backend_fsync"],
 		prometheus.CounterValue,
 		float64(bbf),
 	)
 	ch <- prometheus.MustNewConstMetric(
-		PGStatBGWriterCollector.statBGWriter["buffers_alloc"],
+		c.statBGWriter["buffers_alloc"],
 		prometheus.CounterValue,
 		float64(ba),
 	)
 	ch <- prometheus.MustNewConstMetric(
-		PGStatBGWriterCollector.statBGWriter["stats_reset"],
+		c.statBGWriter["stats_reset"],
 		prometheus.CounterValue,
 		float64(sr.Unix()),
 	)
