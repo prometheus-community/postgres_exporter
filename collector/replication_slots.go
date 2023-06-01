@@ -33,23 +33,23 @@ func NewPGReplicationSlotCollector(config collectorConfig) (Collector, error) {
 	return &PGReplicationSlotCollector{log: config.logger}, nil
 }
 
-var pgReplicationSlot = map[string]*prometheus.Desc{
-	"current_wal_lsn": prometheus.NewDesc(
+var (
+	pgReplicationSlotCurrentWalDesc = prometheus.NewDesc(
 		"pg_replication_slot_current_wal_lsn",
 		"current wal lsn value",
 		[]string{"slot_name"}, nil,
-	),
-	"confirmed_flush_lsn": prometheus.NewDesc(
+	)
+	pgReplicationSlotCurrentFlushDesc = prometheus.NewDesc(
 		"pg_replication_slot_confirmed_flush_lsn",
 		"last lsn confirmed flushed to the replication slot",
 		[]string{"slot_name"}, nil,
-	),
-	"is_active": prometheus.NewDesc(
+	)
+	pgReplicationSlotIsActiveDesc = prometheus.NewDesc(
 		"pg_replication_slot_is_active",
 		"last lsn confirmed flushed to the replication slot",
 		[]string{"slot_name"}, nil,
-	),
-}
+	)
+)
 
 func (PGReplicationSlotCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
 	rows, err := db.QueryContext(ctx,
@@ -75,17 +75,17 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, db *sql.DB, ch cha
 		}
 
 		ch <- prometheus.MustNewConstMetric(
-			pgReplicationSlot["current_wal_lsn"],
+			pgReplicationSlotCurrentWalDesc,
 			prometheus.GaugeValue, float64(wal_lsn), slot_name,
 		)
 		if is_active {
 			ch <- prometheus.MustNewConstMetric(
-				pgReplicationSlot["confirmed_flush_lsn"],
+				pgReplicationSlotCurrentFlushDesc,
 				prometheus.GaugeValue, float64(flush_lsn), slot_name,
 			)
 		}
 		ch <- prometheus.MustNewConstMetric(
-			pgReplicationSlot["is_active"],
+			pgReplicationSlotIsActiveDesc,
 			prometheus.GaugeValue, float64(flush_lsn), slot_name,
 		)
 	}

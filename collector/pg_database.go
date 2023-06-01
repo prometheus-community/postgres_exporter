@@ -41,13 +41,11 @@ func NewPGDatabaseCollector(config collectorConfig) (Collector, error) {
 	}, nil
 }
 
-var pgDatabase = map[string]*prometheus.Desc{
-	"size_bytes": prometheus.NewDesc(
-		"pg_database_size_bytes",
-		"Disk space used by the database",
-		[]string{"datname"}, nil,
-	),
-}
+var pgDatabaseSizeDesc = prometheus.NewDesc(
+	"pg_database_size_bytes",
+	"Disk space used by the database",
+	[]string{"datname"}, nil,
+)
 
 // Update implements Collector and exposes database size.
 // It is called by the Prometheus registry when collecting metrics.
@@ -96,7 +94,7 @@ func (c PGDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<- p
 		}
 
 		ch <- prometheus.MustNewConstMetric(
-			pgDatabase["size_bytes"],
+			pgDatabaseSizeDesc,
 			prometheus.GaugeValue, float64(size), datname,
 		)
 	}
