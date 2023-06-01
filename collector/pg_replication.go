@@ -53,7 +53,7 @@ func (c *PGReplicationCollector) Update(ctx context.Context, db *sql.DB, ch chan
 		return err
 	}
 	ch <- prometheus.MustNewConstMetric(
-		pgPostmaster["replication_lag"],
+		pgReplication["replication_lag"],
 		prometheus.GaugeValue, lag, "replication",
 	)
 	return nil
