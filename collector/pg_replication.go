@@ -37,6 +37,11 @@ var pgReplication = map[string]*prometheus.Desc{
 		"Replication lag behind master in seconds",
 		[]string{"process_name"}, nil,
 	),
+	"is_replica": prometheus.NewDesc(
+		"pg_replication_is_replica",
+		"Indicates if the server is a replica",
+		[]string{"process_name"}, nil,
+	),
 }
 
 func (c *PGReplicationCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
@@ -45,16 +50,25 @@ func (c *PGReplicationCollector) Update(ctx context.Context, db *sql.DB, ch chan
 			CASE
 				WHEN NOT pg_is_in_recovery() THEN 0
 				ELSE GREATEST (0, EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())))
-				END AS lag`)
+			END AS lag,
+			CASE
+				WHEN pg_is_in_recovery() THEN 1
+				ELSE 0
+			END as is_replica`)
 
 	var lag float64
-	err := row.Scan(&lag)
+	var isReplica int64
+	err := row.Scan(&lag, &isReplica)
 	if err != nil {
 		return err
 	}
 	ch <- prometheus.MustNewConstMetric(
 		pgReplication["replication_lag"],
 		prometheus.GaugeValue, lag, "replication",
+	)
+	ch <- prometheus.MustNewConstMetric(
+		pgReplication["is_replica"],
+		prometheus.GaugeValue, float64(isReplica), "replication",
 	)
 	return nil
 }
