@@ -37,11 +37,11 @@ var pgPostMasterStartTimeSeconds = prometheus.NewDesc(
 	[]string{}, nil,
 )
 
+var pgPostmasterQuery = "SELECT pg_postmaster_start_time from pg_postmaster_start_time();"
+
 func (c *PGPostmasterCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
 	row := db.QueryRowContext(ctx,
-		`SELECT
-			pg_postmaster_start_time
-		from pg_postmaster_start_time();`)
+		pgPostmasterQuery)
 
 	var startTimeSeconds float64
 	err := row.Scan(&startTimeSeconds)
