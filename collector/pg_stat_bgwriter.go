@@ -111,21 +111,23 @@ var statBGWriterStatsReset = prometheus.NewDesc(
 	prometheus.Labels{},
 )
 
+var statBGWriterQuery = `SELECT
+	checkpoints_timed
+	,checkpoints_req
+	,checkpoint_write_time
+	,checkpoint_sync_time
+	,buffers_checkpoint
+	,buffers_clean
+	,maxwritten_clean
+	,buffers_backend
+	,buffers_backend_fsync
+	,buffers_alloc
+	,stats_reset
+FROM pg_stat_bgwriter;`
+
 func (PGStatBGWriterCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
 	row := db.QueryRowContext(ctx,
-		`SELECT
-			 checkpoints_timed
-			 ,checkpoints_req
-			 ,checkpoint_write_time
-			 ,checkpoint_sync_time
-			 ,buffers_checkpoint
-			 ,buffers_clean
-			 ,maxwritten_clean
-			 ,buffers_backend
-			 ,buffers_backend_fsync
-			 ,buffers_alloc
-			 ,stats_reset
-		 FROM pg_stat_bgwriter;`)
+		statBGWriterQuery)
 
 	var cpt int
 	var cpr int
