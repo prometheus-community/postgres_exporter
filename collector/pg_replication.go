@@ -43,17 +43,20 @@ var pgReplicationIsReplica = prometheus.NewDesc(
 	[]string{}, nil,
 )
 
+var pgReplicationQuery = `SELECT
+CASE
+	WHEN NOT pg_is_in_recovery() THEN 0
+	ELSE GREATEST (0, EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())))
+END AS lag,
+CASE
+	WHEN pg_is_in_recovery() THEN 1
+	ELSE 0
+END as is_replica`
+
 func (c *PGReplicationCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
 	row := db.QueryRowContext(ctx,
-		`SELECT
-			CASE
-				WHEN NOT pg_is_in_recovery() THEN 0
-				ELSE GREATEST (0, EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())))
-			END AS lag,
-			CASE
-				WHEN pg_is_in_recovery() THEN 1
-				ELSE 0
-			END as is_replica`)
+		pgReplicationQuery,
+	)
 
 	var lag float64
 	var isReplica int64
