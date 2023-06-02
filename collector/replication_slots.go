@@ -33,22 +33,22 @@ func NewPGReplicationSlotCollector(config collectorConfig) (Collector, error) {
 	return &PGReplicationSlotCollector{log: config.logger}, nil
 }
 
-var (
-	pgReplicationSlotCurrentWalDesc = prometheus.NewDesc(
-		"pg_replication_slot_current_wal_lsn",
-		"current wal lsn value",
-		[]string{"slot_name"}, nil,
-	)
-	pgReplicationSlotCurrentFlushDesc = prometheus.NewDesc(
-		"pg_replication_slot_confirmed_flush_lsn",
-		"last lsn confirmed flushed to the replication slot",
-		[]string{"slot_name"}, nil,
-	)
-	pgReplicationSlotIsActiveDesc = prometheus.NewDesc(
-		"pg_replication_slot_is_active",
-		"last lsn confirmed flushed to the replication slot",
-		[]string{"slot_name"}, nil,
-	)
+var pgReplicationSlotCurrentWalLSN = prometheus.NewDesc(
+	"pg_replication_slot_current_wal_lsn",
+	"current wal lsn value",
+	[]string{"slot_name"}, nil,
+)
+
+var pgReplicationSlotConfirmedFlushLSN = prometheus.NewDesc(
+	"pg_replication_slot_confirmed_flush_lsn",
+	"last lsn confirmed flushed to the replication slot",
+	[]string{"slot_name"}, nil,
+)
+
+var pgReplicationSlotActive = prometheus.NewDesc(
+	"pg_replication_slot_is_active",
+	"last lsn confirmed flushed to the replication slot",
+	[]string{"slot_name"}, nil,
 )
 
 func (PGReplicationSlotCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
@@ -75,17 +75,17 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, db *sql.DB, ch cha
 		}
 
 		ch <- prometheus.MustNewConstMetric(
-			pgReplicationSlotCurrentWalDesc,
+			pgReplicationSlotCurrentWalLSN,
 			prometheus.GaugeValue, float64(wal_lsn), slot_name,
 		)
 		if is_active {
 			ch <- prometheus.MustNewConstMetric(
-				pgReplicationSlotCurrentFlushDesc,
+				pgReplicationSlotConfirmedFlushLSN,
 				prometheus.GaugeValue, float64(flush_lsn), slot_name,
 			)
 		}
 		ch <- prometheus.MustNewConstMetric(
-			pgReplicationSlotIsActiveDesc,
+			pgReplicationSlotActive,
 			prometheus.GaugeValue, float64(flush_lsn), slot_name,
 		)
 	}

@@ -35,14 +35,12 @@ func NewPGProcessIdleCollector(config collectorConfig) (Collector, error) {
 	return &PGProcessIdleCollector{log: config.logger}, nil
 }
 
-var processIdle = map[string]*prometheus.Desc{
-	"seconds": prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, processIdleSubsystem, "seconds"),
-		"Idle time of server processes",
-		[]string{"application_name"},
-		prometheus.Labels{},
-	),
-}
+var pgProcessIdleSeconds = prometheus.NewDesc(
+	prometheus.BuildFQName(namespace, processIdleSubsystem, "seconds"),
+	"Idle time of server processes",
+	[]string{"application_name"},
+	prometheus.Labels{},
+)
 
 func (PGProcessIdleCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
 	row := db.QueryRowContext(ctx,
@@ -100,7 +98,7 @@ func (PGProcessIdleCollector) Update(ctx context.Context, db *sql.DB, ch chan<- 
 		return err
 	}
 	ch <- prometheus.MustNewConstHistogram(
-		processIdle["seconds"],
+		pgProcessIdleSeconds,
 		secondsCount, float64(secondsSum), buckets,
 		applicationName,
 	)

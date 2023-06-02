@@ -41,7 +41,7 @@ func NewPGDatabaseCollector(config collectorConfig) (Collector, error) {
 	}, nil
 }
 
-var pgDatabaseSizeDesc = prometheus.NewDesc(
+var pgDatabaseSizeBytes = prometheus.NewDesc(
 	"pg_database_size_bytes",
 	"Disk space used by the database",
 	[]string{"datname"}, nil,
@@ -94,7 +94,7 @@ func (c PGDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<- p
 		}
 
 		ch <- prometheus.MustNewConstMetric(
-			pgDatabaseSizeDesc,
+			pgDatabaseSizeBytes,
 			prometheus.GaugeValue, float64(size), datname,
 		)
 	}

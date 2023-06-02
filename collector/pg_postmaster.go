@@ -31,13 +31,11 @@ func NewPGPostmasterCollector(collectorConfig) (Collector, error) {
 	return &PGPostmasterCollector{}, nil
 }
 
-var pgPostmaster = map[string]*prometheus.Desc{
-	"start_time_seconds": prometheus.NewDesc(
-		"pg_postmaster_start_time_seconds",
-		"Time at which postmaster started",
-		[]string{"process_name"}, nil,
-	),
-}
+var pgPostMasterStartTimeSeconds = prometheus.NewDesc(
+	"pg_postmaster_start_time_seconds",
+	"Time at which postmaster started",
+	[]string{}, nil,
+)
 
 func (c *PGPostmasterCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
 	row := db.QueryRowContext(ctx,
@@ -51,8 +49,8 @@ func (c *PGPostmasterCollector) Update(ctx context.Context, db *sql.DB, ch chan<
 		return err
 	}
 	ch <- prometheus.MustNewConstMetric(
-		pgPostmaster["start_time_seconds"],
-		prometheus.GaugeValue, startTimeSeconds, "postmaster",
+		pgPostMasterStartTimeSeconds,
+		prometheus.GaugeValue, startTimeSeconds,
 	)
 	return nil
 }

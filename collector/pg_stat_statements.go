@@ -38,38 +38,40 @@ func NewPGStatStatementsCollector(config collectorConfig) (Collector, error) {
 	return &PGStatStatementsCollector{log: config.logger}, nil
 }
 
-var statStatements = map[string]*prometheus.Desc{
-	"calls_total": prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statStatementsSubsystem, "calls_total"),
-		"Number of times executed",
-		[]string{"user", "datname", "queryid"},
-		prometheus.Labels{},
-	),
-	"seconds_total": prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statStatementsSubsystem, "seconds_total"),
-		"Total time spent in the statement, in seconds",
-		[]string{"user", "datname", "queryid"},
-		prometheus.Labels{},
-	),
-	"rows_total": prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statStatementsSubsystem, "rows_total"),
-		"Total number of rows retrieved or affected by the statement",
-		[]string{"user", "datname", "queryid"},
-		prometheus.Labels{},
-	),
-	"block_read_seconds_total": prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statStatementsSubsystem, "block_read_seconds_total"),
-		"Total time the statement spent reading blocks, in seconds",
-		[]string{"user", "datname", "queryid"},
-		prometheus.Labels{},
-	),
-	"block_write_seconds_total": prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statStatementsSubsystem, "block_write_seconds_total"),
-		"Total time the statement spent writing blocks, in seconds",
-		[]string{"user", "datname", "queryid"},
-		prometheus.Labels{},
-	),
-}
+var statSTatementsCallsTotal = prometheus.NewDesc(
+	prometheus.BuildFQName(namespace, statStatementsSubsystem, "calls_total"),
+	"Number of times executed",
+	[]string{"user", "datname", "queryid"},
+	prometheus.Labels{},
+)
+
+var statStatementsSecondsTotal = prometheus.NewDesc(
+	prometheus.BuildFQName(namespace, statStatementsSubsystem, "seconds_total"),
+	"Total time spent in the statement, in seconds",
+	[]string{"user", "datname", "queryid"},
+	prometheus.Labels{},
+)
+
+var statStatementsRowsTotal = prometheus.NewDesc(
+	prometheus.BuildFQName(namespace, statStatementsSubsystem, "rows_total"),
+	"Total number of rows retrieved or affected by the statement",
+	[]string{"user", "datname", "queryid"},
+	prometheus.Labels{},
+)
+
+var statStatementsBlockReadSecondsTotal = prometheus.NewDesc(
+	prometheus.BuildFQName(namespace, statStatementsSubsystem, "block_read_seconds_total"),
+	"Total time the statement spent reading blocks, in seconds",
+	[]string{"user", "datname", "queryid"},
+	prometheus.Labels{},
+)
+
+var statStatementsBlockWriteSecondsTotal = prometheus.NewDesc(
+	prometheus.BuildFQName(namespace, statStatementsSubsystem, "block_write_seconds_total"),
+	"Total time the statement spent writing blocks, in seconds",
+	[]string{"user", "datname", "queryid"},
+	prometheus.Labels{},
+)
 
 func (PGStatStatementsCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
 	rows, err := db.QueryContext(ctx,
@@ -113,31 +115,31 @@ func (PGStatStatementsCollector) Update(ctx context.Context, db *sql.DB, ch chan
 		}
 
 		ch <- prometheus.MustNewConstMetric(
-			statStatements["calls_total"],
+			statSTatementsCallsTotal,
 			prometheus.CounterValue,
 			float64(callsTotal),
 			user, datname, queryid,
 		)
 		ch <- prometheus.MustNewConstMetric(
-			statStatements["seconds_total"],
+			statStatementsSecondsTotal,
 			prometheus.CounterValue,
 			secondsTotal,
 			user, datname, queryid,
 		)
 		ch <- prometheus.MustNewConstMetric(
-			statStatements["rows_total"],
+			statStatementsRowsTotal,
 			prometheus.CounterValue,
 			float64(rowsTotal),
 			user, datname, queryid,
 		)
 		ch <- prometheus.MustNewConstMetric(
-			statStatements["block_read_seconds_total"],
+			statStatementsBlockReadSecondsTotal,
 			prometheus.CounterValue,
 			blockReadSecondsTotal,
 			user, datname, queryid,
 		)
 		ch <- prometheus.MustNewConstMetric(
-			statStatements["block_write_seconds_total"],
+			statStatementsBlockWriteSecondsTotal,
 			prometheus.CounterValue,
 			blockWriteSecondsTotal,
 			user, datname, queryid,

@@ -31,18 +31,17 @@ func NewPGReplicationCollector(collectorConfig) (Collector, error) {
 	return &PGPostmasterCollector{}, nil
 }
 
-var pgReplication = map[string]*prometheus.Desc{
-	"replication_lag": prometheus.NewDesc(
-		"pg_replication_lag",
-		"Replication lag behind master in seconds",
-		[]string{"process_name"}, nil,
-	),
-	"is_replica": prometheus.NewDesc(
-		"pg_replication_is_replica",
-		"Indicates if the server is a replica",
-		[]string{"process_name"}, nil,
-	),
-}
+var pgReplicationLag = prometheus.NewDesc(
+	"pg_replication_lag",
+	"Replication lag behind master in seconds",
+	[]string{}, nil,
+)
+
+var pgReplicationIsReplica = prometheus.NewDesc(
+	"pg_replication_is_replica",
+	"Indicates if the server is a replica",
+	[]string{}, nil,
+)
 
 func (c *PGReplicationCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
 	row := db.QueryRowContext(ctx,
@@ -63,12 +62,12 @@ func (c *PGReplicationCollector) Update(ctx context.Context, db *sql.DB, ch chan
 		return err
 	}
 	ch <- prometheus.MustNewConstMetric(
-		pgReplication["replication_lag"],
-		prometheus.GaugeValue, lag, "replication",
+		pgReplicationLag,
+		prometheus.GaugeValue, lag,
 	)
 	ch <- prometheus.MustNewConstMetric(
-		pgReplication["is_replica"],
-		prometheus.GaugeValue, float64(isReplica), "replication",
+		pgReplicationIsReplica,
+		prometheus.GaugeValue, float64(isReplica),
 	)
 	return nil
 }
