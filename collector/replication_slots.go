@@ -47,19 +47,22 @@ var pgReplicationSlotConfirmedFlushLSN = prometheus.NewDesc(
 
 var pgReplicationSlotActive = prometheus.NewDesc(
 	"pg_replication_slot_is_active",
-	"last lsn confirmed flushed to the replication slot",
+	"whether the replication slot is active or not",
 	[]string{"slot_name"}, nil,
 )
 
+var pgReplicationSlotQuery = `SELECT
+	slot_name,
+	pg_current_wal_lsn() - '0/0' AS current_wal_lsn,
+	coalesce(confirmed_flush_lsn, '0/0') - '0/0',
+	active
+FROM
+	pg_replication_slots;
+`
+
 func (PGReplicationSlotCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
 	rows, err := db.QueryContext(ctx,
-		`SELECT
-			slot_name,
-			pg_current_wal_lsn() - '0/0' AS current_wal_lsn,
-			coalesce(confirmed_flush_lsn, '0/0') - '0/0',
-			active
-		FROM
-			pg_replication_slots;`)
+		pgReplicationSlotQuery)
 	if err != nil {
 		return err
 	}
@@ -70,8 +73,16 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, db *sql.DB, ch cha
 		var wal_lsn int64
 		var flush_lsn int64
 		var is_active bool
+		var is_active_value int
+
 		if err := rows.Scan(&slot_name, &wal_lsn, &flush_lsn, &is_active); err != nil {
 			return err
+		}
+
+		if is_active {
+			is_active_value = 1
+		} else {
+			is_active_value = 0
 		}
 
 		ch <- prometheus.MustNewConstMetric(
@@ -86,7 +97,7 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, db *sql.DB, ch cha
 		}
 		ch <- prometheus.MustNewConstMetric(
 			pgReplicationSlotActive,
-			prometheus.GaugeValue, float64(flush_lsn), slot_name,
+			prometheus.GaugeValue, float64(is_active_value), slot_name,
 		)
 	}
 	if err := rows.Err(); err != nil {
