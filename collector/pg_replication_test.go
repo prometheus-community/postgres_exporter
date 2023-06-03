@@ -29,6 +29,11 @@ func TestPgReplicationCollector(t *testing.T) {
 	}
 	defer db.Close()
 
+	columns := []string{"lag", "is_replica"}
+	rows := sqlmock.NewRows(columns).
+		AddRow(1000, 1)
+	mock.ExpectQuery(sanitizeQuery(pgReplicationQuery)).WillReturnRows(rows)
+
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
@@ -38,11 +43,6 @@ func TestPgReplicationCollector(t *testing.T) {
 			t.Errorf("Error calling PGReplicationCollector.Update: %s", err)
 		}
 	}()
-
-	columns := []string{"lag", "is_replica"}
-	rows := sqlmock.NewRows(columns).
-		AddRow(1000, 1)
-	mock.ExpectQuery(sanitizeQuery(pgReplicationQuery)).WillReturnRows(rows)
 
 	expected := []MetricResult{
 		{labels: labelMap{}, value: 1000, metricType: dto.MetricType_GAUGE},
