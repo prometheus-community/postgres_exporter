@@ -66,27 +66,27 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, db *sql.DB, ch cha
 	defer rows.Close()
 
 	for rows.Next() {
-		var slot_name string
-		var wal_lsn int64
-		var flush_lsn int64
-		var is_active bool
-		if err := rows.Scan(&slot_name, &wal_lsn, &flush_lsn, &is_active); err != nil {
+		var slotName string
+		var walLSN int64
+		var flusLSN int64
+		var isActive bool
+		if err := rows.Scan(&slotName, &walLSN, &flusLSN, &isActive); err != nil {
 			return err
 		}
 
 		ch <- prometheus.MustNewConstMetric(
 			pgReplicationSlotCurrentWalDesc,
-			prometheus.GaugeValue, float64(wal_lsn), slot_name,
+			prometheus.GaugeValue, float64(walLSN), slotName,
 		)
-		if is_active {
+		if isActive {
 			ch <- prometheus.MustNewConstMetric(
 				pgReplicationSlotCurrentFlushDesc,
-				prometheus.GaugeValue, float64(flush_lsn), slot_name,
+				prometheus.GaugeValue, float64(flusLSN), slotName,
 			)
 		}
 		ch <- prometheus.MustNewConstMetric(
 			pgReplicationSlotIsActiveDesc,
-			prometheus.GaugeValue, float64(flush_lsn), slot_name,
+			prometheus.GaugeValue, float64(flusLSN), slotName,
 		)
 	}
 	if err := rows.Err(); err != nil {
