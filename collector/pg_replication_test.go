@@ -35,7 +35,7 @@ func TestPgReplicationCollector(t *testing.T) {
 		c := PGReplicationCollector{}
 
 		if err := c.Update(context.Background(), db, ch); err != nil {
-			t.Errorf("Error calling PGPostmasterCollector.Update: %s", err)
+			t.Errorf("Error calling PGReplicationCollector.Update: %s", err)
 		}
 	}()
 

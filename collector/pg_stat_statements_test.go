@@ -10,7 +10,7 @@ import (
 	"github.com/smartystreets/goconvey/convey"
 )
 
-func TestPgStateStatementsCollector(t *testing.T) {
+func TestPGStateStatementsCollector(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("Error opening a stub db connection: %s", err)
@@ -28,7 +28,7 @@ func TestPgStateStatementsCollector(t *testing.T) {
 		c := PGStatStatementsCollector{}
 
 		if err := c.Update(context.Background(), db, ch); err != nil {
-			t.Errorf("Error calling PGPostmasterCollector.Update: %s", err)
+			t.Errorf("Error calling PGStatStatementsCollector.Update: %s", err)
 		}
 	}()
 

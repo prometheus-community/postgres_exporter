@@ -46,7 +46,7 @@ func TestPGStatBGWriterCollector(t *testing.T) {
 		c := PGStatBGWriterCollector{}
 
 		if err := c.Update(context.Background(), db, ch); err != nil {
-			t.Errorf("Error calling PGPostmasterCollector.Update: %s", err)
+			t.Errorf("Error calling PGStatBGWriterCollector.Update: %s", err)
 		}
 	}()
 
