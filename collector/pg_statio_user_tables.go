@@ -91,21 +91,23 @@ var statioUserTablesTidxBlksHit = prometheus.NewDesc(
 	prometheus.Labels{},
 )
 
+var statioUserTablesQuery = `SELECT
+	current_database() datname,
+	schemaname,
+	relname,
+	heap_blks_read,
+	heap_blks_hit,
+	idx_blks_read,
+	idx_blks_hit,
+	toast_blks_read,
+	toast_blks_hit,
+	tidx_blks_read,
+	tidx_blks_hit
+FROM pg_statio_user_tables`
+
 func (PGStatIOUserTablesCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
 	rows, err := db.QueryContext(ctx,
-		`SELECT
-		current_database() datname,
-		schemaname,
-		relname,
-		heap_blks_read,
-		heap_blks_hit,
-		idx_blks_read,
-		idx_blks_hit,
-		toast_blks_read,
-		toast_blks_hit,
-		tidx_blks_read,
-		tidx_blks_hit
-		FROM pg_statio_user_tables`)
+		statioUserTablesQuery)
 
 	if err != nil {
 		return err
