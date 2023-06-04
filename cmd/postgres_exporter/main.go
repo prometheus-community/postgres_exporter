@@ -34,7 +34,7 @@ import (
 )
 
 var (
-	c = config.ConfigHandler{
+	c = config.Handler{
 		Config: &config.Config{},
 	}
 
