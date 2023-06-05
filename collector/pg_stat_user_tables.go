@@ -30,170 +30,172 @@ type PGStatUserTablesCollector struct {
 	log log.Logger
 }
 
-var userTableSubsystem = "stat_user_tables"
+const userTableSubsystem = "stat_user_tables"
 
 func NewPGStatUserTablesCollector(config collectorConfig) (Collector, error) {
 	return &PGStatUserTablesCollector{log: config.logger}, nil
 }
 
-var statUserTablesSeqScan = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, userTableSubsystem, "seq_scan"),
-	"Number of sequential scans initiated on this table",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+var (
+	statUserTablesSeqScan = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "seq_scan"),
+		"Number of sequential scans initiated on this table",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statUserTablesSeqTupRead = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, userTableSubsystem, "seq_tup_read"),
-	"Number of live rows fetched by sequential scans",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statUserTablesSeqTupRead = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "seq_tup_read"),
+		"Number of live rows fetched by sequential scans",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statUserTablesIdxScan = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, userTableSubsystem, "idx_scan"),
-	"Number of index scans initiated on this table",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statUserTablesIdxScan = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "idx_scan"),
+		"Number of index scans initiated on this table",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statUserTablesIdxTupFetch = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, userTableSubsystem, "idx_tup_fetch"),
-	"Number of live rows fetched by index scans",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statUserTablesIdxTupFetch = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "idx_tup_fetch"),
+		"Number of live rows fetched by index scans",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statUserTablesNTupIns = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, userTableSubsystem, "n_tup_ins"),
-	"Number of rows inserted",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statUserTablesNTupIns = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "n_tup_ins"),
+		"Number of rows inserted",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statUserTablesNTupUpd = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, userTableSubsystem, "n_tup_upd"),
-	"Number of rows updated",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statUserTablesNTupUpd = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "n_tup_upd"),
+		"Number of rows updated",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statUserTablesNTupDel = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, userTableSubsystem, "n_tup_del"),
-	"Number of rows deleted",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statUserTablesNTupDel = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "n_tup_del"),
+		"Number of rows deleted",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statUserTablesNTupHotUpd = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, userTableSubsystem, "n_tup_hot_upd"),
-	"Number of rows HOT updated (i.e., with no separate index update required)",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statUserTablesNTupHotUpd = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "n_tup_hot_upd"),
+		"Number of rows HOT updated (i.e., with no separate index update required)",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statUserTablesNLiveTup = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, userTableSubsystem, "n_live_tup"),
-	"Estimated number of live rows",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statUserTablesNLiveTup = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "n_live_tup"),
+		"Estimated number of live rows",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statUserTablesNDeadTup = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, userTableSubsystem, "n_dead_tup"),
-	"Estimated number of dead rows",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statUserTablesNDeadTup = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "n_dead_tup"),
+		"Estimated number of dead rows",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statUserTablesNModSinceAnalyze = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, userTableSubsystem, "n_mod_since_analyze"),
-	"Estimated number of rows changed since last analyze",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statUserTablesNModSinceAnalyze = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "n_mod_since_analyze"),
+		"Estimated number of rows changed since last analyze",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statUserTablesLastVacuum = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, userTableSubsystem, "last_vacuum"),
-	"Last time at which this table was manually vacuumed (not counting VACUUM FULL)",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statUserTablesLastVacuum = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "last_vacuum"),
+		"Last time at which this table was manually vacuumed (not counting VACUUM FULL)",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statUserTablesLastAutovacuum = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, userTableSubsystem, "last_autovacuum"),
-	"Last time at which this table was vacuumed by the autovacuum daemon",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statUserTablesLastAutovacuum = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "last_autovacuum"),
+		"Last time at which this table was vacuumed by the autovacuum daemon",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statUserTablesLastAnalyze = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, userTableSubsystem, "last_analyze"),
-	"Last time at which this table was manually analyzed",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statUserTablesLastAnalyze = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "last_analyze"),
+		"Last time at which this table was manually analyzed",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statUserTablesLastAutoanalyze = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, userTableSubsystem, "last_autoanalyze"),
-	"Last time at which this table was analyzed by the autovacuum daemon",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statUserTablesLastAutoanalyze = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "last_autoanalyze"),
+		"Last time at which this table was analyzed by the autovacuum daemon",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statUserTablesVacuumCount = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, userTableSubsystem, "vacuum_count"),
-	"Number of times this table has been manually vacuumed (not counting VACUUM FULL)",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statUserTablesVacuumCount = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "vacuum_count"),
+		"Number of times this table has been manually vacuumed (not counting VACUUM FULL)",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statUserTablesAutovacuumCount = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, userTableSubsystem, "autovacuum_count"),
-	"Number of times this table has been vacuumed by the autovacuum daemon",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statUserTablesAutovacuumCount = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "autovacuum_count"),
+		"Number of times this table has been vacuumed by the autovacuum daemon",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statUserTablesAnalyzeCount = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, userTableSubsystem, "analyze_count"),
-	"Number of times this table has been manually analyzed",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statUserTablesAnalyzeCount = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "analyze_count"),
+		"Number of times this table has been manually analyzed",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statUserTablesAutoanalyzeCount = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, userTableSubsystem, "autoanalyze_count"),
-	"Number of times this table has been analyzed by the autovacuum daemon",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statUserTablesAutoanalyzeCount = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "autoanalyze_count"),
+		"Number of times this table has been analyzed by the autovacuum daemon",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statUserTablesQuery = `SELECT
-	current_database() datname,
-	schemaname,
-	relname,
-	seq_scan,
-	seq_tup_read,
-	idx_scan,
-	idx_tup_fetch,
-	n_tup_ins,
-	n_tup_upd,
-	n_tup_del,
-	n_tup_hot_upd,
-	n_live_tup,
-	n_dead_tup,
-	n_mod_since_analyze,
-	COALESCE(last_vacuum, '1970-01-01Z') as last_vacuum,
-	COALESCE(last_autovacuum, '1970-01-01Z') as last_autovacuum,
-	COALESCE(last_analyze, '1970-01-01Z') as last_analyze,
-	COALESCE(last_autoanalyze, '1970-01-01Z') as last_autoanalyze,
-	vacuum_count,
-	autovacuum_count,
-	analyze_count,
-	autoanalyze_count
-FROM
-	pg_stat_user_tables`
+	statUserTablesQuery = `SELECT
+		current_database() datname,
+		schemaname,
+		relname,
+		seq_scan,
+		seq_tup_read,
+		idx_scan,
+		idx_tup_fetch,
+		n_tup_ins,
+		n_tup_upd,
+		n_tup_del,
+		n_tup_hot_upd,
+		n_live_tup,
+		n_dead_tup,
+		n_mod_since_analyze,
+		COALESCE(last_vacuum, '1970-01-01Z') as last_vacuum,
+		COALESCE(last_autovacuum, '1970-01-01Z') as last_autovacuum,
+		COALESCE(last_analyze, '1970-01-01Z') as last_analyze,
+		COALESCE(last_autoanalyze, '1970-01-01Z') as last_autoanalyze,
+		vacuum_count,
+		autovacuum_count,
+		analyze_count,
+		autoanalyze_count
+	FROM
+		pg_stat_user_tables`
+)
 
 func (c *PGStatUserTablesCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
 	rows, err := db.QueryContext(ctx,

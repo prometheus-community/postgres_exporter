@@ -29,81 +29,83 @@ type PGStatIOUserTablesCollector struct {
 	log log.Logger
 }
 
-var statioUserTableSubsystem = "statio_user_tables"
+const statioUserTableSubsystem = "statio_user_tables"
 
 func NewPGStatIOUserTablesCollector(config collectorConfig) (Collector, error) {
 	return &PGStatIOUserTablesCollector{log: config.logger}, nil
 }
 
-var statioUserTablesHeapBlksRead = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, statioUserTableSubsystem, "heap_blocks_read"),
-	"Number of disk blocks read from this table",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+var (
+	statioUserTablesHeapBlksRead = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, statioUserTableSubsystem, "heap_blocks_read"),
+		"Number of disk blocks read from this table",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statioUserTablesHeapBlksHit = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, statioUserTableSubsystem, "heap_blocks_hit"),
-	"Number of buffer hits in this table",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statioUserTablesHeapBlksHit = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, statioUserTableSubsystem, "heap_blocks_hit"),
+		"Number of buffer hits in this table",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statioUserTablesIdxBlksRead = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, statioUserTableSubsystem, "idx_blocks_read"),
-	"Number of disk blocks read from all indexes on this table",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statioUserTablesIdxBlksRead = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, statioUserTableSubsystem, "idx_blocks_read"),
+		"Number of disk blocks read from all indexes on this table",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statioUserTablesIdxBlksHit = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, statioUserTableSubsystem, "idx_blocks_hit"),
-	"Number of buffer hits in all indexes on this table",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statioUserTablesIdxBlksHit = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, statioUserTableSubsystem, "idx_blocks_hit"),
+		"Number of buffer hits in all indexes on this table",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statioUserTablesToastBlksRead = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, statioUserTableSubsystem, "toast_blocks_read"),
-	"Number of disk blocks read from this table's TOAST table (if any)",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statioUserTablesToastBlksRead = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, statioUserTableSubsystem, "toast_blocks_read"),
+		"Number of disk blocks read from this table's TOAST table (if any)",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statioUserTablesToastBlksHit = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, statioUserTableSubsystem, "toast_blocks_hit"),
-	"Number of buffer hits in this table's TOAST table (if any)",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statioUserTablesToastBlksHit = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, statioUserTableSubsystem, "toast_blocks_hit"),
+		"Number of buffer hits in this table's TOAST table (if any)",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statioUserTablesTidxBlksRead = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, statioUserTableSubsystem, "tidx_blocks_read"),
-	"Number of disk blocks read from this table's TOAST table indexes (if any)",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statioUserTablesTidxBlksRead = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, statioUserTableSubsystem, "tidx_blocks_read"),
+		"Number of disk blocks read from this table's TOAST table indexes (if any)",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statioUserTablesTidxBlksHit = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, statioUserTableSubsystem, "tidx_blocks_hit"),
-	"Number of buffer hits in this table's TOAST table indexes (if any)",
-	[]string{"datname", "schemaname", "relname"},
-	prometheus.Labels{},
-)
+	statioUserTablesTidxBlksHit = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, statioUserTableSubsystem, "tidx_blocks_hit"),
+		"Number of buffer hits in this table's TOAST table indexes (if any)",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
-var statioUserTablesQuery = `SELECT
-	current_database() datname,
-	schemaname,
-	relname,
-	heap_blks_read,
-	heap_blks_hit,
-	idx_blks_read,
-	idx_blks_hit,
-	toast_blks_read,
-	toast_blks_hit,
-	tidx_blks_read,
-	tidx_blks_hit
-FROM pg_statio_user_tables`
+	statioUserTablesQuery = `SELECT
+		current_database() datname,
+		schemaname,
+		relname,
+		heap_blks_read,
+		heap_blks_hit,
+		idx_blks_read,
+		idx_blks_hit,
+		toast_blks_read,
+		toast_blks_hit,
+		tidx_blks_read,
+		tidx_blks_hit
+	FROM pg_statio_user_tables`
+)
 
 func (PGStatIOUserTablesCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
 	rows, err := db.QueryContext(ctx,
