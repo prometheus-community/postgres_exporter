@@ -33,32 +33,33 @@ func NewPGReplicationSlotCollector(config collectorConfig) (Collector, error) {
 	return &PGReplicationSlotCollector{log: config.logger}, nil
 }
 
-var pgReplicationSlotCurrentWalLSN = prometheus.NewDesc(
-	"pg_replication_slot_current_wal_lsn",
-	"current wal lsn value",
-	[]string{"slot_name"}, nil,
-)
+var (
+	pgReplicationSlotCurrentWalDesc = prometheus.NewDesc(
+		"pg_replication_slot_current_wal_lsn",
+		"current wal lsn value",
+		[]string{"slot_name"}, nil,
+	)
 
-var pgReplicationSlotConfirmedFlushLSN = prometheus.NewDesc(
-	"pg_replication_slot_confirmed_flush_lsn",
-	"last lsn confirmed flushed to the replication slot",
-	[]string{"slot_name"}, nil,
-)
+	pgReplicationSlotCurrentFlushDesc = prometheus.NewDesc(
+		"pg_replication_slot_confirmed_flush_lsn",
+		"last lsn confirmed flushed to the replication slot",
+		[]string{"slot_name"}, nil,
+	)
 
-var pgReplicationSlotActive = prometheus.NewDesc(
-	"pg_replication_slot_is_active",
-	"whether the replication slot is active or not",
-	[]string{"slot_name"}, nil,
-)
+	pgReplicationSlotIsActiveDesc = prometheus.NewDesc(
+		"pg_replication_slot_is_active",
+		"whether the replication slot is active or not",
+		[]string{"slot_name"}, nil,
+	)
 
-var pgReplicationSlotQuery = `SELECT
-	slot_name,
-	pg_current_wal_lsn() - '0/0' AS current_wal_lsn,
-	coalesce(confirmed_flush_lsn, '0/0') - '0/0',
-	active
-FROM
-	pg_replication_slots;
-`
+	pgReplicationSlotQuery = `SELECT
+		slot_name,
+		pg_current_wal_lsn() - '0/0' AS current_wal_lsn,
+		coalesce(confirmed_flush_lsn, '0/0') - '0/0',
+		active
+	FROM
+		pg_replication_slots;`
+)
 
 func (PGReplicationSlotCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
 	rows, err := db.QueryContext(ctx,
@@ -69,35 +70,33 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, db *sql.DB, ch cha
 	defer rows.Close()
 
 	for rows.Next() {
-		var slot_name string
-		var wal_lsn int64
-		var flush_lsn int64
-		var is_active bool
-		var is_active_value int
+		var slotName string
+		var walLsn int64
+		var flushLsn int64
+		var isActive bool
 
-		if err := rows.Scan(&slot_name, &wal_lsn, &flush_lsn, &is_active); err != nil {
+		if err := rows.Scan(&slotName, &walLsn, &flushLsn, &isActive); err != nil {
 			return err
 		}
 
-		if is_active {
-			is_active_value = 1
-		} else {
-			is_active_value = 0
+		isActiveValue := 0
+		if isActive {
+			isActiveValue = 1
 		}
 
 		ch <- prometheus.MustNewConstMetric(
-			pgReplicationSlotCurrentWalLSN,
-			prometheus.GaugeValue, float64(wal_lsn), slot_name,
+			pgReplicationSlotCurrentWalDesc,
+			prometheus.GaugeValue, float64(walLsn), slotName,
 		)
-		if is_active {
+		if isActive {
 			ch <- prometheus.MustNewConstMetric(
-				pgReplicationSlotConfirmedFlushLSN,
-				prometheus.GaugeValue, float64(flush_lsn), slot_name,
+				pgReplicationSlotCurrentFlushDesc,
+				prometheus.GaugeValue, float64(flushLsn), slotName,
 			)
 		}
 		ch <- prometheus.MustNewConstMetric(
-			pgReplicationSlotActive,
-			prometheus.GaugeValue, float64(is_active_value), slot_name,
+			pgReplicationSlotIsActiveDesc,
+			prometheus.GaugeValue, float64(isActiveValue), slotName,
 		)
 	}
 	if err := rows.Err(); err != nil {
