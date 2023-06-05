@@ -1,4 +1,8 @@
 ---
+linters:
+  enable:
+  - revive
+
 issues:
   exclude-rules:
   - path: _test.go
@@ -7,4 +11,6 @@ issues:
 
 linters-settings:
   errcheck:
-    exclude: scripts/errcheck_excludes.txt
+    exclude-functions:
+      # Never check for logger errors.
+      - (github.com/go-kit/log.Logger).Log
