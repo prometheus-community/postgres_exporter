@@ -200,6 +200,7 @@ pg_statio_user_tables:
 #         description: "Total time the statement spent writing blocks, in seconds"
 
 pg_process_idle:
+  master: true
   query: |
     WITH
       metrics AS (
