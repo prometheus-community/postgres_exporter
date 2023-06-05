@@ -45,28 +45,24 @@ var (
 		[]string{"user", "datname", "queryid"},
 		prometheus.Labels{},
 	)
-
 	statStatementsSecondsTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statStatementsSubsystem, "seconds_total"),
 		"Total time spent in the statement, in seconds",
 		[]string{"user", "datname", "queryid"},
 		prometheus.Labels{},
 	)
-
 	statStatementsRowsTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statStatementsSubsystem, "rows_total"),
 		"Total number of rows retrieved or affected by the statement",
 		[]string{"user", "datname", "queryid"},
 		prometheus.Labels{},
 	)
-
 	statStatementsBlockReadSecondsTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statStatementsSubsystem, "block_read_seconds_total"),
 		"Total time the statement spent reading blocks, in seconds",
 		[]string{"user", "datname", "queryid"},
 		prometheus.Labels{},
 	)
-
 	statStatementsBlockWriteSecondsTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statStatementsSubsystem, "block_write_seconds_total"),
 		"Total time the statement spent writing blocks, in seconds",

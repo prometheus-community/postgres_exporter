@@ -39,13 +39,11 @@ var (
 		"current wal lsn value",
 		[]string{"slot_name"}, nil,
 	)
-
 	pgReplicationSlotCurrentFlushDesc = prometheus.NewDesc(
 		"pg_replication_slot_confirmed_flush_lsn",
 		"last lsn confirmed flushed to the replication slot",
 		[]string{"slot_name"}, nil,
 	)
-
 	pgReplicationSlotIsActiveDesc = prometheus.NewDesc(
 		"pg_replication_slot_is_active",
 		"whether the replication slot is active or not",

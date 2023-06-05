@@ -29,7 +29,7 @@ type PGProcessIdleCollector struct {
 	log log.Logger
 }
 
-var processIdleSubsystem = "process_idle"
+const processIdleSubsystem = "process_idle"
 
 func NewPGProcessIdleCollector(config collectorConfig) (Collector, error) {
 	return &PGProcessIdleCollector{log: config.logger}, nil

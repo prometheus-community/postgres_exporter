@@ -37,7 +37,6 @@ var (
 		"Replication lag behind master in seconds",
 		[]string{}, nil,
 	)
-
 	pgReplicationIsReplica = prometheus.NewDesc(
 		"pg_replication_is_replica",
 		"Indicates if the server is a replica",
