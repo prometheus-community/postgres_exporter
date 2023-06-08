@@ -41,10 +41,15 @@ func NewPGDatabaseCollector(config collectorConfig) (Collector, error) {
 	}, nil
 }
 
-var pgDatabaseSizeDesc = prometheus.NewDesc(
-	"pg_database_size_bytes",
-	"Disk space used by the database",
-	[]string{"datname"}, nil,
+var (
+	pgDatabaseSizeDesc = prometheus.NewDesc(
+		"pg_database_size_bytes",
+		"Disk space used by the database",
+		[]string{"datname"}, nil,
+	)
+
+	pgDatabaseQuery     = "SELECT pg_database.datname FROM pg_database;"
+	pgDatabaseSizeQuery = "SELECT pg_database_size($1)"
 )
 
 // Update implements Collector and exposes database size.
@@ -58,9 +63,7 @@ var pgDatabaseSizeDesc = prometheus.NewDesc(
 func (c PGDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
 	// Query the list of databases
 	rows, err := db.QueryContext(ctx,
-		`SELECT pg_database.datname
-		FROM pg_database;
-		`,
+		pgDatabaseQuery,
 	)
 	if err != nil {
 		return err
@@ -88,7 +91,7 @@ func (c PGDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<- p
 	// Query the size of the databases
 	for _, datname := range databases {
 		var size int64
-		err = db.QueryRowContext(ctx, "SELECT pg_database_size($1)", datname).Scan(&size)
+		err = db.QueryRowContext(ctx, pgDatabaseSizeQuery, datname).Scan(&size)
 		if err != nil {
 			return err
 		}
