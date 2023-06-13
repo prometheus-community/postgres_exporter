@@ -105,7 +105,7 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `auto-discover-databases`
   Whether to discover the databases on a server dynamically.  Default is `false`.
 
-* `extend.query-path`
+* `extend.query-path` (DEPRECATED)
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
   for examples of the format.
 
@@ -222,7 +222,9 @@ for l in StringIO(x):
 Adjust the value of the resultant prometheus value type appropriately. This helps build
 rich self-documenting metrics for the exporter.
 
-### Adding new metrics via a config file
+### Adding new metrics via a config file (DEPRECATED)
+
+This feature is deprecated in favor of built-in collector functions. For generic SQL database monitoring see the [sql_exporter](https://github.com/burningalchemist/sql_exporter).
 
 The -extend.query-path command-line argument specifies a YAML file containing additional queries to run.
 Some examples are provided in [queries.yaml](queries.yaml).
