@@ -21,8 +21,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const databaseSubsystem = "database"
+
 func init() {
-	registerCollector("database", defaultEnabled, NewPGDatabaseCollector)
+	registerCollector(databaseSubsystem, defaultEnabled, NewPGDatabaseCollector)
 }
 
 type PGDatabaseCollector struct {
@@ -43,7 +45,11 @@ func NewPGDatabaseCollector(config collectorConfig) (Collector, error) {
 
 var (
 	pgDatabaseSizeDesc = prometheus.NewDesc(
-		"pg_database_size_bytes",
+		prometheus.BuildFQName(
+			namespace,
+			databaseSubsystem,
+			"size_bytes",
+		),
 		"Disk space used by the database",
 		[]string{"datname"}, nil,
 	)

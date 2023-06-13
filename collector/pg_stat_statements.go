@@ -21,18 +21,18 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const statStatementsSubsystem = "stat_statements"
+
 func init() {
 	// WARNING:
 	//   Disabled by default because this set of metrics can be quite expensive on a busy server
 	//   Every unique query will cause a new timeseries to be created
-	registerCollector("statements", defaultDisabled, NewPGStatStatementsCollector)
+	registerCollector(statStatementsSubsystem, defaultDisabled, NewPGStatStatementsCollector)
 }
 
 type PGStatStatementsCollector struct {
 	log log.Logger
 }
-
-const statStatementsSubsystem = "stat_statements"
 
 func NewPGStatStatementsCollector(config collectorConfig) (Collector, error) {
 	return &PGStatStatementsCollector{log: config.logger}, nil

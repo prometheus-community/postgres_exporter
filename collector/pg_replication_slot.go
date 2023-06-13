@@ -21,8 +21,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const replicationSlotSubsystem = "replication_slot"
+
 func init() {
-	registerCollector("replication_slot", defaultEnabled, NewPGReplicationSlotCollector)
+	registerCollector(replicationSlotSubsystem, defaultEnabled, NewPGReplicationSlotCollector)
 }
 
 type PGReplicationSlotCollector struct {
@@ -35,17 +37,29 @@ func NewPGReplicationSlotCollector(config collectorConfig) (Collector, error) {
 
 var (
 	pgReplicationSlotCurrentWalDesc = prometheus.NewDesc(
-		"pg_replication_slot_current_wal_lsn",
+		prometheus.BuildFQName(
+			namespace,
+			replicationSlotSubsystem,
+			"slot_current_wal_lsn",
+		),
 		"current wal lsn value",
 		[]string{"slot_name"}, nil,
 	)
 	pgReplicationSlotCurrentFlushDesc = prometheus.NewDesc(
-		"pg_replication_slot_confirmed_flush_lsn",
+		prometheus.BuildFQName(
+			namespace,
+			replicationSlotSubsystem,
+			"slot_confirmed_flush_lsn",
+		),
 		"last lsn confirmed flushed to the replication slot",
 		[]string{"slot_name"}, nil,
 	)
 	pgReplicationSlotIsActiveDesc = prometheus.NewDesc(
-		"pg_replication_slot_is_active",
+		prometheus.BuildFQName(
+			namespace,
+			replicationSlotSubsystem,
+			"slot_is_active",
+		),
 		"whether the replication slot is active or not",
 		[]string{"slot_name"}, nil,
 	)

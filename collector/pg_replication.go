@@ -20,8 +20,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const replicationSubsystem = "replication"
+
 func init() {
-	registerCollector("replication", defaultEnabled, NewPGReplicationCollector)
+	registerCollector(replicationSubsystem, defaultEnabled, NewPGReplicationCollector)
 }
 
 type PGReplicationCollector struct {
@@ -33,12 +35,20 @@ func NewPGReplicationCollector(collectorConfig) (Collector, error) {
 
 var (
 	pgReplicationLag = prometheus.NewDesc(
-		"pg_replication_lag",
+		prometheus.BuildFQName(
+			namespace,
+			replicationSubsystem,
+			"lag_seconds",
+		),
 		"Replication lag behind master in seconds",
 		[]string{}, nil,
 	)
 	pgReplicationIsReplica = prometheus.NewDesc(
-		"pg_replication_is_replica",
+		prometheus.BuildFQName(
+			namespace,
+			replicationSubsystem,
+			"is_replica",
+		),
 		"Indicates if the server is a replica",
 		[]string{}, nil,
 	)

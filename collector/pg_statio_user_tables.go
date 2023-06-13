@@ -21,15 +21,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const statioUserTableSubsystem = "statio_user_tables"
+
 func init() {
-	registerCollector("statio_user_tables", defaultEnabled, NewPGStatIOUserTablesCollector)
+	registerCollector(statioUserTableSubsystem, defaultEnabled, NewPGStatIOUserTablesCollector)
 }
 
 type PGStatIOUserTablesCollector struct {
 	log log.Logger
 }
-
-const statioUserTableSubsystem = "statio_user_tables"
 
 func NewPGStatIOUserTablesCollector(config collectorConfig) (Collector, error) {
 	return &PGStatIOUserTablesCollector{log: config.logger}, nil
