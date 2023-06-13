@@ -1,5 +1,8 @@
 ## master / unreleased
 
+## 0.12.1 / 2023-06-12
+* [BUGFIX] Fix column type for pg_replication_slots #777
+
 ## 0.12.0 / 2023-03-21
 
 BREAKING CHANGES:
