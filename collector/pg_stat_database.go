@@ -17,7 +17,6 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -27,14 +26,14 @@ func init() {
 
 type PGStatDatabaseCollector struct{}
 
-func NewPGStatDatabaseCollector(logger log.Logger) (Collector, error) {
+func NewPGStatDatabaseCollector(config collectorConfig) (Collector, error) {
 	return &PGStatDatabaseCollector{}, nil
 }
 
 const statDatabaseSubsystem = "stat_database"
 
-var statDatabase = map[string]*prometheus.Desc{
-	"numbackends": prometheus.NewDesc(
+var (
+	statDatabaseNumbackends = prometheus.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
@@ -43,8 +42,8 @@ var statDatabase = map[string]*prometheus.Desc{
 		"Number of backends currently connected to this database. This is the only column in this view that returns a value reflecting current state; all other columns return the accumulated values since the last reset.",
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
-	),
-	"xact_commit": prometheus.NewDesc(
+	)
+	statDatabaseXactCommit = prometheus.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
@@ -53,8 +52,8 @@ var statDatabase = map[string]*prometheus.Desc{
 		"Number of transactions in this database that have been committed",
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
-	),
-	"xact_rollback": prometheus.NewDesc(
+	)
+	statDatabaseXactRollback = prometheus.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
@@ -63,8 +62,8 @@ var statDatabase = map[string]*prometheus.Desc{
 		"Number of transactions in this database that have been rolled back",
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
-	),
-	"blks_read": prometheus.NewDesc(
+	)
+	statDatabaseBlksRead = prometheus.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
@@ -73,8 +72,8 @@ var statDatabase = map[string]*prometheus.Desc{
 		"Number of disk blocks read in this database",
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
-	),
-	"blks_hit": prometheus.NewDesc(
+	)
+	statDatabaseBlksHit = prometheus.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
@@ -83,8 +82,8 @@ var statDatabase = map[string]*prometheus.Desc{
 		"Number of times disk blocks were found already in the buffer cache, so that a read was not necessary (this only includes hits in the PostgreSQL buffer cache, not the operating system's file system cache)",
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
-	),
-	"tup_returned": prometheus.NewDesc(
+	)
+	statDatabaseTupReturned = prometheus.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
@@ -93,8 +92,8 @@ var statDatabase = map[string]*prometheus.Desc{
 		"Number of rows returned by queries in this database",
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
-	),
-	"tup_fetched": prometheus.NewDesc(
+	)
+	statDatabaseTupFetched = prometheus.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
@@ -103,8 +102,8 @@ var statDatabase = map[string]*prometheus.Desc{
 		"Number of rows fetched by queries in this database",
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
-	),
-	"tup_inserted": prometheus.NewDesc(
+	)
+	statDatabaseTupInserted = prometheus.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
@@ -113,8 +112,8 @@ var statDatabase = map[string]*prometheus.Desc{
 		"Number of rows inserted by queries in this database",
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
-	),
-	"tup_updated": prometheus.NewDesc(
+	)
+	statDatabaseTupUpdated = prometheus.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
@@ -123,8 +122,8 @@ var statDatabase = map[string]*prometheus.Desc{
 		"Number of rows updated by queries in this database",
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
-	),
-	"tup_deleted": prometheus.NewDesc(
+	)
+	statDatabaseTupDeleted = prometheus.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
@@ -133,8 +132,8 @@ var statDatabase = map[string]*prometheus.Desc{
 		"Number of rows deleted by queries in this database",
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
-	),
-	"conflicts": prometheus.NewDesc(
+	)
+	statDatabaseConflicts = prometheus.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
@@ -143,8 +142,8 @@ var statDatabase = map[string]*prometheus.Desc{
 		"Number of queries canceled due to conflicts with recovery in this database. (Conflicts occur only on standby servers; see pg_stat_database_conflicts for details.)",
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
-	),
-	"temp_files": prometheus.NewDesc(
+	)
+	statDatabaseTempFiles = prometheus.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
@@ -153,8 +152,8 @@ var statDatabase = map[string]*prometheus.Desc{
 		"Number of temporary files created by queries in this database. All temporary files are counted, regardless of why the temporary file was created (e.g., sorting or hashing), and regardless of the log_temp_files setting.",
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
-	),
-	"temp_bytes": prometheus.NewDesc(
+	)
+	statDatabaseTempBytes = prometheus.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
@@ -163,8 +162,8 @@ var statDatabase = map[string]*prometheus.Desc{
 		"Total amount of data written to temporary files by queries in this database. All temporary files are counted, regardless of why the temporary file was created, and regardless of the log_temp_files setting.",
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
-	),
-	"deadlocks": prometheus.NewDesc(
+	)
+	statDatabaseDeadlocks = prometheus.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
@@ -173,8 +172,8 @@ var statDatabase = map[string]*prometheus.Desc{
 		"Number of deadlocks detected in this database",
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
-	),
-	"blk_read_time": prometheus.NewDesc(
+	)
+	statDatabaseBlkReadTime = prometheus.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
@@ -183,8 +182,8 @@ var statDatabase = map[string]*prometheus.Desc{
 		"Time spent reading data file blocks by backends in this database, in milliseconds",
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
-	),
-	"blk_write_time": prometheus.NewDesc(
+	)
+	statDatabaseBlkWriteTime = prometheus.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
@@ -193,18 +192,17 @@ var statDatabase = map[string]*prometheus.Desc{
 		"Time spent writing data file blocks by backends in this database, in milliseconds",
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
+	)
+	statDatabaseStatsReset = prometheus.NewDesc(prometheus.BuildFQName(
+		namespace,
+		statDatabaseSubsystem,
+		"stats_reset",
 	),
-	"stats_reset": prometheus.NewDesc(
-		prometheus.BuildFQName(
-			namespace,
-			statDatabaseSubsystem,
-			"stats_reset",
-		),
 		"Time at which these statistics were last reset",
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
-	),
-}
+	)
+)
 
 func (PGStatDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
 	rows, err := db.QueryContext(ctx,
@@ -283,7 +281,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<-
 		}
 
 		ch <- prometheus.MustNewConstMetric(
-			statDatabase["numbackends"],
+			statDatabaseNumbackends,
 			prometheus.GaugeValue,
 			numBackends,
 			datid,
@@ -291,7 +289,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<-
 		)
 
 		ch <- prometheus.MustNewConstMetric(
-			statDatabase["xact_commit"],
+			statDatabaseXactCommit,
 			prometheus.CounterValue,
 			xactCommit,
 			datid,
@@ -299,7 +297,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<-
 		)
 
 		ch <- prometheus.MustNewConstMetric(
-			statDatabase["xact_rollback"],
+			statDatabaseXactRollback,
 			prometheus.CounterValue,
 			xactRollback,
 			datid,
@@ -307,7 +305,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<-
 		)
 
 		ch <- prometheus.MustNewConstMetric(
-			statDatabase["blks_read"],
+			statDatabaseBlksRead,
 			prometheus.CounterValue,
 			blksRead,
 			datid,
@@ -315,7 +313,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<-
 		)
 
 		ch <- prometheus.MustNewConstMetric(
-			statDatabase["blks_hit"],
+			statDatabaseBlksHit,
 			prometheus.CounterValue,
 			blksHit,
 			datid,
@@ -323,7 +321,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<-
 		)
 
 		ch <- prometheus.MustNewConstMetric(
-			statDatabase["tup_returned"],
+			statDatabaseTupReturned,
 			prometheus.CounterValue,
 			tupReturned,
 			datid,
@@ -331,7 +329,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<-
 		)
 
 		ch <- prometheus.MustNewConstMetric(
-			statDatabase["tup_fetched"],
+			statDatabaseTupFetched,
 			prometheus.CounterValue,
 			tupFetched,
 			datid,
@@ -339,7 +337,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<-
 		)
 
 		ch <- prometheus.MustNewConstMetric(
-			statDatabase["tup_inserted"],
+			statDatabaseTupInserted,
 			prometheus.CounterValue,
 			tupInserted,
 			datid,
@@ -347,7 +345,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<-
 		)
 
 		ch <- prometheus.MustNewConstMetric(
-			statDatabase["tup_updated"],
+			statDatabaseTupUpdated,
 			prometheus.CounterValue,
 			tupUpdated,
 			datid,
@@ -355,7 +353,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<-
 		)
 
 		ch <- prometheus.MustNewConstMetric(
-			statDatabase["tup_deleted"],
+			statDatabaseTupDeleted,
 			prometheus.CounterValue,
 			tupDeleted,
 			datid,
@@ -363,7 +361,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<-
 		)
 
 		ch <- prometheus.MustNewConstMetric(
-			statDatabase["conflicts"],
+			statDatabaseConflicts,
 			prometheus.CounterValue,
 			conflicts,
 			datid,
@@ -371,7 +369,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<-
 		)
 
 		ch <- prometheus.MustNewConstMetric(
-			statDatabase["temp_files"],
+			statDatabaseTempFiles,
 			prometheus.CounterValue,
 			tempFiles,
 			datid,
@@ -379,7 +377,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<-
 		)
 
 		ch <- prometheus.MustNewConstMetric(
-			statDatabase["temp_bytes"],
+			statDatabaseTempBytes,
 			prometheus.CounterValue,
 			tempBytes,
 			datid,
@@ -387,7 +385,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<-
 		)
 
 		ch <- prometheus.MustNewConstMetric(
-			statDatabase["deadlocks"],
+			statDatabaseDeadlocks,
 			prometheus.CounterValue,
 			deadlocks,
 			datid,
@@ -395,7 +393,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<-
 		)
 
 		ch <- prometheus.MustNewConstMetric(
-			statDatabase["blk_read_time"],
+			statDatabaseBlkReadTime,
 			prometheus.CounterValue,
 			blkReadTime,
 			datid,
@@ -403,7 +401,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<-
 		)
 
 		ch <- prometheus.MustNewConstMetric(
-			statDatabase["blk_write_time"],
+			statDatabaseBlkWriteTime,
 			prometheus.CounterValue,
 			blkWriteTime,
 			datid,
@@ -412,7 +410,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<-
 
 		if statsReset.Valid {
 			ch <- prometheus.MustNewConstMetric(
-				statDatabase["stats_reset"],
+				statDatabaseStatsReset,
 				prometheus.CounterValue,
 				float64(statsReset.Time.Unix()),
 				datid,
@@ -420,7 +418,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<-
 			)
 		} else {
 			ch <- prometheus.MustNewConstMetric(
-				statDatabase["stats_reset"],
+				statDatabaseStatsReset,
 				prometheus.CounterValue,
 				0,
 				datid,
