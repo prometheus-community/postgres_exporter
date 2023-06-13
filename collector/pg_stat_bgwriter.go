@@ -21,8 +21,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const bgWriterSubsystem = "stat_bgwriter"
+
 func init() {
-	registerCollector("bgwriter", defaultEnabled, NewPGStatBGWriterCollector)
+	registerCollector(bgWriterSubsystem, defaultEnabled, NewPGStatBGWriterCollector)
 }
 
 type PGStatBGWriterCollector struct {
@@ -31,8 +33,6 @@ type PGStatBGWriterCollector struct {
 func NewPGStatBGWriterCollector(collectorConfig) (Collector, error) {
 	return &PGStatBGWriterCollector{}, nil
 }
-
-const bgWriterSubsystem = "stat_bgwriter"
 
 var (
 	statBGWriterCheckpointsTimedDesc = prometheus.NewDesc(

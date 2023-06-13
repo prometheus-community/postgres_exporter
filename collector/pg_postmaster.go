@@ -20,8 +20,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const postmasterSubsystem = "postmaster"
+
 func init() {
-	registerCollector("postmaster", defaultEnabled, NewPGPostmasterCollector)
+	registerCollector(postmasterSubsystem, defaultEnabled, NewPGPostmasterCollector)
 }
 
 type PGPostmasterCollector struct {
@@ -33,7 +35,11 @@ func NewPGPostmasterCollector(collectorConfig) (Collector, error) {
 
 var (
 	pgPostMasterStartTimeSeconds = prometheus.NewDesc(
-		"pg_postmaster_start_time_seconds",
+		prometheus.BuildFQName(
+			namespace,
+			postmasterSubsystem,
+			"start_time_seconds",
+		),
 		"Time at which postmaster started",
 		[]string{}, nil,
 	)

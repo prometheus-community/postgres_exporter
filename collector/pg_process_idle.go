@@ -21,15 +21,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const processIdleSubsystem = "process_idle"
+
 func init() {
-	registerCollector("statements", defaultEnabled, NewPGProcessIdleCollector)
+	registerCollector(processIdleSubsystem, defaultEnabled, NewPGProcessIdleCollector)
 }
 
 type PGProcessIdleCollector struct {
 	log log.Logger
 }
-
-const processIdleSubsystem = "process_idle"
 
 func NewPGProcessIdleCollector(config collectorConfig) (Collector, error) {
 	return &PGProcessIdleCollector{log: config.logger}, nil

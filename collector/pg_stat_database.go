@@ -20,8 +20,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const statDatabaseSubsystem = "stat_database"
+
 func init() {
-	registerCollector("stat_database", defaultEnabled, NewPGStatDatabaseCollector)
+	registerCollector(statDatabaseSubsystem, defaultEnabled, NewPGStatDatabaseCollector)
 }
 
 type PGStatDatabaseCollector struct{}
@@ -29,8 +31,6 @@ type PGStatDatabaseCollector struct{}
 func NewPGStatDatabaseCollector(config collectorConfig) (Collector, error) {
 	return &PGStatDatabaseCollector{}, nil
 }
-
-const statDatabaseSubsystem = "stat_database"
 
 var (
 	statDatabaseNumbackends = prometheus.NewDesc(
