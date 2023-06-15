@@ -31,7 +31,7 @@ jobs:
       with:
         go-version: ${{ matrix.go-version }}
     - name: Checkout code
-      uses: percona-platform/checkout@v2
+      uses: percona-platform/checkout@v3
     - name: Run checks
       run: |
         go build -modfile=tools/go.mod -o bin/golangci-lint github.com/golangci/golangci-lint/cmd/golangci-lint
