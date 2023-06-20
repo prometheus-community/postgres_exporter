@@ -38,65 +38,97 @@ var (
 	statWalReceiverStatus = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "status"),
 		"Activity status of the WAL receiver process",
-		[]string{"upstream_connection", "slot_name"},
+		[]string{"upstream_host", "slot_name"},
 		prometheus.Labels{},
 	)
 	statWalReceiverReceiveStartLsn = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "receive_start_lsn"),
 		"First write-ahead log location used when WAL receiver is started represented as a decimal",
-		[]string{"upstream_connection", "slot_name"},
+		[]string{"upstream_host", "slot_name"},
 		prometheus.Labels{},
 	)
 	statWalReceiverReceiveStartTli = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "receive_start_tli"),
 		"First timeline number used when WAL receiver is started",
-		[]string{"upstream_connection", "slot_name"},
+		[]string{"upstream_host", "slot_name"},
 		prometheus.Labels{},
 	)
 	statWalReceiverFlushedLSN = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "flushed_lsn"),
 		"Last write-ahead log location already received and flushed to disk, the initial value of this field being the first log location used when WAL receiver is started represented as a decimal",
-		[]string{"upstream_connection", "slot_name"},
+		[]string{"upstream_host", "slot_name"},
 		prometheus.Labels{},
 	)
 	statWalReceiverReceivedTli = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "received_tli"),
 		"Timeline number of last write-ahead log location received and flushed to disk",
-		[]string{"upstream_connection", "slot_name"},
+		[]string{"upstream_host", "slot_name"},
 		prometheus.Labels{},
 	)
 	statWalReceiverLastMsgSendTime = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "last_msg_send_time"),
 		"Send time of last message received from origin WAL sender",
-		[]string{"upstream_connection", "slot_name"},
+		[]string{"upstream_host", "slot_name"},
 		prometheus.Labels{},
 	)
 	statWalReceiverLastMsgReceiptTime = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "last_msg_receipt_time"),
 		"Send time of last message received from origin WAL sender",
-		[]string{"upstream_connection", "slot_name"},
+		[]string{"upstream_host", "slot_name"},
 		prometheus.Labels{},
 	)
 	statWalReceiverLatestEndLsn = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "latest_end_lsn"),
 		"Last write-ahead log location reported to origin WAL sender as integer",
-		[]string{"upstream_connection", "slot_name"},
+		[]string{"upstream_host", "slot_name"},
 		prometheus.Labels{},
 	)
 	statWalReceiverLatestEndTime = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "latest_end_time"),
 		"Time of last write-ahead log location reported to origin WAL sender",
-		[]string{"upstream_connection", "slot_name"},
+		[]string{"upstream_host", "slot_name"},
 		prometheus.Labels{},
 	)
 	statWalReceiverUpstreamNode = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "upstream_node"),
 		"Node ID of the upstream node",
-		[]string{"upstream_connection", "slot_name"},
+		[]string{"upstream_host", "slot_name"},
 		prometheus.Labels{},
 	)
 
-	pgStatWalReceiverQuery = `
+	pgStatWalColumnQuery = `
+	SELECT
+		column_name
+	FROM information_schema.columns
+	WHERE
+		table_name = 'pg_stat_wal_receiver' and
+		column_name = 'flushed_lsn'
+	`
+
+	pgStatWalReceiverQueryWithNoFlushedLSN = `
+	SELECT
+		trim(both '''' from substring(conninfo from 'host=([^ ]*)')) as upstream_host,
+		slot_name,
+		case status
+			when 'stopped' then 0
+			when 'starting' then 1
+			when 'streaming' then 2
+			when 'waiting' then 3
+			when 'restarting' then 4
+			when 'stopping' then 5 else -1
+		end as status,
+		(receive_start_lsn- '0/0') % (2^52)::bigint as receive_start_lsn,
+		receive_start_tli,
+		received_tli,
+		extract(epoch from last_msg_send_time) as last_msg_send_time,
+		extract(epoch from last_msg_receipt_time) as last_msg_receipt_time,
+		(latest_end_lsn - '0/0') % (2^52)::bigint as latest_end_lsn,
+		extract(epoch from latest_end_time) as latest_end_time,
+		substring(slot_name from 'repmgr_slot_([0-9]*)') as upstream_node
+	FROM pg_catalog.pg_stat_wal_receiver
+	`
+
+	pgStatWalReceiverQueryWithFlushedLSN = `
 	SELECT
 		trim(both '''' from substring(conninfo from 'host=([^ ]*)')) as upstream_host,
 		slot_name,
@@ -122,7 +154,20 @@ var (
 )
 
 func (c *PGStatWalReceiverCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
-	rows, err := db.QueryContext(ctx, pgStatWalReceiverQuery)
+	hasFlushedLSNRows, err := db.QueryContext(ctx, pgStatWalColumnQuery)
+	if err != nil {
+		return err
+	}
+
+	defer hasFlushedLSNRows.Close()
+	hasFlushedLSN := hasFlushedLSNRows.Next()
+	var query string
+	if hasFlushedLSN {
+		query = pgStatWalReceiverQueryWithFlushedLSN
+	} else {
+		query = pgStatWalReceiverQueryWithNoFlushedLSN
+	}
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		return err
 	}
@@ -141,8 +186,14 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, db *sql.DB, ch 
 		var latestEndTime float64
 		var upstreamNode int
 
-		if err := rows.Scan(&upstreamHost, &slotName, &status, &receiveStartLsn, &receiveStartTli, &flushedLsn, &receivedTli, &lastMsgSendTime, &lastMsgReceiptTime, &latestEndLsn, &latestEndTime, &upstreamNode); err != nil {
-			return err
+		if hasFlushedLSN {
+			if err := rows.Scan(&upstreamHost, &slotName, &status, &receiveStartLsn, &receiveStartTli, &flushedLsn, &receivedTli, &lastMsgSendTime, &lastMsgReceiptTime, &latestEndLsn, &latestEndTime, &upstreamNode); err != nil {
+				return err
+			}
+		} else {
+			if err := rows.Scan(&upstreamHost, &slotName, &status, &receiveStartLsn, &receiveStartTli, &receivedTli, &lastMsgSendTime, &lastMsgReceiptTime, &latestEndLsn, &latestEndTime, &upstreamNode); err != nil {
+				return err
+			}
 		}
 
 		ch <- prometheus.MustNewConstMetric(
@@ -163,11 +214,13 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, db *sql.DB, ch 
 			float64(receiveStartTli),
 			upstreamHost, slotName)
 
-		ch <- prometheus.MustNewConstMetric(
-			statWalReceiverFlushedLSN,
-			prometheus.CounterValue,
-			float64(flushedLsn),
-			upstreamHost, slotName)
+		if hasFlushedLSN {
+			ch <- prometheus.MustNewConstMetric(
+				statWalReceiverFlushedLSN,
+				prometheus.CounterValue,
+				float64(flushedLsn),
+				upstreamHost, slotName)
+		}
 
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverReceivedTli,

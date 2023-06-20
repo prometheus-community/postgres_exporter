@@ -50,7 +50,10 @@ func sanitizeQuery(q string) string {
 	q = strings.Join(strings.Fields(q), " ")
 	q = strings.Replace(q, "(", "\\(", -1)
 	q = strings.Replace(q, ")", "\\)", -1)
+	q = strings.Replace(q, "[", "\\[", -1)
+	q = strings.Replace(q, "]", "\\]", -1)
 	q = strings.Replace(q, "*", "\\*", -1)
+	q = strings.Replace(q, "^", "\\^", -1)
 	q = strings.Replace(q, "$", "\\$", -1)
 	return q
 }
