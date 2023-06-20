@@ -28,7 +28,7 @@ type PGArchiverCollector struct {
 	log log.Logger
 }
 
-const archiverSubsystem = "archiver_receiver"
+const archiverSubsystem = "archiver"
 
 func NewPGArchiverCollector(collectorConfig) (Collector, error) {
 	return &PGArchiverCollector{}, nil
