@@ -71,14 +71,36 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `help`
   Show context-sensitive help (also try --help-long and --help-man).
 
-* `collector.database`
-  Enable the pg_database collector. Default is `enabled`
 
-* `collector.bgwriter`
-  Enable the pg_stat_bgwriter collector. Default is `enabled`
+* `[no-]collector.database`
+  Enable the database collector (default: enabled).
 
-* `collector.replication_slot`
-  Enable the replication_slot collector. Default is `enabled`
+* `[no-]collector.postmaster`
+   Enable the `postmaster` collector (default: enabled).
+
+* `[no-]collector.process_idle`
+  Enable the `process_idle` collector (default: enabled).
+
+* `[no-]collector.replication`
+  Enable the `replication` collector (default: enabled).
+
+* `[no-]collector.replication_slot`
+  Enable the `replication_slot` collector (default: enabled).
+
+* `[no-]collector.stat_bgwriter`
+  Enable the `stat_bgwriter` collector (default: enabled).
+
+* `[no-]collector.stat_database`
+  Enable the `stat_database` collector (default: enabled).
+
+* `[no-]collector.statio_user_tables`
+  Enable the `statio_user_tables` collector (default: enabled).
+
+* `[no-]collector.stat_statements`
+  Enable the `stat_statements` collector (default: disabled).
+
+* `[no-]collector.stat_user_tables`
+  Enable the `stat_user_tables` collector (default: enabled).
 
 * `config.file`
   Set the config file path. Default is `postgres_exporter.yml`
