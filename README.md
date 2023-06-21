@@ -102,7 +102,7 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `disable-settings-metrics`
   Use the flag if you don't want to scrape `pg_settings`.  Default is `false`.
 
-* `auto-discover-databases`
+* `auto-discover-databases` (DEPRECATED)
   Whether to discover the databases on a server dynamically.  Default is `false`.
 
 * `extend.query-path` (DEPRECATED)
@@ -113,16 +113,16 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
   Do not run - print the internal representation of the metric maps. Useful when debugging a custom
   queries file.
 
-* `constantLabels`
+* `constantLabels` (DEPRECATED)
   Labels to set in all metrics. A list of `label=value` pairs, separated by commas.
 
 * `version`
   Show application version.
 
-* `exclude-databases`
+* `exclude-databases` (DEPRECATED)
   A list of databases to remove when autoDiscoverDatabases is enabled.
 
-* `include-databases`
+* `include-databases` (DEPRECATED)
   A list of databases to only include when autoDiscoverDatabases is enabled.
 
 * `log.level`
@@ -170,20 +170,20 @@ The following environment variables configure the exporter:
 * `PG_EXPORTER_DISABLE_SETTINGS_METRICS`
   Use the flag if you don't want to scrape `pg_settings`. Value can be `true` or `false`. Default is `false`.
 
-* `PG_EXPORTER_AUTO_DISCOVER_DATABASES`
+* `PG_EXPORTER_AUTO_DISCOVER_DATABASES` (DEPRECATED)
   Whether to discover the databases on a server dynamically. Value can be `true` or `false`. Default is `false`.
 
 * `PG_EXPORTER_EXTEND_QUERY_PATH`
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
   for examples of the format.
 
-* `PG_EXPORTER_CONSTANT_LABELS`
+* `PG_EXPORTER_CONSTANT_LABELS` (DEPRECATED)
   Labels to set in all metrics. A list of `label=value` pairs, separated by commas.
 
-* `PG_EXPORTER_EXCLUDE_DATABASES`
+* `PG_EXPORTER_EXCLUDE_DATABASES` (DEPRECATED)
   A comma-separated list of databases to remove when autoDiscoverDatabases is enabled. Default is empty string.
 
-* `PG_EXPORTER_INCLUDE_DATABASES`
+* `PG_EXPORTER_INCLUDE_DATABASES` (DEPRECATED)
   A comma-separated list of databases to only include when autoDiscoverDatabases is enabled. Default is empty string,
   means allow all.
 
@@ -235,7 +235,7 @@ or variants of postgres (e.g. Greenplum), you can disable the default metrics wi
 flag. This removes all built-in metrics, and uses only metrics defined by queries in the `queries.yaml` file you supply
 (so you must supply one, otherwise the exporter will return nothing but internal statuses and not your database).
 
-### Automatically discover databases
+### Automatically discover databases (DEPRECATED)
 To scrape metrics from all databases on a database server, the database DSN's can be dynamically discovered via the
 `--auto-discover-databases` flag. When true, `SELECT datname FROM pg_database WHERE datallowconn = true AND datistemplate = false and datname != current_database()` is run for all configured DSN's. From the
 result a new set of DSN's is created for which the metrics are scraped.
