@@ -30,6 +30,8 @@ func TestPGStatUserTablesCollector(t *testing.T) {
 	}
 	defer db.Close()
 
+	inst := &instance{db: db}
+
 	lastVacuumTime, err := time.Parse("2006-01-02Z", "2023-06-02Z")
 	if err != nil {
 		t.Fatalf("Error parsing vacuum time: %s", err)
@@ -99,7 +101,7 @@ func TestPGStatUserTablesCollector(t *testing.T) {
 		defer close(ch)
 		c := PGStatUserTablesCollector{}
 
-		if err := c.Update(context.Background(), db, ch); err != nil {
+		if err := c.Update(context.Background(), inst, ch); err != nil {
 			t.Errorf("Error calling PGStatUserTablesCollector.Update: %s", err)
 		}
 	}()

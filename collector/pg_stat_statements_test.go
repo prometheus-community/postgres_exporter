@@ -29,6 +29,8 @@ func TestPGStateStatementsCollector(t *testing.T) {
 	}
 	defer db.Close()
 
+	inst := &instance{db: db}
+
 	columns := []string{"user", "datname", "queryid", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
 		AddRow("postgres", "postgres", 1500, 5, 0.4, 100, 0.1, 0.2)
@@ -39,7 +41,7 @@ func TestPGStateStatementsCollector(t *testing.T) {
 		defer close(ch)
 		c := PGStatStatementsCollector{}
 
-		if err := c.Update(context.Background(), db, ch); err != nil {
+		if err := c.Update(context.Background(), inst, ch); err != nil {
 			t.Errorf("Error calling PGStatStatementsCollector.Update: %s", err)
 		}
 	}()

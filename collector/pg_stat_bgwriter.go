@@ -15,7 +15,6 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -117,7 +116,8 @@ var (
 	FROM pg_stat_bgwriter;`
 )
 
-func (PGStatBGWriterCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
+func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	db := instance.getDB()
 	row := db.QueryRowContext(ctx,
 		statBGWriterQuery)
 

@@ -15,7 +15,6 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -47,7 +46,8 @@ var (
 	pgPostmasterQuery = "SELECT pg_postmaster_start_time from pg_postmaster_start_time();"
 )
 
-func (c *PGPostmasterCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
+func (c *PGPostmasterCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	db := instance.getDB()
 	row := db.QueryRowContext(ctx,
 		pgPostmasterQuery)
 

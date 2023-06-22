@@ -29,6 +29,8 @@ func TestPGDatabaseCollector(t *testing.T) {
 	}
 	defer db.Close()
 
+	inst := &instance{db: db}
+
 	mock.ExpectQuery(sanitizeQuery(pgDatabaseQuery)).WillReturnRows(sqlmock.NewRows([]string{"datname"}).
 		AddRow("postgres"))
 
@@ -39,7 +41,7 @@ func TestPGDatabaseCollector(t *testing.T) {
 	go func() {
 		defer close(ch)
 		c := PGDatabaseCollector{}
-		if err := c.Update(context.Background(), db, ch); err != nil {
+		if err := c.Update(context.Background(), inst, ch); err != nil {
 			t.Errorf("Error calling PGDatabaseCollector.Update: %s", err)
 		}
 	}()

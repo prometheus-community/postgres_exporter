@@ -15,7 +15,6 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -42,7 +41,8 @@ var pgProcessIdleSeconds = prometheus.NewDesc(
 	prometheus.Labels{},
 )
 
-func (PGProcessIdleCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
+func (PGProcessIdleCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	db := instance.getDB()
 	row := db.QueryRowContext(ctx,
 		`WITH
 			metrics AS (

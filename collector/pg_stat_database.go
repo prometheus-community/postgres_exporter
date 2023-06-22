@@ -204,7 +204,8 @@ var (
 	)
 )
 
-func (PGStatDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
+func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	db := instance.getDB()
 	rows, err := db.QueryContext(ctx,
 		`SELECT
 			datid

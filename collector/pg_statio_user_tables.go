@@ -15,7 +15,6 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -100,7 +99,8 @@ var (
 	FROM pg_statio_user_tables`
 )
 
-func (PGStatIOUserTablesCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
+func (PGStatIOUserTablesCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	db := instance.getDB()
 	rows, err := db.QueryContext(ctx,
 		statioUserTablesQuery)
 

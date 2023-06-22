@@ -15,7 +15,6 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -73,7 +72,8 @@ var (
 		pg_replication_slots;`
 )
 
-func (PGReplicationSlotCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
+func (PGReplicationSlotCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	db := instance.getDB()
 	rows, err := db.QueryContext(ctx,
 		pgReplicationSlotQuery)
 	if err != nil {

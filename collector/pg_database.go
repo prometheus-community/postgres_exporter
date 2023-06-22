@@ -15,7 +15,6 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -66,7 +65,8 @@ var (
 // each database individually. This is because we can't filter the
 // list of databases in the query because the list of excluded
 // databases is dynamic.
-func (c PGDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
+func (c PGDatabaseCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	db := instance.getDB()
 	// Query the list of databases
 	rows, err := db.QueryContext(ctx,
 		pgDatabaseQuery,

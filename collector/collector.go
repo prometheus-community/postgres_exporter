@@ -15,7 +15,6 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"sync"
@@ -59,7 +58,7 @@ var (
 )
 
 type Collector interface {
-	Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error
+	Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error
 }
 
 type collectorConfig struct {
@@ -92,7 +91,7 @@ type PostgresCollector struct {
 	Collectors map[string]Collector
 	logger     log.Logger
 
-	db *sql.DB
+	instance *instance
 }
 
 type Option func(*PostgresCollector) error
@@ -149,14 +148,11 @@ func NewPostgresCollector(logger log.Logger, excludeDatabases []string, dsn stri
 		return nil, errors.New("empty dsn")
 	}
 
-	db, err := sql.Open("postgres", dsn)
+	instance, err := newInstance(dsn)
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
-
-	p.db = db
+	p.instance = instance
 
 	return p, nil
 }
@@ -174,16 +170,16 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 	wg.Add(len(p.Collectors))
 	for name, c := range p.Collectors {
 		go func(name string, c Collector) {
-			execute(ctx, name, c, p.db, ch, p.logger)
+			execute(ctx, name, c, p.instance, ch, p.logger)
 			wg.Done()
 		}(name, c)
 	}
 	wg.Wait()
 }
 
-func execute(ctx context.Context, name string, c Collector, db *sql.DB, ch chan<- prometheus.Metric, logger log.Logger) {
+func execute(ctx context.Context, name string, c Collector, instance *instance, ch chan<- prometheus.Metric, logger log.Logger) {
 	begin := time.Now()
-	err := c.Update(ctx, db, ch)
+	err := c.Update(ctx, instance, ch)
 	duration := time.Since(begin)
 	var success float64
 
