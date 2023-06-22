@@ -14,7 +14,6 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -153,7 +152,8 @@ var (
 	`
 )
 
-func (c *PGStatWalReceiverCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
+func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	db := instance.getDB()
 	hasFlushedLSNRows, err := db.QueryContext(ctx, pgStatWalColumnQuery)
 	if err != nil {
 		return err

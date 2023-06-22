@@ -14,7 +14,6 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -64,7 +63,8 @@ var (
 	`
 )
 
-func (c *PGArchiverCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
+func (c *PGArchiverCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	db := instance.getDB()
 	row := db.QueryRowContext(ctx,
 		pgArchiverQuery)
 	var pendingWalCount float64

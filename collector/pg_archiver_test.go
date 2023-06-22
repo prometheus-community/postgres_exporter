@@ -29,6 +29,7 @@ func TestPgArchiverCollector(t *testing.T) {
 	}
 	defer db.Close()
 
+	inst := &instance{db: db}
 	mock.ExpectQuery(sanitizeQuery(pgArchiverQuery)).WillReturnRows(sqlmock.NewRows([]string{"pending_wal_count"}).
 		AddRow(5))
 
@@ -37,7 +38,7 @@ func TestPgArchiverCollector(t *testing.T) {
 		defer close(ch)
 		c := PGArchiverCollector{}
 
-		if err := c.Update(context.Background(), db, ch); err != nil {
+		if err := c.Update(context.Background(), inst, ch); err != nil {
 			t.Errorf("Error calling PGArchiverCollector.Update: %s", err)
 		}
 	}()

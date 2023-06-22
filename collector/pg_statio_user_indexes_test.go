@@ -28,6 +28,7 @@ func TestPgStatioUserIndexesCollector(t *testing.T) {
 		t.Fatalf("Error opening a stub db connection: %s", err)
 	}
 	defer db.Close()
+	inst := &instance{db: db}
 	columns := []string{
 		"schemaname",
 		"relname",
@@ -45,7 +46,7 @@ func TestPgStatioUserIndexesCollector(t *testing.T) {
 		defer close(ch)
 		c := PGStatioUserIndexesCollector{}
 
-		if err := c.Update(context.Background(), db, ch); err != nil {
+		if err := c.Update(context.Background(), inst, ch); err != nil {
 			t.Errorf("Error calling PGStatioUserIndexesCollector.Update: %s", err)
 		}
 	}()
