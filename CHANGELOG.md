@@ -1,4 +1,27 @@
-## master / unreleased
+## 0.13.0 / 2023-06-21
+
+BREAKING CHANGES:
+
+Please note, the following features are deprecated and may be removed in a future release:
+- `auto-discover-databases`
+- `extend.query-path`
+- `constantLabels`
+- `exclude-databases`
+- `include-databases`
+
+This exporter is meant to monitor PostgresSQL servers, not the user data/databases. If
+you need a generic SQL report exporter https://github.com/burningalchemist/sql_exporter
+is recommended.
+
+* [CHANGE] Adjust log level for collector startup #784
+* [CHANGE] Move queries from queries.yaml to collectors #801
+* [CHANGE] Deprecate extend queries feature #811
+* [CHANGE] Deprecate additional database features #815
+* [CHANGE] Convert pg_stat_database to new collector #685
+* [ENHANCEMENT] Supports alternate postgres:// prefix in URLs #787
+* [BUGFIX] Fix pg_setting different help values #771
+* [BUGFIX] Fix column type for pg_replication_slots #777
+* [BUGFIX] Fix pg_stat_database collector #809
 
 ## 0.12.1 / 2023-06-12
 * [BUGFIX] Fix column type for pg_replication_slots #777
