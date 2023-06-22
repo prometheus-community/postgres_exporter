@@ -22,7 +22,7 @@ import (
 	"github.com/smartystreets/goconvey/convey"
 )
 
-func TestPgStatUserIndexesCollector(t *testing.T) {
+func TestPgStatioUserIndexesCollector(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("Error opening a stub db connection: %s", err)
@@ -32,28 +32,26 @@ func TestPgStatUserIndexesCollector(t *testing.T) {
 		"schemaname",
 		"relname",
 		"indexrelname",
-		"idx_scan",
-		"idx_tup_read",
-		"idx_tup_fetch",
+		"idx_blks_read",
+		"idx_blks_hit",
 	}
 	rows := sqlmock.NewRows(columns).
-		AddRow("public", "pgbench_accounts", "pgbench_accounts_pkey", 5, 6, 7)
+		AddRow("public", "pgtest_accounts", "pgtest_accounts_pkey", 8, 9)
 
-	mock.ExpectQuery(sanitizeQuery(statUserIndexesQuery)).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(statioUserIndexesQuery)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
-		c := PGStatUserIndexesCollector{}
+		c := PGStatioUserIndexesCollector{}
 
 		if err := c.Update(context.Background(), db, ch); err != nil {
-			t.Errorf("Error calling PGStatUserIndexesCollector.Update: %s", err)
+			t.Errorf("Error calling PGStatioUserIndexesCollector.Update: %s", err)
 		}
 	}()
 	expected := []MetricResult{
-		{labels: labelMap{"schemaname": "public", "relname": "pgbench_accounts", "indexrelname": "pgbench_accounts_pkey"}, value: 5, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"schemaname": "public", "relname": "pgbench_accounts", "indexrelname": "pgbench_accounts_pkey"}, value: 6, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"schemaname": "public", "relname": "pgbench_accounts", "indexrelname": "pgbench_accounts_pkey"}, value: 7, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"schemaname": "public", "relname": "pgtest_accounts", "indexrelname": "pgtest_accounts_pkey"}, value: 8, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"schemaname": "public", "relname": "pgtest_accounts", "indexrelname": "pgtest_accounts_pkey"}, value: 9, metricType: dto.MetricType_COUNTER},
 	}
 	convey.Convey("Metrics comparison", t, func() {
 		for _, expect := range expected {
