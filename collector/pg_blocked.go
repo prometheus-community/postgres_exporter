@@ -23,7 +23,7 @@ import (
 const blockedSubsystem = "blocked"
 
 func init() {
-	registerCollector(statioUserTableSubsystem, defaultEnabled, NewPGStatIOUserTablesCollector)
+	registerCollector(blockedSubsystem, defaultEnabled, NewPGBlockedCollector)
 }
 
 type PGBlockedCollector struct {

@@ -23,7 +23,7 @@ import (
 const indexSizeSubsystem = "index_size"
 
 func init() {
-	registerCollector(statioUserTableSubsystem, defaultEnabled, NewPGStatIOUserTablesCollector)
+	registerCollector(indexSizeSubsystem, defaultEnabled, NewPGIndexSizeCollector)
 }
 
 type PGIndexSizeCollector struct {

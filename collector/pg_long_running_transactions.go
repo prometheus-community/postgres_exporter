@@ -23,7 +23,7 @@ import (
 const longRunningTransactionsSubsystem = "long_running_transactions"
 
 func init() {
-	registerCollector(statioUserTableSubsystem, defaultEnabled, NewPGStatIOUserTablesCollector)
+	registerCollector(longRunningTransactionsSubsystem, defaultEnabled, NewPGLongRunningTransactionsCollector)
 }
 
 type PGLongRunningTransactionsCollector struct {

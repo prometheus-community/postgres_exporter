@@ -20,42 +20,41 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const slowSubsystem = "slow"
+const stuckIdleInTransactionSubsystem = "stuck_in_transaction"
 
 func init() {
-	registerCollector(slowSubsystem, defaultEnabled, NewPGSlowCollector)
+	registerCollector(stuckIdleInTransactionSubsystem, defaultEnabled, NewPGStuckIdleInTransactionCollector)
 }
 
-type PGSlowCollector struct {
+type PGStuckIdleInTransactionCollector struct {
 	log log.Logger
 }
 
-func NewPGSlowCollector(config collectorConfig) (Collector, error) {
-	return &PGSlowCollector{log: config.logger}, nil
+func NewPGStuckIdleInTransactionCollector(config collectorConfig) (Collector, error) {
+	return &PGStuckIdleInTransactionCollector{log: config.logger}, nil
 }
 
 var (
-	slowQueries = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, slowSubsystem, "queries"),
-		"Current number of slow queries",
+	stuckIdleInTransactionQueries = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, longRunningTransactionsSubsystem, "queries"),
+		"Current number of queries that are stuck being idle in transactions",
 		[]string{},
 		prometheus.Labels{},
 	)
 
-	slowQuery = `
-	SELECT
-		COUNT(*) AS queries
-    FROM
-		pg_catalog.pg_stat_activity
-    WHERE
-		state = 'active' AND (now() - query_start) > '1 seconds'::interval
+	stuckIdleInTransactionQuery = `
+		SELECT
+			COUNT(*) AS queries
+		FROM pg_catalog.pg_stat_activity
+		WHERE
+			state = 'idle in transaction' AND (now() - query_start) > '10 minutes'::interval
 	`
 )
 
-func (PGSlowCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+func (PGStuckIdleInTransactionCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
 	rows, err := db.QueryContext(ctx,
-		slowQuery)
+		stuckIdleInTransactionQuery)
 
 	if err != nil {
 		return err
@@ -70,7 +69,12 @@ func (PGSlowCollector) Update(ctx context.Context, instance *instance, ch chan<-
 		}
 
 		ch <- prometheus.MustNewConstMetric(
-			slowQueries,
+			stuckIdleInTransactionQueries,
+			prometheus.GaugeValue,
+			queries,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			longRunningTransactionsAgeInSeconds,
 			prometheus.GaugeValue,
 			queries,
 		)

@@ -23,7 +23,7 @@ import (
 const oldestBlockedSubsystem = "oldest_blocked"
 
 func init() {
-	registerCollector(statioUserTableSubsystem, defaultEnabled, NewPGStatIOUserTablesCollector)
+	registerCollector(oldestBlockedSubsystem, defaultEnabled, NewPGOldestBlockedCollector)
 }
 
 type PGOldestBlockedCollector struct {
