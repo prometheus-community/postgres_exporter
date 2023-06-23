@@ -22,7 +22,7 @@ import (
 	"github.com/smartystreets/goconvey/convey"
 )
 
-func TestPgLongRunningTransactionsCollector(t *testing.T) {
+func TestPGLongRunningTransactionsCollector(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("Error opening a stub db connection: %s", err)
