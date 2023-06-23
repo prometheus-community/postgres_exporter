@@ -74,16 +74,16 @@ func (PGLongRunningTransactionsMarginaliaCollector) Update(ctx context.Context, 
 
 	for rows.Next() {
 		var application, endpoint string
-		var max_age_in_seconds float64
+		var maxAgeInSeconds float64
 
-		if err := rows.Scan(&application, &endpoint, &max_age_in_seconds); err != nil {
+		if err := rows.Scan(&application, &endpoint, &maxAgeInSeconds); err != nil {
 			return err
 		}
 
 		ch <- prometheus.MustNewConstMetric(
-			longRunningTransactionsAgeInSeconds,
+			longRunningTransactionsMarginaliaMaxAgeInSeconds,
 			prometheus.GaugeValue,
-			max_age_in_seconds,
+			maxAgeInSeconds,
 			application, endpoint,
 		)
 	}

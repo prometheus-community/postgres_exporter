@@ -86,10 +86,10 @@ func (PGStatActivityMarginaliaCollector) Update(ctx context.Context, instance *i
 	defer rows.Close()
 
 	for rows.Next() {
-		var usename, application, endpoint, command, state, wait_event, wait_event_type string
-		var count, max_tx_age float64
+		var usename, application, endpoint, command, state, waitEvent, waitEventType string
+		var count, maxTxAge float64
 
-		if err := rows.Scan(&usename, &application, &endpoint, &command, &state, &wait_event, &wait_event_type, &count, &max_tx_age); err != nil {
+		if err := rows.Scan(&usename, &application, &endpoint, &command, &state, &waitEvent, &waitEventType, &count, &maxTxAge); err != nil {
 			return err
 		}
 
@@ -97,13 +97,13 @@ func (PGStatActivityMarginaliaCollector) Update(ctx context.Context, instance *i
 			statActivityMarginaliaActiveCount,
 			prometheus.GaugeValue,
 			count,
-			usename, application, endpoint, command, state, wait_event, wait_event_type,
+			usename, application, endpoint, command, state, waitEvent, waitEventType,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			statActivityMarginaliaMaxTxAgeInSeconds,
 			prometheus.GaugeValue,
-			max_tx_age,
-			usename, application, endpoint, command, state, wait_event, wait_event_type,
+			maxTxAge,
+			usename, application, endpoint, command, state, waitEvent, waitEventType,
 		)
 	}
 	if err := rows.Err(); err != nil {

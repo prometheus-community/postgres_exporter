@@ -70,16 +70,16 @@ func (PGStatActivityAutovacuumActiveCollector) Update(ctx context.Context, insta
 
 	for rows.Next() {
 		var phase, mode string
-		var workers_count float64
+		var workersCount float64
 
-		if err := rows.Scan(&phase, &mode, &workers_count); err != nil {
+		if err := rows.Scan(&phase, &mode, &workersCount); err != nil {
 			return err
 		}
 
 		ch <- prometheus.MustNewConstMetric(
 			statActivityAutovacuumActiveWorkersCount,
 			prometheus.GaugeValue,
-			workers_count,
+			workersCount,
 			phase, mode,
 		)
 	}
