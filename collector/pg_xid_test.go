@@ -65,9 +65,7 @@ func TestPgXidCollector(t *testing.T) {
 	}
 }
 
-// This test is turned off for now
-// Because convey cannot compare NaN
-func xTestPgNanCollector(t *testing.T) {
+func TestPgNanCollector(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("Error opening a stub db connection: %s", err)
@@ -101,7 +99,10 @@ func xTestPgNanCollector(t *testing.T) {
 	convey.Convey("Metrics comparison", t, func() {
 		for _, expect := range expected {
 			m := readMetric(<-ch)
-			convey.So(expect, convey.ShouldResemble, m)
+
+			convey.So(expect.labels, convey.ShouldResemble, m.labels)
+			convey.So(math.IsNaN(m.value), convey.ShouldResemble, math.IsNaN(expect.value))
+			convey.So(expect.metricType, convey.ShouldEqual, m.metricType)
 		}
 	})
 	if err := mock.ExpectationsWereMet(); err != nil {
