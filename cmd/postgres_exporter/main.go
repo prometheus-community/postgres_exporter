@@ -96,15 +96,15 @@ func main() {
 	logger.Log("msg", "Excluded databases", "databases", fmt.Sprintf("%v", excludedDatabases))
 
 	if *queriesPath != "" {
-		level.Warn(logger).Log("msg", "The extend queries.yaml config is DEPRECATD", "file", *queriesPath)
+		level.Warn(logger).Log("msg", "The extended queries.yaml config is DEPRECATED", "file", *queriesPath)
 	}
 
 	if *autoDiscoverDatabases || *excludeDatabases != "" || *includeDatabases != "" {
-		level.Warn(logger).Log("msg", "Scraping additional databases via auto discovery is DEPRECATD")
+		level.Warn(logger).Log("msg", "Scraping additional databases via auto discovery is DEPRECATED")
 	}
 
 	if *constantLabelsList != "" {
-		level.Warn(logger).Log("msg", "Constant lables on all metrics is DEPRECATD")
+		level.Warn(logger).Log("msg", "Constant labels on all metrics is DEPRECATED")
 	}
 
 	opts := []ExporterOpt{
