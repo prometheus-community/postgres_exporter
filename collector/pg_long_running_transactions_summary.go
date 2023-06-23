@@ -20,29 +20,29 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const longRunningTransactionsMarginaliaSubsystem = "long_running_transactions_marginalia"
+const longRunningTransactionsSummarySubsystem = "long_running_transactions_summary"
 
 func init() {
-	registerCollector(longRunningTransactionsMarginaliaSubsystem, defaultEnabled, NewPGLongRunningTransactionsMarginaliaCollector)
+	registerCollector(longRunningTransactionsSummarySubsystem, defaultDisabled, NewPGLongRunningTransactionsSummaryCollector)
 }
 
-type PGLongRunningTransactionsMarginaliaCollector struct {
+type PGLongRunningTransactionsSummaryCollector struct {
 	log log.Logger
 }
 
-func NewPGLongRunningTransactionsMarginaliaCollector(config collectorConfig) (Collector, error) {
-	return &PGLongRunningTransactionsMarginaliaCollector{log: config.logger}, nil
+func NewPGLongRunningTransactionsSummaryCollector(config collectorConfig) (Collector, error) {
+	return &PGLongRunningTransactionsSummaryCollector{log: config.logger}, nil
 }
 
 var (
-	longRunningTransactionsMarginaliaMaxAgeInSeconds = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, longRunningTransactionsMarginaliaSubsystem, "max_age_in_seconds"),
+	longRunningTransactionsSummaryMaxAgeInSeconds = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, longRunningTransactionsSummarySubsystem, "max_age_in_seconds"),
 		"The current maximum transaction age in seconds",
 		[]string{"application", "endpoint"},
 		prometheus.Labels{},
 	)
 
-	longRunningTransactionsMarginaliaQuery = `
+	longRunningTransactionsSummaryQuery = `
 	SELECT
 		activity.matches[1] AS application,
 		activity.matches[2] AS endpoint,
@@ -62,10 +62,10 @@ var (
 	`
 )
 
-func (PGLongRunningTransactionsMarginaliaCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+func (PGLongRunningTransactionsSummaryCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
 	rows, err := db.QueryContext(ctx,
-		longRunningTransactionsMarginaliaQuery)
+		longRunningTransactionsSummaryQuery)
 
 	if err != nil {
 		return err
@@ -81,7 +81,7 @@ func (PGLongRunningTransactionsMarginaliaCollector) Update(ctx context.Context, 
 		}
 
 		ch <- prometheus.MustNewConstMetric(
-			longRunningTransactionsMarginaliaMaxAgeInSeconds,
+			longRunningTransactionsSummaryMaxAgeInSeconds,
 			prometheus.GaugeValue,
 			maxAgeInSeconds,
 			application, endpoint,

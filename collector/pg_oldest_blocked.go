@@ -23,7 +23,7 @@ import (
 const oldestBlockedSubsystem = "oldest_blocked"
 
 func init() {
-	registerCollector(oldestBlockedSubsystem, defaultEnabled, NewPGOldestBlockedCollector)
+	registerCollector(oldestBlockedSubsystem, defaultDisabled, NewPGOldestBlockedCollector)
 }
 
 type PGOldestBlockedCollector struct {

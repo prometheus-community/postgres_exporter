@@ -23,7 +23,7 @@ import (
 const xidSubsystem = "xid"
 
 func init() {
-	registerCollector(xidSubsystem, defaultEnabled, NewPGXidCollector)
+	registerCollector(xidSubsystem, defaultDisabled, NewPGXidCollector)
 }
 
 type PGXidCollector struct {

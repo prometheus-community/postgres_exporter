@@ -23,7 +23,7 @@ import (
 const xlogLocationSubsystem = "xlog_location"
 
 func init() {
-	registerCollector(xlogLocationSubsystem, defaultEnabled, NewPGXlogLocationCollector)
+	registerCollector(xlogLocationSubsystem, defaultDisabled, NewPGXlogLocationCollector)
 }
 
 type PGXlogLocationCollector struct {

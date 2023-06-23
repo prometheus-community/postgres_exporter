@@ -20,7 +20,7 @@ import (
 )
 
 func init() {
-	registerCollector("archiver", defaultEnabled, NewPGArchiverCollector)
+	registerCollector("archiver", defaultDisabled, NewPGArchiverCollector)
 }
 
 type PGArchiverCollector struct {

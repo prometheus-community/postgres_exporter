@@ -23,7 +23,7 @@ import (
 const indexSizeSubsystem = "index_size"
 
 func init() {
-	registerCollector(indexSizeSubsystem, defaultEnabled, NewPGIndexSizeCollector)
+	registerCollector(indexSizeSubsystem, defaultDisabled, NewPGIndexSizeCollector)
 }
 
 type PGIndexSizeCollector struct {

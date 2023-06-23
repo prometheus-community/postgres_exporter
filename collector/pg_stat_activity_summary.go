@@ -20,35 +20,35 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const statActivityMarginaliaSubsystem = "stat_activity_marginalia"
+const statActivitySummarySubsystem = "stat_activity_summary"
 
 func init() {
-	registerCollector(statActivityMarginaliaSubsystem, defaultEnabled, NewPGStatActivityMarginaliaCollector)
+	registerCollector(statActivitySummarySubsystem, defaultEnabled, NewPGStatActivitySummaryCollector)
 }
 
-type PGStatActivityMarginaliaCollector struct {
+type PGStatActivitySummaryCollector struct {
 	log log.Logger
 }
 
-func NewPGStatActivityMarginaliaCollector(config collectorConfig) (Collector, error) {
-	return &PGStatActivityMarginaliaCollector{log: config.logger}, nil
+func NewPGStatActivitySummaryCollector(config collectorConfig) (Collector, error) {
+	return &PGStatActivitySummaryCollector{log: config.logger}, nil
 }
 
 var (
-	statActivityMarginaliaActiveCount = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statActivityMarginaliaSubsystem, "active_count"),
+	statActivitySummaryActiveCount = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, statActivitySummarySubsystem, "active_count"),
 		"Number of active queries at time of sample",
 		[]string{"usename", "application", "endpoint", "command", "state", "wait_event", "wait_event_type"},
 		prometheus.Labels{},
 	)
-	statActivityMarginaliaMaxTxAgeInSeconds = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statActivityMarginaliaSubsystem, "max_tx_age_in_seconds"),
+	statActivitySummaryMaxTxAgeInSeconds = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, statActivitySummarySubsystem, "max_tx_age_in_seconds"),
 		"Number of active queries at time of sample",
 		[]string{"usename", "application", "endpoint", "command", "state", "wait_event", "wait_event_type"},
 		prometheus.Labels{},
 	)
 
-	statActivityMarginaliaQuery = `
+	statActivitySummaryQuery = `
 	SELECT
 		usename AS usename,
 		a.matches[1] AS application,
@@ -75,10 +75,10 @@ var (
 	`
 )
 
-func (PGStatActivityMarginaliaCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+func (PGStatActivitySummaryCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
 	rows, err := db.QueryContext(ctx,
-		statActivityMarginaliaQuery)
+		statActivitySummaryQuery)
 
 	if err != nil {
 		return err
@@ -94,13 +94,13 @@ func (PGStatActivityMarginaliaCollector) Update(ctx context.Context, instance *i
 		}
 
 		ch <- prometheus.MustNewConstMetric(
-			statActivityMarginaliaActiveCount,
+			statActivitySummaryActiveCount,
 			prometheus.GaugeValue,
 			count,
 			usename, application, endpoint, command, state, waitEvent, waitEventType,
 		)
 		ch <- prometheus.MustNewConstMetric(
-			statActivityMarginaliaMaxTxAgeInSeconds,
+			statActivitySummaryMaxTxAgeInSeconds,
 			prometheus.GaugeValue,
 			maxTxAge,
 			usename, application, endpoint, command, state, waitEvent, waitEventType,

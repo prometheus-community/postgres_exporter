@@ -20,7 +20,7 @@ import (
 )
 
 func init() {
-	registerCollector(statUserIndexesSubsystem, defaultEnabled, NewPGStatUserIndexesCollector)
+	registerCollector(statUserIndexesSubsystem, defaultDisabled, NewPGStatUserIndexesCollector)
 }
 
 type PGStatUserIndexesCollector struct {

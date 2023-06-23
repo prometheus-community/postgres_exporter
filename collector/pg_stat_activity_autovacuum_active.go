@@ -23,7 +23,7 @@ import (
 const statActivityAutovacuumActiveSubsystem = "stat_activity_autovacuum_active"
 
 func init() {
-	registerCollector(statActivityAutovacuumActiveSubsystem, defaultEnabled, NewPGStatActivityAutovacuumActiveCollector)
+	registerCollector(statActivityAutovacuumActiveSubsystem, defaultDisabled, NewPGStatActivityAutovacuumActiveCollector)
 }
 
 type PGStatActivityAutovacuumActiveCollector struct {

@@ -23,7 +23,7 @@ import (
 const stuckIdleInTransactionSubsystem = "stuck_in_transaction"
 
 func init() {
-	registerCollector(stuckIdleInTransactionSubsystem, defaultEnabled, NewPGStuckIdleInTransactionCollector)
+	registerCollector(stuckIdleInTransactionSubsystem, defaultDisabled, NewPGStuckIdleInTransactionCollector)
 }
 
 type PGStuckIdleInTransactionCollector struct {

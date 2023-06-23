@@ -23,7 +23,7 @@ import (
 const slowSubsystem = "slow"
 
 func init() {
-	registerCollector(slowSubsystem, defaultEnabled, NewPGSlowCollector)
+	registerCollector(slowSubsystem, defaultDisabled, NewPGSlowCollector)
 }
 
 type PGSlowCollector struct {

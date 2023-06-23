@@ -23,7 +23,7 @@ import (
 const blockedSubsystem = "blocked"
 
 func init() {
-	registerCollector(blockedSubsystem, defaultEnabled, NewPGBlockedCollector)
+	registerCollector(blockedSubsystem, defaultDisabled, NewPGBlockedCollector)
 }
 
 type PGBlockedCollector struct {

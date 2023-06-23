@@ -23,7 +23,7 @@ import (
 const totalRelationSizeSubsystem = "total_relation_size"
 
 func init() {
-	registerCollector(totalRelationSizeSubsystem, defaultEnabled, NewPGTotalRelationSizeCollector)
+	registerCollector(totalRelationSizeSubsystem, defaultDisabled, NewPGTotalRelationSizeCollector)
 }
 
 type PGTotalRelationSizeCollector struct {
