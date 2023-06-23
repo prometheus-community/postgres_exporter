@@ -29,8 +29,8 @@ type PGArchiverCollector struct {
 
 const archiverSubsystem = "archiver"
 
-func NewPGArchiverCollector(collectorConfig) (Collector, error) {
-	return &PGArchiverCollector{}, nil
+func NewPGArchiverCollector(config collectorConfig) (Collector, error) {
+	return &PGArchiverCollector{log: config.logger}, nil
 }
 
 var (

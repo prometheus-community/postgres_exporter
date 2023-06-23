@@ -29,8 +29,8 @@ type PGStatUserIndexesCollector struct {
 
 const statUserIndexesSubsystem = "stat_user_indexes"
 
-func NewPGStatUserIndexesCollector(collectorConfig) (Collector, error) {
-	return &PGStatUserIndexesCollector{}, nil
+func NewPGStatUserIndexesCollector(config collectorConfig) (Collector, error) {
+	return &PGStatUserIndexesCollector{log: config.logger}, nil
 }
 
 var (

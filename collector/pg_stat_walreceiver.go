@@ -29,8 +29,8 @@ type PGStatWalReceiverCollector struct {
 
 const statWalReceiverSubsystem = "stat_wal_receiver"
 
-func NewPGStatWalReceiverCollector(collectorConfig) (Collector, error) {
-	return &PGStatWalReceiverCollector{}, nil
+func NewPGStatWalReceiverCollector(config collectorConfig) (Collector, error) {
+	return &PGStatWalReceiverCollector{log: config.logger}, nil
 }
 
 var (
