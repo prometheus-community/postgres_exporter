@@ -20,7 +20,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const statActivityMarginaliaSubsystem = "slow"
+const statActivityMarginaliaSubsystem = "stat_activity_marginalia"
 
 func init() {
 	registerCollector(statActivityMarginaliaSubsystem, defaultEnabled, NewPGStatActivityMarginaliaCollector)

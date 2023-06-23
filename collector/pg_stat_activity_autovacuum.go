@@ -20,7 +20,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const statActivityAutovacuumSubsystem = "slow"
+const statActivityAutovacuumSubsystem = "stat_activity_autovacuum"
 
 func init() {
 	registerCollector(statActivityAutovacuumSubsystem, defaultEnabled, NewPGStatActivityAutovacuumCollector)
