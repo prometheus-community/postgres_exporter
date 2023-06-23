@@ -22,7 +22,7 @@ import (
 	"github.com/smartystreets/goconvey/convey"
 )
 
-func TestPGSlowCollector(t *testing.T) {
+func TestPGDatabaseWraparoundCollector(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("Error opening a stub db connection: %s", err)
@@ -30,24 +30,27 @@ func TestPGSlowCollector(t *testing.T) {
 	defer db.Close()
 	inst := &instance{db: db}
 	columns := []string{
-		"queries",
+		"datname",
+		"age_datfrozenxid",
+		"age_datminmxid",
 	}
 	rows := sqlmock.NewRows(columns).
-		AddRow(25)
+		AddRow("newreddit", 87126426, 0)
 
-	mock.ExpectQuery(sanitizeQuery(slowQuery)).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(databaseWraparoundQuery)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
-		c := PGSlowCollector{}
+		c := PGDatabaseWraparoundCollector{}
 
 		if err := c.Update(context.Background(), inst, ch); err != nil {
-			t.Errorf("Error calling PGSlowCollector.Update: %s", err)
+			t.Errorf("Error calling PGDatabaseWraparoundCollector.Update: %s", err)
 		}
 	}()
 	expected := []MetricResult{
-		{labels: labelMap{}, value: 25, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"datname": "newreddit"}, value: 87126426, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"datname": "newreddit"}, value: 0, metricType: dto.MetricType_GAUGE},
 	}
 	convey.Convey("Metrics comparison", t, func() {
 		for _, expect := range expected {
