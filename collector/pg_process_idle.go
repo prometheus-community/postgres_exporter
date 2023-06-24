@@ -15,20 +15,22 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const processIdleSubsystem = "process_idle"
-
 func init() {
-	registerCollector(processIdleSubsystem, defaultEnabled, NewPGProcessIdleCollector)
+	// Making this default disabled because we have no tests for it
+	registerCollector("statements", defaultDisabled, NewPGProcessIdleCollector)
 }
 
 type PGProcessIdleCollector struct {
 	log log.Logger
 }
+
+const processIdleSubsystem = "process_idle"
 
 func NewPGProcessIdleCollector(config collectorConfig) (Collector, error) {
 	return &PGProcessIdleCollector{log: config.logger}, nil
@@ -41,8 +43,8 @@ var pgProcessIdleSeconds = prometheus.NewDesc(
 	prometheus.Labels{},
 )
 
-func (PGProcessIdleCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
-	db := instance.getDB()
+func (PGProcessIdleCollector) Update(ctx context.Context, inst *instance, ch chan<- prometheus.Metric) error {
+	db := inst.getDB()
 	row := db.QueryRowContext(ctx,
 		`WITH
 			metrics AS (
@@ -79,9 +81,9 @@ func (PGProcessIdleCollector) Update(ctx context.Context, instance *instance, ch
 			FROM metrics JOIN buckets USING (application_name)
 			GROUP BY 1, 2, 3;`)
 
-	var applicationName string
-	var secondsSum int64
-	var secondsCount uint64
+	var applicationName sql.NullString
+	var secondsSum sql.NullInt64
+	var secondsCount sql.NullInt64
 	var seconds []int64
 	var secondsBucket []uint64
 
@@ -97,10 +99,26 @@ func (PGProcessIdleCollector) Update(ctx context.Context, instance *instance, ch
 	if err != nil {
 		return err
 	}
+
+	var applicationNameLabel string
+	if applicationName.Valid {
+		applicationNameLabel = applicationName.String
+	} else {
+		applicationNameLabel = "unknown"
+	}
+
+	var secondsCountMetric uint64 = 0
+	if secondsCount.Valid {
+		secondsCountMetric = uint64(secondsCount.Int64)
+	}
+	var secondsSumMetric float64 = 0
+	if secondsSum.Valid {
+		secondsSumMetric = float64(secondsSum.Int64)
+	}
 	ch <- prometheus.MustNewConstHistogram(
 		pgProcessIdleSeconds,
-		secondsCount, float64(secondsSum), buckets,
-		applicationName,
+		secondsCountMetric, secondsSumMetric, buckets,
+		applicationNameLabel,
 	)
 	return nil
 }

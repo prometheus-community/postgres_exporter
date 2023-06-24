@@ -138,3 +138,102 @@ func TestPGStatUserTablesCollector(t *testing.T) {
 		t.Errorf("there were unfulfilled exceptions: %s", err)
 	}
 }
+
+func TestPGStatUserTablesCollectorNullValues(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Error opening a stub db connection: %s", err)
+	}
+	defer db.Close()
+
+	inst := &instance{db: db}
+
+	columns := []string{
+		"datname",
+		"schemaname",
+		"relname",
+		"seq_scan",
+		"seq_tup_read",
+		"idx_scan",
+		"idx_tup_fetch",
+		"n_tup_ins",
+		"n_tup_upd",
+		"n_tup_del",
+		"n_tup_hot_upd",
+		"n_live_tup",
+		"n_dead_tup",
+		"n_mod_since_analyze",
+		"last_vacuum",
+		"last_autovacuum",
+		"last_analyze",
+		"last_autoanalyze",
+		"vacuum_count",
+		"autovacuum_count",
+		"analyze_count",
+		"autoanalyze_count"}
+	rows := sqlmock.NewRows(columns).
+		AddRow("postgres",
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil)
+	mock.ExpectQuery(sanitizeQuery(statUserTablesQuery)).WillReturnRows(rows)
+	ch := make(chan prometheus.Metric)
+	go func() {
+		defer close(ch)
+		c := PGStatUserTablesCollector{}
+
+		if err := c.Update(context.Background(), inst, ch); err != nil {
+			t.Errorf("Error calling PGStatUserTablesCollector.Update: %s", err)
+		}
+	}()
+
+	expected := []MetricResult{
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
+	}
+
+	convey.Convey("Metrics comparison", t, func() {
+		for _, expect := range expected {
+			m := readMetric(<-ch)
+			convey.So(expect, convey.ShouldResemble, m)
+		}
+	})
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled exceptions: %s", err)
+	}
+}

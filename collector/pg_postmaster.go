@@ -15,6 +15,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -51,14 +52,20 @@ func (c *PGPostmasterCollector) Update(ctx context.Context, instance *instance, 
 	row := db.QueryRowContext(ctx,
 		pgPostmasterQuery)
 
-	var startTimeSeconds float64
+	var startTimeSeconds sql.NullFloat64
 	err := row.Scan(&startTimeSeconds)
 	if err != nil {
 		return err
 	}
+	var startTimeSecondsMetric float64
+	if startTimeSeconds.Valid {
+		startTimeSecondsMetric = startTimeSeconds.Float64
+	} else {
+		startTimeSecondsMetric = 0
+	}
 	ch <- prometheus.MustNewConstMetric(
 		pgPostMasterStartTimeSeconds,
-		prometheus.GaugeValue, startTimeSeconds,
+		prometheus.GaugeValue, startTimeSecondsMetric,
 	)
 	return nil
 }
