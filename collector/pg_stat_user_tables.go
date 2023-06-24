@@ -232,7 +232,8 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			seqTupReadMetric,
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
-		var idxScanMetric float64 = 0
+
+		var idxScanMetric float64
 		if idxScan.Valid {
 			idxScanMetric = float64(idxScan.Int64)
 		}
