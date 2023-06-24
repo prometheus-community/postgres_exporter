@@ -100,7 +100,7 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, instance *instance
 			slotNameLabel = slotName.String
 		}
 
-		var walLSNMetric float64 = 0
+		var walLSNMetric float64
 		if walLSN.Valid {
 			walLSNMetric = walLSN.Float64
 		}
@@ -109,7 +109,7 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, instance *instance
 			prometheus.GaugeValue, walLSNMetric, slotNameLabel,
 		)
 		if isActive.Valid && isActive.Bool {
-			var flushLSNMetric float64 = 0
+			var flushLSNMetric float64
 			if flushLSN.Valid {
 				flushLSNMetric = flushLSN.Float64
 			}

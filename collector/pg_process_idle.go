@@ -107,11 +107,11 @@ func (PGProcessIdleCollector) Update(ctx context.Context, inst *instance, ch cha
 		applicationNameLabel = "unknown"
 	}
 
-	var secondsCountMetric uint64 = 0
+	var secondsCountMetric uint64
 	if secondsCount.Valid {
 		secondsCountMetric = uint64(secondsCount.Int64)
 	}
-	var secondsSumMetric float64 = 0
+	var secondsSumMetric float64
 	if secondsSum.Valid {
 		secondsSumMetric = float64(secondsSum.Int64)
 	}

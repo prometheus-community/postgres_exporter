@@ -123,7 +123,7 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 			queryidLabel = queryid.String
 		}
 
-		var callsTotalMetric float64 = 0
+		var callsTotalMetric float64
 		if callsTotal.Valid {
 			callsTotalMetric = float64(callsTotal.Int64)
 		}
@@ -134,7 +134,7 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 			userLabel, datnameLabel, queryidLabel,
 		)
 
-		var secondsTotalMetric float64 = 0
+		var secondsTotalMetric float64
 		if secondsTotal.Valid {
 			secondsTotalMetric = secondsTotal.Float64
 		}
@@ -145,7 +145,7 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 			userLabel, datnameLabel, queryidLabel,
 		)
 
-		var rowsTotalMetric float64 = 0
+		var rowsTotalMetric float64
 		if rowsTotal.Valid {
 			rowsTotalMetric = float64(rowsTotal.Int64)
 		}
@@ -156,7 +156,7 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 			userLabel, datnameLabel, queryidLabel,
 		)
 
-		var blockReadSecondsTotalMetric float64 = 0
+		var blockReadSecondsTotalMetric float64
 		if blockReadSecondsTotal.Valid {
 			blockReadSecondsTotalMetric = blockReadSecondsTotal.Float64
 		}
@@ -167,7 +167,7 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 			userLabel, datnameLabel, queryidLabel,
 		)
 
-		var blockWriteSecondsTotalMetric float64 = 0
+		var blockWriteSecondsTotalMetric float64
 		if blockWriteSecondsTotal.Valid {
 			blockWriteSecondsTotalMetric = blockWriteSecondsTotal.Float64
 		}

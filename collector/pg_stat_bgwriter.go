@@ -130,7 +130,7 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, c
 		return err
 	}
 
-	var cptMetric float64 = 0
+	var cptMetric float64
 	if cpt.Valid {
 		cptMetric = float64(cpt.Int64)
 	}
@@ -139,7 +139,7 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, c
 		prometheus.CounterValue,
 		cptMetric,
 	)
-	var cprMetric float64 = 0
+	var cprMetric float64
 	if cpr.Valid {
 		cprMetric = float64(cpr.Int64)
 	}
@@ -148,7 +148,7 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, c
 		prometheus.CounterValue,
 		cprMetric,
 	)
-	var cpwtMetric float64 = 0
+	var cpwtMetric float64
 	if cpwt.Valid {
 		cpwtMetric = float64(cpwt.Float64)
 	}
@@ -157,7 +157,7 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, c
 		prometheus.CounterValue,
 		cpwtMetric,
 	)
-	var cpstMetric float64 = 0
+	var cpstMetric float64
 	if cpst.Valid {
 		cpstMetric = float64(cpst.Float64)
 	}
@@ -166,7 +166,7 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, c
 		prometheus.CounterValue,
 		cpstMetric,
 	)
-	var bcpMetric float64 = 0
+	var bcpMetric float64
 	if bcp.Valid {
 		bcpMetric = float64(bcp.Int64)
 	}
@@ -175,7 +175,7 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, c
 		prometheus.CounterValue,
 		bcpMetric,
 	)
-	var bcMetric float64 = 0
+	var bcMetric float64
 	if bc.Valid {
 		bcMetric = float64(bc.Int64)
 	}
@@ -184,7 +184,7 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, c
 		prometheus.CounterValue,
 		bcMetric,
 	)
-	var mwcMetric float64 = 0
+	var mwcMetric float64
 	if mwc.Valid {
 		mwcMetric = float64(mwc.Int64)
 	}
@@ -193,7 +193,7 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, c
 		prometheus.CounterValue,
 		mwcMetric,
 	)
-	var bbMetric float64 = 0
+	var bbMetric float64
 	if bb.Valid {
 		bbMetric = float64(bb.Int64)
 	}
@@ -202,7 +202,7 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, c
 		prometheus.CounterValue,
 		bbMetric,
 	)
-	var bbfMetric float64 = 0
+	var bbfMetric float64
 	if bbf.Valid {
 		bbfMetric = float64(bbf.Int64)
 	}
@@ -211,7 +211,7 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, c
 		prometheus.CounterValue,
 		bbfMetric,
 	)
-	var baMetric float64 = 0
+	var baMetric float64
 	if ba.Valid {
 		baMetric = float64(ba.Int64)
 	}
@@ -220,7 +220,7 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, c
 		prometheus.CounterValue,
 		baMetric,
 	)
-	var srMetric float64 = 0
+	var srMetric float64
 	if sr.Valid {
 		srMetric = float64(sr.Time.Unix())
 	}
