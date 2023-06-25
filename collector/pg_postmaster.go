@@ -57,11 +57,9 @@ func (c *PGPostmasterCollector) Update(ctx context.Context, instance *instance, 
 	if err != nil {
 		return err
 	}
-	var startTimeSecondsMetric float64
+	startTimeSecondsMetric := 0.0
 	if startTimeSeconds.Valid {
 		startTimeSecondsMetric = startTimeSeconds.Float64
-	} else {
-		startTimeSecondsMetric = 0
 	}
 	ch <- prometheus.MustNewConstMetric(
 		pgPostMasterStartTimeSeconds,
