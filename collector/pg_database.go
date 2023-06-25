@@ -106,11 +106,9 @@ func (c PGDatabaseCollector) Update(ctx context.Context, instance *instance, ch 
 			return err
 		}
 
-		var sizeMetric float64
+		sizeMetric := 0.0
 		if size.Valid {
 			sizeMetric = size.Float64
-		} else {
-			sizeMetric = 0
 		}
 		ch <- prometheus.MustNewConstMetric(
 			pgDatabaseSizeDesc,
