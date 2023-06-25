@@ -91,9 +91,9 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, instance *instance
 			return err
 		}
 
-		isActiveValue := 0
+		isActiveValue := 0.0
 		if isActive.Valid && isActive.Bool {
-			isActiveValue = 1
+			isActiveValue = 1.0
 		}
 		slotNameLabel := "unknown"
 		if slotName.Valid {
@@ -120,7 +120,7 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, instance *instance
 		}
 		ch <- prometheus.MustNewConstMetric(
 			pgReplicationSlotIsActiveDesc,
-			prometheus.GaugeValue, float64(isActiveValue), slotNameLabel,
+			prometheus.GaugeValue, isActiveValue, slotNameLabel,
 		)
 	}
 	if err := rows.Err(); err != nil {

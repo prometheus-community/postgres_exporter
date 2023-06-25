@@ -211,7 +211,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			relnameLabel = relname.String
 		}
 
-		var seqScanMetric float64
+		seqScanMetric := 0.0
 		if seqScan.Valid {
 			seqScanMetric = float64(seqScan.Int64)
 		}
@@ -222,7 +222,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var seqTupReadMetric float64
+		seqTupReadMetric := 0.0
 		if seqTupRead.Valid {
 			seqTupReadMetric = float64(seqTupRead.Int64)
 		}
@@ -233,7 +233,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var idxScanMetric float64
+		idxScanMetric := 0.0
 		if idxScan.Valid {
 			idxScanMetric = float64(idxScan.Int64)
 		}
@@ -244,7 +244,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var idxTupFetchMetric float64
+		idxTupFetchMetric := 0.0
 		if idxTupFetch.Valid {
 			idxTupFetchMetric = float64(idxTupFetch.Int64)
 		}
@@ -255,7 +255,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var nTupInsMetric float64
+		nTupInsMetric := 0.0
 		if nTupIns.Valid {
 			nTupInsMetric = float64(nTupIns.Int64)
 		}
@@ -266,7 +266,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var nTupUpdMetric float64
+		nTupUpdMetric := 0.0
 		if nTupUpd.Valid {
 			nTupUpdMetric = float64(nTupUpd.Int64)
 		}
@@ -277,7 +277,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var nTupDelMetric float64
+		nTupDelMetric := 0.0
 		if nTupDel.Valid {
 			nTupDelMetric = float64(nTupDel.Int64)
 		}
@@ -288,7 +288,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var nTupHotUpdMetric float64
+		nTupHotUpdMetric := 0.0
 		if nTupHotUpd.Valid {
 			nTupHotUpdMetric = float64(nTupHotUpd.Int64)
 		}
@@ -299,7 +299,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var nLiveTupMetric float64
+		nLiveTupMetric := 0.0
 		if nLiveTup.Valid {
 			nLiveTupMetric = float64(nLiveTup.Int64)
 		}
@@ -310,7 +310,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var nDeadTupMetric float64
+		nDeadTupMetric := 0.0
 		if nDeadTup.Valid {
 			nDeadTupMetric = float64(nDeadTup.Int64)
 		}
@@ -321,7 +321,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var nModSinceAnalyzeMetric float64
+		nModSinceAnalyzeMetric := 0.0
 		if nModSinceAnalyze.Valid {
 			nModSinceAnalyzeMetric = float64(nModSinceAnalyze.Int64)
 		}
@@ -332,7 +332,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var lastVacuumMetric float64
+		lastVacuumMetric := 0.0
 		if lastVacuum.Valid {
 			lastVacuumMetric = float64(lastVacuum.Time.Unix())
 		}
@@ -343,7 +343,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var lastAutovacuumMetric float64
+		lastAutovacuumMetric := 0.0
 		if lastAutovacuum.Valid {
 			lastAutovacuumMetric = float64(lastAutovacuum.Time.Unix())
 		}
@@ -354,7 +354,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var lastAnalyzeMetric float64
+		lastAnalyzeMetric := 0.0
 		if lastAnalyze.Valid {
 			lastAnalyzeMetric = float64(lastAnalyze.Time.Unix())
 		}
@@ -365,7 +365,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var lastAutoanalyzeMetric float64
+		lastAutoanalyzeMetric := 0.0
 		if lastAutoanalyze.Valid {
 			lastAutoanalyzeMetric = float64(lastAutoanalyze.Time.Unix())
 		}
@@ -376,7 +376,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var vacuumCountMetric float64
+		vacuumCountMetric := 0.0
 		if vacuumCount.Valid {
 			vacuumCountMetric = float64(vacuumCount.Int64)
 		}
@@ -387,7 +387,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var autovacuumCountMetric float64
+		autovacuumCountMetric := 0.0
 		if autovacuumCount.Valid {
 			autovacuumCountMetric = float64(autovacuumCount.Int64)
 		}
@@ -398,7 +398,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var analyzeCountMetric float64
+		analyzeCountMetric := 0.0
 		if analyzeCount.Valid {
 			analyzeCountMetric = float64(analyzeCount.Int64)
 		}
@@ -409,7 +409,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var autoanalyzeCountMetric float64
+		autoanalyzeCountMetric := 0.0
 		if autoanalyzeCount.Valid {
 			autoanalyzeCountMetric = float64(autoanalyzeCount.Int64)
 		}

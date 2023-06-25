@@ -276,7 +276,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 			datnameLabel = datname.String
 		}
 
-		var numBackendsMetric float64
+		numBackendsMetric := 0.0
 		if numBackends.Valid {
 			numBackendsMetric = numBackends.Float64
 		}
@@ -288,7 +288,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 			datnameLabel,
 		)
 
-		var xactCommitMetric float64
+		xactCommitMetric := 0.0
 		if xactCommit.Valid {
 			xactCommitMetric = xactCommit.Float64
 		}
@@ -300,7 +300,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 			datnameLabel,
 		)
 
-		var xactRollbackMetric float64
+		xactRollbackMetric := 0.0
 		if xactRollback.Valid {
 			xactRollbackMetric = xactRollback.Float64
 		}
@@ -312,7 +312,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 			datnameLabel,
 		)
 
-		var blksReadMetric float64
+		blksReadMetric := 0.0
 		if blksRead.Valid {
 			blksReadMetric = blksRead.Float64
 		}
@@ -324,7 +324,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 			datnameLabel,
 		)
 
-		var blksHitMetric float64
+		blksHitMetric := 0.0
 		if blksHit.Valid {
 			blksHitMetric = blksHit.Float64
 		}
@@ -336,7 +336,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 			datnameLabel,
 		)
 
-		var tupReturnedMetric float64
+		tupReturnedMetric := 0.0
 		if tupReturned.Valid {
 			tupReturnedMetric = tupReturned.Float64
 		}
@@ -348,7 +348,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 			datnameLabel,
 		)
 
-		var tupFetchedMetric float64
+		tupFetchedMetric := 0.0
 		if tupFetched.Valid {
 			tupFetchedMetric = tupFetched.Float64
 		}
@@ -360,7 +360,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 			datnameLabel,
 		)
 
-		var tupInsertedMetric float64
+		tupInsertedMetric := 0.0
 		if tupInserted.Valid {
 			tupInsertedMetric = tupInserted.Float64
 		}
@@ -372,7 +372,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 			datnameLabel,
 		)
 
-		var tupUpdatedMetric float64
+		tupUpdatedMetric := 0.0
 		if tupUpdated.Valid {
 			tupUpdatedMetric = tupUpdated.Float64
 		}
@@ -384,7 +384,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 			datnameLabel,
 		)
 
-		var tupDeletedMetric float64
+		tupDeletedMetric := 0.0
 		if tupDeleted.Valid {
 			tupDeletedMetric = tupDeleted.Float64
 		}
@@ -396,7 +396,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 			datnameLabel,
 		)
 
-		var conflictsMetric float64
+		conflictsMetric := 0.0
 		if conflicts.Valid {
 			conflictsMetric = conflicts.Float64
 		}
@@ -408,7 +408,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 			datnameLabel,
 		)
 
-		var tempFilesMetric float64
+		tempFilesMetric := 0.0
 		if tempFiles.Valid {
 			tempFilesMetric = tempFiles.Float64
 		}
@@ -420,7 +420,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 			datnameLabel,
 		)
 
-		var tempBytesMetric float64
+		tempBytesMetric := 0.0
 		if tempBytes.Valid {
 			tempBytesMetric = tempBytes.Float64
 		}
@@ -432,7 +432,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 			datnameLabel,
 		)
 
-		var deadlocksMetric float64
+		deadlocksMetric := 0.0
 		if deadlocks.Valid {
 			deadlocksMetric = deadlocks.Float64
 		}
@@ -444,7 +444,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 			datnameLabel,
 		)
 
-		var blkReadTimeMetric float64
+		blkReadTimeMetric := 0.0
 		if blkReadTime.Valid {
 			blkReadTimeMetric = blkReadTime.Float64
 		}
@@ -456,7 +456,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 			datnameLabel,
 		)
 
-		var blkWriteTimeMetric float64
+		blkWriteTimeMetric := 0.0
 		if blkWriteTime.Valid {
 			blkWriteTimeMetric = blkWriteTime.Float64
 		}
@@ -468,7 +468,7 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 			datnameLabel,
 		)
 
-		var statsResetMetric float64
+		statsResetMetric := 0.0
 		if statsReset.Valid {
 			statsResetMetric = float64(statsReset.Time.Unix())
 		}

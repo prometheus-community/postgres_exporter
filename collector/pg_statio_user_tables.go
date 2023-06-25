@@ -130,7 +130,7 @@ func (PGStatIOUserTablesCollector) Update(ctx context.Context, instance *instanc
 			relnameLabel = relname.String
 		}
 
-		var heapBlksReadMetric float64
+		heapBlksReadMetric := 0.0
 		if heapBlksRead.Valid {
 			heapBlksReadMetric = float64(heapBlksRead.Int64)
 		}
@@ -141,7 +141,7 @@ func (PGStatIOUserTablesCollector) Update(ctx context.Context, instance *instanc
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var heapBlksHitMetric float64
+		heapBlksHitMetric := 0.0
 		if heapBlksHit.Valid {
 			heapBlksHitMetric = float64(heapBlksHit.Int64)
 		}
@@ -152,7 +152,7 @@ func (PGStatIOUserTablesCollector) Update(ctx context.Context, instance *instanc
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var idxBlksReadMetric float64
+		idxBlksReadMetric := 0.0
 		if idxBlksRead.Valid {
 			idxBlksReadMetric = float64(idxBlksRead.Int64)
 		}
@@ -163,7 +163,7 @@ func (PGStatIOUserTablesCollector) Update(ctx context.Context, instance *instanc
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var idxBlksHitMetric float64
+		idxBlksHitMetric := 0.0
 		if idxBlksHit.Valid {
 			idxBlksHitMetric = float64(idxBlksHit.Int64)
 		}
@@ -174,7 +174,7 @@ func (PGStatIOUserTablesCollector) Update(ctx context.Context, instance *instanc
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var toastBlksReadMetric float64
+		toastBlksReadMetric := 0.0
 		if toastBlksRead.Valid {
 			toastBlksReadMetric = float64(toastBlksRead.Int64)
 		}
@@ -185,7 +185,7 @@ func (PGStatIOUserTablesCollector) Update(ctx context.Context, instance *instanc
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var toastBlksHitMetric float64
+		toastBlksHitMetric := 0.0
 		if toastBlksHit.Valid {
 			toastBlksHitMetric = float64(toastBlksHit.Int64)
 		}
@@ -196,7 +196,7 @@ func (PGStatIOUserTablesCollector) Update(ctx context.Context, instance *instanc
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var tidxBlksReadMetric float64
+		tidxBlksReadMetric := 0.0
 		if tidxBlksRead.Valid {
 			tidxBlksReadMetric = float64(tidxBlksRead.Int64)
 		}
@@ -207,7 +207,7 @@ func (PGStatIOUserTablesCollector) Update(ctx context.Context, instance *instanc
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		var tidxBlksHitMetric float64
+		tidxBlksHitMetric := 0.0
 		if tidxBlksHit.Valid {
 			tidxBlksHitMetric = float64(tidxBlksHit.Int64)
 		}
