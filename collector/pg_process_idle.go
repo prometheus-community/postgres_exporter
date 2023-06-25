@@ -100,11 +100,9 @@ func (PGProcessIdleCollector) Update(ctx context.Context, inst *instance, ch cha
 		return err
 	}
 
-	var applicationNameLabel string
+	applicationNameLabel := "unknown"
 	if applicationName.Valid {
 		applicationNameLabel = applicationName.String
-	} else {
-		applicationNameLabel = "unknown"
 	}
 
 	var secondsCountMetric uint64
