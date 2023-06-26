@@ -14,6 +14,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -68,24 +69,46 @@ func (c *PGStatioUserIndexesCollector) Update(ctx context.Context, instance *ins
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var schemaname, relname, indexrelname string
-		var idxBlksRead, idxBlksHit float64
+		var schemaname, relname, indexrelname sql.NullString
+		var idxBlksRead, idxBlksHit sql.NullFloat64
 
 		if err := rows.Scan(&schemaname, &relname, &indexrelname, &idxBlksRead, &idxBlksHit); err != nil {
 			return err
 		}
+		schemanameLabel := "unknown"
+		if schemaname.Valid {
+			schemanameLabel = schemaname.String
+		}
+		relnameLabel := "unknown"
+		if relname.Valid {
+			relnameLabel = relname.String
+		}
+		indexrelnameLabel := "unknown"
+		if indexrelname.Valid {
+			indexrelnameLabel = indexrelname.String
+		}
+		labels := []string{schemanameLabel, relnameLabel, indexrelnameLabel}
 
+		idxBlksReadMetric := 0.0
+		if idxBlksRead.Valid {
+			idxBlksReadMetric = idxBlksRead.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statioUserIndexesIdxBlksRead,
 			prometheus.CounterValue,
-			idxBlksRead,
-			schemaname, relname, indexrelname,
+			idxBlksReadMetric,
+			labels...,
 		)
+
+		idxBlksHitMetric := 0.0
+		if idxBlksHit.Valid {
+			idxBlksHitMetric = idxBlksHit.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statioUserIndexesIdxBlksHit,
 			prometheus.CounterValue,
-			idxBlksHit,
-			schemaname, relname, indexrelname,
+			idxBlksHitMetric,
+			labels...,
 		)
 	}
 	if err := rows.Err(); err != nil {
