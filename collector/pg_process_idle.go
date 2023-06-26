@@ -23,7 +23,7 @@ import (
 
 func init() {
 	// Making this default disabled because we have no tests for it
-	registerCollector("statements", defaultDisabled, NewPGProcessIdleCollector)
+	registerCollector(processIdleSubsystem, defaultDisabled, NewPGProcessIdleCollector)
 }
 
 type PGProcessIdleCollector struct {
