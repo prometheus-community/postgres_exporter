@@ -44,8 +44,7 @@ var (
 
 	xlogLocationQuery = `
 	SELECT CASE
-		WHEN pg_is_in_recovery()
-		THEN (pg_last_xlog_replay_location() - '0/0') % (2^52)::bigint
+		WHEN pg_is_in_recovery() THEN (pg_last_xlog_replay_location() - '0/0') % (2^52)::bigint
 		ELSE (pg_current_xlog_location() - '0/0') % (2^52)::bigint
 	END AS bytes
 	`
