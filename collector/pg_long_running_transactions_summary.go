@@ -15,6 +15,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -73,18 +74,31 @@ func (PGLongRunningTransactionsSummaryCollector) Update(ctx context.Context, ins
 	defer rows.Close()
 
 	for rows.Next() {
-		var application, endpoint string
-		var maxAgeInSeconds float64
+		var application, endpoint sql.NullString
+		var maxAgeInSeconds sql.NullFloat64
 
 		if err := rows.Scan(&application, &endpoint, &maxAgeInSeconds); err != nil {
 			return err
 		}
 
+		applicationLabel := "unknown"
+		if application.Valid {
+			applicationLabel = application.String
+		}
+		endpointLabel := "unknown"
+		if endpoint.Valid {
+			endpointLabel = endpoint.String
+		}
+
+		maxAgeInSecondsMetric := 0.0
+		if maxAgeInSeconds.Valid {
+			maxAgeInSecondsMetric = maxAgeInSeconds.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			longRunningTransactionsSummaryMaxAgeInSeconds,
 			prometheus.GaugeValue,
-			maxAgeInSeconds,
-			application, endpoint,
+			maxAgeInSecondsMetric,
+			applicationLabel, endpointLabel,
 		)
 	}
 	if err := rows.Err(); err != nil {
