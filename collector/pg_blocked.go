@@ -15,6 +15,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -70,18 +71,27 @@ func (PGBlockedCollector) Update(ctx context.Context, instance *instance, ch cha
 	defer rows.Close()
 
 	for rows.Next() {
-		var table string
-		var queries float64
+		var table sql.NullString
+		var queries sql.NullFloat64
 
 		if err := rows.Scan(&queries, &table); err != nil {
 			return err
 		}
 
+		tableLabel := "unknown"
+		if table.Valid {
+			tableLabel = table.String
+		}
+
+		queriesMetric := 0.0
+		if queries.Valid {
+			queriesMetric = queries.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			blockedQueries,
 			prometheus.GaugeValue,
-			queries,
-			table,
+			queriesMetric,
+			tableLabel,
 		)
 	}
 	if err := rows.Err(); err != nil {
