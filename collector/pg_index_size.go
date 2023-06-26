@@ -15,6 +15,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -67,18 +68,34 @@ func (PGIndexSizeCollector) Update(ctx context.Context, instance *instance, ch c
 	defer rows.Close()
 
 	for rows.Next() {
-		var schemaname, relname, indexrelname string
-		var indexSize float64
+		var schemaname, relname, indexrelname sql.NullString
+		var indexSize sql.NullFloat64
 
 		if err := rows.Scan(&schemaname, &relname, &indexrelname, &indexSize); err != nil {
 			return err
 		}
+		schemanameLabel := "unknown"
+		if schemaname.Valid {
+			schemanameLabel = schemaname.String
+		}
+		relnameLabel := "unknown"
+		if relname.Valid {
+			relnameLabel = relname.String
+		}
+		indexrelnameLabel := "unknown"
+		if indexrelname.Valid {
+			indexrelnameLabel = indexrelname.String
+		}
 
+		indexSizeMetric := 0.0
+		if indexSize.Valid {
+			indexSizeMetric = indexSize.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			indexSizeDesc,
 			prometheus.GaugeValue,
-			indexSize,
-			schemaname, relname, indexrelname,
+			indexSizeMetric,
+			schemanameLabel, relnameLabel, indexrelnameLabel,
 		)
 	}
 	if err := rows.Err(); err != nil {
