@@ -15,6 +15,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -86,24 +87,62 @@ func (PGStatActivitySummaryCollector) Update(ctx context.Context, instance *inst
 	defer rows.Close()
 
 	for rows.Next() {
-		var usename, application, endpoint, command, state, waitEvent, waitEventType string
-		var count, maxTxAge float64
+		var usename, application, endpoint, command, state, waitEvent, waitEventType sql.NullString
+		var count, maxTxAge sql.NullFloat64
 
 		if err := rows.Scan(&usename, &application, &endpoint, &command, &state, &waitEvent, &waitEventType, &count, &maxTxAge); err != nil {
 			return err
 		}
+		usenameLabel := "unknown"
+		if usename.Valid {
+			usenameLabel = usename.String
+		}
+		applicationLabel := "unknown"
+		if application.Valid {
+			applicationLabel = application.String
+		}
+		endpointLabel := "unknown"
+		if endpoint.Valid {
+			endpointLabel = endpoint.String
+		}
+		commandLabel := "unknown"
+		if command.Valid {
+			commandLabel = command.String
+		}
+		stateLabel := "unknown"
+		if state.Valid {
+			stateLabel = state.String
+		}
+		waitEventLabel := "unknown"
+		if waitEvent.Valid {
+			waitEventLabel = waitEvent.String
+		}
+		waitEventTypeLabel := "unknown"
+		if waitEventType.Valid {
+			waitEventTypeLabel = waitEventType.String
+		}
+		labels := []string{usenameLabel, applicationLabel, endpointLabel, commandLabel, stateLabel, waitEventLabel, waitEventTypeLabel}
 
+		countMetric := 0.0
+		if count.Valid {
+			countMetric = count.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statActivitySummaryActiveCount,
 			prometheus.GaugeValue,
-			count,
-			usename, application, endpoint, command, state, waitEvent, waitEventType,
+			countMetric,
+			labels...,
 		)
+
+		maxTxAgeMetric := 0.0
+		if maxTxAge.Valid {
+			maxTxAgeMetric = maxTxAge.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statActivitySummaryMaxTxAgeInSeconds,
 			prometheus.GaugeValue,
-			maxTxAge,
-			usename, application, endpoint, command, state, waitEvent, waitEventType,
+			maxTxAgeMetric,
+			labels...,
 		)
 	}
 	if err := rows.Err(); err != nil {

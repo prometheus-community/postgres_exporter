@@ -89,6 +89,7 @@ func (PGLongRunningTransactionsSummaryCollector) Update(ctx context.Context, ins
 		if endpoint.Valid {
 			endpointLabel = endpoint.String
 		}
+		labels := []string{applicationLabel, endpointLabel}
 
 		maxAgeInSecondsMetric := 0.0
 		if maxAgeInSeconds.Valid {
@@ -98,7 +99,7 @@ func (PGLongRunningTransactionsSummaryCollector) Update(ctx context.Context, ins
 			longRunningTransactionsSummaryMaxAgeInSeconds,
 			prometheus.GaugeValue,
 			maxAgeInSecondsMetric,
-			applicationLabel, endpointLabel,
+			labels...,
 		)
 	}
 	if err := rows.Err(); err != nil {
