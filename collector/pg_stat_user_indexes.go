@@ -14,6 +14,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -75,30 +76,57 @@ func (c *PGStatUserIndexesCollector) Update(ctx context.Context, instance *insta
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var schemaname, relname, indexrelname string
-		var idxScan, idxTupRead, idxTupFetch float64
+		var schemaname, relname, indexrelname sql.NullString
+		var idxScan, idxTupRead, idxTupFetch sql.NullFloat64
 
 		if err := rows.Scan(&schemaname, &relname, &indexrelname, &idxScan, &idxTupRead, &idxTupFetch); err != nil {
 			return err
 		}
+		schemanameLabel := "unknown"
+		if schemaname.Valid {
+			schemanameLabel = schemaname.String
+		}
+		relnameLabel := "unknown"
+		if relname.Valid {
+			relnameLabel = relname.String
+		}
+		indexrelnameLabel := "unknown"
+		if indexrelname.Valid {
+			indexrelnameLabel = indexrelname.String
+		}
+		labels := []string{schemanameLabel, relnameLabel, indexrelnameLabel}
 
+		idxScanMetric := 0.0
+		if idxScan.Valid {
+			idxScanMetric = idxScan.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statUserIndexesIdxScan,
 			prometheus.CounterValue,
-			idxScan,
-			schemaname, relname, indexrelname,
+			idxScanMetric,
+			labels...,
 		)
+
+		idxTupReadMetric := 0.0
+		if idxTupRead.Valid {
+			idxTupReadMetric = idxTupRead.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statUserIndexesIdxTupRead,
 			prometheus.CounterValue,
-			idxTupRead,
-			schemaname, relname, indexrelname,
+			idxTupReadMetric,
+			labels...,
 		)
+
+		idxTupFetchMetric := 0.0
+		if idxTupFetch.Valid {
+			idxTupFetchMetric = idxTupFetch.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statUserIndexesIdxTupFetch,
 			prometheus.CounterValue,
-			idxTupFetch,
-			schemaname, relname, indexrelname,
+			idxTupFetchMetric,
+			labels...,
 		)
 	}
 	if err := rows.Err(); err != nil {
