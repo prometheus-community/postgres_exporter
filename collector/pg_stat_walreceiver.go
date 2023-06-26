@@ -14,6 +14,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -173,18 +174,9 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var upstreamHost string
-		var slotName string
-		var status int
-		var receiveStartLsn int64
-		var receiveStartTli int64
-		var flushedLsn int64
-		var receivedTli int64
-		var lastMsgSendTime float64
-		var lastMsgReceiptTime float64
-		var latestEndLsn int64
-		var latestEndTime float64
-		var upstreamNode int
+		var upstreamHost, slotName sql.NullString
+		var status, receiveStartLsn, receiveStartTli, flushedLsn, receivedTli, latestEndLsn, upstreamNode sql.NullInt64
+		var lastMsgSendTime, lastMsgReceiptTime, latestEndTime sql.NullFloat64
 
 		if hasFlushedLSN {
 			if err := rows.Scan(&upstreamHost, &slotName, &status, &receiveStartLsn, &receiveStartTli, &flushedLsn, &receivedTli, &lastMsgSendTime, &lastMsgReceiptTime, &latestEndLsn, &latestEndTime, &upstreamNode); err != nil {
@@ -195,68 +187,117 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 				return err
 			}
 		}
+		upstreamHostLabel := "unknown"
+		if upstreamHost.Valid {
+			upstreamHostLabel = upstreamHost.String
+		}
+		slotNameLabel := "unknown"
+		if slotName.Valid {
+			slotNameLabel = slotName.String
+		}
+		labels := []string{upstreamHostLabel, slotNameLabel}
 
+		statusMetric := 0.0
+		if status.Valid {
+			statusMetric = float64(status.Int64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverStatus,
 			prometheus.GaugeValue,
-			float64(status),
-			upstreamHost, slotName)
+			statusMetric,
+			labels...)
 
+		receiveStartLsnMetric := 0.0
+		if receiveStartLsn.Valid {
+			receiveStartLsnMetric = float64(receiveStartLsn.Int64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverReceiveStartLsn,
 			prometheus.CounterValue,
-			float64(receiveStartLsn),
-			upstreamHost, slotName)
+			receiveStartLsnMetric,
+			labels...)
 
+		receiveStartTliMetric := 0.0
+		if receiveStartTli.Valid {
+			receiveStartTliMetric = float64(receiveStartTli.Int64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverReceiveStartTli,
 			prometheus.GaugeValue,
-			float64(receiveStartTli),
-			upstreamHost, slotName)
+			receiveStartTliMetric,
+			labels...)
 
 		if hasFlushedLSN {
+			flushedLsnMetric := 0.0
+			if flushedLsn.Valid {
+				flushedLsnMetric = float64(flushedLsn.Int64)
+			}
 			ch <- prometheus.MustNewConstMetric(
 				statWalReceiverFlushedLSN,
 				prometheus.CounterValue,
-				float64(flushedLsn),
-				upstreamHost, slotName)
+				flushedLsnMetric,
+				labels...)
 		}
 
+		receivedTliMetric := 0.0
+		if receivedTli.Valid {
+			receivedTliMetric = float64(receivedTli.Int64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverReceivedTli,
 			prometheus.GaugeValue,
-			float64(receivedTli),
-			upstreamHost, slotName)
+			receivedTliMetric,
+			labels...)
 
+		lastMsgSendTimeMetric := 0.0
+		if lastMsgSendTime.Valid {
+			lastMsgSendTimeMetric = float64(lastMsgSendTime.Float64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverLastMsgSendTime,
 			prometheus.CounterValue,
-			float64(lastMsgSendTime),
-			upstreamHost, slotName)
+			lastMsgSendTimeMetric,
+			labels...)
 
+		lastMsgReceiptTimeMetric := 0.0
+		if lastMsgReceiptTime.Valid {
+			lastMsgReceiptTimeMetric = float64(lastMsgReceiptTime.Float64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverLastMsgReceiptTime,
 			prometheus.CounterValue,
-			float64(lastMsgReceiptTime),
-			upstreamHost, slotName)
+			lastMsgReceiptTimeMetric,
+			labels...)
 
+		latestEndLsnMetric := 0.0
+		if latestEndLsn.Valid {
+			latestEndLsnMetric = float64(latestEndLsn.Int64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverLatestEndLsn,
 			prometheus.CounterValue,
-			float64(latestEndLsn),
-			upstreamHost, slotName)
+			latestEndLsnMetric,
+			labels...)
 
+		latestEndTimeMetric := 0.0
+		if latestEndTime.Valid {
+			latestEndTimeMetric = float64(latestEndTime.Float64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverLatestEndTime,
 			prometheus.CounterValue,
-			float64(latestEndTime),
-			upstreamHost, slotName)
+			latestEndTimeMetric,
+			labels...)
 
+		upstreamNodeMetric := 0.0
+		if upstreamNode.Valid {
+			upstreamNodeMetric = float64(upstreamNode.Int64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverUpstreamNode,
 			prometheus.GaugeValue,
-			float64(upstreamNode),
-			upstreamHost, slotName)
+			upstreamNodeMetric,
+			labels...)
 	}
 	if err := rows.Err(); err != nil {
 		return err
