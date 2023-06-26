@@ -15,6 +15,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -71,22 +72,37 @@ func (PGDatabaseWraparoundCollector) Update(ctx context.Context, instance *insta
 	defer rows.Close()
 
 	for rows.Next() {
-		var datname string
-		var ageDatfrozenxid, ageDatminmxid float64
+		var datname sql.NullString
+		var ageDatfrozenxid, ageDatminmxid sql.NullFloat64
 
 		if err := rows.Scan(&datname, &ageDatfrozenxid, &ageDatminmxid); err != nil {
 			return err
 		}
 
+		datnameLabel := "unknown"
+		if datname.Valid {
+			datnameLabel = datname.String
+		}
+
+		ageDatfrozenxidMetric := 0.0
+		if ageDatfrozenxid.Valid {
+			ageDatfrozenxidMetric = ageDatfrozenxid.Float64
+		}
+
 		ch <- prometheus.MustNewConstMetric(
 			databaseWraparoundAgeDatfrozenxid,
 			prometheus.GaugeValue,
-			ageDatfrozenxid, datname,
+			ageDatfrozenxidMetric, datnameLabel,
 		)
+
+		ageDatminmxidMetric := 0.0
+		if ageDatminmxid.Valid {
+			ageDatminmxidMetric = ageDatminmxid.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			databaseWraparoundAgeDatminmxid,
 			prometheus.GaugeValue,
-			ageDatminmxid, datname,
+			ageDatminmxidMetric, datnameLabel,
 		)
 	}
 	if err := rows.Err(); err != nil {
