@@ -15,6 +15,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -63,18 +64,31 @@ func (PGTotalRelationSizeCollector) Update(ctx context.Context, instance *instan
 	defer rows.Close()
 
 	for rows.Next() {
-		var schemaname, relname string
-		var bytes float64
+		var schemaname, relname sql.NullString
+		var bytes sql.NullFloat64
 
 		if err := rows.Scan(&schemaname, &relname, &bytes); err != nil {
 			return err
 		}
+		schemanameLabel := "unknown"
+		if schemaname.Valid {
+			schemanameLabel = schemaname.String
+		}
+		relnameLabel := "unknown"
+		if relname.Valid {
+			relnameLabel = relname.String
+		}
+		labels := []string{schemanameLabel, relnameLabel}
 
+		bytesMetric := 0.0
+		if bytes.Valid {
+			bytesMetric = bytes.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			totalRelationSizeBytes,
 			prometheus.GaugeValue,
-			bytes,
-			schemaname, relname,
+			bytesMetric,
+			labels...,
 		)
 	}
 	if err := rows.Err(); err != nil {
