@@ -86,6 +86,7 @@ func (PGIndexSizeCollector) Update(ctx context.Context, instance *instance, ch c
 		if indexrelname.Valid {
 			indexrelnameLabel = indexrelname.String
 		}
+		labels := []string{schemanameLabel, relnameLabel, indexrelnameLabel}
 
 		indexSizeMetric := 0.0
 		if indexSize.Valid {
@@ -95,7 +96,7 @@ func (PGIndexSizeCollector) Update(ctx context.Context, instance *instance, ch c
 			indexSizeDesc,
 			prometheus.GaugeValue,
 			indexSizeMetric,
-			schemanameLabel, relnameLabel, indexrelnameLabel,
+			labels...,
 		)
 	}
 	if err := rows.Err(); err != nil {
