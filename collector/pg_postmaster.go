@@ -23,7 +23,7 @@ import (
 const postmasterSubsystem = "postmaster"
 
 func init() {
-	registerCollector(postmasterSubsystem, defaultEnabled, NewPGPostmasterCollector)
+	registerCollector(postmasterSubsystem, defaultDisabled, NewPGPostmasterCollector)
 }
 
 type PGPostmasterCollector struct {
@@ -44,7 +44,7 @@ var (
 		[]string{}, nil,
 	)
 
-	pgPostmasterQuery = "SELECT pg_postmaster_start_time from pg_postmaster_start_time();"
+	pgPostmasterQuery = "SELECT extract(epoch from pg_postmaster_start_time) from pg_postmaster_start_time();"
 )
 
 func (c *PGPostmasterCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
