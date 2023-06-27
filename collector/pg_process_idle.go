@@ -84,7 +84,7 @@ func (PGProcessIdleCollector) Update(ctx context.Context, instance *instance, ch
 	var applicationName sql.NullString
 	var secondsSum sql.NullInt64
 	var secondsCount sql.NullInt64
-	var seconds []int64
+	var seconds []uint64
 	var secondsBucket []uint64
 
 	err := row.Scan(&applicationName, &secondsSum, &secondsCount, &seconds, &secondsBucket)
