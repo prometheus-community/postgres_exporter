@@ -15,6 +15,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -101,48 +102,80 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var user string
-		var datname string
-		var queryid string
-		var callsTotal int64
-		var secondsTotal float64
-		var rowsTotal int64
-		var blockReadSecondsTotal float64
-		var blockWriteSecondsTotal float64
+		var user, datname, queryid sql.NullString
+		var callsTotal, rowsTotal sql.NullInt64
+		var secondsTotal, blockReadSecondsTotal, blockWriteSecondsTotal sql.NullFloat64
 
 		if err := rows.Scan(&user, &datname, &queryid, &callsTotal, &secondsTotal, &rowsTotal, &blockReadSecondsTotal, &blockWriteSecondsTotal); err != nil {
 			return err
 		}
 
+		userLabel := "unknown"
+		if user.Valid {
+			userLabel = user.String
+		}
+		datnameLabel := "unknown"
+		if datname.Valid {
+			datnameLabel = datname.String
+		}
+		queryidLabel := "unknown"
+		if queryid.Valid {
+			queryidLabel = queryid.String
+		}
+
+		callsTotalMetric := 0.0
+		if callsTotal.Valid {
+			callsTotalMetric = float64(callsTotal.Int64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statSTatementsCallsTotal,
 			prometheus.CounterValue,
-			float64(callsTotal),
-			user, datname, queryid,
+			callsTotalMetric,
+			userLabel, datnameLabel, queryidLabel,
 		)
+
+		secondsTotalMetric := 0.0
+		if secondsTotal.Valid {
+			secondsTotalMetric = secondsTotal.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statStatementsSecondsTotal,
 			prometheus.CounterValue,
-			secondsTotal,
-			user, datname, queryid,
+			secondsTotalMetric,
+			userLabel, datnameLabel, queryidLabel,
 		)
+
+		rowsTotalMetric := 0.0
+		if rowsTotal.Valid {
+			rowsTotalMetric = float64(rowsTotal.Int64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statStatementsRowsTotal,
 			prometheus.CounterValue,
-			float64(rowsTotal),
-			user, datname, queryid,
+			rowsTotalMetric,
+			userLabel, datnameLabel, queryidLabel,
 		)
+
+		blockReadSecondsTotalMetric := 0.0
+		if blockReadSecondsTotal.Valid {
+			blockReadSecondsTotalMetric = blockReadSecondsTotal.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statStatementsBlockReadSecondsTotal,
 			prometheus.CounterValue,
-			blockReadSecondsTotal,
-			user, datname, queryid,
+			blockReadSecondsTotalMetric,
+			userLabel, datnameLabel, queryidLabel,
 		)
+
+		blockWriteSecondsTotalMetric := 0.0
+		if blockWriteSecondsTotal.Valid {
+			blockWriteSecondsTotalMetric = blockWriteSecondsTotal.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statStatementsBlockWriteSecondsTotal,
 			prometheus.CounterValue,
-			blockWriteSecondsTotal,
-			user, datname, queryid,
+			blockWriteSecondsTotalMetric,
+			userLabel, datnameLabel, queryidLabel,
 		)
 	}
 	if err := rows.Err(); err != nil {
