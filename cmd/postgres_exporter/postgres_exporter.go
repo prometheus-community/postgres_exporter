@@ -176,15 +176,6 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		true,
 		0,
 	},
-	"pg_locks": {
-		map[string]ColumnMapping{
-			"datname": {LABEL, "Name of this database", nil, nil},
-			"mode":    {LABEL, "Type of Lock", nil, nil},
-			"count":   {GAUGE, "Number of locks", nil, nil},
-		},
-		true,
-		0,
-	},
 	"pg_stat_replication": {
 		map[string]ColumnMapping{
 			"procpid":                  {DISCARD, "Process ID of a WAL sender process", nil, semver.MustParseRange("<9.2.0")},
