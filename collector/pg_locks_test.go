@@ -22,7 +22,7 @@ import (
 	"github.com/smartystreets/goconvey/convey"
 )
 
-func TestPgPostmasterCollector(t *testing.T) {
+func TestPGLocksCollector(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("Error opening a stub db connection: %s", err)
@@ -31,57 +31,22 @@ func TestPgPostmasterCollector(t *testing.T) {
 
 	inst := &instance{db: db}
 
-	mock.ExpectQuery(sanitizeQuery(pgPostmasterQuery)).WillReturnRows(sqlmock.NewRows([]string{"pg_postmaster_start_time"}).
-		AddRow(1685739904))
+	rows := sqlmock.NewRows([]string{"datname", "mode", "count"}).
+		AddRow("test", "exclusivelock", 42)
+
+	mock.ExpectQuery(sanitizeQuery(pgLocksQuery)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
-		c := PGPostmasterCollector{}
-
+		c := PGLocksCollector{}
 		if err := c.Update(context.Background(), inst, ch); err != nil {
-			t.Errorf("Error calling PGPostmasterCollector.Update: %s", err)
+			t.Errorf("Error calling PGLocksCollector.Update: %s", err)
 		}
 	}()
 
 	expected := []MetricResult{
-		{labels: labelMap{}, value: 1685739904, metricType: dto.MetricType_GAUGE},
-	}
-	convey.Convey("Metrics comparison", t, func() {
-		for _, expect := range expected {
-			m := readMetric(<-ch)
-			convey.So(expect, convey.ShouldResemble, m)
-		}
-	})
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled exceptions: %s", err)
-	}
-}
-
-func TestPgPostmasterCollectorNullTime(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("Error opening a stub db connection: %s", err)
-	}
-	defer db.Close()
-
-	inst := &instance{db: db}
-
-	mock.ExpectQuery(sanitizeQuery(pgPostmasterQuery)).WillReturnRows(sqlmock.NewRows([]string{"pg_postmaster_start_time"}).
-		AddRow(nil))
-
-	ch := make(chan prometheus.Metric)
-	go func() {
-		defer close(ch)
-		c := PGPostmasterCollector{}
-
-		if err := c.Update(context.Background(), inst, ch); err != nil {
-			t.Errorf("Error calling PGPostmasterCollector.Update: %s", err)
-		}
-	}()
-
-	expected := []MetricResult{
-		{labels: labelMap{}, value: 0, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"datname": "test", "mode": "exclusivelock"}, value: 42, metricType: dto.MetricType_GAUGE},
 	}
 	convey.Convey("Metrics comparison", t, func() {
 		for _, expect := range expected {

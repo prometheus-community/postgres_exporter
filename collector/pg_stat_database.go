@@ -202,12 +202,9 @@ var (
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
 	)
-)
 
-func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
-	db := instance.getDB()
-	rows, err := db.QueryContext(ctx,
-		`SELECT
+	statDatabaseQuery = `
+		SELECT
 			datid
 			,datname
 			,numbackends
@@ -228,7 +225,13 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 			,blk_write_time
 			,stats_reset
 		FROM pg_stat_database;
-		`,
+	`
+)
+
+func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	db := instance.getDB()
+	rows, err := db.QueryContext(ctx,
+		statDatabaseQuery,
 	)
 	if err != nil {
 		return err
@@ -236,24 +239,8 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 	defer rows.Close()
 
 	for rows.Next() {
-		var datid string
-		var datname string
-		var numBackends float64
-		var xactCommit float64
-		var xactRollback float64
-		var blksRead float64
-		var blksHit float64
-		var tupReturned float64
-		var tupFetched float64
-		var tupInserted float64
-		var tupUpdated float64
-		var tupDeleted float64
-		var conflicts float64
-		var tempFiles float64
-		var tempBytes float64
-		var deadlocks float64
-		var blkReadTime float64
-		var blkWriteTime float64
+		var datid, datname sql.NullString
+		var numBackends, xactCommit, xactRollback, blksRead, blksHit, tupReturned, tupFetched, tupInserted, tupUpdated, tupDeleted, conflicts, tempFiles, tempBytes, deadlocks, blkReadTime, blkWriteTime sql.NullFloat64
 		var statsReset sql.NullTime
 
 		err := rows.Scan(
@@ -280,152 +267,218 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 		if err != nil {
 			return err
 		}
+		datidLabel := "unknown"
+		if datid.Valid {
+			datidLabel = datid.String
+		}
+		datnameLabel := "unknown"
+		if datname.Valid {
+			datnameLabel = datname.String
+		}
 
+		numBackendsMetric := 0.0
+		if numBackends.Valid {
+			numBackendsMetric = numBackends.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseNumbackends,
 			prometheus.GaugeValue,
-			numBackends,
-			datid,
-			datname,
+			numBackendsMetric,
+			datidLabel,
+			datnameLabel,
 		)
 
+		xactCommitMetric := 0.0
+		if xactCommit.Valid {
+			xactCommitMetric = xactCommit.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseXactCommit,
 			prometheus.CounterValue,
-			xactCommit,
-			datid,
-			datname,
+			xactCommitMetric,
+			datidLabel,
+			datnameLabel,
 		)
 
+		xactRollbackMetric := 0.0
+		if xactRollback.Valid {
+			xactRollbackMetric = xactRollback.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseXactRollback,
 			prometheus.CounterValue,
-			xactRollback,
-			datid,
-			datname,
+			xactRollbackMetric,
+			datidLabel,
+			datnameLabel,
 		)
 
+		blksReadMetric := 0.0
+		if blksRead.Valid {
+			blksReadMetric = blksRead.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseBlksRead,
 			prometheus.CounterValue,
-			blksRead,
-			datid,
-			datname,
+			blksReadMetric,
+			datidLabel,
+			datnameLabel,
 		)
 
+		blksHitMetric := 0.0
+		if blksHit.Valid {
+			blksHitMetric = blksHit.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseBlksHit,
 			prometheus.CounterValue,
-			blksHit,
-			datid,
-			datname,
+			blksHitMetric,
+			datidLabel,
+			datnameLabel,
 		)
 
+		tupReturnedMetric := 0.0
+		if tupReturned.Valid {
+			tupReturnedMetric = tupReturned.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTupReturned,
 			prometheus.CounterValue,
-			tupReturned,
-			datid,
-			datname,
+			tupReturnedMetric,
+			datidLabel,
+			datnameLabel,
 		)
 
+		tupFetchedMetric := 0.0
+		if tupFetched.Valid {
+			tupFetchedMetric = tupFetched.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTupFetched,
 			prometheus.CounterValue,
-			tupFetched,
-			datid,
-			datname,
+			tupFetchedMetric,
+			datidLabel,
+			datnameLabel,
 		)
 
+		tupInsertedMetric := 0.0
+		if tupInserted.Valid {
+			tupInsertedMetric = tupInserted.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTupInserted,
 			prometheus.CounterValue,
-			tupInserted,
-			datid,
-			datname,
+			tupInsertedMetric,
+			datidLabel,
+			datnameLabel,
 		)
 
+		tupUpdatedMetric := 0.0
+		if tupUpdated.Valid {
+			tupUpdatedMetric = tupUpdated.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTupUpdated,
 			prometheus.CounterValue,
-			tupUpdated,
-			datid,
-			datname,
+			tupUpdatedMetric,
+			datidLabel,
+			datnameLabel,
 		)
 
+		tupDeletedMetric := 0.0
+		if tupDeleted.Valid {
+			tupDeletedMetric = tupDeleted.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTupDeleted,
 			prometheus.CounterValue,
-			tupDeleted,
-			datid,
-			datname,
+			tupDeletedMetric,
+			datidLabel,
+			datnameLabel,
 		)
 
+		conflictsMetric := 0.0
+		if conflicts.Valid {
+			conflictsMetric = conflicts.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseConflicts,
 			prometheus.CounterValue,
-			conflicts,
-			datid,
-			datname,
+			conflictsMetric,
+			datidLabel,
+			datnameLabel,
 		)
 
+		tempFilesMetric := 0.0
+		if tempFiles.Valid {
+			tempFilesMetric = tempFiles.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTempFiles,
 			prometheus.CounterValue,
-			tempFiles,
-			datid,
-			datname,
+			tempFilesMetric,
+			datidLabel,
+			datnameLabel,
 		)
 
+		tempBytesMetric := 0.0
+		if tempBytes.Valid {
+			tempBytesMetric = tempBytes.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTempBytes,
 			prometheus.CounterValue,
-			tempBytes,
-			datid,
-			datname,
+			tempBytesMetric,
+			datidLabel,
+			datnameLabel,
 		)
 
+		deadlocksMetric := 0.0
+		if deadlocks.Valid {
+			deadlocksMetric = deadlocks.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseDeadlocks,
 			prometheus.CounterValue,
-			deadlocks,
-			datid,
-			datname,
+			deadlocksMetric,
+			datidLabel,
+			datnameLabel,
 		)
 
+		blkReadTimeMetric := 0.0
+		if blkReadTime.Valid {
+			blkReadTimeMetric = blkReadTime.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseBlkReadTime,
 			prometheus.CounterValue,
-			blkReadTime,
-			datid,
-			datname,
+			blkReadTimeMetric,
+			datidLabel,
+			datnameLabel,
 		)
 
+		blkWriteTimeMetric := 0.0
+		if blkWriteTime.Valid {
+			blkWriteTimeMetric = blkWriteTime.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseBlkWriteTime,
 			prometheus.CounterValue,
-			blkWriteTime,
-			datid,
-			datname,
+			blkWriteTimeMetric,
+			datidLabel,
+			datnameLabel,
 		)
 
+		statsResetMetric := 0.0
 		if statsReset.Valid {
-			ch <- prometheus.MustNewConstMetric(
-				statDatabaseStatsReset,
-				prometheus.CounterValue,
-				float64(statsReset.Time.Unix()),
-				datid,
-				datname,
-			)
-		} else {
-			ch <- prometheus.MustNewConstMetric(
-				statDatabaseStatsReset,
-				prometheus.CounterValue,
-				0,
-				datid,
-				datname,
-			)
+			statsResetMetric = float64(statsReset.Time.Unix())
 		}
+		ch <- prometheus.MustNewConstMetric(
+			statDatabaseStatsReset,
+			prometheus.CounterValue,
+			statsResetMetric,
+			datidLabel,
+			datnameLabel,
+		)
 	}
 	return nil
 }

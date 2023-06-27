@@ -88,3 +88,64 @@ func TestPGStatBGWriterCollector(t *testing.T) {
 		t.Errorf("there were unfulfilled exceptions: %s", err)
 	}
 }
+
+func TestPGStatBGWriterCollectorNullValues(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Error opening a stub db connection: %s", err)
+	}
+	defer db.Close()
+
+	inst := &instance{db: db}
+
+	columns := []string{
+		"checkpoints_timed",
+		"checkpoints_req",
+		"checkpoint_write_time",
+		"checkpoint_sync_time",
+		"buffers_checkpoint",
+		"buffers_clean",
+		"maxwritten_clean",
+		"buffers_backend",
+		"buffers_backend_fsync",
+		"buffers_alloc",
+		"stats_reset"}
+
+	rows := sqlmock.NewRows(columns).
+		AddRow(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	mock.ExpectQuery(sanitizeQuery(statBGWriterQuery)).WillReturnRows(rows)
+
+	ch := make(chan prometheus.Metric)
+	go func() {
+		defer close(ch)
+		c := PGStatBGWriterCollector{}
+
+		if err := c.Update(context.Background(), inst, ch); err != nil {
+			t.Errorf("Error calling PGStatBGWriterCollector.Update: %s", err)
+		}
+	}()
+
+	expected := []MetricResult{
+		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
+	}
+
+	convey.Convey("Metrics comparison", t, func() {
+		for _, expect := range expected {
+			m := readMetric(<-ch)
+			convey.So(expect, convey.ShouldResemble, m)
+		}
+	})
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled exceptions: %s", err)
+	}
+}
