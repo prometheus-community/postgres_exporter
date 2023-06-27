@@ -1,3 +1,7 @@
+## 0.13.1 / 2023-06-27
+
+* [BUGFIX] Make collectors not fail on null values #823
+
 ## 0.13.0 / 2023-06-21
 
 BREAKING CHANGES:
