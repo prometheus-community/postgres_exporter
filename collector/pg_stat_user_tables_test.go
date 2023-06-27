@@ -53,6 +53,9 @@ func TestPGStatUserTablesCollector(t *testing.T) {
 		"datname",
 		"schemaname",
 		"relname",
+		"relpages",
+		"relsize",
+		"relsize_total",
 		"seq_scan",
 		"seq_tup_read",
 		"idx_scan",
@@ -71,8 +74,7 @@ func TestPGStatUserTablesCollector(t *testing.T) {
 		"vacuum_count",
 		"autovacuum_count",
 		"analyze_count",
-		"autoanalyze_count",
-		"total_size"}
+		"autoanalyze_count"}
 	rows := sqlmock.NewRows(columns).
 		AddRow("postgres",
 			"public",
@@ -87,16 +89,18 @@ func TestPGStatUserTablesCollector(t *testing.T) {
 			8,
 			9,
 			10,
+			11,
+			12,
+			13,
 			0,
 			lastVacuumTime,
 			lastAutoVacuumTime,
 			lastAnalyzeTime,
 			lastAutoAnalyzeTime,
-			11,
-			12,
-			13,
 			14,
-			15)
+			15,
+			16,
+			17)
 	mock.ExpectQuery(sanitizeQuery(statUserTablesQuery)).WillReturnRows(rows)
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -109,25 +113,28 @@ func TestPGStatUserTablesCollector(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
-		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_COUNTER, value: 1},
-		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_COUNTER, value: 2},
-		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_COUNTER, value: 3},
+		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_GAUGE, value: 1},
+		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_GAUGE, value: 2},
+		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_GAUGE, value: 3},
 		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_COUNTER, value: 4},
 		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_COUNTER, value: 5},
 		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_COUNTER, value: 6},
 		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_COUNTER, value: 7},
 		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_COUNTER, value: 8},
-		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_GAUGE, value: 9},
-		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_GAUGE, value: 10},
+		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_COUNTER, value: 9},
+		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_COUNTER, value: 10},
+		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_COUNTER, value: 11},
+		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_GAUGE, value: 12},
+		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_GAUGE, value: 13},
 		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_GAUGE, value: 0},
 		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_GAUGE, value: 1685664000},
 		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_GAUGE, value: 1685750400},
 		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_GAUGE, value: 1685836800},
 		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_GAUGE, value: 1685923200},
-		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_COUNTER, value: 11},
-		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_COUNTER, value: 12},
-		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_COUNTER, value: 13},
 		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_COUNTER, value: 14},
+		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_COUNTER, value: 15},
+		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_COUNTER, value: 16},
+		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "a_table"}, metricType: dto.MetricType_COUNTER, value: 17},
 	}
 
 	convey.Convey("Metrics comparison", t, func() {
@@ -154,6 +161,9 @@ func TestPGStatUserTablesCollectorNullValues(t *testing.T) {
 		"datname",
 		"schemaname",
 		"relname",
+		"relpages",
+		"relsize",
+		"relsize_total",
 		"seq_scan",
 		"seq_tup_read",
 		"idx_scan",
@@ -172,10 +182,11 @@ func TestPGStatUserTablesCollectorNullValues(t *testing.T) {
 		"vacuum_count",
 		"autovacuum_count",
 		"analyze_count",
-		"autoanalyze_count",
-		"total_size"}
+		"autoanalyze_count"}
 	rows := sqlmock.NewRows(columns).
 		AddRow("postgres",
+			nil,
+			nil,
 			nil,
 			nil,
 			nil,
@@ -210,6 +221,9 @@ func TestPGStatUserTablesCollectorNullValues(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_GAUGE, value: 0},
 		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
 		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
 		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
