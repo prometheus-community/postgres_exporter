@@ -29,6 +29,8 @@ func TestPgReplicationCollector(t *testing.T) {
 	}
 	defer db.Close()
 
+	inst := &instance{db: db}
+
 	columns := []string{"lag", "is_replica"}
 	rows := sqlmock.NewRows(columns).
 		AddRow(1000, 1)
@@ -39,7 +41,7 @@ func TestPgReplicationCollector(t *testing.T) {
 		defer close(ch)
 		c := PGReplicationCollector{}
 
-		if err := c.Update(context.Background(), db, ch); err != nil {
+		if err := c.Update(context.Background(), inst, ch); err != nil {
 			t.Errorf("Error calling PGReplicationCollector.Update: %s", err)
 		}
 	}()
