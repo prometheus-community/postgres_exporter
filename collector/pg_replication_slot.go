@@ -66,11 +66,14 @@ var (
 
 	pgReplicationSlotQuery = `SELECT
 		slot_name,
-		pg_current_wal_lsn() - '0/0' AS current_wal_lsn,
-		coalesce(confirmed_flush_lsn, '0/0') - '0/0',
+		CASE WHEN pg_is_in_recovery() THEN 
+		    pg_last_wal_receive_lsn() - '0/0'
+		ELSE 
+		    pg_current_wal_lsn() - '0/0' 
+		END AS current_wal_lsn,
+		COALESCE(confirmed_flush_lsn, '0/0') - '0/0',
 		active
-	FROM
-		pg_replication_slots;`
+	FROM pg_replication_slots;`
 )
 
 func (PGReplicationSlotCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
