@@ -36,7 +36,7 @@ func NewPGLongRunningTransactionsCollector(config collectorConfig) (Collector, e
 
 var (
 	longRunningTransactionsCount = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, longRunningTransactionsSubsystem, "count"),
+		"pg_long_running_transactions",
 		"Current number of long running transactions",
 		[]string{},
 		prometheus.Labels{},

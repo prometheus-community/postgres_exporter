@@ -37,7 +37,7 @@ func NewPGDatabaseWraparoundCollector(config collectorConfig) (Collector, error)
 
 var (
 	databaseWraparoundAgeDatfrozenxid = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, databaseWraparoundSubsystem, "age_datfrozenxid"),
+		prometheus.BuildFQName(namespace, databaseWraparoundSubsystem, "age_datfrozenxid_seconds"),
 		"Age of the oldest transaction ID that has not been frozen.",
 		[]string{"datname"},
 		prometheus.Labels{},

@@ -36,7 +36,7 @@ func NewPGStatActivityAutovacuumActiveCollector(config collectorConfig) (Collect
 
 var (
 	statActivityAutovacuumActiveWorkersCount = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statActivityAutovacuumActiveSubsystem, "workers_count"),
+		prometheus.BuildFQName(namespace, statActivityAutovacuumActiveSubsystem, "workers"),
 		"Current number of statActivityAutovacuumActive queries",
 		[]string{"phase", "mode"},
 		prometheus.Labels{},

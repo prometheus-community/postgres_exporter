@@ -31,7 +31,7 @@ func TestPGStatActivityAutovacuumCollector(t *testing.T) {
 	inst := &instance{db: db}
 	columns := []string{
 		"relname",
-		"age_in_seconds",
+		"timestamp_seconds",
 	}
 	rows := sqlmock.NewRows(columns).
 		AddRow("test", 3600)

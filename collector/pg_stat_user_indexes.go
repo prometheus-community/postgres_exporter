@@ -36,19 +36,19 @@ func NewPGStatUserIndexesCollector(config collectorConfig) (Collector, error) {
 
 var (
 	statUserIndexesIdxScan = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statUserIndexesSubsystem, "idx_scan"),
+		prometheus.BuildFQName(namespace, statUserIndexesSubsystem, "idx_scans_total"),
 		"Number of index scans initiated on this index",
 		[]string{"schemaname", "relname", "indexrelname"},
 		prometheus.Labels{},
 	)
 	statUserIndexesIdxTupRead = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statUserIndexesSubsystem, "idx_tup_read"),
+		prometheus.BuildFQName(namespace, statUserIndexesSubsystem, "idx_tup_reads_total"),
 		"Number of index entries returned by scans on this index",
 		[]string{"schemaname", "relname", "indexrelname"},
 		prometheus.Labels{},
 	)
 	statUserIndexesIdxTupFetch = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statUserIndexesSubsystem, "idx_tup_fetch"),
+		prometheus.BuildFQName(namespace, statUserIndexesSubsystem, "idx_tup_fetches_total"),
 		"Number of live table rows fetched by simple index scans using this index",
 		[]string{"schemaname", "relname", "indexrelname"},
 		prometheus.Labels{},

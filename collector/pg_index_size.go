@@ -37,7 +37,7 @@ func NewPGIndexSizeCollector(config collectorConfig) (Collector, error) {
 
 var (
 	indexSizeDesc = prometheus.NewDesc(
-		"pg_index_size",
+		prometheus.BuildFQName(namespace, indexSizeSubsystem, "bytes"),
 		"Size of the index as per pg_table_size function",
 		[]string{"schemaname", "relname", "indexrelname"},
 		prometheus.Labels{},

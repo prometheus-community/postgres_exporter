@@ -35,7 +35,7 @@ func NewPGArchiverCollector(config collectorConfig) (Collector, error) {
 
 var (
 	pgArchiverPendingWalCount = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, archiverSubsystem, "pending_wal_count"),
+		prometheus.BuildFQName(namespace, archiverSubsystem, "pending_wals"),
 		"Number of WAL files waiting to be archived",
 		[]string{}, prometheus.Labels{},
 	)
