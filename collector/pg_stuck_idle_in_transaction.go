@@ -36,7 +36,7 @@ func NewPGStuckIdleInTransactionCollector(config collectorConfig) (Collector, er
 
 var (
 	stuckIdleInTransactionQueries = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, longRunningTransactionsSubsystem, "queries"),
+		prometheus.BuildFQName(namespace, stuckIdleInTransactionSubsystem, "queries"),
 		"Current number of queries that are stuck being idle in transactions",
 		[]string{},
 		prometheus.Labels{},
@@ -70,11 +70,6 @@ func (PGStuckIdleInTransactionCollector) Update(ctx context.Context, instance *i
 
 		ch <- prometheus.MustNewConstMetric(
 			stuckIdleInTransactionQueries,
-			prometheus.GaugeValue,
-			queries,
-		)
-		ch <- prometheus.MustNewConstMetric(
-			longRunningTransactionsAgeInSeconds,
 			prometheus.GaugeValue,
 			queries,
 		)
