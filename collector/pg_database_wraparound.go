@@ -52,8 +52,8 @@ var (
 	databaseWraparoundQuery = `
 	SELECT
 		datname,
-		age(d.datfrozenxid) AS age_datfrozenxid,
-		mxid_age(d.datminmxid) AS age_datminmxid
+		age(d.datfrozenxid) as age_datfrozenxid,
+		mxid_age(d.datminmxid) as age_datminmxid
 	FROM
 		pg_catalog.pg_database d
 	WHERE
@@ -79,9 +79,8 @@ func (PGDatabaseWraparoundCollector) Update(ctx context.Context, instance *insta
 			return err
 		}
 
-		datnameLabel := "unknown"
-		if datname.Valid {
-			datnameLabel = datname.String
+		if !datname.Valid {
+			continue
 		}
 
 		ageDatfrozenxidMetric := 0.0
@@ -92,7 +91,7 @@ func (PGDatabaseWraparoundCollector) Update(ctx context.Context, instance *insta
 		ch <- prometheus.MustNewConstMetric(
 			databaseWraparoundAgeDatfrozenxid,
 			prometheus.GaugeValue,
-			ageDatfrozenxidMetric, datnameLabel,
+			ageDatfrozenxidMetric, datname.String,
 		)
 
 		ageDatminmxidMetric := 0.0
@@ -102,7 +101,7 @@ func (PGDatabaseWraparoundCollector) Update(ctx context.Context, instance *insta
 		ch <- prometheus.MustNewConstMetric(
 			databaseWraparoundAgeDatminmxid,
 			prometheus.GaugeValue,
-			ageDatminmxidMetric, datnameLabel,
+			ageDatminmxidMetric, datname.String,
 		)
 	}
 	if err := rows.Err(); err != nil {

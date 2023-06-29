@@ -76,7 +76,7 @@ func TestPGDatabaseWraparoundCollectorNull(t *testing.T) {
 		"age_datminmxid",
 	}
 	rows := sqlmock.NewRows(columns).
-		AddRow(nil, nil, nil)
+		AddRow("foo", nil, nil)
 
 	mock.ExpectQuery(sanitizeQuery(databaseWraparoundQuery)).WillReturnRows(rows)
 
@@ -90,8 +90,8 @@ func TestPGDatabaseWraparoundCollectorNull(t *testing.T) {
 		}
 	}()
 	expected := []MetricResult{
-		{labels: labelMap{"datname": "unknown"}, value: 0, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{"datname": "unknown"}, value: 0, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"datname": "foo"}, value: 0, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"datname": "foo"}, value: 0, metricType: dto.MetricType_GAUGE},
 	}
 	convey.Convey("Metrics comparison", t, func() {
 		for _, expect := range expected {
