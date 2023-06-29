@@ -46,21 +46,12 @@ var (
 	SELECT
 		v.phase,
 		CASE
-<<<<<<< HEAD
-			when a.query ~ '^autovacuum.*to prevent wraparound' then 'wraparound'
-			when a.query ~* '^vacuum' then 'user'
-			when a.pid is null then 'idle'
-		ELSE 'regular'
-		END AS mode,
-		count(1) AS workers_count
-=======
 			WHEN a.query ~ '^autovacuum.*to prevent wraparound' THEN 'wraparound'
 			WHEN a.query ~* '^vacuum' THEN 'user'
 			WHEN a.pid is NULL THEN 'idle'
 			ELSE 'regular'
 		END as mode,
 		count(1) as workers_count
->>>>>>> c928d57 (SQL formatting)
 	FROM pg_stat_progress_vacuum v
 	LEFT JOIN pg_catalog.pg_stat_activity a USING (pid)
 	GROUP BY 1,2
