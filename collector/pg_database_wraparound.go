@@ -43,7 +43,7 @@ var (
 		prometheus.Labels{},
 	)
 	databaseWraparoundAgeDatminmxid = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, databaseWraparoundSubsystem, "age_datminmxid"),
+		prometheus.BuildFQName(namespace, databaseWraparoundSubsystem, "age_datminmxid_seconds"),
 		"Age of the oldest multi-transaction ID that has been replaced with a transaction ID.",
 		[]string{"datname"},
 		prometheus.Labels{},
