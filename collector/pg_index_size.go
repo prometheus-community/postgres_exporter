@@ -46,9 +46,9 @@ var (
 	indexSizeQuery = `
 	SELECT
 		schemaname,
-		tablename as relname,
-		indexname as indexrelname,
-		pg_class.relpages * 8192::bigint as index_size
+		tablename AS relname,
+		indexname AS indexrelname,
+		pg_class.relpages * 8192::bigint AS index_size
 	FROM
 		pg_indexes 
 		INNER JOIN pg_namespace 
