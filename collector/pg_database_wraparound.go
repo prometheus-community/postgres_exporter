@@ -52,8 +52,8 @@ var (
 	databaseWraparoundQuery = `
 	SELECT
 		datname,
-		age(d.datfrozenxid) as age_datfrozenxid,
-		mxid_age(d.datminmxid) as age_datminmxid
+		age(d.datfrozenxid) AS age_datfrozenxid,
+		mxid_age(d.datminmxid) AS age_datminmxid
 	FROM
 		pg_catalog.pg_database d
 	WHERE
