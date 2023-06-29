@@ -17,6 +17,7 @@ import (
 	"database/sql"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -83,20 +84,33 @@ func (c *PGStatUserIndexesCollector) Update(ctx context.Context, instance *insta
 			return err
 		}
 		if !schemaname.Valid {
+			level.Debug(c.log).Log("msg", "Skipping stats on index because schemaname is not valid")
 			continue
 		}
 		if !relname.Valid {
+			level.Debug(c.log).Log("msg", "Skipping stats on index because relname is not valid")
 			continue
 		}
 		if !indexrelname.Valid {
+			level.Debug(c.log).Log("msg", "Skipping stats on index because indexrelname is not valid")
 			continue
 		}
 		labels := []string{schemaname.String, relname.String, indexrelname.String}
 
-		idxScanMetric := 0.0
-		if idxScan.Valid {
-			idxScanMetric = idxScan.Float64
+		if !idxScan.Valid {
+			level.Debug(c.log).Log("msg", "Skipping stats on index because idx_scan is not valid")
+			continue
 		}
+		if !idxTupRead.Valid {
+			level.Debug(c.log).Log("msg", "Skipping stats on index because idx_tup_read is not valid")
+			continue
+		}
+		if !idxTupFetch.Valid {
+			level.Debug(c.log).Log("msg", "Skipping stats on index because idx_tup_fetch is not valid")
+			continue
+		}
+
+		idxScanMetric := idxScan.Float64
 		ch <- prometheus.MustNewConstMetric(
 			statUserIndexesIdxScan,
 			prometheus.CounterValue,
@@ -104,10 +118,7 @@ func (c *PGStatUserIndexesCollector) Update(ctx context.Context, instance *insta
 			labels...,
 		)
 
-		idxTupReadMetric := 0.0
-		if idxTupRead.Valid {
-			idxTupReadMetric = idxTupRead.Float64
-		}
+		idxTupReadMetric := idxTupRead.Float64
 		ch <- prometheus.MustNewConstMetric(
 			statUserIndexesIdxTupRead,
 			prometheus.CounterValue,
@@ -115,10 +126,7 @@ func (c *PGStatUserIndexesCollector) Update(ctx context.Context, instance *insta
 			labels...,
 		)
 
-		idxTupFetchMetric := 0.0
-		if idxTupFetch.Valid {
-			idxTupFetchMetric = idxTupFetch.Float64
-		}
+		idxTupFetchMetric := idxTupFetch.Float64
 		ch <- prometheus.MustNewConstMetric(
 			statUserIndexesIdxTupFetch,
 			prometheus.CounterValue,
