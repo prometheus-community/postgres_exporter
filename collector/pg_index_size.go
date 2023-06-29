@@ -50,8 +50,11 @@ var (
 		indexname as indexrelname,
 		pg_class.relpages * 8192::bigint as index_size
 	FROM
-		pg_indexes inner join pg_namespace on pg_indexes.schemaname = pg_namespace.nspname
-		inner join pg_class on pg_class.relnamespace = pg_namespace.oid and pg_class.relname = pg_indexes.indexname
+		pg_indexes 
+		INNER JOIN pg_namespace 
+			ON pg_indexes.schemaname = pg_namespace.nspname
+		INNER JOIN pg_class 
+			ON pg_class.relnamespace = pg_namespace.oid AND pg_class.relname = pg_indexes.indexname
 	WHERE
 		pg_indexes.schemaname != 'pg_catalog'
 	`
