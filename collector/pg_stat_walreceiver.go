@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -158,60 +159,96 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 			}
 		}
 		if !upstreamHost.Valid {
+			level.Debug(c.log).Log("msg", "Skipping wal receiver stats because upstream host is null")
 			continue
 		}
 
 		if !slotName.Valid {
+			level.Debug(c.log).Log("msg", "Skipping wal receiver stats because slotname host is null")
 			continue
 		}
 		labels := []string{upstreamHost.String, slotName.String}
-
-		statusMetric := -3.0
-		if status.Valid {
-			switch status.String {
-			case "stopped":
-				statusMetric = 0.0
-				break
-			case "starting":
-				statusMetric = 1.0
-				break
-			case "streaming":
-				statusMetric = 2.0
-				break
-			case "waiting":
-				statusMetric = 3.0
-				break
-			case "restarting":
-				statusMetric = 4.0
-				break
-			case "stopping":
-				statusMetric = -1.0
-				break
-			default:
-				statusMetric = -2.0
-				break
-			}
+		if !status.Valid {
+			level.Debug(c.log).Log("msg", "Skipping wal receiver stats because status is null")
+			continue
 		}
+
+		var statusMetric float64
+		switch status.String {
+		case "stopped":
+			statusMetric = 0.0
+			break
+		case "starting":
+			statusMetric = 1.0
+			break
+		case "streaming":
+			statusMetric = 2.0
+			break
+		case "waiting":
+			statusMetric = 3.0
+			break
+		case "restarting":
+			statusMetric = 4.0
+			break
+		case "stopping":
+			statusMetric = -1.0
+			break
+		default:
+			statusMetric = -2.0
+			break
+		}
+
+		if !receiveStartLsn.Valid {
+			level.Debug(c.log).Log("msg", "Skipping wal receiver stats because receive_start_lsn is null")
+			continue
+		}
+		if !receiveStartTli.Valid {
+			level.Debug(c.log).Log("msg", "Skipping wal receiver stats because receive_start_tli is null")
+			continue
+		}
+		if hasFlushedLSN && !flushedLsn.Valid {
+			level.Debug(c.log).Log("msg", "Skipping wal receiver stats because flushed_lsn is null")
+			continue
+		}
+		if !receivedTli.Valid {
+			level.Debug(c.log).Log("msg", "Skipping wal receiver stats because received_tli is null")
+			continue
+		}
+		if !lastMsgSendTime.Valid {
+			level.Debug(c.log).Log("msg", "Skipping wal receiver stats because last_msg_send_time is null")
+			continue
+		}
+		if !lastMsgReceiptTime.Valid {
+			level.Debug(c.log).Log("msg", "Skipping wal receiver stats because last_msg_receipt_time is null")
+			continue
+		}
+		if !latestEndLsn.Valid {
+			level.Debug(c.log).Log("msg", "Skipping wal receiver stats because latest_end_lsn is null")
+			continue
+		}
+		if !latestEndTime.Valid {
+			level.Debug(c.log).Log("msg", "Skipping wal receiver stats because latest_end_time is null")
+			continue
+		}
+		if !upstreamNode.Valid {
+			level.Debug(c.log).Log("msg", "Skipping wal receiver stats because upstream_node is null")
+			continue
+		}
+
+		receiveStartLsnMetric := float64(receiveStartLsn.Int64)
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverStatus,
 			prometheus.GaugeValue,
 			statusMetric,
 			labels...)
 
-		receiveStartLsnMetric := 0.0
-		if receiveStartLsn.Valid {
-			receiveStartLsnMetric = float64(receiveStartLsn.Int64)
-		}
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverReceiveStartLsn,
 			prometheus.CounterValue,
 			receiveStartLsnMetric,
 			labels...)
 
-		receiveStartTliMetric := 0.0
-		if receiveStartTli.Valid {
-			receiveStartTliMetric = float64(receiveStartTli.Int64)
-		}
+		receiveStartTliMetric := float64(receiveStartTli.Int64)
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverReceiveStartTli,
 			prometheus.GaugeValue,
@@ -219,10 +256,7 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 			labels...)
 
 		if hasFlushedLSN {
-			flushedLsnMetric := 0.0
-			if flushedLsn.Valid {
-				flushedLsnMetric = float64(flushedLsn.Int64)
-			}
+			flushedLsnMetric := float64(flushedLsn.Int64)
 			ch <- prometheus.MustNewConstMetric(
 				statWalReceiverFlushedLSN,
 				prometheus.CounterValue,
@@ -230,60 +264,42 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 				labels...)
 		}
 
-		receivedTliMetric := 0.0
-		if receivedTli.Valid {
-			receivedTliMetric = float64(receivedTli.Int64)
-		}
+		receivedTliMetric := float64(receivedTli.Int64)
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverReceivedTli,
 			prometheus.GaugeValue,
 			receivedTliMetric,
 			labels...)
 
-		lastMsgSendTimeMetric := 0.0
-		if lastMsgSendTime.Valid {
-			lastMsgSendTimeMetric = float64(lastMsgSendTime.Float64)
-		}
+		lastMsgSendTimeMetric := float64(lastMsgSendTime.Float64)
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverLastMsgSendTime,
 			prometheus.CounterValue,
 			lastMsgSendTimeMetric,
 			labels...)
 
-		lastMsgReceiptTimeMetric := 0.0
-		if lastMsgReceiptTime.Valid {
-			lastMsgReceiptTimeMetric = float64(lastMsgReceiptTime.Float64)
-		}
+		lastMsgReceiptTimeMetric := float64(lastMsgReceiptTime.Float64)
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverLastMsgReceiptTime,
 			prometheus.CounterValue,
 			lastMsgReceiptTimeMetric,
 			labels...)
 
-		latestEndLsnMetric := 0.0
-		if latestEndLsn.Valid {
-			latestEndLsnMetric = float64(latestEndLsn.Int64)
-		}
+		latestEndLsnMetric := float64(latestEndLsn.Int64)
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverLatestEndLsn,
 			prometheus.CounterValue,
 			latestEndLsnMetric,
 			labels...)
 
-		latestEndTimeMetric := 0.0
-		if latestEndTime.Valid {
-			latestEndTimeMetric = float64(latestEndTime.Float64)
-		}
+		latestEndTimeMetric := float64(latestEndTime.Float64)
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverLatestEndTime,
 			prometheus.CounterValue,
 			latestEndTimeMetric,
 			labels...)
 
-		upstreamNodeMetric := 0.0
-		if upstreamNode.Valid {
-			upstreamNodeMetric = float64(upstreamNode.Int64)
-		}
+		upstreamNodeMetric := float64(upstreamNode.Int64)
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverUpstreamNode,
 			prometheus.GaugeValue,
