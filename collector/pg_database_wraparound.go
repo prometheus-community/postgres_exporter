@@ -18,6 +18,7 @@ import (
 	"database/sql"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -61,7 +62,7 @@ var (
 	`
 )
 
-func (PGDatabaseWraparoundCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+func (c *PGDatabaseWraparoundCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
 	rows, err := db.QueryContext(ctx,
 		databaseWraparoundQuery)
@@ -80,13 +81,19 @@ func (PGDatabaseWraparoundCollector) Update(ctx context.Context, instance *insta
 		}
 
 		if !datname.Valid {
+			level.Debug(c.log).Log("msg", "Skipping database with NULL name")
+			continue
+		}
+		if !ageDatfrozenxid.Valid {
+			level.Debug(c.log).Log("msg", "Skipping stat emission with NULL age_datfrozenxid")
+			continue
+		}
+		if !ageDatminmxid.Valid {
+			level.Debug(c.log).Log("msg", "Skipping stat emission with NULL age_datminmxid")
 			continue
 		}
 
-		ageDatfrozenxidMetric := 0.0
-		if ageDatfrozenxid.Valid {
-			ageDatfrozenxidMetric = ageDatfrozenxid.Float64
-		}
+		ageDatfrozenxidMetric := ageDatfrozenxid.Float64
 
 		ch <- prometheus.MustNewConstMetric(
 			databaseWraparoundAgeDatfrozenxid,
@@ -94,10 +101,7 @@ func (PGDatabaseWraparoundCollector) Update(ctx context.Context, instance *insta
 			ageDatfrozenxidMetric, datname.String,
 		)
 
-		ageDatminmxidMetric := 0.0
-		if ageDatminmxid.Valid {
-			ageDatminmxidMetric = ageDatminmxid.Float64
-		}
+		ageDatminmxidMetric := ageDatminmxid.Float64
 		ch <- prometheus.MustNewConstMetric(
 			databaseWraparoundAgeDatminmxid,
 			prometheus.GaugeValue,
