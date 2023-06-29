@@ -51,7 +51,7 @@ var (
 			when a.pid is null then 'idle'
 		ELSE 'regular'
 		END AS mode,
-		count(1) as workers_count
+		count(1) AS workers_count
 	FROM pg_stat_progress_vacuum v
 	LEFT JOIN pg_catalog.pg_stat_activity a using (pid)
 	GROUP BY 1,2
