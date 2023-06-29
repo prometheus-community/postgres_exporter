@@ -15,6 +15,7 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -105,44 +106,13 @@ var (
 		column_name = 'flushed_lsn'
 	`
 
-	pgStatWalReceiverQueryWithNoFlushedLSN = `
+	pgStatWalReceiverQueryTemplate = `
 	SELECT
 		trim(both '''' from substring(conninfo from 'host=([^ ]*)')) as upstream_host,
 		slot_name,
-		case status
-			when 'stopped' then 0
-			when 'starting' then 1
-			when 'streaming' then 2
-			when 'waiting' then 3
-			when 'restarting' then 4
-			when 'stopping' then 5 else -1
-		end as status,
+		status,
 		(receive_start_lsn- '0/0') % (2^52)::bigint as receive_start_lsn,
-		receive_start_tli,
-		received_tli,
-		extract(epoch from last_msg_send_time) as last_msg_send_time,
-		extract(epoch from last_msg_receipt_time) as last_msg_receipt_time,
-		(latest_end_lsn - '0/0') % (2^52)::bigint as latest_end_lsn,
-		extract(epoch from latest_end_time) as latest_end_time,
-		substring(slot_name from 'repmgr_slot_([0-9]*)') as upstream_node
-	FROM pg_catalog.pg_stat_wal_receiver
-	`
-
-	pgStatWalReceiverQueryWithFlushedLSN = `
-	SELECT
-		trim(both '''' from substring(conninfo from 'host=([^ ]*)')) as upstream_host,
-		slot_name,
-		case status
-			when 'stopped' then 0
-			when 'starting' then 1
-			when 'streaming' then 2
-			when 'waiting' then 3
-			when 'restarting' then 4
-			when 'stopping' then 5 else -1
-		end as status,
-		(receive_start_lsn- '0/0') % (2^52)::bigint as receive_start_lsn,
-		receive_start_tli,
-		(flushed_lsn- '0/0') % (2^52)::bigint as flushed_lsn,
+		%sreceive_start_tli,
 		received_tli,
 		extract(epoch from last_msg_send_time) as last_msg_send_time,
 		extract(epoch from last_msg_receipt_time) as last_msg_receipt_time,
@@ -164,9 +134,9 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 	hasFlushedLSN := hasFlushedLSNRows.Next()
 	var query string
 	if hasFlushedLSN {
-		query = pgStatWalReceiverQueryWithFlushedLSN
+		query = fmt.Sprintf(pgStatWalReceiverQueryTemplate, "(flushed_lsn - '0/0') % (2^52)::bigint as flushed_lsn,\n")
 	} else {
-		query = pgStatWalReceiverQueryWithNoFlushedLSN
+		query = fmt.Sprintf(pgStatWalReceiverQueryTemplate, "")
 	}
 	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
@@ -174,8 +144,8 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var upstreamHost, slotName sql.NullString
-		var status, receiveStartLsn, receiveStartTli, flushedLsn, receivedTli, latestEndLsn, upstreamNode sql.NullInt64
+		var upstreamHost, slotName, status sql.NullString
+		var receiveStartLsn, receiveStartTli, flushedLsn, receivedTli, latestEndLsn, upstreamNode sql.NullInt64
 		var lastMsgSendTime, lastMsgReceiptTime, latestEndTime sql.NullFloat64
 
 		if hasFlushedLSN {
@@ -197,9 +167,31 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 		}
 		labels := []string{upstreamHostLabel, slotNameLabel}
 
-		statusMetric := 0.0
+		statusMetric := -3.0
 		if status.Valid {
-			statusMetric = float64(status.Int64)
+			switch status.String {
+			case "stopped":
+				statusMetric = 0.0
+				break
+			case "starting":
+				statusMetric = 1.0
+				break
+			case "streaming":
+				statusMetric = 2.0
+				break
+			case "waiting":
+				statusMetric = 3.0
+				break
+			case "restarting":
+				statusMetric = 4.0
+				break
+			case "stopping":
+				statusMetric = -1.0
+				break
+			default:
+				statusMetric = -2.0
+				break
+			}
 		}
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverStatus,

@@ -14,6 +14,7 @@ package collector
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -21,6 +22,9 @@ import (
 	dto "github.com/prometheus/client_model/go"
 	"github.com/smartystreets/goconvey/convey"
 )
+
+var queryWithFlushedLSN = fmt.Sprintf(pgStatWalReceiverQueryTemplate, "(flushed_lsn - '0/0') % (2^52)::bigint as flushed_lsn,\n")
+var queryWithNoFlushedLSN = fmt.Sprintf(pgStatWalReceiverQueryTemplate, "")
 
 func TestPGStatWalReceiverCollectorWithFlushedLSN(t *testing.T) {
 	db, mock, err := sqlmock.New()
@@ -59,7 +63,7 @@ func TestPGStatWalReceiverCollectorWithFlushedLSN(t *testing.T) {
 		AddRow(
 			"foo",
 			"bar",
-			2,
+			"stopping",
 			1200668684563608,
 			1687321285,
 			1200668684563609,
@@ -70,7 +74,8 @@ func TestPGStatWalReceiverCollectorWithFlushedLSN(t *testing.T) {
 			1687321277,
 			5,
 		)
-	mock.ExpectQuery(sanitizeQuery(pgStatWalReceiverQueryWithFlushedLSN)).WillReturnRows(rows)
+
+	mock.ExpectQuery(sanitizeQuery(queryWithFlushedLSN)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -82,7 +87,7 @@ func TestPGStatWalReceiverCollectorWithFlushedLSN(t *testing.T) {
 		}
 	}()
 	expected := []MetricResult{
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 2, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: -1.0, metricType: dto.MetricType_GAUGE},
 		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1200668684563608, metricType: dto.MetricType_COUNTER},
 		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1687321285, metricType: dto.MetricType_GAUGE},
 		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1200668684563609, metricType: dto.MetricType_COUNTER},
@@ -138,7 +143,7 @@ func TestPGStatWalReceiverCollectorWithNoFlushedLSN(t *testing.T) {
 		AddRow(
 			"foo",
 			"bar",
-			2,
+			"starting",
 			1200668684563608,
 			1687321285,
 			1687321280,
@@ -148,7 +153,7 @@ func TestPGStatWalReceiverCollectorWithNoFlushedLSN(t *testing.T) {
 			1687321277,
 			5,
 		)
-	mock.ExpectQuery(sanitizeQuery(pgStatWalReceiverQueryWithNoFlushedLSN)).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(queryWithNoFlushedLSN)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -160,7 +165,7 @@ func TestPGStatWalReceiverCollectorWithNoFlushedLSN(t *testing.T) {
 		}
 	}()
 	expected := []MetricResult{
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 2, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1.0, metricType: dto.MetricType_GAUGE},
 		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1200668684563608, metricType: dto.MetricType_COUNTER},
 		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1687321285, metricType: dto.MetricType_GAUGE},
 		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1687321280, metricType: dto.MetricType_GAUGE},
@@ -230,7 +235,7 @@ func TestPGStatWalReceiverCollectorWithFlushedLSNNull(t *testing.T) {
 			nil,
 			nil,
 		)
-	mock.ExpectQuery(sanitizeQuery(pgStatWalReceiverQueryWithFlushedLSN)).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(queryWithFlushedLSN)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -242,7 +247,7 @@ func TestPGStatWalReceiverCollectorWithFlushedLSNNull(t *testing.T) {
 		}
 	}()
 	expected := []MetricResult{
-		{labels: labelMap{"upstream_host": "unknown", "slot_name": "unknown"}, value: 0, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"upstream_host": "unknown", "slot_name": "unknown"}, value: -3.0, metricType: dto.MetricType_GAUGE},
 		{labels: labelMap{"upstream_host": "unknown", "slot_name": "unknown"}, value: 0, metricType: dto.MetricType_COUNTER},
 		{labels: labelMap{"upstream_host": "unknown", "slot_name": "unknown"}, value: 0, metricType: dto.MetricType_GAUGE},
 		{labels: labelMap{"upstream_host": "unknown", "slot_name": "unknown"}, value: 0, metricType: dto.MetricType_COUNTER},
