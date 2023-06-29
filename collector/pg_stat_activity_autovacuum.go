@@ -37,19 +37,19 @@ func NewPGStatActivityAutovacuumCollector(config collectorConfig) (Collector, er
 var (
 	statActivityAutovacuumAgeInSeconds = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statActivityAutovacuumSubsystem, "timestamp_seconds"),
-		"The age of the vacuum process in seconds",
+		"Start timestamp of the vacuum process in seconds",
 		[]string{"relname"},
 		prometheus.Labels{},
 	)
 
 	statActivityAutovacuumQuery = `
     SELECT
-			SPLIT_PART(query, '.', 2) AS relname,
-			EXTRACT(xact_start) AS timestamp_seconds
+		SPLIT_PART(query, '.', 2) AS relname,
+		EXTRACT(xact_start) AS timestamp_seconds
     FROM
     	pg_catalog.pg_stat_activity
     WHERE
-			query like 'autovacuum:%' AND
+		query like 'autovacuum:%' AND
 		EXTRACT(EPOCH FROM (clock_timestamp() - xact_start)) > 300
 	`
 )
