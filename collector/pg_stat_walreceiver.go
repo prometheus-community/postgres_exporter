@@ -177,25 +177,18 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 		switch status.String {
 		case "stopped":
 			statusMetric = 0.0
-			break
 		case "starting":
 			statusMetric = 1.0
-			break
 		case "streaming":
 			statusMetric = 2.0
-			break
 		case "waiting":
 			statusMetric = 3.0
-			break
 		case "restarting":
 			statusMetric = 4.0
-			break
 		case "stopping":
 			statusMetric = -1.0
-			break
 		default:
 			statusMetric = -2.0
-			break
 		}
 
 		if !receiveStartLsn.Valid {
