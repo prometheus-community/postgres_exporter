@@ -222,8 +222,8 @@ func TestPGStatWalReceiverCollectorWithFlushedLSNNull(t *testing.T) {
 	}
 	rows := sqlmock.NewRows(columns).
 		AddRow(
-			nil,
-			nil,
+			"foo",
+			"bar",
 			nil,
 			nil,
 			nil,
@@ -247,16 +247,16 @@ func TestPGStatWalReceiverCollectorWithFlushedLSNNull(t *testing.T) {
 		}
 	}()
 	expected := []MetricResult{
-		{labels: labelMap{"upstream_host": "unknown", "slot_name": "unknown"}, value: -3.0, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{"upstream_host": "unknown", "slot_name": "unknown"}, value: 0, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"upstream_host": "unknown", "slot_name": "unknown"}, value: 0, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{"upstream_host": "unknown", "slot_name": "unknown"}, value: 0, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"upstream_host": "unknown", "slot_name": "unknown"}, value: 0, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{"upstream_host": "unknown", "slot_name": "unknown"}, value: 0, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"upstream_host": "unknown", "slot_name": "unknown"}, value: 0, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"upstream_host": "unknown", "slot_name": "unknown"}, value: 0, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"upstream_host": "unknown", "slot_name": "unknown"}, value: 0, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"upstream_host": "unknown", "slot_name": "unknown"}, value: 0, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: -3.0, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 0, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 0, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 0, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 0, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 0, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 0, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 0, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 0, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 0, metricType: dto.MetricType_GAUGE},
 	}
 	convey.Convey("Metrics comparison", t, func() {
 		for _, expect := range expected {

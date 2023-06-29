@@ -157,15 +157,14 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 				return err
 			}
 		}
-		upstreamHostLabel := "unknown"
-		if upstreamHost.Valid {
-			upstreamHostLabel = upstreamHost.String
+		if !upstreamHost.Valid {
+			continue
 		}
-		slotNameLabel := "unknown"
-		if slotName.Valid {
-			slotNameLabel = slotName.String
+
+		if !slotName.Valid {
+			continue
 		}
-		labels := []string{upstreamHostLabel, slotNameLabel}
+		labels := []string{upstreamHost.String, slotName.String}
 
 		statusMetric := -3.0
 		if status.Valid {
