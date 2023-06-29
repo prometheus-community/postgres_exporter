@@ -50,7 +50,7 @@ var (
 			when a.query ~* '^vacuum' then 'user'
 			when a.pid is null then 'idle'
 		ELSE 'regular'
-		END as mode,
+		END AS mode,
 		count(1) as workers_count
 	FROM pg_stat_progress_vacuum v
 	LEFT JOIN pg_catalog.pg_stat_activity a using (pid)
