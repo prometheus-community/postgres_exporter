@@ -44,8 +44,8 @@ var (
 
 	statActivityAutovacuumQuery = `
     SELECT
-		SPLIT_PART(query, '.', 2) AS relname,
-		EXTRACT(EPOCH FROM (clock_timestamp() - xact_start)) AS age_in_seconds
+			SPLIT_PART(query, '.', 2) AS relname,
+			EXTRACT(EPOCH FROM (clock_timestamp() - xact_start)) AS age_in_seconds
     FROM
     	pg_catalog.pg_stat_activity
     WHERE
