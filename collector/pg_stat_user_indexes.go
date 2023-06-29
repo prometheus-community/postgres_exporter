@@ -82,19 +82,16 @@ func (c *PGStatUserIndexesCollector) Update(ctx context.Context, instance *insta
 		if err := rows.Scan(&schemaname, &relname, &indexrelname, &idxScan, &idxTupRead, &idxTupFetch); err != nil {
 			return err
 		}
-		schemanameLabel := "unknown"
-		if schemaname.Valid {
-			schemanameLabel = schemaname.String
+		if !schemaname.Valid {
+			continue
 		}
-		relnameLabel := "unknown"
-		if relname.Valid {
-			relnameLabel = relname.String
+		if !relname.Valid {
+			continue
 		}
-		indexrelnameLabel := "unknown"
-		if indexrelname.Valid {
-			indexrelnameLabel = indexrelname.String
+		if !indexrelname.Valid {
+			continue
 		}
-		labels := []string{schemanameLabel, relnameLabel, indexrelnameLabel}
+		labels := []string{schemaname.String, relname.String, indexrelname.String}
 
 		idxScanMetric := 0.0
 		if idxScan.Valid {

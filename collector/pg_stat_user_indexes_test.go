@@ -83,7 +83,7 @@ func TestPgStatUserIndexesCollectorNull(t *testing.T) {
 		"idx_tup_fetch",
 	}
 	rows := sqlmock.NewRows(columns).
-		AddRow(nil, nil, nil, nil, nil, nil)
+		AddRow("foo", "bar", "blah", nil, nil, nil)
 
 	mock.ExpectQuery(sanitizeQuery(statUserIndexesQuery)).WillReturnRows(rows)
 
@@ -97,9 +97,9 @@ func TestPgStatUserIndexesCollectorNull(t *testing.T) {
 		}
 	}()
 	expected := []MetricResult{
-		{labels: labelMap{"schemaname": "unknown", "relname": "unknown", "indexrelname": "unknown"}, value: 0, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"schemaname": "unknown", "relname": "unknown", "indexrelname": "unknown"}, value: 0, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"schemaname": "unknown", "relname": "unknown", "indexrelname": "unknown"}, value: 0, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"schemaname": "foo", "relname": "bar", "indexrelname": "blah"}, value: 0, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"schemaname": "foo", "relname": "bar", "indexrelname": "blah"}, value: 0, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"schemaname": "foo", "relname": "bar", "indexrelname": "blah"}, value: 0, metricType: dto.MetricType_COUNTER},
 	}
 	convey.Convey("Metrics comparison", t, func() {
 		for _, expect := range expected {
