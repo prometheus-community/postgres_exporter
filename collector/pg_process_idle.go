@@ -83,7 +83,7 @@ func (PGProcessIdleCollector) Update(ctx context.Context, instance *instance, ch
 			GROUP BY 1, 2, 3;`)
 
 	var applicationName sql.NullString
-	var secondsSum sql.NullInt64
+	var secondsSum sql.NullFloat64
 	var secondsCount sql.NullInt64
 	var seconds []float64
 	var secondsBucket []int64
@@ -112,7 +112,7 @@ func (PGProcessIdleCollector) Update(ctx context.Context, instance *instance, ch
 	}
 	secondsSumMetric := 0.0
 	if secondsSum.Valid {
-		secondsSumMetric = float64(secondsSum.Int64)
+		secondsSumMetric = secondsSum.Float64
 	}
 	ch <- prometheus.MustNewConstHistogram(
 		pgProcessIdleSeconds,
