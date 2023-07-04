@@ -18,6 +18,7 @@ import (
 	"database/sql"
 
 	"github.com/go-kit/log"
+	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -84,20 +85,20 @@ func (PGProcessIdleCollector) Update(ctx context.Context, instance *instance, ch
 	var applicationName sql.NullString
 	var secondsSum sql.NullInt64
 	var secondsCount sql.NullInt64
-	var seconds []uint64
-	var secondsBucket []uint64
+	var seconds []float64
+	var secondsBucket []int64
 
-	err := row.Scan(&applicationName, &secondsSum, &secondsCount, &seconds, &secondsBucket)
+	err := row.Scan(&applicationName, &secondsSum, &secondsCount, pq.Array(&seconds), pq.Array(&secondsBucket))
+	if err != nil {
+		return err
+	}
 
 	var buckets = make(map[float64]uint64, len(seconds))
 	for i, second := range seconds {
 		if i >= len(secondsBucket) {
 			break
 		}
-		buckets[float64(second)] = secondsBucket[i]
-	}
-	if err != nil {
-		return err
+		buckets[second] = uint64(secondsBucket[i])
 	}
 
 	applicationNameLabel := "unknown"
