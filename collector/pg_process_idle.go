@@ -18,6 +18,7 @@ import (
 	"database/sql"
 
 	"github.com/go-kit/log"
+	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -82,22 +83,22 @@ func (PGProcessIdleCollector) Update(ctx context.Context, instance *instance, ch
 			GROUP BY 1, 2, 3;`)
 
 	var applicationName sql.NullString
-	var secondsSum sql.NullInt64
+	var secondsSum sql.NullFloat64
 	var secondsCount sql.NullInt64
-	var seconds []uint64
-	var secondsBucket []uint64
+	var seconds []float64
+	var secondsBucket []int64
 
-	err := row.Scan(&applicationName, &secondsSum, &secondsCount, &seconds, &secondsBucket)
+	err := row.Scan(&applicationName, &secondsSum, &secondsCount, pq.Array(&seconds), pq.Array(&secondsBucket))
+	if err != nil {
+		return err
+	}
 
 	var buckets = make(map[float64]uint64, len(seconds))
 	for i, second := range seconds {
 		if i >= len(secondsBucket) {
 			break
 		}
-		buckets[float64(second)] = secondsBucket[i]
-	}
-	if err != nil {
-		return err
+		buckets[second] = uint64(secondsBucket[i])
 	}
 
 	applicationNameLabel := "unknown"
@@ -111,7 +112,7 @@ func (PGProcessIdleCollector) Update(ctx context.Context, instance *instance, ch
 	}
 	secondsSumMetric := 0.0
 	if secondsSum.Valid {
-		secondsSumMetric = float64(secondsSum.Int64)
+		secondsSumMetric = secondsSum.Float64
 	}
 	ch <- prometheus.MustNewConstHistogram(
 		pgProcessIdleSeconds,
