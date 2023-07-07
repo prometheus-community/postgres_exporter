@@ -44,7 +44,7 @@ var (
 		[]string{}, nil,
 	)
 
-	pgPostmasterQuery = "SELECT extract(epoch from pg_postmaster_start_time) from pg_postmaster_start_time();"
+	pgPostmasterQuery = "SELECT CAST(extract(epoch from pg_postmaster_start_time()) AS INTEGER) as start_time;" //truncates the decimal part
 )
 
 func (c *PGPostmasterCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
