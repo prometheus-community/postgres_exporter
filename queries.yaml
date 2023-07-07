@@ -1,2 +1,2 @@
-# Adding queries to this file is deprecated
-# Example queries have been transformed into collectors.
+# Adding queries to this file is deprecated. Existing queries have been transformed into built-in collectors.
+# The use case where custom queries are generating metrics is better served by the https://github.com/burningalchemist/sql_exporter project.

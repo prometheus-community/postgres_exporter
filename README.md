@@ -121,7 +121,7 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `web.telemetry-path`
   Path under which to expose metrics. Default is `/metrics`.
 
-* `disable-default-metrics`
+* `disable-default-metrics` (DEPRECATED)
   Use only metrics supplied from `queries.yaml` via `--extend.query-path`.  Default is `false`.
 
 * `disable-settings-metrics`
@@ -189,7 +189,7 @@ The following environment variables configure the exporter:
 * `PG_EXPORTER_WEB_TELEMETRY_PATH`
   Path under which to expose metrics. Default is `/metrics`.
 
-* `PG_EXPORTER_DISABLE_DEFAULT_METRICS`
+* `PG_EXPORTER_DISABLE_DEFAULT_METRICS` (DEPRECATED)
   Use only metrics supplied from `queries.yaml`. Value can be `true` or `false`. Default is `false`.
 
 * `PG_EXPORTER_DISABLE_SETTINGS_METRICS`
@@ -198,7 +198,7 @@ The following environment variables configure the exporter:
 * `PG_EXPORTER_AUTO_DISCOVER_DATABASES` (DEPRECATED)
   Whether to discover the databases on a server dynamically. Value can be `true` or `false`. Default is `false`.
 
-* `PG_EXPORTER_EXTEND_QUERY_PATH`
+* `PG_EXPORTER_EXTEND_QUERY_PATH` (DEPRECATED)
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
   for examples of the format.
 
@@ -254,7 +254,7 @@ This feature is deprecated in favor of built-in collector functions. For generic
 The -extend.query-path command-line argument specifies a YAML file containing additional queries to run.
 Some examples are provided in [queries.yaml](queries.yaml).
 
-### Disabling default metrics
+### Disabling default metrics (DEPRECATED)
 To work with non-officially-supported postgres versions (e.g. 8.2.15),
 or variants of postgres (e.g. Greenplum), you can disable the default metrics with the `--disable-default-metrics`
 flag. This removes all built-in metrics, and uses only metrics defined by queries in the `queries.yaml` file you supply
