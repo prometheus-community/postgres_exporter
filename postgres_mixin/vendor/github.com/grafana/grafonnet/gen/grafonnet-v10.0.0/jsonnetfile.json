@@ -1,0 +1,24 @@
+{
+  "dependencies": [
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/grafana/grafonnet.git",
+          "subdir": "grafonnet-base"
+        }
+      },
+      "version": "main"
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/grafana/grok.git",
+          "subdir": "jsonnet/v10.0.0"
+        }
+      },
+      "version": "main"
+    }
+  ],
+  "legacyImports": false,
+  "version": 1
+}

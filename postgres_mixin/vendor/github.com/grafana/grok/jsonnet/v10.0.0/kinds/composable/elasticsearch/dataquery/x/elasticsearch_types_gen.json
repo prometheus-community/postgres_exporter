@@ -1,0 +1,1756 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "ElasticsearchDataQuery",
+    "version": "0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "Average": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MetricAggregationType"
+              },
+              {
+                "enum": [
+                  "avg"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "script": {
+                "$ref": "#/components/schemas/InlineScript"
+              },
+              "missing": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/MetricAggregationWithField"
+          },
+          {
+            "$ref": "#/components/schemas/MetricAggregationWithMissingSupport"
+          },
+          {
+            "$ref": "#/components/schemas/MetricAggregationWithInlineScript"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "BaseBucketAggregation": {
+        "type": "object",
+        "required": [
+          "id",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/BucketAggregationType"
+          },
+          "settings": {}
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "BaseMetricAggregation": {
+        "type": "object",
+        "required": [
+          "type",
+          "id"
+        ],
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/MetricAggregationType"
+          },
+          "id": {
+            "type": "string"
+          },
+          "hide": {
+            "type": "boolean"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "BaseMovingAverageModelSettings": {
+        "type": "object",
+        "required": [
+          "model",
+          "window",
+          "predict"
+        ],
+        "properties": {
+          "model": {
+            "$ref": "#/components/schemas/MovingAverageModel"
+          },
+          "window": {
+            "type": "string"
+          },
+          "predict": {
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "BasePipelineMetricAggregation": {
+        "type": "object",
+        "properties": {
+          "pipelineAgg": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/PipelineMetricAggregationType"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/MetricAggregationWithField"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "BucketAggregation": {
+        "type": "object",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/DateHistogram"
+          },
+          {
+            "$ref": "#/components/schemas/Histogram"
+          },
+          {
+            "$ref": "#/components/schemas/Terms"
+          },
+          {
+            "$ref": "#/components/schemas/Filters"
+          },
+          {
+            "$ref": "#/components/schemas/GeoHashGrid"
+          },
+          {
+            "$ref": "#/components/schemas/Nested"
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "BucketAggregationType": {
+        "type": "string",
+        "enum": [
+          "terms",
+          "filters",
+          "geohash_grid",
+          "date_histogram",
+          "histogram",
+          "nested"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "BucketAggregationWithField": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseBucketAggregation"
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "BucketScript": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PipelineMetricAggregationType"
+              },
+              {
+                "enum": [
+                  "bucket_script"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "script": {
+                "$ref": "#/components/schemas/InlineScript"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PipelineMetricAggregationWithMultipleBucketPaths"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "Count": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MetricAggregationType"
+              },
+              {
+                "enum": [
+                  "count"
+                ]
+              }
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseMetricAggregation"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "CumulativeSum": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PipelineMetricAggregationType"
+              },
+              {
+                "enum": [
+                  "cumulative_sum"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "format": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BasePipelineMetricAggregation"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "DataQuery": {
+        "description": "These are the common properties available to all queries in all datasources.\nSpecific implementations will *extend* this interface, adding the required\nproperties for the given context.",
+        "type": "object",
+        "required": [
+          "refId"
+        ],
+        "properties": {
+          "refId": {
+            "description": "A unique identifier for the query within the list of targets.\nIn server side expressions, the refId is used as a variable name to identify results.\nBy default, the UI will assign A-\u003eZ; however setting meaningful names may be useful.",
+            "type": "string"
+          },
+          "hide": {
+            "description": "true if query is disabled (ie should not be returned to the dashboard)\nNote this does not always imply that the query should not be executed since\nthe results from a hidden query may be used as the input to other queries (SSE etc)",
+            "type": "boolean"
+          },
+          "queryType": {
+            "description": "Specify the query flavor\nTODO make this required and give it a default",
+            "type": "string"
+          },
+          "datasource": {
+            "description": "For mixed data sources the selected datasource is on the query level.\nFor non mixed scenarios this is undefined.\nTODO find a better way to do this ^ that's friendly to schema\nTODO this shouldn't be unknown but DataSourceRef | null"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "DateHistogram": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BucketAggregationType"
+              },
+              {
+                "enum": [
+                  "date_histogram"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "$ref": "#/components/schemas/DateHistogramSettings"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BucketAggregationWithField"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "DateHistogramSettings": {
+        "type": "object",
+        "properties": {
+          "interval": {
+            "type": "string"
+          },
+          "min_doc_count": {
+            "type": "string"
+          },
+          "trimEdges": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "string"
+          },
+          "timeZone": {
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "Derivative": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PipelineMetricAggregationType"
+              },
+              {
+                "enum": [
+                  "derivative"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "unit": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BasePipelineMetricAggregation"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "ElasticsearchDataQuery": {
+        "type": "object",
+        "properties": {
+          "alias": {
+            "description": "Alias pattern",
+            "type": "string"
+          },
+          "query": {
+            "description": "Lucene query",
+            "type": "string"
+          },
+          "timeField": {
+            "description": "Name of time field",
+            "type": "string"
+          },
+          "bucketAggs": {
+            "description": "List of bucket aggregations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BucketAggregation"
+            }
+          },
+          "metrics": {
+            "description": "List of metric aggregations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetricAggregation"
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DataQuery"
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "ExtendedStat": {
+        "type": "object",
+        "required": [
+          "label",
+          "value"
+        ],
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/components/schemas/ExtendedStatMetaType"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "ExtendedStatMetaType": {
+        "type": "string",
+        "enum": [
+          "avg",
+          "min",
+          "max",
+          "sum",
+          "count",
+          "std_deviation",
+          "std_deviation_bounds_upper",
+          "std_deviation_bounds_lower"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "ExtendedStats": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MetricAggregationType"
+              },
+              {
+                "enum": [
+                  "extended_stats"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "script": {
+                "$ref": "#/components/schemas/InlineScript"
+              },
+              "missing": {
+                "type": "string"
+              },
+              "sigma": {
+                "type": "string"
+              }
+            }
+          },
+          "meta": {
+            "type": "object"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/MetricAggregationWithField"
+          },
+          {
+            "$ref": "#/components/schemas/MetricAggregationWithInlineScript"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "Filter": {
+        "type": "object",
+        "required": [
+          "query",
+          "label"
+        ],
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "Filters": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BucketAggregationType"
+              },
+              {
+                "enum": [
+                  "filters"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "$ref": "#/components/schemas/FiltersSettings"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseBucketAggregation"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "FiltersSettings": {
+        "type": "object",
+        "properties": {
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Filter"
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "GeoHashGrid": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BucketAggregationType"
+              },
+              {
+                "enum": [
+                  "geohash_grid"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "$ref": "#/components/schemas/GeoHashGridSettings"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BucketAggregationWithField"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "GeoHashGridSettings": {
+        "type": "object",
+        "properties": {
+          "precision": {
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "Histogram": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BucketAggregationType"
+              },
+              {
+                "enum": [
+                  "histogram"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "$ref": "#/components/schemas/HistogramSettings"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BucketAggregationWithField"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "HistogramSettings": {
+        "type": "object",
+        "properties": {
+          "interval": {
+            "type": "string"
+          },
+          "min_doc_count": {
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "InlineScript": {
+        "oneOf": [
+          {
+            "type": "string",
+            "$schema": "http://json-schema.org/draft-04/schema#"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "inline": {
+                "type": "string"
+              }
+            },
+            "$schema": "http://json-schema.org/draft-04/schema#"
+          }
+        ]
+      },
+      "Logs": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MetricAggregationType"
+              },
+              {
+                "enum": [
+                  "logs"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseMetricAggregation"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "Max": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MetricAggregationType"
+              },
+              {
+                "enum": [
+                  "max"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "script": {
+                "$ref": "#/components/schemas/InlineScript"
+              },
+              "missing": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/MetricAggregationWithField"
+          },
+          {
+            "$ref": "#/components/schemas/MetricAggregationWithInlineScript"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "MetricAggregation": {
+        "type": "object",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/Count"
+          },
+          {
+            "$ref": "#/components/schemas/PipelineMetricAggregation"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MetricAggregationWithSettings"
+              },
+              {
+                "not": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PipelineMetricAggregation"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "MetricAggregationType": {
+        "type": "string",
+        "enum": [
+          "count",
+          "avg",
+          "sum",
+          "min",
+          "max",
+          "extended_stats",
+          "percentiles",
+          "cardinality",
+          "raw_document",
+          "raw_data",
+          "logs",
+          "rate",
+          "top_metrics",
+          "moving_avg",
+          "moving_fn",
+          "derivative",
+          "serial_diff",
+          "cumulative_sum",
+          "bucket_script"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "MetricAggregationWithField": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseMetricAggregation"
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "MetricAggregationWithInlineScript": {
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "object",
+            "properties": {
+              "script": {
+                "$ref": "#/components/schemas/InlineScript"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseMetricAggregation"
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "MetricAggregationWithMissingSupport": {
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "object",
+            "properties": {
+              "missing": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseMetricAggregation"
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "MetricAggregationWithSettings": {
+        "type": "object",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/BucketScript"
+          },
+          {
+            "$ref": "#/components/schemas/CumulativeSum"
+          },
+          {
+            "$ref": "#/components/schemas/Derivative"
+          },
+          {
+            "$ref": "#/components/schemas/SerialDiff"
+          },
+          {
+            "$ref": "#/components/schemas/RawData"
+          },
+          {
+            "$ref": "#/components/schemas/RawDocument"
+          },
+          {
+            "$ref": "#/components/schemas/UniqueCount"
+          },
+          {
+            "$ref": "#/components/schemas/Percentiles"
+          },
+          {
+            "$ref": "#/components/schemas/ExtendedStats"
+          },
+          {
+            "$ref": "#/components/schemas/Min"
+          },
+          {
+            "$ref": "#/components/schemas/Max"
+          },
+          {
+            "$ref": "#/components/schemas/Sum"
+          },
+          {
+            "$ref": "#/components/schemas/Average"
+          },
+          {
+            "$ref": "#/components/schemas/MovingAverage"
+          },
+          {
+            "$ref": "#/components/schemas/MovingFunction"
+          },
+          {
+            "$ref": "#/components/schemas/Logs"
+          },
+          {
+            "$ref": "#/components/schemas/Rate"
+          },
+          {
+            "$ref": "#/components/schemas/TopMetrics"
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "Min": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MetricAggregationType"
+              },
+              {
+                "enum": [
+                  "min"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "script": {
+                "$ref": "#/components/schemas/InlineScript"
+              },
+              "missing": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/MetricAggregationWithField"
+          },
+          {
+            "$ref": "#/components/schemas/MetricAggregationWithInlineScript"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "MovingAverage": {
+        "description": "#MovingAverage's settings are overridden in types.ts",
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PipelineMetricAggregationType"
+              },
+              {
+                "enum": [
+                  "moving_avg"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BasePipelineMetricAggregation"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "MovingAverageEWMAModelSettings": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MovingAverageModel"
+              },
+              {
+                "enum": [
+                  "ewma"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "alpha": {
+                "type": "string"
+              }
+            }
+          },
+          "minimize": {
+            "type": "boolean"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseMovingAverageModelSettings"
+          },
+          {
+            "required": [
+              "model",
+              "minimize"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "MovingAverageHoltModelSettings": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MovingAverageModel"
+              },
+              {
+                "enum": [
+                  "holt"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "alpha": {
+                "type": "string"
+              },
+              "beta": {
+                "type": "string"
+              }
+            }
+          },
+          "minimize": {
+            "type": "boolean"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseMovingAverageModelSettings"
+          },
+          {
+            "required": [
+              "model",
+              "settings",
+              "minimize"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "MovingAverageHoltWintersModelSettings": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MovingAverageModel"
+              },
+              {
+                "enum": [
+                  "holt_winters"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "alpha": {
+                "type": "string"
+              },
+              "beta": {
+                "type": "string"
+              },
+              "gamma": {
+                "type": "string"
+              },
+              "period": {
+                "type": "string"
+              },
+              "pad": {
+                "type": "boolean"
+              }
+            }
+          },
+          "minimize": {
+            "type": "boolean"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseMovingAverageModelSettings"
+          },
+          {
+            "required": [
+              "model",
+              "settings",
+              "minimize"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "MovingAverageLinearModelSettings": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MovingAverageModel"
+              },
+              {
+                "enum": [
+                  "linear"
+                ]
+              }
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseMovingAverageModelSettings"
+          },
+          {
+            "required": [
+              "model"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "MovingAverageModel": {
+        "type": "string",
+        "enum": [
+          "simple",
+          "linear",
+          "ewma",
+          "holt",
+          "holt_winters"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "MovingAverageModelOption": {
+        "type": "object",
+        "required": [
+          "label",
+          "value"
+        ],
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/components/schemas/MovingAverageModel"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "MovingAverageSimpleModelSettings": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MovingAverageModel"
+              },
+              {
+                "enum": [
+                  "simple"
+                ]
+              }
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseMovingAverageModelSettings"
+          },
+          {
+            "required": [
+              "model"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "MovingFunction": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PipelineMetricAggregationType"
+              },
+              {
+                "enum": [
+                  "moving_fn"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "window": {
+                "type": "string"
+              },
+              "script": {
+                "$ref": "#/components/schemas/InlineScript"
+              },
+              "shift": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BasePipelineMetricAggregation"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "Nested": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BucketAggregationType"
+              },
+              {
+                "enum": [
+                  "nested"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BucketAggregationWithField"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "Percentiles": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MetricAggregationType"
+              },
+              {
+                "enum": [
+                  "percentiles"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "script": {
+                "$ref": "#/components/schemas/InlineScript"
+              },
+              "missing": {
+                "type": "string"
+              },
+              "percents": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/MetricAggregationWithField"
+          },
+          {
+            "$ref": "#/components/schemas/MetricAggregationWithInlineScript"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "PipelineMetricAggregation": {
+        "type": "object",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/MovingAverage"
+          },
+          {
+            "$ref": "#/components/schemas/Derivative"
+          },
+          {
+            "$ref": "#/components/schemas/CumulativeSum"
+          },
+          {
+            "$ref": "#/components/schemas/BucketScript"
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "PipelineMetricAggregationType": {
+        "type": "string",
+        "enum": [
+          "moving_avg",
+          "moving_fn",
+          "derivative",
+          "serial_diff",
+          "cumulative_sum",
+          "bucket_script"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "PipelineMetricAggregationWithMultipleBucketPaths": {
+        "type": "object",
+        "properties": {
+          "pipelineVariables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PipelineVariable"
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseMetricAggregation"
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "PipelineVariable": {
+        "type": "object",
+        "required": [
+          "name",
+          "pipelineAgg"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "pipelineAgg": {
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "Rate": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MetricAggregationType"
+              },
+              {
+                "enum": [
+                  "rate"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "unit": {
+                "type": "string"
+              },
+              "mode": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/MetricAggregationWithField"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "RawData": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MetricAggregationType"
+              },
+              {
+                "enum": [
+                  "raw_data"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "size": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseMetricAggregation"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "RawDocument": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MetricAggregationType"
+              },
+              {
+                "enum": [
+                  "raw_document"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "size": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseMetricAggregation"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "SerialDiff": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PipelineMetricAggregationType"
+              },
+              {
+                "enum": [
+                  "serial_diff"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "lag": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BasePipelineMetricAggregation"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "Sum": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MetricAggregationType"
+              },
+              {
+                "enum": [
+                  "sum"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "script": {
+                "$ref": "#/components/schemas/InlineScript"
+              },
+              "missing": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/MetricAggregationWithField"
+          },
+          {
+            "$ref": "#/components/schemas/MetricAggregationWithInlineScript"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "Terms": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BucketAggregationType"
+              },
+              {
+                "enum": [
+                  "terms"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "$ref": "#/components/schemas/TermsSettings"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BucketAggregationWithField"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "TermsOrder": {
+        "type": "string",
+        "enum": [
+          "desc",
+          "asc"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "TermsSettings": {
+        "type": "object",
+        "properties": {
+          "order": {
+            "$ref": "#/components/schemas/TermsOrder"
+          },
+          "size": {
+            "type": "string"
+          },
+          "min_doc_count": {
+            "type": "string"
+          },
+          "orderBy": {
+            "type": "string"
+          },
+          "missing": {
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "TopMetrics": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MetricAggregationType"
+              },
+              {
+                "enum": [
+                  "top_metrics"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "order": {
+                "type": "string"
+              },
+              "orderBy": {
+                "type": "string"
+              },
+              "metrics": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseMetricAggregation"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "UniqueCount": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MetricAggregationType"
+              },
+              {
+                "enum": [
+                  "cardinality"
+                ]
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "precision_threshold": {
+                "type": "string"
+              },
+              "missing": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/MetricAggregationWithField"
+          },
+          {
+            "required": [
+              "type"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      }
+    }
+  }
+}

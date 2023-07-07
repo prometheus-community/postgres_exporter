@@ -1,0 +1,205 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "TablePanelCfg",
+    "version": "0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "TableCellHeight": {
+        "description": "Height of a table cell",
+        "type": "string",
+        "enum": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "TableFooterOptions": {
+        "description": "Footer options",
+        "type": "object",
+        "required": [
+          "show",
+          "reducer"
+        ],
+        "properties": {
+          "show": {
+            "type": "boolean"
+          },
+          "reducer": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "enablePagination": {
+            "type": "boolean"
+          },
+          "countRows": {
+            "type": "boolean"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "TablePanelCfg": {
+        "type": "object",
+        "required": [
+          "PanelOptions"
+        ],
+        "properties": {
+          "PanelOptions": {
+            "type": "object",
+            "required": [
+              "frameIndex",
+              "showHeader"
+            ],
+            "properties": {
+              "frameIndex": {
+                "description": "Represents the index of the selected frame",
+                "type": "number",
+                "default": 0
+              },
+              "showHeader": {
+                "description": "Controls whether the panel should show the header",
+                "type": "boolean",
+                "default": true
+              },
+              "showTypeIcons": {
+                "description": "Controls whether the header should show icons for the column types",
+                "type": "boolean",
+                "default": false
+              },
+              "sortBy": {
+                "description": "Used to control row sorting",
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TableSortByFieldState"
+                }
+              },
+              "footer": {
+                "description": "Controls footer options",
+                "type": "object",
+                "default": {
+                  "show": false,
+                  "countRows": false,
+                  "reducer": []
+                },
+                "oneOf": [
+                  {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/TableFooterOptions"
+                      },
+                      {
+                        "not": {
+                          "anyOf": [
+                            {
+                              "required": [
+                                "show",
+                                "countRows",
+                                "reducer"
+                              ],
+                              "properties": {
+                                "show": {
+                                  "description": "Controls whether the footer should be shown",
+                                  "type": "boolean",
+                                  "enum": [
+                                    false
+                                  ]
+                                },
+                                "countRows": {
+                                  "description": "Controls whether the footer should show the total number of rows on Count calculation",
+                                  "type": "boolean",
+                                  "enum": [
+                                    false
+                                  ]
+                                },
+                                "reducer": {
+                                  "description": "Represents the selected calculations",
+                                  "type": "array",
+                                  "enum": [
+                                    []
+                                  ]
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "required": [
+                      "show",
+                      "countRows",
+                      "reducer"
+                    ],
+                    "properties": {
+                      "show": {
+                        "description": "Controls whether the footer should be shown",
+                        "type": "boolean",
+                        "enum": [
+                          false
+                        ]
+                      },
+                      "countRows": {
+                        "description": "Controls whether the footer should show the total number of rows on Count calculation",
+                        "type": "boolean",
+                        "enum": [
+                          false
+                        ]
+                      },
+                      "reducer": {
+                        "description": "Represents the selected calculations",
+                        "type": "array",
+                        "enum": [
+                          []
+                        ]
+                      }
+                    }
+                  }
+                ]
+              },
+              "cellHeight": {
+                "description": "Controls the height of the rows",
+                "type": "string",
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/TableCellHeight"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "TableSortByFieldState": {
+        "description": "Sort by field state",
+        "type": "object",
+        "required": [
+          "displayName"
+        ],
+        "properties": {
+          "displayName": {
+            "description": "Sets the display name of the field to sort by",
+            "type": "string"
+          },
+          "desc": {
+            "description": "Flag used to indicate descending sort order",
+            "type": "boolean"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      }
+    }
+  }
+}

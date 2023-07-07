@@ -1,0 +1,185 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "StatPanelCfg",
+    "version": "0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "BigValueColorMode": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "value",
+          "background",
+          "background_solid",
+          "none"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "BigValueGraphMode": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "none",
+          "line",
+          "area"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "BigValueJustifyMode": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "auto",
+          "center"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "BigValueTextMode": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "auto",
+          "value",
+          "value_and_name",
+          "name",
+          "none"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "OptionsWithTextFormatting": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "text": {
+            "$ref": "#/components/schemas/VizTextDisplayOptions"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "ReduceDataOptions": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "calcs"
+        ],
+        "properties": {
+          "values": {
+            "description": "If true show each row value",
+            "type": "boolean"
+          },
+          "limit": {
+            "description": "if showing all values limit",
+            "type": "number"
+          },
+          "calcs": {
+            "description": "When !values, pick one value for the whole field",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fields": {
+            "description": "Which fields to show.  By default this is only numeric fields",
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "SingleStatBaseOptions": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "reduceOptions": {
+            "$ref": "#/components/schemas/ReduceDataOptions"
+          },
+          "orientation": {
+            "$ref": "#/components/schemas/VizOrientation"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/OptionsWithTextFormatting"
+          },
+          {
+            "required": [
+              "reduceOptions",
+              "orientation"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "StatPanelCfg": {
+        "type": "object",
+        "required": [
+          "PanelOptions"
+        ],
+        "properties": {
+          "PanelOptions": {
+            "type": "object",
+            "properties": {
+              "graphMode": {
+                "type": "string",
+                "$ref": "#/components/schemas/BigValueGraphMode"
+              },
+              "colorMode": {
+                "type": "string",
+                "$ref": "#/components/schemas/BigValueColorMode"
+              },
+              "justifyMode": {
+                "type": "string",
+                "$ref": "#/components/schemas/BigValueJustifyMode"
+              },
+              "textMode": {
+                "type": "string",
+                "$ref": "#/components/schemas/BigValueTextMode"
+              }
+            },
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SingleStatBaseOptions"
+              },
+              {
+                "required": [
+                  "graphMode",
+                  "colorMode",
+                  "justifyMode",
+                  "textMode"
+                ]
+              }
+            ]
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "VizOrientation": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "auto",
+          "vertical",
+          "horizontal"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "VizTextDisplayOptions": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "titleSize": {
+            "description": "Explicit title text size",
+            "type": "number"
+          },
+          "valueSize": {
+            "description": "Explicit value text size",
+            "type": "number"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      }
+    }
+  }
+}

@@ -1,0 +1,135 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "TextPanelCfg",
+    "version": "0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "CodeLanguage": {
+        "type": "string",
+        "enum": [
+          "plaintext",
+          "yaml",
+          "xml",
+          "typescript",
+          "sql",
+          "go",
+          "markdown",
+          "html",
+          "json"
+        ],
+        "default": "plaintext",
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "CodeOptions": {
+        "type": "object",
+        "required": [
+          "language",
+          "showLineNumbers",
+          "showMiniMap"
+        ],
+        "properties": {
+          "language": {
+            "$ref": "#/components/schemas/CodeLanguage"
+          },
+          "showLineNumbers": {
+            "type": "boolean",
+            "default": false
+          },
+          "showMiniMap": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "TextMode": {
+        "type": "string",
+        "enum": [
+          "html",
+          "markdown",
+          "code"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "TextPanelCfg": {
+        "type": "object",
+        "required": [
+          "TextMode",
+          "CodeLanguage",
+          "CodeOptions",
+          "PanelOptions"
+        ],
+        "properties": {
+          "TextMode": {
+            "type": "string",
+            "enum": [
+              "html",
+              "markdown",
+              "code"
+            ]
+          },
+          "CodeLanguage": {
+            "type": "string",
+            "enum": [
+              "plaintext",
+              "yaml",
+              "xml",
+              "typescript",
+              "sql",
+              "go",
+              "markdown",
+              "html",
+              "json"
+            ],
+            "default": "plaintext"
+          },
+          "CodeOptions": {
+            "type": "object",
+            "required": [
+              "language",
+              "showLineNumbers",
+              "showMiniMap"
+            ],
+            "properties": {
+              "language": {
+                "$ref": "#/components/schemas/CodeLanguage"
+              },
+              "showLineNumbers": {
+                "type": "boolean",
+                "default": false
+              },
+              "showMiniMap": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          },
+          "PanelOptions": {
+            "type": "object",
+            "required": [
+              "mode",
+              "content"
+            ],
+            "properties": {
+              "mode": {
+                "type": "string",
+                "$ref": "#/components/schemas/TextMode"
+              },
+              "code": {
+                "$ref": "#/components/schemas/CodeOptions"
+              },
+              "content": {
+                "type": "string",
+                "default": "# Title\n\nFor markdown syntax help: [commonmark.org/help](https://commonmark.org/help/)"
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      }
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "DatagridPanelCfg",
+    "version": "0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "DatagridPanelCfg": {
+        "type": "object",
+        "required": [
+          "PanelOptions"
+        ],
+        "properties": {
+          "PanelOptions": {
+            "type": "object",
+            "required": [
+              "selectedSeries"
+            ],
+            "properties": {
+              "selectedSeries": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647,
+                "default": 0
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      }
+    }
+  }
+}

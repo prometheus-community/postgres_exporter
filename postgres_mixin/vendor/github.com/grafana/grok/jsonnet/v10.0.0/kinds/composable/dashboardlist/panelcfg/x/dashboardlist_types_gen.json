@@ -1,0 +1,78 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "DashboardListPanelCfg",
+    "version": "0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "DashboardListPanelCfg": {
+        "type": "object",
+        "required": [
+          "PanelOptions"
+        ],
+        "properties": {
+          "PanelOptions": {
+            "type": "object",
+            "required": [
+              "keepTime",
+              "includeVars",
+              "showStarred",
+              "showRecentlyViewed",
+              "showSearch",
+              "showHeadings",
+              "maxItems",
+              "query",
+              "tags"
+            ],
+            "properties": {
+              "keepTime": {
+                "type": "boolean",
+                "default": false
+              },
+              "includeVars": {
+                "type": "boolean",
+                "default": false
+              },
+              "showStarred": {
+                "type": "boolean",
+                "default": true
+              },
+              "showRecentlyViewed": {
+                "type": "boolean",
+                "default": false
+              },
+              "showSearch": {
+                "type": "boolean",
+                "default": false
+              },
+              "showHeadings": {
+                "type": "boolean",
+                "default": true
+              },
+              "maxItems": {
+                "type": "integer",
+                "default": 10
+              },
+              "query": {
+                "type": "string",
+                "default": ""
+              },
+              "folderId": {
+                "type": "integer"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      }
+    }
+  }
+}

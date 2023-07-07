@@ -1,0 +1,528 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "TrendPanelCfg",
+    "version": "0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "AxisColorMode": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "text",
+          "series"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "AxisConfig": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "axisPlacement": {
+            "$ref": "#/components/schemas/AxisPlacement"
+          },
+          "axisColorMode": {
+            "$ref": "#/components/schemas/AxisColorMode"
+          },
+          "axisLabel": {
+            "type": "string"
+          },
+          "axisWidth": {
+            "type": "number"
+          },
+          "axisSoftMin": {
+            "type": "number"
+          },
+          "axisSoftMax": {
+            "type": "number"
+          },
+          "axisGridShow": {
+            "type": "boolean"
+          },
+          "scaleDistribution": {
+            "$ref": "#/components/schemas/ScaleDistributionConfig"
+          },
+          "axisCenteredZero": {
+            "type": "boolean"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "AxisPlacement": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "auto",
+          "top",
+          "right",
+          "bottom",
+          "left",
+          "hidden"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "BarAlignment": {
+        "description": "TODO docs",
+        "type": "integer",
+        "enum": [
+          -1,
+          0,
+          1
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "BarConfig": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "barAlignment": {
+            "$ref": "#/components/schemas/BarAlignment"
+          },
+          "barWidthFactor": {
+            "type": "number"
+          },
+          "barMaxWidth": {
+            "type": "number"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "FillConfig": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "fillColor": {
+            "type": "string"
+          },
+          "fillOpacity": {
+            "type": "number"
+          },
+          "fillBelowTo": {
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "GraphDrawStyle": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "line",
+          "bars",
+          "points"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "GraphFieldConfig": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "drawStyle": {
+            "$ref": "#/components/schemas/GraphDrawStyle"
+          },
+          "gradientMode": {
+            "$ref": "#/components/schemas/GraphGradientMode"
+          },
+          "thresholdsStyle": {
+            "$ref": "#/components/schemas/GraphThresholdsStyleConfig"
+          },
+          "transform": {
+            "$ref": "#/components/schemas/GraphTransform"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/LineConfig"
+          },
+          {
+            "$ref": "#/components/schemas/FillConfig"
+          },
+          {
+            "$ref": "#/components/schemas/PointsConfig"
+          },
+          {
+            "$ref": "#/components/schemas/AxisConfig"
+          },
+          {
+            "$ref": "#/components/schemas/BarConfig"
+          },
+          {
+            "$ref": "#/components/schemas/StackableFieldConfig"
+          },
+          {
+            "$ref": "#/components/schemas/HideableFieldConfig"
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "GraphGradientMode": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "none",
+          "opacity",
+          "hue",
+          "scheme"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "GraphThresholdsStyleConfig": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/GraphTresholdsStyleMode"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "GraphTransform": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "constant",
+          "negative-Y"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "GraphTresholdsStyleMode": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "off",
+          "line",
+          "dashed",
+          "area",
+          "line+area",
+          "dashed+area",
+          "series"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "HideSeriesConfig": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "tooltip",
+          "legend",
+          "viz"
+        ],
+        "properties": {
+          "tooltip": {
+            "type": "boolean"
+          },
+          "legend": {
+            "type": "boolean"
+          },
+          "viz": {
+            "type": "boolean"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "HideableFieldConfig": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "hideFrom": {
+            "$ref": "#/components/schemas/HideSeriesConfig"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "LegendDisplayMode": {
+        "description": "TODO docs\nNote: \"hidden\" needs to remain as an option for plugins compatibility",
+        "type": "string",
+        "enum": [
+          "list",
+          "table",
+          "hidden"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "LegendPlacement": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "bottom",
+          "right"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "LineConfig": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "lineColor": {
+            "type": "string"
+          },
+          "lineWidth": {
+            "type": "number"
+          },
+          "lineInterpolation": {
+            "$ref": "#/components/schemas/LineInterpolation"
+          },
+          "lineStyle": {
+            "$ref": "#/components/schemas/LineStyle"
+          },
+          "spanNulls": {
+            "description": "Indicate if null values should be treated as gaps or connected.\nWhen the value is a number, it represents the maximum delta in the\nX axis that should be considered connected.  For timeseries, this is milliseconds",
+            "oneOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "LineInterpolation": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "linear",
+          "smooth",
+          "stepBefore",
+          "stepAfter"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "LineStyle": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "fill": {
+            "type": "string",
+            "enum": [
+              "solid",
+              "dash",
+              "dot",
+              "square"
+            ]
+          },
+          "dash": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "PointsConfig": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "showPoints": {
+            "$ref": "#/components/schemas/VisibilityMode"
+          },
+          "pointSize": {
+            "type": "number"
+          },
+          "pointColor": {
+            "type": "string"
+          },
+          "pointSymbol": {
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "ScaleDistribution": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "linear",
+          "log",
+          "ordinal",
+          "symlog"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "ScaleDistributionConfig": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ScaleDistribution"
+          },
+          "log": {
+            "type": "number"
+          },
+          "linearThreshold": {
+            "type": "number"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "SortOrder": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "asc",
+          "desc",
+          "none"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "StackableFieldConfig": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "stacking": {
+            "$ref": "#/components/schemas/StackingConfig"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "StackingConfig": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/StackingMode"
+          },
+          "group": {
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "StackingMode": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "none",
+          "normal",
+          "percent"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "TooltipDisplayMode": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "single",
+          "multi",
+          "none"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "TrendPanelCfg": {
+        "type": "object",
+        "required": [
+          "PanelOptions",
+          "PanelFieldConfig"
+        ],
+        "properties": {
+          "PanelOptions": {
+            "description": "Identical to timeseries... except it does not have timezone settings",
+            "type": "object",
+            "required": [
+              "legend",
+              "tooltip"
+            ],
+            "properties": {
+              "legend": {
+                "$ref": "#/components/schemas/VizLegendOptions"
+              },
+              "tooltip": {
+                "$ref": "#/components/schemas/VizTooltipOptions"
+              },
+              "xField": {
+                "description": "Name of the x field to use (defaults to first number)",
+                "type": "string"
+              }
+            }
+          },
+          "PanelFieldConfig": {
+            "type": "object",
+            "$ref": "#/components/schemas/GraphFieldConfig"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "VisibilityMode": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "auto",
+          "never",
+          "always"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "VizLegendOptions": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "displayMode",
+          "placement",
+          "showLegend",
+          "calcs"
+        ],
+        "properties": {
+          "displayMode": {
+            "$ref": "#/components/schemas/LegendDisplayMode"
+          },
+          "placement": {
+            "$ref": "#/components/schemas/LegendPlacement"
+          },
+          "showLegend": {
+            "type": "boolean"
+          },
+          "asTable": {
+            "type": "boolean"
+          },
+          "isVisible": {
+            "type": "boolean"
+          },
+          "sortBy": {
+            "type": "string"
+          },
+          "sortDesc": {
+            "type": "boolean"
+          },
+          "width": {
+            "type": "number"
+          },
+          "calcs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "VizTooltipOptions": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "mode",
+          "sort"
+        ],
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/TooltipDisplayMode"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortOrder"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      }
+    }
+  }
+}

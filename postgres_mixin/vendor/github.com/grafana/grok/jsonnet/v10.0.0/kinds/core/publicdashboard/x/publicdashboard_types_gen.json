@@ -1,0 +1,222 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "publicdashboard",
+    "version": "0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "_kubeObjectMetadata": {
+        "description": "_kubeObjectMetadata is metadata found in a kubernetes object's metadata field.\nIt is not exhaustive and only includes fields which may be relevant to a kind's implementation,\nAs it is also intended to be generic enough to function with any API Server.",
+        "type": "object",
+        "required": [
+          "uid",
+          "creationTimestamp",
+          "finalizers",
+          "resourceVersion",
+          "labels"
+        ],
+        "properties": {
+          "uid": {
+            "type": "string"
+          },
+          "creationTimestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletionTimestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finalizers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "resourceVersion": {
+            "type": "string"
+          },
+          "labels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "joinSchema.status.#OperatorState": {
+        "type": "object",
+        "required": [
+          "lastEvaluation",
+          "state"
+        ],
+        "properties": {
+          "lastEvaluation": {
+            "description": "lastEvaluation is the ResourceVersion last evaluated",
+            "type": "string"
+          },
+          "state": {
+            "description": "state describes the state of the lastEvaluation.\nIt is limited to three possible states for machine evaluation.",
+            "type": "string",
+            "enum": [
+              "success",
+              "in_progress",
+              "failed"
+            ]
+          },
+          "descriptiveState": {
+            "description": "descriptiveState is an optional more descriptive state field which has no requirements on format",
+            "type": "string"
+          },
+          "details": {
+            "description": "details contains any extra information that is operator-specific",
+            "type": "object"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "publicdashboard": {
+        "type": "object",
+        "properties": {
+          "metadata": {
+            "description": "metadata contains embedded CommonMetadata and can be extended with custom string fields\nTODO: use CommonMetadata instead of redefining here; currently needs to be defined here\nwithout external reference as using the CommonMetadata reference breaks thema codegen.",
+            "type": "object",
+            "properties": {
+              "updateTimestamp": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "createdBy": {
+                "type": "string"
+              },
+              "updatedBy": {
+                "type": "string"
+              },
+              "extraFields": {
+                "description": "extraFields is reserved for any fields that are pulled from the API server metadata but do not have concrete fields in the CUE metadata",
+                "type": "object"
+              }
+            },
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/_kubeObjectMetadata"
+              },
+              {
+                "required": [
+                  "updateTimestamp",
+                  "createdBy",
+                  "updatedBy",
+                  "extraFields"
+                ]
+              }
+            ]
+          },
+          "spec": {
+            "type": "object",
+            "required": [
+              "uid",
+              "dashboardUid",
+              "isEnabled",
+              "annotationsEnabled",
+              "timeSelectionEnabled"
+            ],
+            "properties": {
+              "uid": {
+                "description": "Unique public dashboard identifier",
+                "type": "string"
+              },
+              "dashboardUid": {
+                "description": "Dashboard unique identifier referenced by this public dashboard",
+                "type": "string"
+              },
+              "accessToken": {
+                "description": "Unique public access token",
+                "type": "string"
+              },
+              "isEnabled": {
+                "description": "Flag that indicates if the public dashboard is enabled",
+                "type": "boolean"
+              },
+              "annotationsEnabled": {
+                "description": "Flag that indicates if annotations are enabled",
+                "type": "boolean"
+              },
+              "timeSelectionEnabled": {
+                "description": "Flag that indicates if the time range picker is enabled",
+                "type": "boolean"
+              }
+            }
+          },
+          "status": {
+            "type": "object",
+            "required": [
+              "additionalFields"
+            ],
+            "properties": {
+              "operatorStates": {
+                "description": "operatorStates is a map of operator ID to operator state evaluations.\nAny operator which consumes this kind SHOULD add its state evaluation information to this field.",
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/joinSchema.status.#OperatorState"
+                }
+              },
+              "additionalFields": {
+                "description": "additionalFields is reserved for future use",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "required": [
+              "metadata",
+              "spec",
+              "status"
+            ]
+          },
+          {
+            "required": [
+              "spec"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "status.#OperatorState": {
+        "type": "object",
+        "required": [
+          "lastEvaluation",
+          "state"
+        ],
+        "properties": {
+          "lastEvaluation": {
+            "description": "lastEvaluation is the ResourceVersion last evaluated",
+            "type": "string"
+          },
+          "state": {
+            "description": "state describes the state of the lastEvaluation.\nIt is limited to three possible states for machine evaluation.",
+            "type": "string",
+            "enum": [
+              "success",
+              "in_progress",
+              "failed"
+            ]
+          },
+          "descriptiveState": {
+            "description": "descriptiveState is an optional more descriptive state field which has no requirements on format",
+            "type": "string"
+          },
+          "details": {
+            "description": "details contains any extra information that is operator-specific",
+            "type": "object"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      }
+    }
+  }
+}

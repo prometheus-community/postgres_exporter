@@ -1,0 +1,711 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "AzureMonitorDataQuery",
+    "version": "0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "AppInsightsGroupByQuery": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "AppInsightsGroupByQuery"
+            ]
+          },
+          "metricName": {
+            "type": "string"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseGrafanaTemplateVariableQuery"
+          },
+          {
+            "required": [
+              "kind",
+              "metricName"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "AppInsightsMetricNameQuery": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "AppInsightsMetricNameQuery"
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseGrafanaTemplateVariableQuery"
+          },
+          {
+            "required": [
+              "kind"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "AzureLogsQuery": {
+        "description": "Azure Monitor Logs sub-query properties",
+        "type": "object",
+        "properties": {
+          "query": {
+            "description": "KQL query to be executed.",
+            "type": "string"
+          },
+          "resultFormat": {
+            "$ref": "#/components/schemas/ResultFormat"
+          },
+          "resources": {
+            "description": "Array of resource URIs to be queried.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "workspace": {
+            "description": "Workspace ID. This was removed in Grafana 8, but remains for backwards compat",
+            "type": "string"
+          },
+          "resource": {
+            "description": "@deprecated Use resources instead",
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "AzureMetricDimension": {
+        "type": "object",
+        "properties": {
+          "dimension": {
+            "description": "Name of Dimension to be filtered on.",
+            "type": "string"
+          },
+          "operator": {
+            "description": "String denoting the filter operation. Supports 'eq' - equals,'ne' - not equals, 'sw' - starts with. Note that some dimensions may not support all operators.",
+            "type": "string"
+          },
+          "filters": {
+            "description": "Values to match with the filter.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "filter": {
+            "description": "@deprecated filter is deprecated in favour of filters to support multiselect.",
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "AzureMetricQuery": {
+        "type": "object",
+        "properties": {
+          "resources": {
+            "description": "Array of resource URIs to be queried.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AzureMonitorResource"
+            }
+          },
+          "metricNamespace": {
+            "description": "metricNamespace is used as the resource type (or resource namespace).\nIt's usually equal to the target metric namespace. e.g. microsoft.storage/storageaccounts\nKept the name of the variable as metricNamespace to avoid backward incompatibility issues.",
+            "type": "string"
+          },
+          "customNamespace": {
+            "description": "Used as the value for the metricNamespace property when it's different from the resource namespace.",
+            "type": "string"
+          },
+          "metricName": {
+            "description": "The metric to query data for within the specified metricNamespace. e.g. UsedCapacity",
+            "type": "string"
+          },
+          "region": {
+            "description": "The Azure region containing the resource(s).",
+            "type": "string"
+          },
+          "timeGrain": {
+            "description": "The granularity of data points to be queried. Defaults to auto.",
+            "type": "string"
+          },
+          "aggregation": {
+            "description": "The aggregation to be used within the query. Defaults to the primaryAggregationType defined by the metric.",
+            "type": "string"
+          },
+          "dimensionFilters": {
+            "description": "Filters to reduce the set of data returned. Dimensions that can be filtered on are defined by the metric.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AzureMetricDimension"
+            }
+          },
+          "top": {
+            "description": "Maximum number of records to return. Defaults to 10.",
+            "type": "string"
+          },
+          "allowedTimeGrainsMs": {
+            "description": "Time grains that are supported by the metric.",
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "alias": {
+            "description": "Aliases can be set to modify the legend labels. e.g. {{ resourceGroup }}. See docs for more detail.",
+            "type": "string"
+          },
+          "timeGrainUnit": {
+            "description": "@deprecated",
+            "type": "string"
+          },
+          "dimension": {
+            "description": "@deprecated This property was migrated to dimensionFilters and should only be accessed in the migration",
+            "type": "string"
+          },
+          "dimensionFilter": {
+            "description": "@deprecated This property was migrated to dimensionFilters and should only be accessed in the migration",
+            "type": "string"
+          },
+          "metricDefinition": {
+            "description": "@deprecated Use metricNamespace instead",
+            "type": "string"
+          },
+          "resourceUri": {
+            "description": "@deprecated Use resourceGroup, resourceName and metricNamespace instead",
+            "type": "string"
+          },
+          "resourceGroup": {
+            "description": "@deprecated Use resources instead",
+            "type": "string"
+          },
+          "resourceName": {
+            "description": "@deprecated Use resources instead",
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "AzureMonitorDataQuery": {
+        "type": "object",
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "AzureMonitorQuery": {
+        "type": "object",
+        "properties": {
+          "subscription": {
+            "description": "Azure subscription containing the resource(s) to be queried.",
+            "type": "string"
+          },
+          "subscriptions": {
+            "description": "Subscriptions to be queried via Azure Resource Graph.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "azureMonitor": {
+            "$ref": "#/components/schemas/AzureMetricQuery"
+          },
+          "azureLogAnalytics": {
+            "$ref": "#/components/schemas/AzureLogsQuery"
+          },
+          "azureResourceGraph": {
+            "$ref": "#/components/schemas/AzureResourceGraphQuery"
+          },
+          "azureTraces": {
+            "$ref": "#/components/schemas/AzureTracesQuery"
+          },
+          "grafanaTemplateVariableFn": {
+            "$ref": "#/components/schemas/GrafanaTemplateVariableQuery"
+          },
+          "resourceGroup": {
+            "description": "Template variables params. These exist for backwards compatiblity with legacy template variables.",
+            "type": "string"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "resource": {
+            "type": "string"
+          },
+          "region": {
+            "description": "Azure Monitor query type.\nqueryType: #AzureQueryType",
+            "type": "string"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DataQuery"
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "AzureMonitorResource": {
+        "type": "object",
+        "properties": {
+          "subscription": {
+            "type": "string"
+          },
+          "resourceGroup": {
+            "type": "string"
+          },
+          "resourceName": {
+            "type": "string"
+          },
+          "metricNamespace": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "AzureQueryType": {
+        "description": "Defines the supported queryTypes. GrafanaTemplateVariableFn is deprecated",
+        "type": "string",
+        "enum": [
+          "Azure Monitor",
+          "Azure Log Analytics",
+          "Azure Resource Graph",
+          "Azure Traces",
+          "Azure Subscriptions",
+          "Azure Resource Groups",
+          "Azure Namespaces",
+          "Azure Resource Names",
+          "Azure Metric Names",
+          "Azure Workspaces",
+          "Azure Regions",
+          "Grafana Template Variable Function"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "AzureResourceGraphQuery": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "description": "Azure Resource Graph KQL query to be executed.",
+            "type": "string"
+          },
+          "resultFormat": {
+            "description": "Specifies the format results should be returned as. Defaults to table.",
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "AzureTracesFilter": {
+        "type": "object",
+        "required": [
+          "property",
+          "operation",
+          "filters"
+        ],
+        "properties": {
+          "property": {
+            "description": "Property name, auto-populated based on available traces.",
+            "type": "string"
+          },
+          "operation": {
+            "description": "Comparison operator to use. Either equals or not equals.",
+            "type": "string"
+          },
+          "filters": {
+            "description": "Values to filter by.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "AzureTracesQuery": {
+        "description": "Application Insights Traces sub-query properties",
+        "type": "object",
+        "properties": {
+          "resultFormat": {
+            "$ref": "#/components/schemas/ResultFormat"
+          },
+          "resources": {
+            "description": "Array of resource URIs to be queried.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "operationId": {
+            "description": "Operation ID. Used only for Traces queries.",
+            "type": "string"
+          },
+          "traceTypes": {
+            "description": "Types of events to filter by.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "filters": {
+            "description": "Filters for property values.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AzureTracesFilter"
+            }
+          },
+          "query": {
+            "description": "KQL query to be executed.",
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "BaseGrafanaTemplateVariableQuery": {
+        "type": "object",
+        "properties": {
+          "rawQuery": {
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "DataQuery": {
+        "description": "These are the common properties available to all queries in all datasources.\nSpecific implementations will *extend* this interface, adding the required\nproperties for the given context.",
+        "type": "object",
+        "required": [
+          "refId"
+        ],
+        "properties": {
+          "refId": {
+            "description": "A unique identifier for the query within the list of targets.\nIn server side expressions, the refId is used as a variable name to identify results.\nBy default, the UI will assign A-\u003eZ; however setting meaningful names may be useful.",
+            "type": "string"
+          },
+          "hide": {
+            "description": "true if query is disabled (ie should not be returned to the dashboard)\nNote this does not always imply that the query should not be executed since\nthe results from a hidden query may be used as the input to other queries (SSE etc)",
+            "type": "boolean"
+          },
+          "queryType": {
+            "description": "Specify the query flavor\nTODO make this required and give it a default",
+            "type": "string"
+          },
+          "datasource": {
+            "description": "For mixed data sources the selected datasource is on the query level.\nFor non mixed scenarios this is undefined.\nTODO find a better way to do this ^ that's friendly to schema\nTODO this shouldn't be unknown but DataSourceRef | null"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "GrafanaTemplateVariableQuery": {
+        "type": "object",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/AppInsightsMetricNameQuery"
+          },
+          {
+            "$ref": "#/components/schemas/AppInsightsGroupByQuery"
+          },
+          {
+            "$ref": "#/components/schemas/SubscriptionsQuery"
+          },
+          {
+            "$ref": "#/components/schemas/ResourceGroupsQuery"
+          },
+          {
+            "$ref": "#/components/schemas/ResourceNamesQuery"
+          },
+          {
+            "$ref": "#/components/schemas/MetricNamespaceQuery"
+          },
+          {
+            "$ref": "#/components/schemas/MetricDefinitionsQuery"
+          },
+          {
+            "$ref": "#/components/schemas/MetricNamesQuery"
+          },
+          {
+            "$ref": "#/components/schemas/WorkspacesQuery"
+          },
+          {
+            "$ref": "#/components/schemas/UnknownQuery"
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "GrafanaTemplateVariableQueryType": {
+        "type": "string",
+        "enum": [
+          "AppInsightsMetricNameQuery",
+          "AppInsightsGroupByQuery",
+          "SubscriptionsQuery",
+          "ResourceGroupsQuery",
+          "ResourceNamesQuery",
+          "MetricNamespaceQuery",
+          "MetricNamesQuery",
+          "WorkspacesQuery",
+          "UnknownQuery"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "MetricDefinitionsQuery": {
+        "description": "@deprecated Use MetricNamespaceQuery instead",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "MetricDefinitionsQuery"
+            ]
+          },
+          "subscription": {
+            "type": "string"
+          },
+          "resourceGroup": {
+            "type": "string"
+          },
+          "metricNamespace": {
+            "type": "string"
+          },
+          "resourceName": {
+            "type": "string"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseGrafanaTemplateVariableQuery"
+          },
+          {
+            "required": [
+              "kind",
+              "subscription",
+              "resourceGroup"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "MetricNamesQuery": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "MetricNamesQuery"
+            ]
+          },
+          "subscription": {
+            "type": "string"
+          },
+          "resourceGroup": {
+            "type": "string"
+          },
+          "resourceName": {
+            "type": "string"
+          },
+          "metricNamespace": {
+            "type": "string"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseGrafanaTemplateVariableQuery"
+          },
+          {
+            "required": [
+              "kind",
+              "subscription",
+              "resourceGroup",
+              "resourceName",
+              "metricNamespace"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "MetricNamespaceQuery": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "MetricNamespaceQuery"
+            ]
+          },
+          "subscription": {
+            "type": "string"
+          },
+          "resourceGroup": {
+            "type": "string"
+          },
+          "metricNamespace": {
+            "type": "string"
+          },
+          "resourceName": {
+            "type": "string"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseGrafanaTemplateVariableQuery"
+          },
+          {
+            "required": [
+              "kind",
+              "subscription",
+              "resourceGroup"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "ResourceGroupsQuery": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ResourceGroupsQuery"
+            ]
+          },
+          "subscription": {
+            "type": "string"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseGrafanaTemplateVariableQuery"
+          },
+          {
+            "required": [
+              "kind",
+              "subscription"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "ResourceNamesQuery": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ResourceNamesQuery"
+            ]
+          },
+          "subscription": {
+            "type": "string"
+          },
+          "resourceGroup": {
+            "type": "string"
+          },
+          "metricNamespace": {
+            "type": "string"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseGrafanaTemplateVariableQuery"
+          },
+          {
+            "required": [
+              "kind",
+              "subscription",
+              "resourceGroup",
+              "metricNamespace"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "ResultFormat": {
+        "type": "string",
+        "enum": [
+          "table",
+          "time_series",
+          "trace"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "SubscriptionsQuery": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "SubscriptionsQuery"
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseGrafanaTemplateVariableQuery"
+          },
+          {
+            "required": [
+              "kind"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "UnknownQuery": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "UnknownQuery"
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseGrafanaTemplateVariableQuery"
+          },
+          {
+            "required": [
+              "kind"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "WorkspacesQuery": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "WorkspacesQuery"
+            ]
+          },
+          "subscription": {
+            "type": "string"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseGrafanaTemplateVariableQuery"
+          },
+          {
+            "required": [
+              "kind",
+              "subscription"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      }
+    }
+  }
+}

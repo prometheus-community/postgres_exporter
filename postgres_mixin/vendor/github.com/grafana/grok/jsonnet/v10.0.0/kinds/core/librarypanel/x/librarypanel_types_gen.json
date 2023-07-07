@@ -1,0 +1,298 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "librarypanel",
+    "version": "0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "LibraryElementDTOMeta": {
+        "type": "object",
+        "required": [
+          "folderName",
+          "folderUid",
+          "connectedDashboards",
+          "created",
+          "updated",
+          "createdBy",
+          "updatedBy"
+        ],
+        "properties": {
+          "folderName": {
+            "type": "string"
+          },
+          "folderUid": {
+            "type": "string"
+          },
+          "connectedDashboards": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/LibraryElementDTOMetaUser"
+          },
+          "updatedBy": {
+            "$ref": "#/components/schemas/LibraryElementDTOMetaUser"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "LibraryElementDTOMetaUser": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "avatarUrl"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "_kubeObjectMetadata": {
+        "description": "_kubeObjectMetadata is metadata found in a kubernetes object's metadata field.\nIt is not exhaustive and only includes fields which may be relevant to a kind's implementation,\nAs it is also intended to be generic enough to function with any API Server.",
+        "type": "object",
+        "required": [
+          "uid",
+          "creationTimestamp",
+          "finalizers",
+          "resourceVersion",
+          "labels"
+        ],
+        "properties": {
+          "uid": {
+            "type": "string"
+          },
+          "creationTimestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletionTimestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finalizers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "resourceVersion": {
+            "type": "string"
+          },
+          "labels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "joinSchema.status.#OperatorState": {
+        "type": "object",
+        "required": [
+          "lastEvaluation",
+          "state"
+        ],
+        "properties": {
+          "lastEvaluation": {
+            "description": "lastEvaluation is the ResourceVersion last evaluated",
+            "type": "string"
+          },
+          "state": {
+            "description": "state describes the state of the lastEvaluation.\nIt is limited to three possible states for machine evaluation.",
+            "type": "string",
+            "enum": [
+              "success",
+              "in_progress",
+              "failed"
+            ]
+          },
+          "descriptiveState": {
+            "description": "descriptiveState is an optional more descriptive state field which has no requirements on format",
+            "type": "string"
+          },
+          "details": {
+            "description": "details contains any extra information that is operator-specific",
+            "type": "object"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "librarypanel": {
+        "type": "object",
+        "properties": {
+          "metadata": {
+            "description": "metadata contains embedded CommonMetadata and can be extended with custom string fields\nTODO: use CommonMetadata instead of redefining here; currently needs to be defined here\nwithout external reference as using the CommonMetadata reference breaks thema codegen.",
+            "type": "object",
+            "properties": {
+              "updateTimestamp": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "createdBy": {
+                "type": "string"
+              },
+              "updatedBy": {
+                "type": "string"
+              },
+              "extraFields": {
+                "description": "extraFields is reserved for any fields that are pulled from the API server metadata but do not have concrete fields in the CUE metadata",
+                "type": "object"
+              }
+            },
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/_kubeObjectMetadata"
+              },
+              {
+                "required": [
+                  "updateTimestamp",
+                  "createdBy",
+                  "updatedBy",
+                  "extraFields"
+                ]
+              }
+            ]
+          },
+          "spec": {
+            "type": "object",
+            "required": [
+              "uid",
+              "name",
+              "type",
+              "version",
+              "model"
+            ],
+            "properties": {
+              "folderUid": {
+                "description": "Folder UID",
+                "type": "string"
+              },
+              "uid": {
+                "description": "Library element UID",
+                "type": "string"
+              },
+              "name": {
+                "description": "Panel name (also saved in the model)",
+                "type": "string",
+                "minLength": 1
+              },
+              "description": {
+                "description": "Panel description",
+                "type": "string"
+              },
+              "type": {
+                "description": "The panel type (from inside the model)",
+                "type": "string",
+                "minLength": 1
+              },
+              "schemaVersion": {
+                "description": "Dashboard version when this was saved (zero if unknown)",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 65535
+              },
+              "version": {
+                "description": "panel version, incremented each time the dashboard is updated.",
+                "type": "integer",
+                "format": "int64"
+              },
+              "model": {
+                "description": "TODO: should be the same panel schema defined in dashboard\nTypescript: Omit\u003cPanel, 'gridPos' | 'id' | 'libraryPanel'\u003e;",
+                "type": "object"
+              },
+              "meta": {
+                "$ref": "#/components/schemas/LibraryElementDTOMeta"
+              }
+            }
+          },
+          "status": {
+            "type": "object",
+            "required": [
+              "additionalFields"
+            ],
+            "properties": {
+              "operatorStates": {
+                "description": "operatorStates is a map of operator ID to operator state evaluations.\nAny operator which consumes this kind SHOULD add its state evaluation information to this field.",
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/joinSchema.status.#OperatorState"
+                }
+              },
+              "additionalFields": {
+                "description": "additionalFields is reserved for future use",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "required": [
+              "metadata",
+              "spec",
+              "status"
+            ]
+          },
+          {
+            "required": [
+              "spec"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "status.#OperatorState": {
+        "type": "object",
+        "required": [
+          "lastEvaluation",
+          "state"
+        ],
+        "properties": {
+          "lastEvaluation": {
+            "description": "lastEvaluation is the ResourceVersion last evaluated",
+            "type": "string"
+          },
+          "state": {
+            "description": "state describes the state of the lastEvaluation.\nIt is limited to three possible states for machine evaluation.",
+            "type": "string",
+            "enum": [
+              "success",
+              "in_progress",
+              "failed"
+            ]
+          },
+          "descriptiveState": {
+            "description": "descriptiveState is an optional more descriptive state field which has no requirements on format",
+            "type": "string"
+          },
+          "details": {
+            "description": "details contains any extra information that is operator-specific",
+            "type": "object"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      }
+    }
+  }
+}

@@ -1,0 +1,340 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "HistogramPanelCfg",
+    "version": "0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "AxisColorMode": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "text",
+          "series"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "AxisConfig": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "axisPlacement": {
+            "$ref": "#/components/schemas/AxisPlacement"
+          },
+          "axisColorMode": {
+            "$ref": "#/components/schemas/AxisColorMode"
+          },
+          "axisLabel": {
+            "type": "string"
+          },
+          "axisWidth": {
+            "type": "number"
+          },
+          "axisSoftMin": {
+            "type": "number"
+          },
+          "axisSoftMax": {
+            "type": "number"
+          },
+          "axisGridShow": {
+            "type": "boolean"
+          },
+          "scaleDistribution": {
+            "$ref": "#/components/schemas/ScaleDistributionConfig"
+          },
+          "axisCenteredZero": {
+            "type": "boolean"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "AxisPlacement": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "auto",
+          "top",
+          "right",
+          "bottom",
+          "left",
+          "hidden"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "GraphGradientMode": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "none",
+          "opacity",
+          "hue",
+          "scheme"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "HideSeriesConfig": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "tooltip",
+          "legend",
+          "viz"
+        ],
+        "properties": {
+          "tooltip": {
+            "type": "boolean"
+          },
+          "legend": {
+            "type": "boolean"
+          },
+          "viz": {
+            "type": "boolean"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "HideableFieldConfig": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "hideFrom": {
+            "$ref": "#/components/schemas/HideSeriesConfig"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "HistogramPanelCfg": {
+        "type": "object",
+        "required": [
+          "PanelOptions",
+          "PanelFieldConfig"
+        ],
+        "properties": {
+          "PanelOptions": {
+            "type": "object",
+            "properties": {
+              "bucketSize": {
+                "description": "Size of each bucket",
+                "type": "integer",
+                "format": "int32"
+              },
+              "bucketOffset": {
+                "description": "Offset buckets by this amount",
+                "type": "integer",
+                "minimum": -2147483648,
+                "maximum": 2147483647,
+                "default": 0
+              },
+              "combine": {
+                "description": "Combines multiple series into a single histogram",
+                "type": "boolean"
+              }
+            },
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OptionsWithLegend"
+              },
+              {
+                "$ref": "#/components/schemas/OptionsWithTooltip"
+              }
+            ]
+          },
+          "PanelFieldConfig": {
+            "type": "object",
+            "properties": {
+              "lineWidth": {
+                "description": "Controls line width of the bars.",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10,
+                "default": 1
+              },
+              "fillOpacity": {
+                "description": "Controls the fill opacity of the bars.",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100,
+                "default": 80
+              },
+              "gradientMode": {
+                "description": "Set the mode of the gradient fill. Fill gradient is based on the line color. To change the color, use the standard color scheme field option.\nGradient appearance is influenced by the Fill opacity setting.",
+                "type": "string",
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/GraphGradientMode"
+                  }
+                ]
+              }
+            },
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AxisConfig"
+              },
+              {
+                "$ref": "#/components/schemas/HideableFieldConfig"
+              }
+            ]
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "LegendDisplayMode": {
+        "description": "TODO docs\nNote: \"hidden\" needs to remain as an option for plugins compatibility",
+        "type": "string",
+        "enum": [
+          "list",
+          "table",
+          "hidden"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "LegendPlacement": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "bottom",
+          "right"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "OptionsWithLegend": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "legend"
+        ],
+        "properties": {
+          "legend": {
+            "$ref": "#/components/schemas/VizLegendOptions"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "OptionsWithTooltip": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "tooltip"
+        ],
+        "properties": {
+          "tooltip": {
+            "$ref": "#/components/schemas/VizTooltipOptions"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "ScaleDistribution": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "linear",
+          "log",
+          "ordinal",
+          "symlog"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "ScaleDistributionConfig": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ScaleDistribution"
+          },
+          "log": {
+            "type": "number"
+          },
+          "linearThreshold": {
+            "type": "number"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "SortOrder": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "asc",
+          "desc",
+          "none"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "TooltipDisplayMode": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "single",
+          "multi",
+          "none"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "VizLegendOptions": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "displayMode",
+          "placement",
+          "showLegend",
+          "calcs"
+        ],
+        "properties": {
+          "displayMode": {
+            "$ref": "#/components/schemas/LegendDisplayMode"
+          },
+          "placement": {
+            "$ref": "#/components/schemas/LegendPlacement"
+          },
+          "showLegend": {
+            "type": "boolean"
+          },
+          "asTable": {
+            "type": "boolean"
+          },
+          "isVisible": {
+            "type": "boolean"
+          },
+          "sortBy": {
+            "type": "string"
+          },
+          "sortDesc": {
+            "type": "boolean"
+          },
+          "width": {
+            "type": "number"
+          },
+          "calcs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "VizTooltipOptions": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "mode",
+          "sort"
+        ],
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/TooltipDisplayMode"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortOrder"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      }
+    }
+  }
+}

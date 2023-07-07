@@ -1,0 +1,298 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "StateTimelinePanelCfg",
+    "version": "0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "HideSeriesConfig": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "tooltip",
+          "legend",
+          "viz"
+        ],
+        "properties": {
+          "tooltip": {
+            "type": "boolean"
+          },
+          "legend": {
+            "type": "boolean"
+          },
+          "viz": {
+            "type": "boolean"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "HideableFieldConfig": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "hideFrom": {
+            "$ref": "#/components/schemas/HideSeriesConfig"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "LegendDisplayMode": {
+        "description": "TODO docs\nNote: \"hidden\" needs to remain as an option for plugins compatibility",
+        "type": "string",
+        "enum": [
+          "list",
+          "table",
+          "hidden"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "LegendPlacement": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "bottom",
+          "right"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "OptionsWithLegend": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "legend"
+        ],
+        "properties": {
+          "legend": {
+            "$ref": "#/components/schemas/VizLegendOptions"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "OptionsWithTimezones": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "timezone": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimeZone"
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "OptionsWithTooltip": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "tooltip"
+        ],
+        "properties": {
+          "tooltip": {
+            "$ref": "#/components/schemas/VizTooltipOptions"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "SortOrder": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "asc",
+          "desc",
+          "none"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "StateTimelinePanelCfg": {
+        "type": "object",
+        "required": [
+          "PanelOptions",
+          "PanelFieldConfig"
+        ],
+        "properties": {
+          "PanelOptions": {
+            "type": "object",
+            "properties": {
+              "showValue": {
+                "description": "Show timeline values on chart",
+                "type": "string",
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/VisibilityMode"
+                  }
+                ]
+              },
+              "rowHeight": {
+                "description": "Controls the row height",
+                "type": "number",
+                "maximum": 1,
+                "default": 0.9
+              },
+              "mergeValues": {
+                "description": "Merge equal consecutive values",
+                "type": "boolean",
+                "default": true
+              },
+              "alignValue": {
+                "description": "Controls value alignment on the timelines",
+                "type": "string",
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/TimelineValueAlignment"
+                  }
+                ]
+              }
+            },
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OptionsWithLegend"
+              },
+              {
+                "$ref": "#/components/schemas/OptionsWithTooltip"
+              },
+              {
+                "$ref": "#/components/schemas/OptionsWithTimezones"
+              },
+              {
+                "required": [
+                  "showValue",
+                  "rowHeight"
+                ]
+              }
+            ]
+          },
+          "PanelFieldConfig": {
+            "type": "object",
+            "properties": {
+              "lineWidth": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10,
+                "default": 0
+              },
+              "fillOpacity": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100,
+                "default": 70
+              }
+            },
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HideableFieldConfig"
+              }
+            ]
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "TimeZone": {
+        "description": "A specific timezone from https://en.wikipedia.org/wiki/Tz_database",
+        "type": "string",
+        "default": "browser",
+        "oneOf": [
+          {
+            "enum": [
+              "utc"
+            ]
+          },
+          {}
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "TimelineValueAlignment": {
+        "description": "Controls the value alignment in the TimelineChart component",
+        "type": "string",
+        "enum": [
+          "center",
+          "left",
+          "right"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "TooltipDisplayMode": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "single",
+          "multi",
+          "none"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "VisibilityMode": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "auto",
+          "never",
+          "always"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "VizLegendOptions": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "displayMode",
+          "placement",
+          "showLegend",
+          "calcs"
+        ],
+        "properties": {
+          "displayMode": {
+            "$ref": "#/components/schemas/LegendDisplayMode"
+          },
+          "placement": {
+            "$ref": "#/components/schemas/LegendPlacement"
+          },
+          "showLegend": {
+            "type": "boolean"
+          },
+          "asTable": {
+            "type": "boolean"
+          },
+          "isVisible": {
+            "type": "boolean"
+          },
+          "sortBy": {
+            "type": "string"
+          },
+          "sortDesc": {
+            "type": "boolean"
+          },
+          "width": {
+            "type": "number"
+          },
+          "calcs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "VizTooltipOptions": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "mode",
+          "sort"
+        ],
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/TooltipDisplayMode"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortOrder"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      }
+    }
+  }
+}

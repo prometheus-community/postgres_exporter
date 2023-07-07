@@ -1,0 +1,52 @@
+{
+   "$defs": {
+      "address": {
+         "properties": {
+            "street_address": {
+               "type": "string"
+            },
+            "city": {
+               "type": "string"
+            },
+            "state": {
+               "type": "string"
+            },
+            "country": {
+               "default": "United States of America",
+               "enum": [
+                  "United States of America",
+                  "Canada"
+               ]
+            }
+         },
+         "required": [
+            "street_address",
+            "city",
+            "state"
+         ],
+         "type": "object"
+      }
+   },
+   "$id": "https://example.com/schemas/customer",
+   "properties": {
+      "first_name": {
+         "type": "string"
+      },
+      "last_name": {
+         "type": "string"
+      },
+      "shipping_address": {
+         "$ref": "#/$defs/address"
+      },
+      "billing_address": {
+         "$ref": "#/$defs/address"
+      }
+   },
+   "required": [
+      "first_name",
+      "last_name",
+      "shipping_address",
+      "billing_address"
+   ],
+   "type": "object"
+}

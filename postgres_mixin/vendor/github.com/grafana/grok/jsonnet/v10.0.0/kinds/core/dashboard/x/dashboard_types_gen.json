@@ -1,0 +1,1630 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "dashboard",
+    "version": "0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "AnnotationContainer": {
+        "description": "TODO -- should not be a public interface on its own, but required for Veneer",
+        "type": "object",
+        "properties": {
+          "list": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnnotationQuery"
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "AnnotationPanelFilter": {
+        "type": "object",
+        "required": [
+          "ids"
+        ],
+        "properties": {
+          "exclude": {
+            "description": "Should the specified panels be included or excluded",
+            "type": "boolean",
+            "default": false
+          },
+          "ids": {
+            "description": "Panel IDs that should be included or excluded",
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "AnnotationQuery": {
+        "description": "TODO docs\nFROM: AnnotationQuery in grafana-data/src/types/annotations.ts",
+        "type": "object",
+        "required": [
+          "name",
+          "datasource",
+          "enable",
+          "iconColor"
+        ],
+        "properties": {
+          "name": {
+            "description": "Name of annotation.",
+            "type": "string"
+          },
+          "datasource": {
+            "description": "TODO: Should be DataSourceRef",
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "uid": {
+                "type": "string"
+              }
+            }
+          },
+          "enable": {
+            "description": "When enabled the annotation query is issued with every dashboard refresh",
+            "type": "boolean",
+            "default": true
+          },
+          "hide": {
+            "description": "Annotation queries can be toggled on or off at the top of the dashboard.\nWhen hide is true, the toggle is not shown in the dashboard.",
+            "type": "boolean",
+            "default": false
+          },
+          "iconColor": {
+            "description": "Color to use for the annotation event markers",
+            "type": "string"
+          },
+          "filter": {
+            "$ref": "#/components/schemas/AnnotationPanelFilter"
+          },
+          "target": {
+            "$ref": "#/components/schemas/AnnotationTarget"
+          },
+          "type": {
+            "description": "TODO -- this should not exist here, it is based on the --grafana-- datasource",
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "AnnotationTarget": {
+        "description": "TODO: this should be a regular DataQuery that depends on the selected dashboard\nthese match the properties of the \"grafana\" datasouce that is default in most dashboards",
+        "type": "object",
+        "required": [
+          "limit",
+          "matchAny",
+          "tags",
+          "type"
+        ],
+        "properties": {
+          "limit": {
+            "description": "Only required/valid for the grafana datasource...\nbut code+tests is already depending on it so hard to change",
+            "type": "integer",
+            "format": "int64"
+          },
+          "matchAny": {
+            "description": "Only required/valid for the grafana datasource...\nbut code+tests is already depending on it so hard to change",
+            "type": "boolean"
+          },
+          "tags": {
+            "description": "Only required/valid for the grafana datasource...\nbut code+tests is already depending on it so hard to change",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "type": {
+            "description": "Only required/valid for the grafana datasource...\nbut code+tests is already depending on it so hard to change",
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "DashboardCursorSync": {
+        "description": "0 for no shared crosshair or tooltip (default).\n1 for shared crosshair.\n2 for shared crosshair AND shared tooltip.",
+        "type": "integer",
+        "enum": [
+          0,
+          1,
+          2
+        ],
+        "default": 0,
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "DashboardLink": {
+        "description": "FROM public/app/features/dashboard/state/DashboardModels.ts - ish\nTODO docs",
+        "type": "object",
+        "required": [
+          "title",
+          "type",
+          "icon",
+          "tooltip",
+          "url",
+          "tags",
+          "asDropdown",
+          "targetBlank",
+          "includeVars",
+          "keepTime"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/DashboardLinkType"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "tooltip": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "asDropdown": {
+            "type": "boolean",
+            "default": false
+          },
+          "targetBlank": {
+            "type": "boolean",
+            "default": false
+          },
+          "includeVars": {
+            "type": "boolean",
+            "default": false
+          },
+          "keepTime": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "DashboardLinkType": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "link",
+          "dashboards"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "DataSourceRef": {
+        "description": "Ref to a DataSource instance",
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "The plugin type-id",
+            "type": "string"
+          },
+          "uid": {
+            "description": "Specific datasource instance",
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "DataTransformerConfig": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "id",
+          "options"
+        ],
+        "properties": {
+          "id": {
+            "description": "Unique identifier of transformer",
+            "type": "string"
+          },
+          "disabled": {
+            "description": "Disabled transformations are skipped",
+            "type": "boolean"
+          },
+          "filter": {
+            "$ref": "#/components/schemas/MatcherConfig"
+          },
+          "options": {
+            "description": "Options to be passed to the transformer\nValid options depend on the transformer id"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "DynamicConfigValue": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "default": ""
+          },
+          "value": {}
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "FieldColor": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "properties": {
+          "mode": {
+            "description": "The main color scheme mode",
+            "type": "string",
+            "oneOf": [
+              {
+                "enum": [
+                  "thresholds",
+                  "palette-classic",
+                  "palette-saturated",
+                  "continuous-GrYlRd",
+                  "fixed"
+                ]
+              },
+              {}
+            ]
+          },
+          "fixedColor": {
+            "description": "Stores the fixed color value if mode is fixed",
+            "type": "string"
+          },
+          "seriesBy": {
+            "$ref": "#/components/schemas/FieldColorSeriesByMode"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "FieldColorModeId": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "thresholds",
+          "palette-classic",
+          "palette-saturated",
+          "continuous-GrYlRd",
+          "fixed"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "FieldColorSeriesByMode": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "min",
+          "max",
+          "last"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "FieldConfig": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "description": "The display value for this field.  This supports template variables blank is auto",
+            "type": "string"
+          },
+          "displayNameFromDS": {
+            "description": "This can be used by data sources that return and explicit naming structure for values and labels\nWhen this property is configured, this value is used rather than the default naming strategy.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Human readable field metadata",
+            "type": "string"
+          },
+          "path": {
+            "description": "An explicit path to the field in the datasource.  When the frame meta includes a path,\nThis will default to `${frame.meta.path}/${field.name}\n\nWhen defined, this value can be used as an identifier within the datasource scope, and\nmay be used to update the results",
+            "type": "string"
+          },
+          "writeable": {
+            "description": "True if data source can write a value to the path.  Auth/authz are supported separately",
+            "type": "boolean"
+          },
+          "filterable": {
+            "description": "True if data source field supports ad-hoc filters",
+            "type": "boolean"
+          },
+          "unit": {
+            "description": "Numeric Options",
+            "type": "string"
+          },
+          "decimals": {
+            "description": "Significant digits (for display)",
+            "type": "number"
+          },
+          "min": {
+            "type": "number"
+          },
+          "max": {
+            "type": "number"
+          },
+          "mappings": {
+            "description": "Convert input values into a display string",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ValueMapping"
+            }
+          },
+          "thresholds": {
+            "$ref": "#/components/schemas/ThresholdsConfig"
+          },
+          "color": {
+            "$ref": "#/components/schemas/FieldColor"
+          },
+          "links": {
+            "description": "The behavior when clicking on a result",
+            "type": "array",
+            "items": {}
+          },
+          "noValue": {
+            "description": "Alternative to empty string",
+            "type": "string"
+          },
+          "custom": {
+            "description": "custom is specified by the PanelFieldConfig field\nin panel plugin schemas.",
+            "type": "object"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "FieldConfigSource": {
+        "type": "object",
+        "required": [
+          "defaults",
+          "overrides"
+        ],
+        "properties": {
+          "defaults": {
+            "$ref": "#/components/schemas/FieldConfig"
+          },
+          "overrides": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "matcher",
+                "properties"
+              ],
+              "properties": {
+                "matcher": {
+                  "$ref": "#/components/schemas/MatcherConfig"
+                },
+                "properties": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DynamicConfigValue"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "GraphPanel": {
+        "description": "Support for legacy graph and heatmap panels.",
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "graph"
+            ]
+          },
+          "legend": {
+            "description": "@deprecated this is part of deprecated graph panel",
+            "type": "object",
+            "required": [
+              "show"
+            ],
+            "properties": {
+              "show": {
+                "type": "boolean",
+                "default": true
+              },
+              "sort": {
+                "type": "string"
+              },
+              "sortDesc": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "GridPos": {
+        "type": "object",
+        "required": [
+          "h",
+          "w",
+          "x",
+          "y"
+        ],
+        "properties": {
+          "h": {
+            "description": "Panel",
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "maximum": 4294967295,
+            "default": 9
+          },
+          "w": {
+            "description": "Panel",
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "maximum": 24,
+            "default": 12
+          },
+          "x": {
+            "description": "Panel x",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 24,
+            "exclusiveMaximum": true,
+            "default": 0
+          },
+          "y": {
+            "description": "Panel y",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295,
+            "default": 0
+          },
+          "static": {
+            "description": "true if fixed",
+            "type": "boolean"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "HeatmapPanel": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "heatmap"
+            ]
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "LibraryPanelRef": {
+        "type": "object",
+        "required": [
+          "name",
+          "uid"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "uid": {
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "LoadingState": {
+        "type": "string",
+        "enum": [
+          "NotStarted",
+          "Loading",
+          "Streaming",
+          "Done",
+          "Error"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "MappingType": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "value",
+          "range",
+          "regex",
+          "special"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "MatcherConfig": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "default": ""
+          },
+          "options": {}
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "Panel": {
+        "description": "Dashboard panels. Panels are canonically defined inline\nbecause they share a version timeline with the dashboard\nschema; they do not evolve independently.",
+        "type": "object",
+        "required": [
+          "type",
+          "transparent",
+          "repeatDirection",
+          "transformations",
+          "options",
+          "fieldConfig"
+        ],
+        "properties": {
+          "type": {
+            "description": "The panel plugin type id. May not be empty.",
+            "type": "string",
+            "minLength": 1
+          },
+          "id": {
+            "description": "TODO docs",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "pluginVersion": {
+            "description": "FIXME this almost certainly has to be changed in favor of scuemata versions",
+            "type": "string"
+          },
+          "tags": {
+            "description": "TODO docs",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "targets": {
+            "description": "TODO docs",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Target"
+            }
+          },
+          "title": {
+            "description": "Panel title.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Description.",
+            "type": "string"
+          },
+          "transparent": {
+            "description": "Whether to display the panel without a background.",
+            "type": "boolean",
+            "default": false
+          },
+          "datasource": {
+            "description": "The datasource used in all targets.",
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "uid": {
+                "type": "string"
+              }
+            }
+          },
+          "gridPos": {
+            "$ref": "#/components/schemas/GridPos"
+          },
+          "links": {
+            "description": "Panel links.\nTODO fill this out - seems there are a couple variants?",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardLink"
+            }
+          },
+          "repeat": {
+            "description": "Name of template variable to repeat for.",
+            "type": "string"
+          },
+          "repeatDirection": {
+            "description": "Direction to repeat in if 'repeat' is set.\n\"h\" for horizontal, \"v\" for vertical.\nTODO this is probably optional",
+            "type": "string",
+            "enum": [
+              "h",
+              "v"
+            ],
+            "default": "h"
+          },
+          "repeatPanelId": {
+            "description": "Id of the repeating panel.",
+            "type": "integer",
+            "format": "int64"
+          },
+          "maxDataPoints": {
+            "description": "TODO docs",
+            "type": "number"
+          },
+          "thresholds": {
+            "description": "TODO docs - seems to be an old field from old dashboard alerts?",
+            "type": "array",
+            "items": {}
+          },
+          "timeRegions": {
+            "description": "TODO docs",
+            "type": "array",
+            "items": {}
+          },
+          "transformations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DataTransformerConfig"
+            }
+          },
+          "interval": {
+            "description": "TODO docs\nTODO tighter constraint",
+            "type": "string"
+          },
+          "timeFrom": {
+            "description": "TODO docs\nTODO tighter constraint",
+            "type": "string"
+          },
+          "timeShift": {
+            "description": "TODO docs\nTODO tighter constraint",
+            "type": "string"
+          },
+          "libraryPanel": {
+            "$ref": "#/components/schemas/LibraryPanelRef"
+          },
+          "options": {
+            "description": "options is specified by the PanelOptions field in panel\nplugin schemas.",
+            "type": "object"
+          },
+          "fieldConfig": {
+            "$ref": "#/components/schemas/FieldConfigSource"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "RangeMap": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "type",
+          "options"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MappingType"
+              },
+              {
+                "enum": [
+                  "range"
+                ]
+              }
+            ]
+          },
+          "options": {
+            "type": "object",
+            "required": [
+              "from",
+              "to",
+              "result"
+            ],
+            "properties": {
+              "from": {
+                "description": "to and from are `number | null` in current ts, really not sure what to do",
+                "type": "number",
+                "format": "double"
+              },
+              "to": {
+                "type": "number",
+                "format": "double"
+              },
+              "result": {
+                "$ref": "#/components/schemas/ValueMappingResult"
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "RegexMap": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "type",
+          "options"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MappingType"
+              },
+              {
+                "enum": [
+                  "regex"
+                ]
+              }
+            ]
+          },
+          "options": {
+            "type": "object",
+            "required": [
+              "pattern",
+              "result"
+            ],
+            "properties": {
+              "pattern": {
+                "type": "string"
+              },
+              "result": {
+                "$ref": "#/components/schemas/ValueMappingResult"
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "RowPanel": {
+        "description": "Row panel",
+        "type": "object",
+        "required": [
+          "type",
+          "collapsed",
+          "id",
+          "panels"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "row"
+            ]
+          },
+          "collapsed": {
+            "type": "boolean",
+            "default": false
+          },
+          "title": {
+            "type": "string"
+          },
+          "datasource": {
+            "description": "Name of default datasource.",
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "uid": {
+                "type": "string"
+              }
+            }
+          },
+          "gridPos": {
+            "$ref": "#/components/schemas/GridPos"
+          },
+          "id": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "panels": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/Panel"
+                },
+                {
+                  "$ref": "#/components/schemas/GraphPanel"
+                },
+                {
+                  "$ref": "#/components/schemas/HeatmapPanel"
+                }
+              ]
+            }
+          },
+          "repeat": {
+            "description": "Name of template variable to repeat for.",
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "Snapshot": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "created",
+          "expires",
+          "external",
+          "externalUrl",
+          "id",
+          "key",
+          "name",
+          "orgId",
+          "updated",
+          "userId"
+        ],
+        "properties": {
+          "created": {
+            "description": "TODO docs",
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires": {
+            "description": "TODO docs",
+            "type": "string"
+          },
+          "external": {
+            "description": "TODO docs",
+            "type": "boolean"
+          },
+          "externalUrl": {
+            "description": "TODO docs",
+            "type": "string"
+          },
+          "id": {
+            "description": "TODO docs",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "key": {
+            "description": "TODO docs",
+            "type": "string"
+          },
+          "name": {
+            "description": "TODO docs",
+            "type": "string"
+          },
+          "orgId": {
+            "description": "TODO docs",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "updated": {
+            "description": "TODO docs",
+            "type": "string",
+            "format": "date-time"
+          },
+          "url": {
+            "description": "TODO docs",
+            "type": "string"
+          },
+          "userId": {
+            "description": "TODO docs",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "SpecialValueMap": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "type",
+          "options"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MappingType"
+              },
+              {
+                "enum": [
+                  "special"
+                ]
+              }
+            ]
+          },
+          "options": {
+            "type": "object",
+            "required": [
+              "match",
+              "pattern",
+              "result"
+            ],
+            "properties": {
+              "match": {
+                "type": "string",
+                "enum": [
+                  "true",
+                  "false"
+                ]
+              },
+              "pattern": {
+                "type": "string"
+              },
+              "result": {
+                "$ref": "#/components/schemas/ValueMappingResult"
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "SpecialValueMatch": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "true",
+          "false",
+          "null",
+          "nan",
+          "null+nan",
+          "empty"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "Target": {
+        "description": "Schema for panel targets is specified by datasource\nplugins. We use a placeholder definition, which the Go\nschema loader either left open/as-is with the Base\nvariant of the Dashboard and Panel families, or filled\nwith types derived from plugins in the Instance variant.\nWhen working directly from CUE, importers can extend this\ntype directly to achieve the same effect.",
+        "type": "object",
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "Threshold": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "color"
+        ],
+        "properties": {
+          "value": {
+            "description": "TODO docs\nFIXME the corresponding typescript field is required/non-optional, but nulls currently appear here when serializing -Infinity to JSON",
+            "type": "number"
+          },
+          "color": {
+            "description": "TODO docs",
+            "type": "string"
+          },
+          "index": {
+            "description": "Threshold index, an old property that is not needed an should only appear in older dashboards",
+            "type": "integer",
+            "format": "int32"
+          },
+          "state": {
+            "description": "TODO docs\nTODO are the values here enumerable into a disjunction?\nSome seem to be listed in typescript comment",
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "ThresholdsConfig": {
+        "type": "object",
+        "required": [
+          "mode",
+          "steps"
+        ],
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/ThresholdsMode"
+          },
+          "steps": {
+            "description": "Must be sorted by 'value', first value is always -Infinity",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Threshold"
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "ThresholdsMode": {
+        "type": "string",
+        "enum": [
+          "absolute",
+          "percentage"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "ValueMap": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "type",
+          "options"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MappingType"
+              },
+              {
+                "enum": [
+                  "value"
+                ]
+              }
+            ]
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ValueMappingResult"
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "ValueMapping": {
+        "description": "TODO docs",
+        "type": "object",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ValueMap"
+          },
+          {
+            "$ref": "#/components/schemas/RangeMap"
+          },
+          {
+            "$ref": "#/components/schemas/RegexMap"
+          },
+          {
+            "$ref": "#/components/schemas/SpecialValueMap"
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "ValueMappingResult": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "index": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "VariableHide": {
+        "type": "integer",
+        "enum": [
+          0,
+          1,
+          2
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "VariableModel": {
+        "description": "FROM: packages/grafana-data/src/types/templateVars.ts\nTODO docs\nTODO what about what's in public/app/features/types.ts?\nTODO there appear to be a lot of different kinds of [template] vars here? if so need a disjunction",
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "name",
+          "global",
+          "hide",
+          "skipUrlSync",
+          "index",
+          "state"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "default": "00000000-0000-0000-0000-000000000000"
+          },
+          "type": {
+            "$ref": "#/components/schemas/VariableType"
+          },
+          "name": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "rootStateKey": {
+            "type": "string"
+          },
+          "global": {
+            "type": "boolean",
+            "default": false
+          },
+          "hide": {
+            "$ref": "#/components/schemas/VariableHide"
+          },
+          "skipUrlSync": {
+            "type": "boolean",
+            "default": false
+          },
+          "index": {
+            "type": "integer",
+            "minimum": -2147483648,
+            "maximum": 2147483647,
+            "default": -1
+          },
+          "state": {
+            "$ref": "#/components/schemas/LoadingState"
+          },
+          "error": {
+            "type": "object"
+          },
+          "description": {
+            "type": "string"
+          },
+          "query": {
+            "description": "TODO: Move this into a separated QueryVariableModel type",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          },
+          "datasource": {
+            "$ref": "#/components/schemas/DataSourceRef"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "VariableType": {
+        "description": "FROM: packages/grafana-data/src/types/templateVars.ts\nTODO docs\nTODO this implies some wider pattern/discriminated union, probably?",
+        "type": "string",
+        "enum": [
+          "query",
+          "adhoc",
+          "constant",
+          "datasource",
+          "interval",
+          "textbox",
+          "custom",
+          "system"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "_kubeObjectMetadata": {
+        "description": "_kubeObjectMetadata is metadata found in a kubernetes object's metadata field.\nIt is not exhaustive and only includes fields which may be relevant to a kind's implementation,\nAs it is also intended to be generic enough to function with any API Server.",
+        "type": "object",
+        "required": [
+          "uid",
+          "creationTimestamp",
+          "finalizers",
+          "resourceVersion",
+          "labels"
+        ],
+        "properties": {
+          "uid": {
+            "type": "string"
+          },
+          "creationTimestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletionTimestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finalizers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "resourceVersion": {
+            "type": "string"
+          },
+          "labels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "dashboard": {
+        "type": "object",
+        "properties": {
+          "metadata": {
+            "description": "metadata contains embedded CommonMetadata and can be extended with custom string fields\nTODO: use CommonMetadata instead of redefining here; currently needs to be defined here\nwithout external reference as using the CommonMetadata reference breaks thema codegen.",
+            "type": "object",
+            "properties": {
+              "updateTimestamp": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "createdBy": {
+                "type": "string"
+              },
+              "updatedBy": {
+                "type": "string"
+              },
+              "extraFields": {
+                "description": "extraFields is reserved for any fields that are pulled from the API server metadata but do not have concrete fields in the CUE metadata",
+                "type": "object"
+              }
+            },
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/_kubeObjectMetadata"
+              },
+              {
+                "required": [
+                  "updateTimestamp",
+                  "createdBy",
+                  "updatedBy",
+                  "extraFields"
+                ]
+              }
+            ]
+          },
+          "spec": {
+            "type": "object",
+            "required": [
+              "style",
+              "editable",
+              "graphTooltip",
+              "schemaVersion"
+            ],
+            "properties": {
+              "id": {
+                "description": "Unique numeric identifier for the dashboard.\nTODO must isolate or remove identifiers local to a Grafana instance...?",
+                "type": "integer",
+                "format": "int64"
+              },
+              "uid": {
+                "description": "Unique dashboard identifier that can be generated by anyone. string (8-40)",
+                "type": "string"
+              },
+              "title": {
+                "description": "Title of dashboard.",
+                "type": "string"
+              },
+              "description": {
+                "description": "Description of dashboard.",
+                "type": "string"
+              },
+              "revision": {
+                "description": "This property should only be used in dashboards defined by plugins.  It is a quick check\nto see if the version has changed since the last time.  Unclear why using the version property\nis insufficient.",
+                "type": "integer",
+                "format": "int64"
+              },
+              "gnetId": {
+                "description": "For dashboards imported from the https://grafana.com/grafana/dashboards/ portal",
+                "type": "string"
+              },
+              "tags": {
+                "description": "Tags associated with dashboard.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "style": {
+                "description": "Theme of dashboard.",
+                "type": "string",
+                "enum": [
+                  "dark",
+                  "light"
+                ],
+                "default": "dark"
+              },
+              "timezone": {
+                "description": "Timezone of dashboard. Accepts IANA TZDB zone ID or \"browser\" or \"utc\".",
+                "type": "string",
+                "default": "browser"
+              },
+              "editable": {
+                "description": "Whether a dashboard is editable or not.",
+                "type": "boolean",
+                "default": true
+              },
+              "graphTooltip": {
+                "$ref": "#/components/schemas/DashboardCursorSync"
+              },
+              "time": {
+                "description": "Time range for dashboard, e.g. last 6 hours, last 7 days, etc",
+                "type": "object",
+                "required": [
+                  "from",
+                  "to"
+                ],
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "default": "now-6h"
+                  },
+                  "to": {
+                    "type": "string",
+                    "default": "now"
+                  }
+                }
+              },
+              "timepicker": {
+                "description": "TODO docs\nTODO this appears to be spread all over in the frontend. Concepts will likely need tidying in tandem with schema changes",
+                "type": "object",
+                "required": [
+                  "collapse",
+                  "enable",
+                  "hidden",
+                  "refresh_intervals",
+                  "time_options"
+                ],
+                "properties": {
+                  "collapse": {
+                    "description": "Whether timepicker is collapsed or not.",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "enable": {
+                    "description": "Whether timepicker is enabled or not.",
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "hidden": {
+                    "description": "Whether timepicker is visible or not.",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "refresh_intervals": {
+                    "description": "Selectable intervals for auto-refresh.",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": [
+                      "5s",
+                      "10s",
+                      "30s",
+                      "1m",
+                      "5m",
+                      "15m",
+                      "30m",
+                      "1h",
+                      "2h",
+                      "1d"
+                    ]
+                  },
+                  "time_options": {
+                    "description": "TODO docs",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": [
+                      "5m",
+                      "15m",
+                      "1h",
+                      "6h",
+                      "12h",
+                      "24h",
+                      "2d",
+                      "7d",
+                      "30d"
+                    ]
+                  }
+                }
+              },
+              "fiscalYearStartMonth": {
+                "description": "The month that the fiscal year starts on.  0 = January, 11 = December",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 12,
+                "exclusiveMaximum": true,
+                "default": 0
+              },
+              "liveNow": {
+                "description": "When set to true, the dashboard will redraw panels at an interval matching the pixel width.\nThis will keep data \"moving left\" regardless of the query refresh rate.  This setting helps\navoid dashboards presenting stale live data",
+                "type": "boolean"
+              },
+              "weekStart": {
+                "description": "TODO docs",
+                "type": "string"
+              },
+              "refresh": {
+                "description": "Refresh rate of dashboard. Represented via interval string, e.g. \"5s\", \"1m\", \"1h\", \"1d\".",
+                "oneOf": [
+                  {
+                    "enum": [
+                      false
+                    ]
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "schemaVersion": {
+                "description": "Version of the JSON schema, incremented each time a Grafana update brings\nchanges to said schema.\nTODO this is the existing schema numbering system. It will be replaced by Thema's themaVersion",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 65535,
+                "default": 36
+              },
+              "version": {
+                "description": "Version of the dashboard, incremented each time the dashboard is updated.",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4294967295
+              },
+              "panels": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Panel"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RowPanel"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GraphPanel"
+                    },
+                    {
+                      "$ref": "#/components/schemas/HeatmapPanel"
+                    }
+                  ]
+                }
+              },
+              "templating": {
+                "description": "TODO docs",
+                "type": "object",
+                "properties": {
+                  "list": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/VariableModel"
+                    }
+                  }
+                }
+              },
+              "annotations": {
+                "$ref": "#/components/schemas/AnnotationContainer"
+              },
+              "links": {
+                "description": "TODO docs",
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/DashboardLink"
+                }
+              },
+              "snapshot": {
+                "$ref": "#/components/schemas/Snapshot"
+              }
+            }
+          },
+          "status": {
+            "type": "object",
+            "required": [
+              "additionalFields"
+            ],
+            "properties": {
+              "operatorStates": {
+                "description": "operatorStates is a map of operator ID to operator state evaluations.\nAny operator which consumes this kind SHOULD add its state evaluation information to this field.",
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/joinSchema.status.#OperatorState"
+                }
+              },
+              "additionalFields": {
+                "description": "additionalFields is reserved for future use",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "required": [
+              "metadata",
+              "spec",
+              "status"
+            ]
+          },
+          {
+            "required": [
+              "spec"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "joinSchema.status.#OperatorState": {
+        "type": "object",
+        "required": [
+          "lastEvaluation",
+          "state"
+        ],
+        "properties": {
+          "lastEvaluation": {
+            "description": "lastEvaluation is the ResourceVersion last evaluated",
+            "type": "string"
+          },
+          "state": {
+            "description": "state describes the state of the lastEvaluation.\nIt is limited to three possible states for machine evaluation.",
+            "type": "string",
+            "enum": [
+              "success",
+              "in_progress",
+              "failed"
+            ]
+          },
+          "descriptiveState": {
+            "description": "descriptiveState is an optional more descriptive state field which has no requirements on format",
+            "type": "string"
+          },
+          "details": {
+            "description": "details contains any extra information that is operator-specific",
+            "type": "object"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "status.#OperatorState": {
+        "type": "object",
+        "required": [
+          "lastEvaluation",
+          "state"
+        ],
+        "properties": {
+          "lastEvaluation": {
+            "description": "lastEvaluation is the ResourceVersion last evaluated",
+            "type": "string"
+          },
+          "state": {
+            "description": "state describes the state of the lastEvaluation.\nIt is limited to three possible states for machine evaluation.",
+            "type": "string",
+            "enum": [
+              "success",
+              "in_progress",
+              "failed"
+            ]
+          },
+          "descriptiveState": {
+            "description": "descriptiveState is an optional more descriptive state field which has no requirements on format",
+            "type": "string"
+          },
+          "details": {
+            "description": "details contains any extra information that is operator-specific",
+            "type": "object"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      }
+    }
+  }
+}

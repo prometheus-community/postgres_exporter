@@ -1,0 +1,22 @@
+TRACE: vendor/validate-libsonnet/main.libsonnet:63 
+Invalid parameters:
+  Parameter enum is invalid:
+    Value "invalid" MUST match schema:
+      {
+        "enum": [
+          "valid",
+          "values"
+        ],
+        "type": "string"
+      }
+  Parameter str is invalid:
+    Value 20 MUST match schema:
+      {
+        "type": "string"
+      }
+RUNTIME ERROR: Assertion failed
+	fromdocstring.jsonnet:(15:5)-(19:31)	
+	fromdocstring.jsonnet:21:11-40	object <anonymous>
+	Field "return"	
+	During manifestation	
+

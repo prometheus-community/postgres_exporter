@@ -1,0 +1,43 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "AlertGroupsPanelCfg",
+    "version": "0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "AlertGroupsPanelCfg": {
+        "type": "object",
+        "required": [
+          "PanelOptions"
+        ],
+        "properties": {
+          "PanelOptions": {
+            "type": "object",
+            "required": [
+              "labels",
+              "alertmanager",
+              "expandAll"
+            ],
+            "properties": {
+              "labels": {
+                "description": "Comma-separated list of values used to filter alert results",
+                "type": "string"
+              },
+              "alertmanager": {
+                "description": "Name of the alertmanager used as a source for alerts",
+                "type": "string"
+              },
+              "expandAll": {
+                "description": "Expand all alert groups by default",
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      }
+    }
+  }
+}

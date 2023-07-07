@@ -1,0 +1,360 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "TestDataDataQuery",
+    "version": "0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "CSVWave": {
+        "type": "object",
+        "properties": {
+          "timeStep": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "valuesCSV": {
+            "type": "string"
+          },
+          "labels": {
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "DataQuery": {
+        "description": "These are the common properties available to all queries in all datasources.\nSpecific implementations will *extend* this interface, adding the required\nproperties for the given context.",
+        "type": "object",
+        "required": [
+          "refId"
+        ],
+        "properties": {
+          "refId": {
+            "description": "A unique identifier for the query within the list of targets.\nIn server side expressions, the refId is used as a variable name to identify results.\nBy default, the UI will assign A-\u003eZ; however setting meaningful names may be useful.",
+            "type": "string"
+          },
+          "hide": {
+            "description": "true if query is disabled (ie should not be returned to the dashboard)\nNote this does not always imply that the query should not be executed since\nthe results from a hidden query may be used as the input to other queries (SSE etc)",
+            "type": "boolean"
+          },
+          "queryType": {
+            "description": "Specify the query flavor\nTODO make this required and give it a default",
+            "type": "string"
+          },
+          "datasource": {
+            "description": "For mixed data sources the selected datasource is on the query level.\nFor non mixed scenarios this is undefined.\nTODO find a better way to do this ^ that's friendly to schema\nTODO this shouldn't be unknown but DataSourceRef | null"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "NodesQuery": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "random",
+              "response",
+              "random edges"
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "PulseWaveQuery": {
+        "type": "object",
+        "properties": {
+          "timeStep": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "onCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "offCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "onValue": {
+            "type": "number",
+            "format": "double"
+          },
+          "offValue": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "Scenario": {
+        "description": "TODO: Should this live here given it's not used in the dataquery?",
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "stringInput"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "stringInput": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "hideAliasField": {
+            "type": "boolean"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "SimulationQuery": {
+        "type": "object",
+        "required": [
+          "key"
+        ],
+        "properties": {
+          "key": {
+            "type": "object",
+            "required": [
+              "type",
+              "tick"
+            ],
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "tick": {
+                "type": "number",
+                "format": "double"
+              },
+              "uid": {
+                "type": "string"
+              }
+            }
+          },
+          "config": {
+            "type": "object"
+          },
+          "stream": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "StreamingQuery": {
+        "type": "object",
+        "required": [
+          "type",
+          "speed",
+          "spread",
+          "noise"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "signal",
+              "logs",
+              "fetch"
+            ]
+          },
+          "speed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "spread": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "noise": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "bands": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "TestDataDataQuery": {
+        "type": "object",
+        "properties": {
+          "alias": {
+            "type": "string"
+          },
+          "scenarioId": {
+            "type": "string",
+            "$ref": "#/components/schemas/TestDataQueryType"
+          },
+          "stringInput": {
+            "type": "string"
+          },
+          "stream": {
+            "$ref": "#/components/schemas/StreamingQuery"
+          },
+          "pulseWave": {
+            "$ref": "#/components/schemas/PulseWaveQuery"
+          },
+          "sim": {
+            "$ref": "#/components/schemas/SimulationQuery"
+          },
+          "csvWave": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CSVWave"
+            }
+          },
+          "labels": {
+            "type": "string"
+          },
+          "lines": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "levelColumn": {
+            "type": "boolean"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "nodes": {
+            "$ref": "#/components/schemas/NodesQuery"
+          },
+          "csvFileName": {
+            "type": "string"
+          },
+          "csvContent": {
+            "type": "string"
+          },
+          "rawFrameContent": {
+            "type": "string"
+          },
+          "seriesCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "usa": {
+            "$ref": "#/components/schemas/USAQuery"
+          },
+          "errorType": {
+            "type": "string",
+            "enum": [
+              "server_panic",
+              "frontend_exception",
+              "frontend_observable"
+            ]
+          },
+          "spanCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number",
+                    "minimum": -9223372036854775808,
+                    "maximum": 9223372036854775807
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DataQuery"
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "TestDataQueryType": {
+        "type": "string",
+        "enum": [
+          "random_walk",
+          "slow_query",
+          "random_walk_with_error",
+          "random_walk_table",
+          "exponential_heatmap_bucket_data",
+          "linear_heatmap_bucket_data",
+          "no_data_points",
+          "datapoints_outside_range",
+          "csv_metric_values",
+          "predictable_pulse",
+          "predictable_csv_wave",
+          "streaming_client",
+          "simulation",
+          "usa",
+          "live",
+          "grafana_api",
+          "arrow",
+          "annotations",
+          "table_static",
+          "server_error_500",
+          "logs",
+          "node_graph",
+          "flame_graph",
+          "raw_frame",
+          "csv_file",
+          "csv_content",
+          "trace",
+          "manual_entry",
+          "variables-query"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "USAQuery": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string"
+          },
+          "period": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "states": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      }
+    }
+  }
+}

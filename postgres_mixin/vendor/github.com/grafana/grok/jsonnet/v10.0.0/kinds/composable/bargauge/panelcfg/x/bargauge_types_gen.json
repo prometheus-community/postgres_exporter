@@ -1,0 +1,172 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "BarGaugePanelCfg",
+    "version": "0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "BarGaugeDisplayMode": {
+        "description": "Enum expressing the possible display modes\nfor the bar gauge component of Grafana UI",
+        "type": "string",
+        "enum": [
+          "basic",
+          "lcd",
+          "gradient"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "BarGaugePanelCfg": {
+        "type": "object",
+        "required": [
+          "PanelOptions"
+        ],
+        "properties": {
+          "PanelOptions": {
+            "type": "object",
+            "properties": {
+              "displayMode": {
+                "type": "string",
+                "$ref": "#/components/schemas/BarGaugeDisplayMode"
+              },
+              "valueMode": {
+                "type": "string",
+                "$ref": "#/components/schemas/BarGaugeValueMode"
+              },
+              "showUnfilled": {
+                "type": "boolean",
+                "default": true
+              },
+              "minVizWidth": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4294967295,
+                "default": 0
+              },
+              "minVizHeight": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4294967295,
+                "default": 10
+              }
+            },
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SingleStatBaseOptions"
+              },
+              {
+                "required": [
+                  "displayMode",
+                  "valueMode",
+                  "showUnfilled",
+                  "minVizWidth",
+                  "minVizHeight"
+                ]
+              }
+            ]
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "BarGaugeValueMode": {
+        "description": "Allows for the table cell gauge display type to set the gauge mode.",
+        "type": "string",
+        "enum": [
+          "color",
+          "text",
+          "hidden"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "OptionsWithTextFormatting": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "text": {
+            "$ref": "#/components/schemas/VizTextDisplayOptions"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "ReduceDataOptions": {
+        "description": "TODO docs",
+        "type": "object",
+        "required": [
+          "calcs"
+        ],
+        "properties": {
+          "values": {
+            "description": "If true show each row value",
+            "type": "boolean"
+          },
+          "limit": {
+            "description": "if showing all values limit",
+            "type": "number"
+          },
+          "calcs": {
+            "description": "When !values, pick one value for the whole field",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fields": {
+            "description": "Which fields to show.  By default this is only numeric fields",
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "SingleStatBaseOptions": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "reduceOptions": {
+            "$ref": "#/components/schemas/ReduceDataOptions"
+          },
+          "orientation": {
+            "$ref": "#/components/schemas/VizOrientation"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/OptionsWithTextFormatting"
+          },
+          {
+            "required": [
+              "reduceOptions",
+              "orientation"
+            ]
+          }
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "VizOrientation": {
+        "description": "TODO docs",
+        "type": "string",
+        "enum": [
+          "auto",
+          "vertical",
+          "horizontal"
+        ],
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      },
+      "VizTextDisplayOptions": {
+        "description": "TODO docs",
+        "type": "object",
+        "properties": {
+          "titleSize": {
+            "description": "Explicit title text size",
+            "type": "number"
+          },
+          "valueSize": {
+            "description": "Explicit value text size",
+            "type": "number"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-04/schema#"
+      }
+    }
+  }
+}
