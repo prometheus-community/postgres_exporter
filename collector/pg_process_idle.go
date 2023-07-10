@@ -18,6 +18,7 @@ import (
 	"database/sql"
 
 	"github.com/go-kit/log"
+	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -39,7 +40,7 @@ func NewPGProcessIdleCollector(config collectorConfig) (Collector, error) {
 var pgProcessIdleSeconds = prometheus.NewDesc(
 	prometheus.BuildFQName(namespace, processIdleSubsystem, "seconds"),
 	"Idle time of server processes",
-	[]string{"application_name"},
+	[]string{"state", "application_name"},
 	prometheus.Labels{},
 )
 
@@ -49,15 +50,17 @@ func (PGProcessIdleCollector) Update(ctx context.Context, instance *instance, ch
 		`WITH
 			metrics AS (
 				SELECT
+				state,
 				application_name,
 				SUM(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - state_change))::bigint)::float AS process_idle_seconds_sum,
 				COUNT(*) AS process_idle_seconds_count
 				FROM pg_stat_activity
-				WHERE state = 'idle'
-				GROUP BY application_name
+				WHERE state ~ '^idle'
+				GROUP BY state, application_name
 			),
 			buckets AS (
 				SELECT
+				state,
 				application_name,
 				le,
 				SUM(
@@ -69,35 +72,42 @@ func (PGProcessIdleCollector) Update(ctx context.Context, instance *instance, ch
 				FROM
 				pg_stat_activity,
 				UNNEST(ARRAY[1, 2, 5, 15, 30, 60, 90, 120, 300]) AS le
-				GROUP BY application_name, le
-				ORDER BY application_name, le
+				GROUP BY state, application_name, le
+				ORDER BY state, application_name, le
 			)
 			SELECT
+			state,
 			application_name,
 			process_idle_seconds_sum as seconds_sum,
 			process_idle_seconds_count as seconds_count,
 			ARRAY_AGG(le) AS seconds,
 			ARRAY_AGG(bucket) AS seconds_bucket
-			FROM metrics JOIN buckets USING (application_name)
-			GROUP BY 1, 2, 3;`)
+			FROM metrics JOIN buckets USING (state, application_name)
+			GROUP BY 1, 2, 3, 4;`)
 
+	var state sql.NullString
 	var applicationName sql.NullString
-	var secondsSum sql.NullInt64
+	var secondsSum sql.NullFloat64
 	var secondsCount sql.NullInt64
-	var seconds []uint64
-	var secondsBucket []uint64
+	var seconds []float64
+	var secondsBucket []int64
 
-	err := row.Scan(&applicationName, &secondsSum, &secondsCount, &seconds, &secondsBucket)
+	err := row.Scan(&state, &applicationName, &secondsSum, &secondsCount, pq.Array(&seconds), pq.Array(&secondsBucket))
+	if err != nil {
+		return err
+	}
 
 	var buckets = make(map[float64]uint64, len(seconds))
 	for i, second := range seconds {
 		if i >= len(secondsBucket) {
 			break
 		}
-		buckets[float64(second)] = secondsBucket[i]
+		buckets[second] = uint64(secondsBucket[i])
 	}
-	if err != nil {
-		return err
+
+	stateLabel := "unknown"
+	if state.Valid {
+		stateLabel = state.String
 	}
 
 	applicationNameLabel := "unknown"
@@ -111,12 +121,12 @@ func (PGProcessIdleCollector) Update(ctx context.Context, instance *instance, ch
 	}
 	secondsSumMetric := 0.0
 	if secondsSum.Valid {
-		secondsSumMetric = float64(secondsSum.Int64)
+		secondsSumMetric = secondsSum.Float64
 	}
 	ch <- prometheus.MustNewConstHistogram(
 		pgProcessIdleSeconds,
 		secondsCountMetric, secondsSumMetric, buckets,
-		applicationNameLabel,
+		stateLabel, applicationNameLabel,
 	)
 	return nil
 }
