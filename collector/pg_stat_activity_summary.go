@@ -37,7 +37,7 @@ func NewPGStatActivitySummaryCollector(config collectorConfig) (Collector, error
 
 var (
 	statActivitySummaryActiveCount = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statActivitySummarySubsystem, "active_count"),
+		prometheus.BuildFQName(namespace, statActivitySummarySubsystem, "active"),
 		"Number of active queries at time of sample",
 		[]string{"usename", "application", "endpoint", "command", "state", "wait_event", "wait_event_type"},
 		prometheus.Labels{},
