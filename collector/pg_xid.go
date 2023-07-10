@@ -78,12 +78,12 @@ func (PGXidCollector) Update(ctx context.Context, instance *instance, ch chan<- 
 
 		ch <- prometheus.MustNewConstMetric(
 			xidCurrent,
-			prometheus.CounterValue,
+			prometheus.GaugeValue,
 			current,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			xidXmin,
-			prometheus.CounterValue,
+			prometheus.GaugeValue,
 			xmin,
 		)
 		ch <- prometheus.MustNewConstMetric(

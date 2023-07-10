@@ -50,8 +50,8 @@ func TestPgXidCollector(t *testing.T) {
 		}
 	}()
 	expected := []MetricResult{
-		{labels: labelMap{}, value: 22, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{}, value: 25, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{}, value: 22, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{}, value: 25, metricType: dto.MetricType_GAUGE},
 		{labels: labelMap{}, value: 30, metricType: dto.MetricType_GAUGE},
 	}
 	convey.Convey("Metrics comparison", t, func() {
@@ -92,8 +92,8 @@ func TestPgNanCollector(t *testing.T) {
 		}
 	}()
 	expected := []MetricResult{
-		{labels: labelMap{}, value: math.NaN(), metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{}, value: math.NaN(), metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{}, value: math.NaN(), metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{}, value: math.NaN(), metricType: dto.MetricType_GAUGE},
 		{labels: labelMap{}, value: math.NaN(), metricType: dto.MetricType_GAUGE},
 	}
 	convey.Convey("Metrics comparison", t, func() {
