@@ -36,13 +36,13 @@ func NewPGStatioUserIndexesCollector(config collectorConfig) (Collector, error) 
 
 var (
 	statioUserIndexesIdxBlksRead = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statioUserIndexesSubsystem, "idx_blks_read"),
+		prometheus.BuildFQName(namespace, statioUserIndexesSubsystem, "idx_blks_read_total"),
 		"Number of disk blocks read from this index",
 		[]string{"schemaname", "relname", "indexrelname"},
 		prometheus.Labels{},
 	)
 	statioUserIndexesIdxBlksHit = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statioUserIndexesSubsystem, "idx_blks_hit"),
+		prometheus.BuildFQName(namespace, statioUserIndexesSubsystem, "idx_blks_hit_total"),
 		"Number of buffer hits in this index",
 		[]string{"schemaname", "relname", "indexrelname"},
 		prometheus.Labels{},
