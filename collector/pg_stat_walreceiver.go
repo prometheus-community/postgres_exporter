@@ -37,13 +37,7 @@ func NewPGStatWalReceiverCollector(config collectorConfig) (Collector, error) {
 }
 
 var (
-	labelCats             = []string{"upstream_host", "slot_name", "status"}
-	statWalReceiverStatus = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "status"),
-		"Activity status of the WAL receiver process",
-		labelCats,
-		prometheus.Labels{},
-	)
+	labelCats                      = []string{"upstream_host", "slot_name", "status"}
 	statWalReceiverReceiveStartLsn = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "receive_start_lsn"),
 		"First write-ahead log location used when WAL receiver is started represented as a decimal",
