@@ -51,7 +51,7 @@ func TestPGStatBGWriterCollector(t *testing.T) {
 	}
 
 	rows := sqlmock.NewRows(columns).
-		AddRow(354, 4945, 289097744, 1242257, 3275602074, 89320867, 450139, 2034563757, 0, 2725688749, srT)
+		AddRow(354, 4945, 289097744, 1242257, int64(3275602074), 89320867, 450139, 2034563757, 0, int64(2725688749), srT)
 	mock.ExpectQuery(sanitizeQuery(statBGWriterQuery)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
