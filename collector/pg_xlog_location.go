@@ -69,7 +69,7 @@ func (PGXlogLocationCollector) Update(ctx context.Context, instance *instance, c
 
 		ch <- prometheus.MustNewConstMetric(
 			xlogLocationBytes,
-			prometheus.CounterValue,
+			prometheus.GaugeValue,
 			bytes,
 		)
 	}

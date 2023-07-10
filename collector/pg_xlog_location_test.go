@@ -47,7 +47,7 @@ func TestPGXlogLocationCollector(t *testing.T) {
 		}
 	}()
 	expected := []MetricResult{
-		{labels: labelMap{}, value: 53401, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{}, value: 53401, metricType: dto.MetricType_GAUGE},
 	}
 	convey.Convey("Metrics comparison", t, func() {
 		for _, expect := range expected {
