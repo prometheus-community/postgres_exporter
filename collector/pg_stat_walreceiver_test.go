@@ -87,16 +87,15 @@ func TestPGStatWalReceiverCollectorWithFlushedLSN(t *testing.T) {
 		}
 	}()
 	expected := []MetricResult{
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: -1.0, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1200668684563608, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1687321285, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1200668684563609, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1687321280, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1687321275, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1687321276, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1200668684563610, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1687321277, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 5, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar", "status": "stopping"}, value: 1200668684563608, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar", "status": "stopping"}, value: 1687321285, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar", "status": "stopping"}, value: 1200668684563609, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar", "status": "stopping"}, value: 1687321280, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar", "status": "stopping"}, value: 1687321275, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar", "status": "stopping"}, value: 1687321276, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar", "status": "stopping"}, value: 1200668684563610, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar", "status": "stopping"}, value: 1687321277, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar", "status": "stopping"}, value: 5, metricType: dto.MetricType_GAUGE},
 	}
 	convey.Convey("Metrics comparison", t, func() {
 		for _, expect := range expected {
@@ -165,15 +164,14 @@ func TestPGStatWalReceiverCollectorWithNoFlushedLSN(t *testing.T) {
 		}
 	}()
 	expected := []MetricResult{
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1.0, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1200668684563608, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1687321285, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1687321280, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1687321275, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1687321276, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1200668684563610, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 1687321277, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar"}, value: 5, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar", "status": "starting"}, value: 1200668684563608, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar", "status": "starting"}, value: 1687321285, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar", "status": "starting"}, value: 1687321280, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar", "status": "starting"}, value: 1687321275, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar", "status": "starting"}, value: 1687321276, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar", "status": "starting"}, value: 1200668684563610, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar", "status": "starting"}, value: 1687321277, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "bar", "status": "starting"}, value: 5, metricType: dto.MetricType_GAUGE},
 	}
 	convey.Convey("Metrics comparison", t, func() {
 		for _, expect := range expected {

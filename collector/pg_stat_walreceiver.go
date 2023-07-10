@@ -37,64 +37,65 @@ func NewPGStatWalReceiverCollector(config collectorConfig) (Collector, error) {
 }
 
 var (
+	labelCats             = []string{"upstream_host", "slot_name", "status"}
 	statWalReceiverStatus = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "status"),
 		"Activity status of the WAL receiver process",
-		[]string{"upstream_host", "slot_name"},
+		labelCats,
 		prometheus.Labels{},
 	)
 	statWalReceiverReceiveStartLsn = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "receive_start_lsn"),
 		"First write-ahead log location used when WAL receiver is started represented as a decimal",
-		[]string{"upstream_host", "slot_name"},
+		labelCats,
 		prometheus.Labels{},
 	)
 	statWalReceiverReceiveStartTli = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "receive_start_tli"),
 		"First timeline number used when WAL receiver is started",
-		[]string{"upstream_host", "slot_name"},
+		labelCats,
 		prometheus.Labels{},
 	)
 	statWalReceiverFlushedLSN = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "flushed_lsn"),
 		"Last write-ahead log location already received and flushed to disk, the initial value of this field being the first log location used when WAL receiver is started represented as a decimal",
-		[]string{"upstream_host", "slot_name"},
+		labelCats,
 		prometheus.Labels{},
 	)
 	statWalReceiverReceivedTli = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "received_tli"),
 		"Timeline number of last write-ahead log location received and flushed to disk",
-		[]string{"upstream_host", "slot_name"},
+		labelCats,
 		prometheus.Labels{},
 	)
 	statWalReceiverLastMsgSendTime = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "last_msg_send_time"),
 		"Send time of last message received from origin WAL sender",
-		[]string{"upstream_host", "slot_name"},
+		labelCats,
 		prometheus.Labels{},
 	)
 	statWalReceiverLastMsgReceiptTime = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "last_msg_receipt_time"),
 		"Send time of last message received from origin WAL sender",
-		[]string{"upstream_host", "slot_name"},
+		labelCats,
 		prometheus.Labels{},
 	)
 	statWalReceiverLatestEndLsn = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "latest_end_lsn"),
 		"Last write-ahead log location reported to origin WAL sender as integer",
-		[]string{"upstream_host", "slot_name"},
+		labelCats,
 		prometheus.Labels{},
 	)
 	statWalReceiverLatestEndTime = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "latest_end_time"),
 		"Time of last write-ahead log location reported to origin WAL sender",
-		[]string{"upstream_host", "slot_name"},
+		labelCats,
 		prometheus.Labels{},
 	)
 	statWalReceiverUpstreamNode = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statWalReceiverSubsystem, "upstream_node"),
 		"Node ID of the upstream node",
-		[]string{"upstream_host", "slot_name"},
+		labelCats,
 		prometheus.Labels{},
 	)
 
@@ -167,29 +168,12 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 			level.Debug(c.log).Log("msg", "Skipping wal receiver stats because slotname host is null")
 			continue
 		}
-		labels := []string{upstreamHost.String, slotName.String}
+
 		if !status.Valid {
 			level.Debug(c.log).Log("msg", "Skipping wal receiver stats because status is null")
 			continue
 		}
-
-		var statusMetric float64
-		switch status.String {
-		case "stopped":
-			statusMetric = 0.0
-		case "starting":
-			statusMetric = 1.0
-		case "streaming":
-			statusMetric = 2.0
-		case "waiting":
-			statusMetric = 3.0
-		case "restarting":
-			statusMetric = 4.0
-		case "stopping":
-			statusMetric = -1.0
-		default:
-			statusMetric = -2.0
-		}
+		labels := []string{upstreamHost.String, slotName.String, status.String}
 
 		if !receiveStartLsn.Valid {
 			level.Debug(c.log).Log("msg", "Skipping wal receiver stats because receive_start_lsn is null")
@@ -227,14 +211,7 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 			level.Debug(c.log).Log("msg", "Skipping wal receiver stats because upstream_node is null")
 			continue
 		}
-
 		receiveStartLsnMetric := float64(receiveStartLsn.Int64)
-		ch <- prometheus.MustNewConstMetric(
-			statWalReceiverStatus,
-			prometheus.GaugeValue,
-			statusMetric,
-			labels...)
-
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverReceiveStartLsn,
 			prometheus.CounterValue,
