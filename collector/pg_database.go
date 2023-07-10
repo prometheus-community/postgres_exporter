@@ -115,10 +115,7 @@ func (c PGDatabaseCollector) Update(ctx context.Context, instance *instance, ch 
 			prometheus.GaugeValue, sizeMetric, datname,
 		)
 	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	return nil
+	return rows.Err()
 }
 
 func sliceContains(slice []string, s string) bool {
