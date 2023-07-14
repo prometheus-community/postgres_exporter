@@ -205,55 +205,48 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 			level.Debug(c.log).Log("msg", "Skipping wal receiver stats because upstream_node is null")
 			continue
 		}
-		receiveStartLsnMetric := float64(receiveStartLsn.Int64)
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverReceiveStartLsn,
 			prometheus.CounterValue,
-			receiveStartLsnMetric,
+			float64(receiveStartLsn.Int64),
 			labels...)
 
-		receiveStartTliMetric := float64(receiveStartTli.Int64)
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverReceiveStartTli,
 			prometheus.GaugeValue,
-			receiveStartTliMetric,
+			float64(receiveStartTli.Int64),
 			labels...)
 
 		if hasFlushedLSN {
-			flushedLsnMetric := float64(flushedLsn.Int64)
 			ch <- prometheus.MustNewConstMetric(
 				statWalReceiverFlushedLSN,
 				prometheus.CounterValue,
-				flushedLsnMetric,
+				float64(flushedLsn.Int64),
 				labels...)
 		}
 
-		receivedTliMetric := float64(receivedTli.Int64)
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverReceivedTli,
 			prometheus.GaugeValue,
-			receivedTliMetric,
+			float64(receivedTli.Int64),
 			labels...)
 
-		lastMsgSendTimeMetric := float64(lastMsgSendTime.Float64)
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverLastMsgSendTime,
 			prometheus.CounterValue,
-			lastMsgSendTimeMetric,
+			float64(lastMsgSendTime.Float64),
 			labels...)
 
-		lastMsgReceiptTimeMetric := float64(lastMsgReceiptTime.Float64)
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverLastMsgReceiptTime,
 			prometheus.CounterValue,
-			lastMsgReceiptTimeMetric,
+			float64(lastMsgReceiptTime.Float64),
 			labels...)
 
-		latestEndLsnMetric := float64(latestEndLsn.Int64)
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverLatestEndLsn,
 			prometheus.CounterValue,
-			latestEndLsnMetric,
+			float64(latestEndLsn.Int64),
 			labels...)
 
 		ch <- prometheus.MustNewConstMetric(
@@ -262,11 +255,10 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 			latestEndTime.Float64,
 			labels...)
 
-		upstreamNodeMetric := float64(upstreamNode.Int64)
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverUpstreamNode,
 			prometheus.GaugeValue,
-			upstreamNodeMetric,
+			float64(upstreamNode.Int64),
 			labels...)
 	}
 	if err := rows.Err(); err != nil {
