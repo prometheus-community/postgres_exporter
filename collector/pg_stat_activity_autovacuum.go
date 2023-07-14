@@ -49,8 +49,7 @@ var (
     FROM
     	pg_catalog.pg_stat_activity
     WHERE
-		query LIKE 'autovacuum:%' AND
-		EXTRACT(EPOCH FROM (clock_timestamp() - xact_start)) > 300
+		query LIKE 'autovacuum:%'
 	`
 )
 
