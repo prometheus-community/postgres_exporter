@@ -256,11 +256,10 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 			latestEndLsnMetric,
 			labels...)
 
-		latestEndTimeMetric := float64(latestEndTime.Float64)
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverLatestEndTime,
 			prometheus.CounterValue,
-			latestEndTimeMetric,
+			latestEndTime.Float64,
 			labels...)
 
 		upstreamNodeMetric := float64(upstreamNode.Int64)
