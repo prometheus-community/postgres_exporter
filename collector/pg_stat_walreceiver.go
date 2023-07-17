@@ -108,7 +108,8 @@ var (
 		slot_name,
 		status,
 		(receive_start_lsn- '0/0') % (2^52)::bigint as receive_start_lsn,
-		%sreceive_start_tli,
+		%s
+receive_start_tli,
 		received_tli,
 		extract(epoch from last_msg_send_time) as last_msg_send_time,
 		extract(epoch from last_msg_receipt_time) as last_msg_receipt_time,
