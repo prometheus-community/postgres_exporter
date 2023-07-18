@@ -95,7 +95,7 @@
             "uid": "$datasource"
           },
           "dsType": "prometheus",
-          "expr": "sum(irate(pg_stat_database_xact_commit{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) + sum(irate(pg_stat_database_xact_rollback{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
+          "expr": "sum(irate(pg_stat_database_xact_commit{datname=~\"$db\",%(postgresExporterSelector)s}[$__rate_interval])) + sum(irate(pg_stat_database_xact_rollback{datname=~\"$db\",%(postgresExporterSelector)s}[$__rate_interval]))",
           "format": "time_series",
           "groupBy": [
             {
