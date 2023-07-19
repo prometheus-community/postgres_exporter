@@ -1,5 +1,4 @@
 ---
-version: '3'
 services:
   postgresql:
     image: ${POSTGRESQL_IMAGE:-postgres}
