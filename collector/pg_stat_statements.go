@@ -105,9 +105,9 @@ var (
 	JOIN pg_database
 		ON pg_database.oid = pg_stat_statements.dbid
 	WHERE
-		total_time > (
+		total_exec_time > (
 		SELECT percentile_cont(0.1)
-			WITHIN GROUP (ORDER BY total_time)
+			WITHIN GROUP (ORDER BY total_exec_time)
 			FROM pg_stat_statements
 		)
 	ORDER BY seconds_total DESC
