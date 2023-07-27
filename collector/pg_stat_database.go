@@ -344,9 +344,11 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no blk_write_time")
 			continue
 		}
+
+		statsResetMetric := 0.0
 		if !statsReset.Valid {
 			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no stats_reset")
-			continue
+			statsResetMetric = float64(statsReset.Time.Unix()),
 		}
 
 		labels := []string{datid.String, datname.String}
@@ -466,7 +468,7 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseStatsReset,
 			prometheus.CounterValue,
-			float64(statsReset.Time.Unix()),
+			statsResetMetric,
 			labels...,
 		)
 	}
