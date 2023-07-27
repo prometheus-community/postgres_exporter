@@ -345,10 +345,12 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 			continue
 		}
 
-		statsResetMetric := 0.0
+		var statsResetMetric float64
 		if !statsReset.Valid {
 			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no stats_reset")
-			statsResetMetric = float64(statsReset.Time.Unix()),
+			statsResetMetric = 0.0
+		} else {
+			statsResetMetric = float64(statsReset.Time.Unix())
 		}
 
 		labels := []string{datid.String, datname.String}
