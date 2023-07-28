@@ -16,6 +16,7 @@ package collector
 import (
 	"context"
 
+	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -26,10 +27,11 @@ func init() {
 }
 
 type PGWALCollector struct {
+	log log.Logger
 }
 
 func NewPGWALCollector(config collectorConfig) (Collector, error) {
-	return &PGWALCollector{}, nil
+	return &PGWALCollector{log: config.logger}, nil
 }
 
 var (

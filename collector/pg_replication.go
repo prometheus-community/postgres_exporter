@@ -16,6 +16,7 @@ package collector
 import (
 	"context"
 
+	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -26,10 +27,11 @@ func init() {
 }
 
 type PGReplicationCollector struct {
+	log log.Logger
 }
 
-func NewPGReplicationCollector(collectorConfig) (Collector, error) {
-	return &PGReplicationCollector{}, nil
+func NewPGReplicationCollector(config collectorConfig) (Collector, error) {
+	return &PGReplicationCollector{log: config.logger}, nil
 }
 
 var (
