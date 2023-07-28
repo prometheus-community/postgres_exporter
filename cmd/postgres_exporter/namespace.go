@@ -233,7 +233,7 @@ func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[str
 		// Serious error - a namespace disappeared
 		if err != nil {
 			namespaceErrors[namespace] = err
-			level.Info(logger).Log("err", err)
+			level.Error(logger).Log("err", err)
 		}
 		// Non-serious errors - likely version or parsing problems.
 		if len(nonFatalErrors) > 0 {

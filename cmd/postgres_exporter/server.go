@@ -126,6 +126,10 @@ func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool
 	errMap := queryNamespaceMappings(ch, s)
 	if len(errMap) > 0 {
 		err = fmt.Errorf("queryNamespaceMappings returned %d errors", len(errMap))
+		level.Error(logger).Log("msg", "NAMESPACE ERRORS FOUND")
+		for namespace, err := range errMap {
+			level.Error(logger).Log("namespace", namespace, "msg", err)
+		}
 	}
 
 	return err
