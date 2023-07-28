@@ -347,7 +347,8 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 
 		statsResetMetric := 0.0
 		if !statsReset.Valid {
-			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no stats_reset")
+			level.Debug(c.log).Log("msg", "No metric for stats_reset, will collect 0 instead")
+		}
 		if statsReset.Valid {
 			statsResetMetric = float64(statsReset.Time.Unix())
 		}
