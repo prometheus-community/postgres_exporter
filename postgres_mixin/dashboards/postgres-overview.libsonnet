@@ -1338,7 +1338,7 @@
               "query": "label_values(pg_up, job)",
               "refId": "StandardVariableQuery"
             },
-            "refresh": 1,
+            "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "sort": 0,
@@ -1372,7 +1372,7 @@
               "query": "label_values(pg_up{job=~\"$job\"},instance)",
               "refId": "StandardVariableQuery"
             },
-            "refresh": 1,
+            "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "sort": 0,
@@ -1397,7 +1397,7 @@
               "query": "label_values(pg_stat_database_tup_fetched{%(postgresExporterSelector)s,datname!~\"template.*|postgres\"},datname)" % $._config,
               "refId": "StandardVariableQuery"
             },
-            "refresh": 1,
+            "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "sort": 0,
