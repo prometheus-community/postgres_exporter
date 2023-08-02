@@ -1,1 +1,5 @@
-(import 'postgres-overview.libsonnet')
+{
+  grafanaDashboards+:: {
+    'postgres-overview.json': (import 'postgres-overview.json'),
+  },
+}
