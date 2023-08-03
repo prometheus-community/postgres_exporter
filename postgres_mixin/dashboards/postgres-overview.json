@@ -31,6 +31,26 @@
   "liveNow": false,
   "panels": [
     {
+      "collapse": false,
+      "collapsed": false,
+      "gridPos": {
+         "h": 2,
+         "w": 8,
+         "x": 0,
+         "y": 0
+      },
+      "panels": [ ],
+      "repeat": null,
+      "repeatIteration": null,
+      "repeatRowId": null,
+      "showTitle": true,
+      "span": 4,
+      "title": "Postgres Overview",
+      "titleSize": "h6",
+      "type": "row"
+   },
+    {
+      
       "datasource": {
         "uid": "$datasource"
       },
