@@ -54,7 +54,7 @@ var (
 		COUNT(*) as transactions,
    		MAX(EXTRACT(EPOCH FROM clock_timestamp())) AS oldest_timestamp_seconds
     FROM pg_catalog.pg_stat_activity
-    WHERE state is distinct from 'idle' AND (now() - xact_start) > '1 minutes'::interval AND query not like 'autovacuum:%'
+    WHERE state is distinct from 'idle' AND query not like 'autovacuum:%'
 	`
 )
 
