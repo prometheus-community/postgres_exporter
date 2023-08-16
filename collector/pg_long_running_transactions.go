@@ -43,7 +43,7 @@ var (
 	)
 
 	longRunningTransactionsAgeInSeconds = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, longRunningTransactionsSubsystem, "age_in_seconds"),
+		prometheus.BuildFQName(namespace, longRunningTransactionsSubsystem, "oldest_timestamp_seconds"),
 		"The current maximum transaction age in seconds",
 		[]string{},
 		prometheus.Labels{},
