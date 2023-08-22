@@ -22,66 +22,33 @@ import (
 	"github.com/smartystreets/goconvey/convey"
 )
 
-func TestPgPostmasterCollector(t *testing.T) {
+func TestPGStatActivityAutovacuumCollector(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("Error opening a stub db connection: %s", err)
 	}
 	defer db.Close()
-
 	inst := &instance{db: db}
+	columns := []string{
+		"relname",
+		"timestamp_seconds",
+	}
+	rows := sqlmock.NewRows(columns).
+		AddRow("test", 3600)
 
-	mock.ExpectQuery(sanitizeQuery(pgPostmasterQuery)).WillReturnRows(sqlmock.NewRows([]string{"pg_postmaster_start_time"}).
-		AddRow(1685739904))
+	mock.ExpectQuery(sanitizeQuery(statActivityAutovacuumQuery)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
-		c := PGPostmasterCollector{}
+		c := PGStatActivityAutovacuumCollector{}
 
 		if err := c.Update(context.Background(), inst, ch); err != nil {
-			t.Errorf("Error calling PGPostmasterCollector.Update: %s", err)
+			t.Errorf("Error calling PGStatActivityAutovacuumCollector.Update: %s", err)
 		}
 	}()
-
 	expected := []MetricResult{
-		{labels: labelMap{}, value: 1685739904, metricType: dto.MetricType_GAUGE},
-	}
-	convey.Convey("Metrics comparison", t, func() {
-		for _, expect := range expected {
-			m := readMetric(<-ch)
-			convey.So(expect, convey.ShouldResemble, m)
-		}
-	})
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled exceptions: %s", err)
-	}
-}
-
-func TestPgPostmasterCollectorNullTime(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("Error opening a stub db connection: %s", err)
-	}
-	defer db.Close()
-
-	inst := &instance{db: db}
-
-	mock.ExpectQuery(sanitizeQuery(pgPostmasterQuery)).WillReturnRows(sqlmock.NewRows([]string{"pg_postmaster_start_time"}).
-		AddRow(nil))
-
-	ch := make(chan prometheus.Metric)
-	go func() {
-		defer close(ch)
-		c := PGPostmasterCollector{}
-
-		if err := c.Update(context.Background(), inst, ch); err != nil {
-			t.Errorf("Error calling PGPostmasterCollector.Update: %s", err)
-		}
-	}()
-
-	expected := []MetricResult{
-		{labels: labelMap{}, value: 0, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"relname": "test"}, value: 3600, metricType: dto.MetricType_GAUGE},
 	}
 	convey.Convey("Metrics comparison", t, func() {
 		for _, expect := range expected {

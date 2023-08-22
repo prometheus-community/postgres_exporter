@@ -15,6 +15,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -110,73 +111,112 @@ func (PGStatIOUserTablesCollector) Update(ctx context.Context, instance *instanc
 	defer rows.Close()
 
 	for rows.Next() {
-		var datname string
-		var schemaname string
-		var relname string
-		var heapBlksRead int64
-		var heapBlksHit int64
-		var idxBlksRead int64
-		var idxBlksHit int64
-		var toastBlksRead int64
-		var toastBlksHit int64
-		var tidxBlksRead int64
-		var tidxBlksHit int64
+		var datname, schemaname, relname sql.NullString
+		var heapBlksRead, heapBlksHit, idxBlksRead, idxBlksHit, toastBlksRead, toastBlksHit, tidxBlksRead, tidxBlksHit sql.NullInt64
 
 		if err := rows.Scan(&datname, &schemaname, &relname, &heapBlksRead, &heapBlksHit, &idxBlksRead, &idxBlksHit, &toastBlksRead, &toastBlksHit, &tidxBlksRead, &tidxBlksHit); err != nil {
 			return err
 		}
+		datnameLabel := "unknown"
+		if datname.Valid {
+			datnameLabel = datname.String
+		}
+		schemanameLabel := "unknown"
+		if schemaname.Valid {
+			schemanameLabel = schemaname.String
+		}
+		relnameLabel := "unknown"
+		if relname.Valid {
+			relnameLabel = relname.String
+		}
 
+		heapBlksReadMetric := 0.0
+		if heapBlksRead.Valid {
+			heapBlksReadMetric = float64(heapBlksRead.Int64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statioUserTablesHeapBlksRead,
 			prometheus.CounterValue,
-			float64(heapBlksRead),
-			datname, schemaname, relname,
+			heapBlksReadMetric,
+			datnameLabel, schemanameLabel, relnameLabel,
 		)
+
+		heapBlksHitMetric := 0.0
+		if heapBlksHit.Valid {
+			heapBlksHitMetric = float64(heapBlksHit.Int64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statioUserTablesHeapBlksHit,
 			prometheus.CounterValue,
-			float64(heapBlksHit),
-			datname, schemaname, relname,
+			heapBlksHitMetric,
+			datnameLabel, schemanameLabel, relnameLabel,
 		)
+
+		idxBlksReadMetric := 0.0
+		if idxBlksRead.Valid {
+			idxBlksReadMetric = float64(idxBlksRead.Int64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statioUserTablesIdxBlksRead,
 			prometheus.CounterValue,
-			float64(idxBlksRead),
-			datname, schemaname, relname,
+			idxBlksReadMetric,
+			datnameLabel, schemanameLabel, relnameLabel,
 		)
+
+		idxBlksHitMetric := 0.0
+		if idxBlksHit.Valid {
+			idxBlksHitMetric = float64(idxBlksHit.Int64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statioUserTablesIdxBlksHit,
 			prometheus.CounterValue,
-			float64(idxBlksHit),
-			datname, schemaname, relname,
+			idxBlksHitMetric,
+			datnameLabel, schemanameLabel, relnameLabel,
 		)
+
+		toastBlksReadMetric := 0.0
+		if toastBlksRead.Valid {
+			toastBlksReadMetric = float64(toastBlksRead.Int64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statioUserTablesToastBlksRead,
 			prometheus.CounterValue,
-			float64(toastBlksRead),
-			datname, schemaname, relname,
+			toastBlksReadMetric,
+			datnameLabel, schemanameLabel, relnameLabel,
 		)
+
+		toastBlksHitMetric := 0.0
+		if toastBlksHit.Valid {
+			toastBlksHitMetric = float64(toastBlksHit.Int64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statioUserTablesToastBlksHit,
 			prometheus.CounterValue,
-			float64(toastBlksHit),
-			datname, schemaname, relname,
+			toastBlksHitMetric,
+			datnameLabel, schemanameLabel, relnameLabel,
 		)
+
+		tidxBlksReadMetric := 0.0
+		if tidxBlksRead.Valid {
+			tidxBlksReadMetric = float64(tidxBlksRead.Int64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statioUserTablesTidxBlksRead,
 			prometheus.CounterValue,
-			float64(tidxBlksRead),
-			datname, schemaname, relname,
+			tidxBlksReadMetric,
+			datnameLabel, schemanameLabel, relnameLabel,
 		)
+
+		tidxBlksHitMetric := 0.0
+		if tidxBlksHit.Valid {
+			tidxBlksHitMetric = float64(tidxBlksHit.Int64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statioUserTablesTidxBlksHit,
 			prometheus.CounterValue,
-			float64(tidxBlksHit),
-			datname, schemaname, relname,
+			tidxBlksHitMetric,
+			datnameLabel, schemanameLabel, relnameLabel,
 		)
 	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	return nil
+	return rows.Err()
 }

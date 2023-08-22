@@ -103,3 +103,84 @@ func TestPgReplicationSlotCollectorInActive(t *testing.T) {
 	}
 
 }
+
+func TestPgReplicationSlotCollectorActiveNil(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Error opening a stub db connection: %s", err)
+	}
+	defer db.Close()
+
+	inst := &instance{db: db}
+
+	columns := []string{"slot_name", "current_wal_lsn", "confirmed_flush_lsn", "active"}
+	rows := sqlmock.NewRows(columns).
+		AddRow("test_slot", 6, 12, nil)
+	mock.ExpectQuery(sanitizeQuery(pgReplicationSlotQuery)).WillReturnRows(rows)
+
+	ch := make(chan prometheus.Metric)
+	go func() {
+		defer close(ch)
+		c := PGReplicationSlotCollector{}
+
+		if err := c.Update(context.Background(), inst, ch); err != nil {
+			t.Errorf("Error calling PGReplicationSlotCollector.Update: %s", err)
+		}
+	}()
+
+	expected := []MetricResult{
+		{labels: labelMap{"slot_name": "test_slot"}, value: 6, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "test_slot"}, value: 0, metricType: dto.MetricType_GAUGE},
+	}
+
+	convey.Convey("Metrics comparison", t, func() {
+		for _, expect := range expected {
+			m := readMetric(<-ch)
+			convey.So(expect, convey.ShouldResemble, m)
+		}
+	})
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled exceptions: %s", err)
+	}
+}
+
+func TestPgReplicationSlotCollectorTestNilValues(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Error opening a stub db connection: %s", err)
+	}
+	defer db.Close()
+
+	inst := &instance{db: db}
+
+	columns := []string{"slot_name", "current_wal_lsn", "confirmed_flush_lsn", "active"}
+	rows := sqlmock.NewRows(columns).
+		AddRow(nil, nil, nil, true)
+	mock.ExpectQuery(sanitizeQuery(pgReplicationSlotQuery)).WillReturnRows(rows)
+
+	ch := make(chan prometheus.Metric)
+	go func() {
+		defer close(ch)
+		c := PGReplicationSlotCollector{}
+
+		if err := c.Update(context.Background(), inst, ch); err != nil {
+			t.Errorf("Error calling PGReplicationSlotCollector.Update: %s", err)
+		}
+	}()
+
+	expected := []MetricResult{
+		{labels: labelMap{"slot_name": "unknown"}, value: 0, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "unknown"}, value: 0, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "unknown"}, value: 1, metricType: dto.MetricType_GAUGE},
+	}
+
+	convey.Convey("Metrics comparison", t, func() {
+		for _, expect := range expected {
+			m := readMetric(<-ch)
+			convey.So(expect, convey.ShouldResemble, m)
+		}
+	})
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled exceptions: %s", err)
+	}
+}

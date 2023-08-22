@@ -17,6 +17,8 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -26,10 +28,12 @@ func init() {
 	registerCollector(statDatabaseSubsystem, defaultEnabled, NewPGStatDatabaseCollector)
 }
 
-type PGStatDatabaseCollector struct{}
+type PGStatDatabaseCollector struct {
+	log log.Logger
+}
 
 func NewPGStatDatabaseCollector(config collectorConfig) (Collector, error) {
-	return &PGStatDatabaseCollector{}, nil
+	return &PGStatDatabaseCollector{log: config.logger}, nil
 }
 
 var (
@@ -202,12 +206,9 @@ var (
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
 	)
-)
 
-func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
-	db := instance.getDB()
-	rows, err := db.QueryContext(ctx,
-		`SELECT
+	statDatabaseQuery = `
+		SELECT
 			datid
 			,datname
 			,numbackends
@@ -228,7 +229,13 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 			,blk_write_time
 			,stats_reset
 		FROM pg_stat_database;
-		`,
+	`
+)
+
+func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	db := instance.getDB()
+	rows, err := db.QueryContext(ctx,
+		statDatabaseQuery,
 	)
 	if err != nil {
 		return err
@@ -236,24 +243,8 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 	defer rows.Close()
 
 	for rows.Next() {
-		var datid string
-		var datname string
-		var numBackends float64
-		var xactCommit float64
-		var xactRollback float64
-		var blksRead float64
-		var blksHit float64
-		var tupReturned float64
-		var tupFetched float64
-		var tupInserted float64
-		var tupUpdated float64
-		var tupDeleted float64
-		var conflicts float64
-		var tempFiles float64
-		var tempBytes float64
-		var deadlocks float64
-		var blkReadTime float64
-		var blkWriteTime float64
+		var datid, datname sql.NullString
+		var numBackends, xactCommit, xactRollback, blksRead, blksHit, tupReturned, tupFetched, tupInserted, tupUpdated, tupDeleted, conflicts, tempFiles, tempBytes, deadlocks, blkReadTime, blkWriteTime sql.NullFloat64
 		var statsReset sql.NullTime
 
 		err := rows.Scan(
@@ -281,151 +272,203 @@ func (PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, c
 			return err
 		}
 
+		if !datid.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no datid")
+			continue
+		}
+		if !datname.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no datname")
+			continue
+		}
+		if !numBackends.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no numbackends")
+			continue
+		}
+		if !xactCommit.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no xact_commit")
+			continue
+		}
+		if !xactRollback.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no xact_rollback")
+			continue
+		}
+		if !blksRead.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no blks_read")
+			continue
+		}
+		if !blksHit.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no blks_hit")
+			continue
+		}
+		if !tupReturned.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no tup_returned")
+			continue
+		}
+		if !tupFetched.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no tup_fetched")
+			continue
+		}
+		if !tupInserted.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no tup_inserted")
+			continue
+		}
+		if !tupUpdated.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no tup_updated")
+			continue
+		}
+		if !tupDeleted.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no tup_deleted")
+			continue
+		}
+		if !conflicts.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no conflicts")
+			continue
+		}
+		if !tempFiles.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no temp_files")
+			continue
+		}
+		if !tempBytes.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no temp_bytes")
+			continue
+		}
+		if !deadlocks.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no deadlocks")
+			continue
+		}
+		if !blkReadTime.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no blk_read_time")
+			continue
+		}
+		if !blkWriteTime.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no blk_write_time")
+			continue
+		}
+		if !statsReset.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no stats_reset")
+			continue
+		}
+
+		labels := []string{datid.String, datname.String}
+
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseNumbackends,
 			prometheus.GaugeValue,
-			numBackends,
-			datid,
-			datname,
+			numBackends.Float64,
+			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseXactCommit,
 			prometheus.CounterValue,
-			xactCommit,
-			datid,
-			datname,
+			xactCommit.Float64,
+			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseXactRollback,
 			prometheus.CounterValue,
-			xactRollback,
-			datid,
-			datname,
+			xactRollback.Float64,
+			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseBlksRead,
 			prometheus.CounterValue,
-			blksRead,
-			datid,
-			datname,
+			blksRead.Float64,
+			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseBlksHit,
 			prometheus.CounterValue,
-			blksHit,
-			datid,
-			datname,
+			blksHit.Float64,
+			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTupReturned,
 			prometheus.CounterValue,
-			tupReturned,
-			datid,
-			datname,
+			tupReturned.Float64,
+			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTupFetched,
 			prometheus.CounterValue,
-			tupFetched,
-			datid,
-			datname,
+			tupFetched.Float64,
+			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTupInserted,
 			prometheus.CounterValue,
-			tupInserted,
-			datid,
-			datname,
+			tupInserted.Float64,
+			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTupUpdated,
 			prometheus.CounterValue,
-			tupUpdated,
-			datid,
-			datname,
+			tupUpdated.Float64,
+			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTupDeleted,
 			prometheus.CounterValue,
-			tupDeleted,
-			datid,
-			datname,
+			tupDeleted.Float64,
+			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseConflicts,
 			prometheus.CounterValue,
-			conflicts,
-			datid,
-			datname,
+			conflicts.Float64,
+			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTempFiles,
 			prometheus.CounterValue,
-			tempFiles,
-			datid,
-			datname,
+			tempFiles.Float64,
+			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTempBytes,
 			prometheus.CounterValue,
-			tempBytes,
-			datid,
-			datname,
+			tempBytes.Float64,
+			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseDeadlocks,
 			prometheus.CounterValue,
-			deadlocks,
-			datid,
-			datname,
+			deadlocks.Float64,
+			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseBlkReadTime,
 			prometheus.CounterValue,
-			blkReadTime,
-			datid,
-			datname,
+			blkReadTime.Float64,
+			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseBlkWriteTime,
 			prometheus.CounterValue,
-			blkWriteTime,
-			datid,
-			datname,
+			blkWriteTime.Float64,
+			labels...,
 		)
 
-		if statsReset.Valid {
-			ch <- prometheus.MustNewConstMetric(
-				statDatabaseStatsReset,
-				prometheus.CounterValue,
-				float64(statsReset.Time.Unix()),
-				datid,
-				datname,
-			)
-		} else {
-			ch <- prometheus.MustNewConstMetric(
-				statDatabaseStatsReset,
-				prometheus.CounterValue,
-				0,
-				datid,
-				datname,
-			)
-		}
+		ch <- prometheus.MustNewConstMetric(
+			statDatabaseStatsReset,
+			prometheus.CounterValue,
+			float64(statsReset.Time.Unix()),
+			labels...,
+		)
 	}
 	return nil
 }

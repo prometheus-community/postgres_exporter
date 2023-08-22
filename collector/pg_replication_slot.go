@@ -15,6 +15,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -65,11 +66,14 @@ var (
 
 	pgReplicationSlotQuery = `SELECT
 		slot_name,
-		pg_current_wal_lsn() - '0/0' AS current_wal_lsn,
-		coalesce(confirmed_flush_lsn, '0/0') - '0/0',
+		CASE WHEN pg_is_in_recovery() THEN 
+		    pg_last_wal_receive_lsn() - '0/0'
+		ELSE 
+		    pg_current_wal_lsn() - '0/0' 
+		END AS current_wal_lsn,
+		COALESCE(confirmed_flush_lsn, '0/0') - '0/0',
 		active
-	FROM
-		pg_replication_slots;`
+	FROM pg_replication_slots;`
 )
 
 func (PGReplicationSlotCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
@@ -82,36 +86,45 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, instance *instance
 	defer rows.Close()
 
 	for rows.Next() {
-		var slotName string
-		var walLSN int64
-		var flushLSN int64
-		var isActive bool
+		var slotName sql.NullString
+		var walLSN sql.NullFloat64
+		var flushLSN sql.NullFloat64
+		var isActive sql.NullBool
 		if err := rows.Scan(&slotName, &walLSN, &flushLSN, &isActive); err != nil {
 			return err
 		}
 
-		isActiveValue := 0
-		if isActive {
-			isActiveValue = 1
+		isActiveValue := 0.0
+		if isActive.Valid && isActive.Bool {
+			isActiveValue = 1.0
+		}
+		slotNameLabel := "unknown"
+		if slotName.Valid {
+			slotNameLabel = slotName.String
 		}
 
+		var walLSNMetric float64
+		if walLSN.Valid {
+			walLSNMetric = walLSN.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			pgReplicationSlotCurrentWalDesc,
-			prometheus.GaugeValue, float64(walLSN), slotName,
+			prometheus.GaugeValue, walLSNMetric, slotNameLabel,
 		)
-		if isActive {
+		if isActive.Valid && isActive.Bool {
+			var flushLSNMetric float64
+			if flushLSN.Valid {
+				flushLSNMetric = flushLSN.Float64
+			}
 			ch <- prometheus.MustNewConstMetric(
 				pgReplicationSlotCurrentFlushDesc,
-				prometheus.GaugeValue, float64(flushLSN), slotName,
+				prometheus.GaugeValue, flushLSNMetric, slotNameLabel,
 			)
 		}
 		ch <- prometheus.MustNewConstMetric(
 			pgReplicationSlotIsActiveDesc,
-			prometheus.GaugeValue, float64(isActiveValue), slotName,
+			prometheus.GaugeValue, isActiveValue, slotNameLabel,
 		)
 	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	return nil
+	return rows.Err()
 }

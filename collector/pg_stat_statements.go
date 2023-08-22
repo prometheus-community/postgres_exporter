@@ -15,7 +15,9 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 
+	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -89,60 +91,117 @@ var (
 		)
 	ORDER BY seconds_total DESC
 	LIMIT 100;`
+
+	pgStatStatementsNewQuery = `SELECT
+		pg_get_userbyid(userid) as user,
+		pg_database.datname,
+		pg_stat_statements.queryid,
+		pg_stat_statements.calls as calls_total,
+		pg_stat_statements.total_exec_time / 1000.0 as seconds_total,
+		pg_stat_statements.rows as rows_total,
+		pg_stat_statements.blk_read_time / 1000.0 as block_read_seconds_total,
+		pg_stat_statements.blk_write_time / 1000.0 as block_write_seconds_total
+		FROM pg_stat_statements
+	JOIN pg_database
+		ON pg_database.oid = pg_stat_statements.dbid
+	WHERE
+		total_exec_time > (
+		SELECT percentile_cont(0.1)
+			WITHIN GROUP (ORDER BY total_exec_time)
+			FROM pg_stat_statements
+		)
+	ORDER BY seconds_total DESC
+	LIMIT 100;`
 )
 
 func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	query := pgStatStatementsQuery
+	if instance.version.GE(semver.MustParse("13.0.0")) {
+		query = pgStatStatementsNewQuery
+	}
+
 	db := instance.getDB()
-	rows, err := db.QueryContext(ctx,
-		pgStatStatementsQuery)
+	rows, err := db.QueryContext(ctx, query)
 
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var user string
-		var datname string
-		var queryid string
-		var callsTotal int64
-		var secondsTotal float64
-		var rowsTotal int64
-		var blockReadSecondsTotal float64
-		var blockWriteSecondsTotal float64
+		var user, datname, queryid sql.NullString
+		var callsTotal, rowsTotal sql.NullInt64
+		var secondsTotal, blockReadSecondsTotal, blockWriteSecondsTotal sql.NullFloat64
 
 		if err := rows.Scan(&user, &datname, &queryid, &callsTotal, &secondsTotal, &rowsTotal, &blockReadSecondsTotal, &blockWriteSecondsTotal); err != nil {
 			return err
 		}
 
+		userLabel := "unknown"
+		if user.Valid {
+			userLabel = user.String
+		}
+		datnameLabel := "unknown"
+		if datname.Valid {
+			datnameLabel = datname.String
+		}
+		queryidLabel := "unknown"
+		if queryid.Valid {
+			queryidLabel = queryid.String
+		}
+
+		callsTotalMetric := 0.0
+		if callsTotal.Valid {
+			callsTotalMetric = float64(callsTotal.Int64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statSTatementsCallsTotal,
 			prometheus.CounterValue,
-			float64(callsTotal),
-			user, datname, queryid,
+			callsTotalMetric,
+			userLabel, datnameLabel, queryidLabel,
 		)
+
+		secondsTotalMetric := 0.0
+		if secondsTotal.Valid {
+			secondsTotalMetric = secondsTotal.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statStatementsSecondsTotal,
 			prometheus.CounterValue,
-			secondsTotal,
-			user, datname, queryid,
+			secondsTotalMetric,
+			userLabel, datnameLabel, queryidLabel,
 		)
+
+		rowsTotalMetric := 0.0
+		if rowsTotal.Valid {
+			rowsTotalMetric = float64(rowsTotal.Int64)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statStatementsRowsTotal,
 			prometheus.CounterValue,
-			float64(rowsTotal),
-			user, datname, queryid,
+			rowsTotalMetric,
+			userLabel, datnameLabel, queryidLabel,
 		)
+
+		blockReadSecondsTotalMetric := 0.0
+		if blockReadSecondsTotal.Valid {
+			blockReadSecondsTotalMetric = blockReadSecondsTotal.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statStatementsBlockReadSecondsTotal,
 			prometheus.CounterValue,
-			blockReadSecondsTotal,
-			user, datname, queryid,
+			blockReadSecondsTotalMetric,
+			userLabel, datnameLabel, queryidLabel,
 		)
+
+		blockWriteSecondsTotalMetric := 0.0
+		if blockWriteSecondsTotal.Valid {
+			blockWriteSecondsTotalMetric = blockWriteSecondsTotal.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			statStatementsBlockWriteSecondsTotal,
 			prometheus.CounterValue,
-			blockWriteSecondsTotal,
-			user, datname, queryid,
+			blockWriteSecondsTotalMetric,
+			userLabel, datnameLabel, queryidLabel,
 		)
 	}
 	if err := rows.Err(); err != nil {

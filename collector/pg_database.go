@@ -15,6 +15,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -79,38 +80,42 @@ func (c PGDatabaseCollector) Update(ctx context.Context, instance *instance, ch 
 	var databases []string
 
 	for rows.Next() {
-		var datname string
+		var datname sql.NullString
 		if err := rows.Scan(&datname); err != nil {
 			return err
 		}
 
+		if !datname.Valid {
+			continue
+		}
 		// Ignore excluded databases
 		// Filtering is done here instead of in the query to avoid
 		// a complicated NOT IN query with a variable number of parameters
-		if sliceContains(c.excludedDatabases, datname) {
+		if sliceContains(c.excludedDatabases, datname.String) {
 			continue
 		}
 
-		databases = append(databases, datname)
+		databases = append(databases, datname.String)
 	}
 
 	// Query the size of the databases
 	for _, datname := range databases {
-		var size int64
+		var size sql.NullFloat64
 		err = db.QueryRowContext(ctx, pgDatabaseSizeQuery, datname).Scan(&size)
 		if err != nil {
 			return err
 		}
 
+		sizeMetric := 0.0
+		if size.Valid {
+			sizeMetric = size.Float64
+		}
 		ch <- prometheus.MustNewConstMetric(
 			pgDatabaseSizeDesc,
-			prometheus.GaugeValue, float64(size), datname,
+			prometheus.GaugeValue, sizeMetric, datname,
 		)
 	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	return nil
+	return rows.Err()
 }
 
 func sliceContains(slice []string, s string) bool {
