@@ -166,6 +166,14 @@ func (p PostgresCollector) Describe(ch chan<- *prometheus.Desc) {
 // Collect implements the prometheus.Collector interface.
 func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 	ctx := context.TODO()
+
+	// Set up the database connection for the collector.
+	err := p.instance.setup()
+	if err != nil {
+		level.Error(p.logger).Log("msg", "Error opening connection to database", "err", err)
+		return
+	}
+
 	wg := sync.WaitGroup{}
 	wg.Add(len(p.Collectors))
 	for name, c := range p.Collectors {
