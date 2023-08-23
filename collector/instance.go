@@ -22,29 +22,43 @@ import (
 )
 
 type instance struct {
+	dsn     string
 	db      *sql.DB
 	version semver.Version
 }
 
 func newInstance(dsn string) (*instance, error) {
-	i := &instance{}
+	i := &instance{
+		dsn: dsn,
+	}
+
+	// "Create" a database handle to verify the DSN provided is valid.
+	// Open is not guaranteed to create a connection.
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return nil, err
+	}
+	db.Close()
+
+	return i, nil
+}
+
+func (i *instance) setup() error {
+	db, err := sql.Open("postgres", i.dsn)
+	if err != nil {
+		return err
 	}
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 	i.db = db
 
-	version, err := queryVersion(db)
+	version, err := queryVersion(i.db)
 	if err != nil {
-		db.Close()
-		return nil, err
+		return fmt.Errorf("error querying postgresql version: %w", err)
+	} else {
+		i.version = version
 	}
-
-	i.version = version
-
-	return i, nil
+	return nil
 }
 
 func (i *instance) getDB() *sql.DB {
