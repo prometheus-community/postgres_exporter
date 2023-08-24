@@ -102,7 +102,7 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
    Enable the `postmaster` collector (default: enabled).
 
 * `[no-]collector.process_idle`
-  Enable the `process_idle` collector (default: enabled).
+  Enable the `process_idle` collector (default: disabled).
 
 * `[no-]collector.replication`
   Enable the `replication` collector (default: enabled).
