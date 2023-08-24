@@ -29,7 +29,7 @@ type PGReplicationCollector struct {
 }
 
 func NewPGReplicationCollector(collectorConfig) (Collector, error) {
-	return &PGPostmasterCollector{}, nil
+	return &PGReplicationCollector{}, nil
 }
 
 var (

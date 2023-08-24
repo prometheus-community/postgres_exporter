@@ -218,8 +218,5 @@ func (PGStatIOUserTablesCollector) Update(ctx context.Context, instance *instanc
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	return nil
+	return rows.Err()
 }

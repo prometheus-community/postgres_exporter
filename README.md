@@ -30,6 +30,26 @@ To use the multi-target functionality, send an http request to the endpoint `/pr
 
 To avoid putting sensitive information like username and password in the URL, preconfigured auth modules are supported via the [auth_modules](#auth_modules) section of the config file. auth_modules for DSNs can be used with the `/probe` endpoint by specifying the `?auth_module=foo` http parameter.
 
+Example Prometheus config:
+```yaml
+scrape_configs:
+  - job_name: 'postgres'
+    static_configs:
+      - targets:
+        - server1:5432
+        - server2:5432
+    metrics_path: /probe
+    params:
+      auth_module: [foo]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9116  # The postgres exporter's real hostname:port.
+```
+
 ## Configuration File
 
 The configuration file controls the behavior of the exporter. It can be set using the `--config.file` command line flag and defaults to `postgres_exporter.yml`.
@@ -82,7 +102,7 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
    Enable the `postmaster` collector (default: enabled).
 
 * `[no-]collector.process_idle`
-  Enable the `process_idle` collector (default: enabled).
+  Enable the `process_idle` collector (default: disabled).
 
 * `[no-]collector.replication`
   Enable the `replication` collector (default: enabled).

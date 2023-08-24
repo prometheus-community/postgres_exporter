@@ -126,8 +126,5 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, instance *instance
 			prometheus.GaugeValue, isActiveValue, slotNameLabel,
 		)
 	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	return nil
+	return rows.Err()
 }

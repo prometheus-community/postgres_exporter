@@ -1,3 +1,9 @@
+## 0.13.2 / 2023-07-21
+
+* [BUGFIX] Fix type issues on pg_postmaster metrics #828
+* [BUGFIX] Fix pg_replication collector instantiation #854
+* [BUGFIX] Fix pg_process_idle metrics #855
+
 ## 0.13.1 / 2023-06-27
 
 * [BUGFIX] Make collectors not fail on null values #823
