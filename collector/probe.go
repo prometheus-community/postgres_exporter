@@ -18,6 +18,7 @@ import (
 	"sync"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -74,6 +75,13 @@ func (pc *ProbeCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (pc *ProbeCollector) Collect(ch chan<- prometheus.Metric) {
+	// Set up the database connection for the collector.
+	err := pc.instance.setup()
+	if err != nil {
+		level.Error(pc.logger).Log("msg", "Error opening connection to database", "err", err)
+		return
+	}
+
 	wg := sync.WaitGroup{}
 	wg.Add(len(pc.collectors))
 	for name, c := range pc.collectors {
