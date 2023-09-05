@@ -81,6 +81,7 @@ func (pc *ProbeCollector) Collect(ch chan<- prometheus.Metric) {
 		level.Error(pc.logger).Log("msg", "Error opening connection to database", "err", err)
 		return
 	}
+	defer pc.instance.Close()
 
 	wg := sync.WaitGroup{}
 	wg.Add(len(pc.collectors))
