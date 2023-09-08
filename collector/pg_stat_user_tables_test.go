@@ -71,7 +71,8 @@ func TestPGStatUserTablesCollector(t *testing.T) {
 		"vacuum_count",
 		"autovacuum_count",
 		"analyze_count",
-		"autoanalyze_count"}
+		"autoanalyze_count",
+		"total_size"}
 	rows := sqlmock.NewRows(columns).
 		AddRow("postgres",
 			"public",
@@ -94,7 +95,8 @@ func TestPGStatUserTablesCollector(t *testing.T) {
 			11,
 			12,
 			13,
-			14)
+			14,
+			15)
 	mock.ExpectQuery(sanitizeQuery(statUserTablesQuery)).WillReturnRows(rows)
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -170,9 +172,11 @@ func TestPGStatUserTablesCollectorNullValues(t *testing.T) {
 		"vacuum_count",
 		"autovacuum_count",
 		"analyze_count",
-		"autoanalyze_count"}
+		"autoanalyze_count",
+		"total_size"}
 	rows := sqlmock.NewRows(columns).
 		AddRow("postgres",
+			nil,
 			nil,
 			nil,
 			nil,
