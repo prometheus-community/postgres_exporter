@@ -95,11 +95,17 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `[no-]collector.database`
   Enable the `database` collector (default: enabled).
 
+* `[no-]collector.database_wraparound`
+  Enable the `database_wraparound` collector (default: disabled).
+
 * `[no-]collector.locks`
   Enable the `locks` collector (default: enabled).
 
+* `[no-]collector.long_running_transactions`
+  Enable the `long_running_transactions` collector (default: disabled).
+
 * `[no-]collector.postmaster`
-   Enable the `postmaster` collector (default: enabled).
+   Enable the `postmaster` collector (default: disabled).
 
 * `[no-]collector.process_idle`
   Enable the `process_idle` collector (default: disabled).
@@ -110,20 +116,35 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `[no-]collector.replication_slot`
   Enable the `replication_slot` collector (default: enabled).
 
+* `[no-]collector.stat_activity_autovacuum`
+  Enable the `stat_activity_autovacuum` collector (default: disabled).
+
 * `[no-]collector.stat_bgwriter`
   Enable the `stat_bgwriter` collector (default: enabled).
 
 * `[no-]collector.stat_database`
   Enable the `stat_database` collector (default: enabled).
 
-* `[no-]collector.statio_user_tables`
-  Enable the `statio_user_tables` collector (default: enabled).
-
 * `[no-]collector.stat_statements`
   Enable the `stat_statements` collector (default: disabled).
 
 * `[no-]collector.stat_user_tables`
   Enable the `stat_user_tables` collector (default: enabled).
+
+* `[no-]collector.stat_wal_receiver`
+  Enable the `stat_wal_receiver` collector (default: disabled).
+
+* `[no-]collector.statio_user_indexes`
+  Enable the `statio_user_indexes` collector (default: disabled).
+
+* `[no-]collector.statio_user_tables`
+  Enable the `statio_user_tables` collector (default: enabled).
+
+* `[no-]collector.wal`
+  Enable the `wal` collector (default: enabled).
+
+* `[no-]collector.xlog_location`
+  Enable the `xlog_location` collector (default: disabled).
 
 * `config.file`
   Set the config file path. Default is `postgres_exporter.yml`
