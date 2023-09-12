@@ -36,6 +36,18 @@ func NewPGStatUserTablesCollector(config collectorConfig) (Collector, error) {
 }
 
 var (
+	statUserTablesRelPages = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "relpages"),
+		"Estimated number of live pages",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
+	statUserTablesRelSize = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "relsize"),
+		"Estimated table size",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 	statUserTablesSeqScan = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, userTableSubsystem, "seq_scan"),
 		"Number of sequential scans initiated on this table",
@@ -154,7 +166,9 @@ var (
 	statUserTablesQuery = `SELECT
 		current_database() datname,
 		schemaname,
-		relname,
+		pg_stat_user_tables.relname,
+		relpages,
+		pg_relation_size(pg_stat_user_tables.relname::text::regclass) AS relsize,
 		seq_scan,
 		seq_tup_read,
 		idx_scan,
@@ -175,7 +189,9 @@ var (
 		analyze_count,
 		autoanalyze_count
 	FROM
-		pg_stat_user_tables`
+		pg_stat_user_tables
+	JOIN
+		pg_class ON pg_stat_user_tables.relid = pg_class.oid`
 )
 
 func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
@@ -190,11 +206,11 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 
 	for rows.Next() {
 		var datname, schemaname, relname sql.NullString
-		var seqScan, seqTupRead, idxScan, idxTupFetch, nTupIns, nTupUpd, nTupDel, nTupHotUpd, nLiveTup, nDeadTup,
+		var relPages, relSize, seqScan, seqTupRead, idxScan, idxTupFetch, nTupIns, nTupUpd, nTupDel, nTupHotUpd, nLiveTup, nDeadTup,
 			nModSinceAnalyze, vacuumCount, autovacuumCount, analyzeCount, autoanalyzeCount sql.NullInt64
 		var lastVacuum, lastAutovacuum, lastAnalyze, lastAutoanalyze sql.NullTime
 
-		if err := rows.Scan(&datname, &schemaname, &relname, &seqScan, &seqTupRead, &idxScan, &idxTupFetch, &nTupIns, &nTupUpd, &nTupDel, &nTupHotUpd, &nLiveTup, &nDeadTup, &nModSinceAnalyze, &lastVacuum, &lastAutovacuum, &lastAnalyze, &lastAutoanalyze, &vacuumCount, &autovacuumCount, &analyzeCount, &autoanalyzeCount); err != nil {
+		if err := rows.Scan(&datname, &schemaname, &relname, &relPages, &relSize, &seqScan, &seqTupRead, &idxScan, &idxTupFetch, &nTupIns, &nTupUpd, &nTupDel, &nTupHotUpd, &nLiveTup, &nDeadTup, &nModSinceAnalyze, &lastVacuum, &lastAutovacuum, &lastAnalyze, &lastAutoanalyze, &vacuumCount, &autovacuumCount, &analyzeCount, &autoanalyzeCount); err != nil {
 			return err
 		}
 
@@ -210,6 +226,28 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 		if relname.Valid {
 			relnameLabel = relname.String
 		}
+
+		relPagesMetric := 0.0
+		if relPages.Valid {
+			relPagesMetric = float64(relPages.Int64)
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statUserTablesRelPages,
+			prometheus.GaugeValue,
+			relPagesMetric,
+			datnameLabel, schemanameLabel, relnameLabel,
+		)
+
+		relSizeMetric := 0.0
+		if relSize.Valid {
+			relSizeMetric = float64(relSize.Int64)
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statUserTablesRelSize,
+			prometheus.GaugeValue,
+			relSizeMetric,
+			datnameLabel, schemanameLabel, relnameLabel,
+		)
 
 		seqScanMetric := 0.0
 		if seqScan.Valid {
