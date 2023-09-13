@@ -107,13 +107,13 @@ var (
 		trim(both '''' from substring(conninfo from 'host=([^ ]*)')) as upstream_host,
 		slot_name,
 		status,
-		(receive_start_lsn- '0/0') % (2^52)::bigint as receive_start_lsn,
+		(receive_start_lsn- '0/0') %% (2^52)::bigint as receive_start_lsn,
 		%s
 receive_start_tli,
 		received_tli,
 		extract(epoch from last_msg_send_time) as last_msg_send_time,
 		extract(epoch from last_msg_receipt_time) as last_msg_receipt_time,
-		(latest_end_lsn - '0/0') % (2^52)::bigint as latest_end_lsn,
+		(latest_end_lsn - '0/0') %% (2^52)::bigint as latest_end_lsn,
 		extract(epoch from latest_end_time) as latest_end_time,
 		substring(slot_name from 'repmgr_slot_([0-9]*)') as upstream_node
 	FROM pg_catalog.pg_stat_wal_receiver
@@ -127,7 +127,6 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 		return err
 	}
 
-	defer hasFlushedLSNRows.Close()
 	hasFlushedLSN := hasFlushedLSNRows.Next()
 	var query string
 	if hasFlushedLSN {
@@ -135,6 +134,9 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 	} else {
 		query = fmt.Sprintf(pgStatWalReceiverQueryTemplate, "")
 	}
+
+	hasFlushedLSNRows.Close()
+
 	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		return err
