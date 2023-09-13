@@ -127,7 +127,6 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 		return err
 	}
 
-	defer hasFlushedLSNRows.Close()
 	hasFlushedLSN := hasFlushedLSNRows.Next()
 	var query string
 	if hasFlushedLSN {
@@ -135,6 +134,9 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 	} else {
 		query = fmt.Sprintf(pgStatWalReceiverQueryTemplate, "")
 	}
+
+	hasFlushedLSNRows.Close()
+
 	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		return err
