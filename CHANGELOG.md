@@ -9,6 +9,7 @@
 * [ENHANCEMENT] Add xlog_location collector #849
 * [ENHANCEMENT] Add statio_user_indexes collector #845
 * [ENHANCEMENT] Add long_running_transactions collector #836
+* [ENHANCEMENT] Add pg_stat_user_tables_size_bytes metric #904
 * [BUGFIX] Fix tests on 32-bit systems #857
 * [BUGFIX] Fix pg_stat_statements metrics on Postgres 13+ #874 #876
 * [BUGFIX] Fix pg_stat_database metrics for NULL stats_reset #877
