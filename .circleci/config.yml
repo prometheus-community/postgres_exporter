@@ -16,6 +16,7 @@ jobs:
 
     steps:
     - prometheus/setup_environment
+    - run: GOHOSTARCH=386 GOARCH=386 make test
     - run: make
     - prometheus/store_artifact:
         file: postgres_exporter
