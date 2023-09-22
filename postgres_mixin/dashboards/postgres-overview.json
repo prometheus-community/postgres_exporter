@@ -584,7 +584,7 @@
         {
           "alias": "Buffers Allocated",
           "dsType": "prometheus",
-          "expr": "irate(pg_stat_bgwriter_buffers_alloc{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
+          "expr": "irate(pg_stat_bgwriter_buffers_alloc_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
           "format": "time_series",
           "groupBy": [
             {
@@ -636,7 +636,7 @@
         {
           "alias": "Buffers Allocated",
           "dsType": "prometheus",
-          "expr": "irate(pg_stat_bgwriter_buffers_backend_fsync{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
+          "expr": "irate(pg_stat_bgwriter_buffers_backend_fsync_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
           "format": "time_series",
           "groupBy": [
             {
@@ -688,7 +688,7 @@
         {
           "alias": "Buffers Allocated",
           "dsType": "prometheus",
-          "expr": "irate(pg_stat_bgwriter_buffers_backend{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
+          "expr": "irate(pg_stat_bgwriter_buffers_backend_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
           "format": "time_series",
           "groupBy": [
             {
@@ -740,7 +740,7 @@
         {
           "alias": "Buffers Allocated",
           "dsType": "prometheus",
-          "expr": "irate(pg_stat_bgwriter_buffers_clean{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
+          "expr": "irate(pg_stat_bgwriter_buffers_clean_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
           "format": "time_series",
           "groupBy": [
             {
@@ -792,7 +792,7 @@
         {
           "alias": "Buffers Allocated",
           "dsType": "prometheus",
-          "expr": "irate(pg_stat_bgwriter_buffers_checkpoint{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
+          "expr": "irate(pg_stat_bgwriter_buffers_checkpoint_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
           "format": "time_series",
           "groupBy": [
             {
@@ -1316,7 +1316,7 @@
         "datasource": "$datasource",
         "definition": "label_values(pg_up, job)",
         "hide": 0,
-        "includeAll": true,
+        "includeAll": false,
         "label": "job",
         "multi": true,
         "name": "job",
