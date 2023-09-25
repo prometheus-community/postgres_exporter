@@ -75,7 +75,7 @@ var (
 		pg_get_userbyid(userid) as user,
 		pg_database.datname,
 		pg_stat_statements.queryid,
-		pg_stat_statements.query as query,
+		LEFT(pg_stat_statements.query, %d) as query,
 		pg_stat_statements.calls as calls_total,
 		pg_stat_statements.total_time / 1000.0 as seconds_total,
 		pg_stat_statements.rows as rows_total,
