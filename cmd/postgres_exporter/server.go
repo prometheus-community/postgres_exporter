@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/blang/semver"
+	"github.com/blang/semver/v4"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )

@@ -3,12 +3,14 @@ package main
 import (
 	"crypto/sha256"
 	"fmt"
-	"github.com/blang/semver"
-	"github.com/go-kit/log/level"
-	"github.com/prometheus/client_golang/prometheus"
-	"gopkg.in/alecthomas/kingpin.v2"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
+
+	"github.com/alecthomas/kingpin/v2"
+	"github.com/blang/semver/v4"
+	"github.com/go-kit/log/level"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type MetricResolution string
@@ -55,7 +57,7 @@ func initializePerconaExporters(dsn []string, opts []ExporterOpt) (func(), *Expo
 		}),
 		WithUserQueriesPath(queriesPath),
 		WithConstantLabels(*constantLabelsList),
-		ExcludeDatabases(*excludeDatabases),
+		ExcludeDatabases(strings.Split(*excludeDatabases, ",")),
 	)
 	prometheus.MustRegister(hrExporter)
 
@@ -71,7 +73,7 @@ func initializePerconaExporters(dsn []string, opts []ExporterOpt) (func(), *Expo
 		}),
 		WithUserQueriesPath(queriesPath),
 		WithConstantLabels(*constantLabelsList),
-		ExcludeDatabases(*excludeDatabases),
+		ExcludeDatabases(strings.Split(*excludeDatabases, ",")),
 	)
 	prometheus.MustRegister(mrExporter)
 
@@ -87,7 +89,7 @@ func initializePerconaExporters(dsn []string, opts []ExporterOpt) (func(), *Expo
 		}),
 		WithUserQueriesPath(queriesPath),
 		WithConstantLabels(*constantLabelsList),
-		ExcludeDatabases(*excludeDatabases),
+		ExcludeDatabases(strings.Split(*excludeDatabases, ",")),
 	)
 	prometheus.MustRegister(lrExporter)
 

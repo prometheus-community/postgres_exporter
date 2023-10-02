@@ -14,15 +14,17 @@
 package main
 
 import (
+	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"fmt"
 	"math"
+	"os"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/blang/semver"
+	"github.com/blang/semver/v4"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -524,9 +526,9 @@ func AutoDiscoverDatabases(b bool) ExporterOpt {
 }
 
 // ExcludeDatabases allows to filter out result from AutoDiscoverDatabases
-func ExcludeDatabases(s string) ExporterOpt {
+func ExcludeDatabases(s []string) ExporterOpt {
 	return func(e *Exporter) {
-		e.excludeDatabases = strings.Split(s, ",")
+		e.excludeDatabases = s
 	}
 }
 
@@ -706,11 +708,26 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 		if e.userQueriesPath[HR] != "" || e.userQueriesPath[MR] != "" || e.userQueriesPath[LR] != "" {
 			// Clear the metric while reload
 			e.userQueriesError.Reset()
-		}
+			for res := range e.userQueriesPath {
+				if e.userQueriesEnabled[res] {
 
-		for res := range e.userQueriesPath {
-			if e.userQueriesEnabled[res] {
-				e.loadCustomQueries(res, semanticVersion, server)
+					// Calculate the hashsum of the useQueries
+					userQueriesData, err := os.ReadFile(e.userQueriesPath[res])
+					if err != nil {
+						level.Error(logger).Log("msg", "Failed to reload user queries", "path", e.userQueriesPath[res], "err", err)
+						e.userQueriesError.WithLabelValues(e.userQueriesPath[res], "").Set(1)
+					} else {
+						hashsumStr := fmt.Sprintf("%x", sha256.Sum256(userQueriesData))
+
+						if err := addQueries(userQueriesData, semanticVersion, server); err != nil {
+							level.Error(logger).Log("msg", "Failed to reload user queries", "path", e.userQueriesPath[res], "err", err)
+							e.userQueriesError.WithLabelValues(e.userQueriesPath[res], hashsumStr).Set(1)
+						} else {
+							// Mark user queries as successfully loaded
+							e.userQueriesError.WithLabelValues(e.userQueriesPath[res], hashsumStr).Set(0)
+						}
+					}
+				}
 			}
 		}
 

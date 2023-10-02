@@ -17,14 +17,13 @@
 package main
 
 import (
-	"io/ioutil"
 	"math"
 	"os"
 	"reflect"
 	"testing"
 	"time"
 
-	"github.com/blang/semver"
+	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
 	. "gopkg.in/check.v1"
 )
@@ -409,7 +408,7 @@ func (s *FunctionalSuite) TestBooleanConversionToValueAndString(c *C) {
 }
 
 func (s *FunctionalSuite) TestParseUserQueries(c *C) {
-	userQueriesData, err := ioutil.ReadFile("./tests/user_queries_ok.yaml")
+	userQueriesData, err := os.ReadFile("./tests/user_queries_ok.yaml")
 	if err == nil {
 		metricMaps, newQueryOverrides, err := parseUserQueries(userQueriesData)
 		c.Assert(err, Equals, nil)

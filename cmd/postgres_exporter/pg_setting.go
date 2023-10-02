@@ -70,7 +70,7 @@ func (s *pgSetting) metric(labels prometheus.Labels) prometheus.Metric {
 		err       error
 		name      = strings.Replace(s.name, ".", "_", -1)
 		unit      = s.unit // nolint: ineffassign
-		shortDesc = s.shortDesc
+		shortDesc = fmt.Sprintf("Server Parameter: %s", s.name)
 		subsystem = "settings"
 		val       float64
 	)
@@ -129,7 +129,7 @@ func (s *pgSetting) normaliseUnit() (val float64, unit string, err error) {
 		return
 	case "ms", "s", "min", "h", "d":
 		unit = "seconds"
-	case "B", "kB", "MB", "GB", "TB", "8kB", "16kB", "32kB", "16MB", "32MB", "64MB":
+	case "B", "kB", "MB", "GB", "TB", "4kB", "8kB", "16kB", "32kB", "64kB", "16MB", "32MB", "64MB":
 		unit = "bytes"
 	default:
 		err = fmt.Errorf("Unknown unit for runtime variable: %q", s.unit)
@@ -158,12 +158,16 @@ func (s *pgSetting) normaliseUnit() (val float64, unit string, err error) {
 		val *= math.Pow(2, 30)
 	case "TB":
 		val *= math.Pow(2, 40)
+	case "4kB":
+		val *= math.Pow(2, 12)
 	case "8kB":
 		val *= math.Pow(2, 13)
 	case "16kB":
 		val *= math.Pow(2, 14)
 	case "32kB":
 		val *= math.Pow(2, 15)
+	case "64kB":
+		val *= math.Pow(2, 16)
 	case "16MB":
 		val *= math.Pow(2, 24)
 	case "32MB":

@@ -17,7 +17,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/blang/semver"
+	"github.com/blang/semver/v4"
 	"github.com/go-kit/log/level"
 	"gopkg.in/yaml.v2"
 )
@@ -46,43 +46,6 @@ type OverrideQuery struct {
 // Overriding queries for namespaces above.
 // TODO: validate this is a closed set in tests, and there are no overlaps
 var queryOverrides = map[string][]OverrideQuery{
-	"pg_locks": {
-		{
-			semver.MustParseRange(">0.0.0"),
-			`SELECT pg_database.datname,tmp.mode,COALESCE(count,0) as count
-			FROM
-				(
-				  VALUES ('accesssharelock'),
-				         ('rowsharelock'),
-				         ('rowexclusivelock'),
-				         ('shareupdateexclusivelock'),
-				         ('sharelock'),
-				         ('sharerowexclusivelock'),
-				         ('exclusivelock'),
-				         ('accessexclusivelock'),
-					 ('sireadlock')
-				) AS tmp(mode) CROSS JOIN pg_database
-			LEFT JOIN
-			  (SELECT database, lower(mode) AS mode,count(*) AS count
-			  FROM pg_locks WHERE database IS NOT NULL
-			  GROUP BY database, lower(mode)
-			) AS tmp2
-			ON tmp.mode=tmp2.mode and pg_database.oid = tmp2.database ORDER BY 1`,
-		},
-	},
-	"pg_lock_conflicts": {
-		{
-			semver.MustParseRange(">0.0.0"),
-			`SELECT blockinga.pid AS blocking_pid, count(*) as count
-			FROM pg_catalog.pg_locks blockedl
-			JOIN pg_stat_activity blockeda ON blockedl.pid = blockeda.pid
-			JOIN pg_catalog.pg_locks blockingl ON(blockingl.transactionid=blockedl.transactionid
-			  AND blockedl.pid != blockingl.pid)
-			JOIN pg_stat_activity blockinga ON blockingl.pid = blockinga.pid
-			WHERE NOT blockedl.granted
-			group by blocking_pid`,
-		},
-	},
 	"pg_stat_replication": {
 		{
 			semver.MustParseRange(">=10.0.0"),
