@@ -150,6 +150,12 @@ var (
 		[]string{"datname", "schemaname", "relname"},
 		prometheus.Labels{},
 	)
+	statUserTablesTotalSize = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "size_bytes"),
+		"Total disk space used by this table, in bytes, including all indexes and TOAST data",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
 	statUserTablesQuery = `SELECT
 		current_database() datname,
@@ -173,7 +179,8 @@ var (
 		vacuum_count,
 		autovacuum_count,
 		analyze_count,
-		autoanalyze_count
+		autoanalyze_count,
+		pg_total_relation_size(relid) as total_size
 	FROM
 		pg_stat_user_tables`
 )
@@ -191,10 +198,10 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 	for rows.Next() {
 		var datname, schemaname, relname sql.NullString
 		var seqScan, seqTupRead, idxScan, idxTupFetch, nTupIns, nTupUpd, nTupDel, nTupHotUpd, nLiveTup, nDeadTup,
-			nModSinceAnalyze, vacuumCount, autovacuumCount, analyzeCount, autoanalyzeCount sql.NullInt64
+			nModSinceAnalyze, vacuumCount, autovacuumCount, analyzeCount, autoanalyzeCount, totalSize sql.NullInt64
 		var lastVacuum, lastAutovacuum, lastAnalyze, lastAutoanalyze sql.NullTime
 
-		if err := rows.Scan(&datname, &schemaname, &relname, &seqScan, &seqTupRead, &idxScan, &idxTupFetch, &nTupIns, &nTupUpd, &nTupDel, &nTupHotUpd, &nLiveTup, &nDeadTup, &nModSinceAnalyze, &lastVacuum, &lastAutovacuum, &lastAnalyze, &lastAutoanalyze, &vacuumCount, &autovacuumCount, &analyzeCount, &autoanalyzeCount); err != nil {
+		if err := rows.Scan(&datname, &schemaname, &relname, &seqScan, &seqTupRead, &idxScan, &idxTupFetch, &nTupIns, &nTupUpd, &nTupDel, &nTupHotUpd, &nLiveTup, &nDeadTup, &nModSinceAnalyze, &lastVacuum, &lastAutovacuum, &lastAnalyze, &lastAutoanalyze, &vacuumCount, &autovacuumCount, &analyzeCount, &autoanalyzeCount, &totalSize); err != nil {
 			return err
 		}
 
@@ -417,6 +424,17 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			statUserTablesAutoanalyzeCount,
 			prometheus.CounterValue,
 			autoanalyzeCountMetric,
+			datnameLabel, schemanameLabel, relnameLabel,
+		)
+
+		totalSizeMetric := 0.0
+		if totalSize.Valid {
+			totalSizeMetric = float64(totalSize.Int64)
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statUserTablesTotalSize,
+			prometheus.GaugeValue,
+			totalSizeMetric,
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 	}
