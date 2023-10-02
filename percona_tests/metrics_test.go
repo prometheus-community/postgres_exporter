@@ -22,7 +22,7 @@ const lowResolutionEndpoint = "metrics?collect%5B%5D=custom_query.lr"
 
 // that metric is disabled by default in new exporters, so will trigger test
 // however we don't use it at all in our dashboards, so for now - safe to skip it
-const skipMetricName = "go_memstats_gc_cpu_fraction"
+var skipMetricNames = []string{"go_memstats_gc_cpu_fraction", "go_info"}
 
 type Metric struct {
 	name             string
@@ -224,7 +224,10 @@ func testResolution(t *testing.T, resolutionEp, resolutionName string) {
 	missingLabels := ""
 	for _, oldMetric := range oldMetricsCollection.MetricsData {
 		// skip empty lines, comments and redundant metrics
-		if oldMetric.name == "" || strings.HasPrefix(oldMetric.name, "# ") || oldMetric.name == skipMetricName {
+		if oldMetric.name == "" || strings.HasPrefix(oldMetric.name, "# ") {
+			continue
+		}
+		if skipMetric(oldMetric.name) {
 			continue
 		}
 
@@ -262,7 +265,7 @@ func testResolution(t *testing.T, resolutionEp, resolutionName string) {
 	}
 
 	if missingLabelsCount > 0 {
-		t.Errorf("%d metrics's labels missing in new exporter for %s resolution:\n%s", missingCount, resolutionName, missingLabels)
+		t.Errorf("%d metrics's labels missing in new exporter for %s resolution:\n%s", missingLabelsCount, resolutionName, missingLabels)
 	}
 
 	extraCount := 0
@@ -280,6 +283,16 @@ func testResolution(t *testing.T, resolutionEp, resolutionName string) {
 	if extraCount > 0 {
 		fmt.Printf("[WARN] %d metrics are redundant in new exporter for %s resolution\n%s", extraCount, resolutionName, extraMetrics)
 	}
+}
+
+func skipMetric(oldMetricName string) bool {
+	skip := false
+	for _, name := range skipMetricNames {
+		if name == oldMetricName {
+			skip = true
+		}
+	}
+	return skip
 }
 
 func dumpMetricsInfo(oldMetricsCollection, newMetricsCollection MetricsCollection) {
@@ -331,7 +344,7 @@ func testForMissingMetricsLabels(oldMetricsCollection, newMetricsCollection Metr
 func testForMissingMetrics(oldMetricsCollection, newMetricsCollection MetricsCollection) (bool, string) {
 	missingMetrics := make([]string, 0)
 	for metricName := range oldMetricsCollection.LabelsByMetric {
-		if metricName == skipMetricName {
+		if skipMetric(metricName) {
 			continue
 		}
 
