@@ -16,11 +16,11 @@ package collector
 import (
 	"database/sql"
 	"fmt"
-	"github.com/lib/pq"
 	"regexp"
 	"strings"
 
 	"github.com/blang/semver/v4"
+	"github.com/lib/pq"
 )
 
 type instance struct {
