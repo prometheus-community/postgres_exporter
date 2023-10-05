@@ -1,0 +1,7 @@
+--auto-discover-databases
+--collect.custom_query.hr
+--collect.custom_query.lr
+--collect.custom_query.mr
+--exclude-databases=template0,template1,postgres,cloudsqladmin,pmm-managed-dev,azure_maintenance,rdsadmin
+--log.level=warn
+--config.file=assets/postgres_exporter.yml

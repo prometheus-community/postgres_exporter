@@ -14,12 +14,10 @@
 package main
 
 import (
-	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"fmt"
 	"math"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -411,9 +409,10 @@ type cachedMetrics struct {
 
 // Exporter collects Postgres metrics. It implements prometheus.Collector.
 type Exporter struct {
-	collectorName      string
-	userQueriesPath    map[MetricResolution]string
-	userQueriesEnabled map[MetricResolution]bool
+	collectorName     string
+	userQueriesPath   map[MetricResolution]string
+	resolutionEnabled MetricResolution
+	enabled           bool
 
 	// Holds a reference to the build in column mappings. Currently this is for testing purposes
 	// only, since it just points to the global.
@@ -454,9 +453,16 @@ func CollectorName(name string) ExporterOpt {
 }
 
 // WithUserQueriesEnabled enables user's queries.
-func WithUserQueriesEnabled(p map[MetricResolution]bool) ExporterOpt {
+func WithUserQueriesEnabled(p MetricResolution) ExporterOpt {
 	return func(e *Exporter) {
-		e.userQueriesEnabled = p
+		e.resolutionEnabled = p
+	}
+}
+
+// WithUserQueriesEnabled enables user's queries.
+func WithEnabled(p bool) ExporterOpt {
+	return func(e *Exporter) {
+		e.enabled = p
 	}
 }
 
@@ -509,6 +515,13 @@ func WithConstantLabels(s string) ExporterOpt {
 	}
 }
 
+// WithServers configures constant labels.
+func WithServers(s *Servers) ExporterOpt {
+	return func(e *Exporter) {
+		e.servers = s
+	}
+}
+
 func parseConstLabels(s string) prometheus.Labels {
 	labels := make(prometheus.Labels)
 
@@ -540,6 +553,7 @@ func NewExporter(dsn []string, opts ...ExporterOpt) *Exporter {
 	e := &Exporter{
 		dsn:               dsn,
 		builtinMetricMaps: builtinMetricMaps,
+		enabled:           true,
 	}
 
 	for _, opt := range opts {
@@ -547,7 +561,6 @@ func NewExporter(dsn []string, opts ...ExporterOpt) *Exporter {
 	}
 
 	e.setupInternalMetrics()
-	e.servers = NewServers(ServerWithLabels(e.constantLabels))
 
 	return e
 }
@@ -595,6 +608,9 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements prometheus.Collector.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
+	if !e.enabled {
+		return
+	}
 	e.scrape(ch)
 
 	ch <- e.duration
@@ -639,49 +655,30 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 	}
 
 	// Check if semantic version changed and recalculate maps if needed.
-	if semanticVersion.NE(server.lastMapVersion) || server.metricMap == nil {
-		level.Info(logger).Log("msg", "Semantic version changed", "server", server, "from", server.lastMapVersion, "to", semanticVersion)
-		server.mappingMtx.Lock()
+	//if semanticVersion.NE(server.lastMapVersion[e.resolutionEnabled]) || server.metricMap == nil {
+	//	level.Info(logger).Log("msg", "Semantic version changed", "server", server, "from", server.lastMapVersion[e.resolutionEnabled], "to", semanticVersion)
+	server.mappingMtx.Lock()
 
-		// Get Default Metrics only for master database
-		if !e.disableDefaultMetrics && server.master {
-			server.metricMap = makeDescMap(semanticVersion, server.labels, e.builtinMetricMaps)
-			server.queryOverrides = makeQueryOverrideMap(semanticVersion, queryOverrides)
-		} else {
-			server.metricMap = make(map[string]MetricMapNamespace)
-			server.queryOverrides = make(map[string]string)
-		}
-
-		server.lastMapVersion = semanticVersion
-
-		if e.userQueriesPath[HR] != "" || e.userQueriesPath[MR] != "" || e.userQueriesPath[LR] != "" {
-			// Clear the metric while reload
-			e.userQueriesError.Reset()
-			for res := range e.userQueriesPath {
-				if e.userQueriesEnabled[res] {
-
-					// Calculate the hashsum of the useQueries
-					userQueriesData, err := os.ReadFile(e.userQueriesPath[res])
-					if err != nil {
-						level.Error(logger).Log("msg", "Failed to reload user queries", "path", e.userQueriesPath[res], "err", err)
-						e.userQueriesError.WithLabelValues(e.userQueriesPath[res], "").Set(1)
-					} else {
-						hashsumStr := fmt.Sprintf("%x", sha256.Sum256(userQueriesData))
-
-						if err := addQueries(userQueriesData, semanticVersion, server); err != nil {
-							level.Error(logger).Log("msg", "Failed to reload user queries", "path", e.userQueriesPath[res], "err", err)
-							e.userQueriesError.WithLabelValues(e.userQueriesPath[res], hashsumStr).Set(1)
-						} else {
-							// Mark user queries as successfully loaded
-							e.userQueriesError.WithLabelValues(e.userQueriesPath[res], hashsumStr).Set(0)
-						}
-					}
-				}
-			}
-		}
-
-		server.mappingMtx.Unlock()
+	// Get Default Metrics only for master database
+	if !e.disableDefaultMetrics && server.master {
+		server.metricMap = makeDescMap(semanticVersion, server.labels, e.builtinMetricMaps)
+		server.queryOverrides = makeQueryOverrideMap(semanticVersion, queryOverrides)
+	} else {
+		server.metricMap = make(map[string]MetricMapNamespace)
+		server.queryOverrides = make(map[string]string)
 	}
+
+	//server.lastMapVersion[e.resolutionEnabled] = semanticVersion
+
+	if e.userQueriesPath[HR] != "" || e.userQueriesPath[MR] != "" || e.userQueriesPath[LR] != "" {
+		// Clear the metric while reload
+		e.userQueriesError.Reset()
+	}
+
+	e.loadCustomQueries(e.resolutionEnabled, semanticVersion, server)
+
+	server.mappingMtx.Unlock()
+	//}
 
 	// Output the version as a special metric only for master database
 	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),

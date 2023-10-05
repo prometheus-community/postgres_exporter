@@ -44,16 +44,26 @@ func TestMissingMetrics(t *testing.T) {
 		return
 	}
 
-	newMetrics, err := getMetrics(updatedExporterFileName)
+	endpoint := "metrics?collect[]=exporter&collect[]=postgres&collect[]=custom_query.mr"
+	newMetrics, err := getMetricsFrom(updatedExporterFileName, updatedExporterArgs, endpoint)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	oldMetrics, err := getMetrics(oldExporterFileName)
+	oldMetrics, err := getMetricsFrom(oldExporterFileName, oldExporterArgs, endpoint)
 	if err != nil {
 		t.Error(err)
 		return
+	}
+
+	err = os.WriteFile(updatedExporterMetrics, []byte(newMetrics), os.ModePerm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = os.WriteFile(oldExporterMetrics, []byte(oldMetrics), os.ModePerm)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	oldMetricsCollection := parseMetricsCollection(oldMetrics)
@@ -70,16 +80,25 @@ func TestMissingLabels(t *testing.T) {
 		return
 	}
 
-	newMetrics, err := getMetrics(updatedExporterFileName)
+	newMetrics, err := getMetrics(updatedExporterFileName, updatedExporterArgs)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	oldMetrics, err := getMetrics(oldExporterFileName)
+	oldMetrics, err := getMetrics(oldExporterFileName, oldExporterArgs)
 	if err != nil {
 		t.Error(err)
 		return
+	}
+
+	err = os.WriteFile(updatedExporterMetrics+"-labels", []byte(newMetrics), os.ModePerm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = os.WriteFile(oldExporterMetrics+"-labels", []byte(oldMetrics), os.ModePerm)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	oldMetricsCollection := parseMetricsCollection(oldMetrics)
@@ -108,13 +127,13 @@ func TestDumpMetrics(t *testing.T) {
 		ep = "metrics"
 	}
 
-	newMetrics, err := getMetricsFrom(updatedExporterFileName, ep)
+	newMetrics, err := getMetricsFrom(updatedExporterFileName, updatedExporterArgs, ep)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	oldMetrics, err := getMetricsFrom(oldExporterFileName, ep)
+	oldMetrics, err := getMetricsFrom(oldExporterFileName, oldExporterArgs, ep)
 	if err != nil {
 		t.Error(err)
 		return
@@ -132,19 +151,19 @@ func TestResolutionsMetricDuplicates(t *testing.T) {
 		return
 	}
 
-	hrMetrics, err := getMetricsFrom(updatedExporterFileName, highResolutionEndpoint)
+	hrMetrics, err := getMetricsFrom(updatedExporterFileName, updatedExporterArgs, highResolutionEndpoint)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	mrMetrics, err := getMetricsFrom(updatedExporterFileName, medResolutionEndpoint)
+	mrMetrics, err := getMetricsFrom(updatedExporterFileName, updatedExporterArgs, medResolutionEndpoint)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	lrMetrics, err := getMetricsFrom(updatedExporterFileName, lowResolutionEndpoint)
+	lrMetrics, err := getMetricsFrom(updatedExporterFileName, updatedExporterArgs, lowResolutionEndpoint)
 	if err != nil {
 		t.Error(err)
 		return
@@ -203,16 +222,25 @@ func TestResolutions(t *testing.T) {
 }
 
 func testResolution(t *testing.T, resolutionEp, resolutionName string) {
-	newMetrics, err := getMetricsFrom(updatedExporterFileName, resolutionEp)
+	newMetrics, err := getMetricsFrom(updatedExporterFileName, updatedExporterArgs, resolutionEp)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	oldMetrics, err := getMetricsFrom(oldExporterFileName, resolutionEp)
+	oldMetrics, err := getMetricsFrom(oldExporterFileName, oldExporterArgs, resolutionEp)
 	if err != nil {
 		t.Error(err)
 		return
+	}
+
+	err = os.WriteFile(fmt.Sprintf("%s-%s", updatedExporterMetrics, resolutionName), []byte(newMetrics), os.ModePerm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = os.WriteFile(fmt.Sprintf("%s-%s", oldExporterMetrics, resolutionName), []byte(oldMetrics), os.ModePerm)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	oldMetricsCollection := parseMetricsCollection(oldMetrics)
@@ -253,10 +281,10 @@ func testResolution(t *testing.T, resolutionEp, resolutionName string) {
 
 		if !metricFound {
 			missingCount++
-			missingMetrics += fmt.Sprintf("%s\n", oldMetric.name)
+			missingMetrics += fmt.Sprintf("%s\n", oldMetric)
 		} else if !labelsMatch {
 			missingLabelsCount++
-			missingLabels += fmt.Sprintf("%s\n", oldMetric.name)
+			missingLabels += fmt.Sprintf("%s\n", oldMetric)
 		}
 	}
 
@@ -554,12 +582,12 @@ func getMetricNames(metrics []string) []string {
 	return ret
 }
 
-func getMetrics(fileName string) (string, error) {
-	return getMetricsFrom(fileName, "metrics")
+func getMetrics(fileName, argsFile string) (string, error) {
+	return getMetricsFrom(fileName, argsFile, "metrics")
 }
 
-func getMetricsFrom(fileName, endpoint string) (string, error) {
-	cmd, port, collectOutput, err := launchExporter(fileName)
+func getMetricsFrom(fileName, argsFile, endpoint string) (string, error) {
+	cmd, port, collectOutput, err := launchExporter(fileName, argsFile)
 	if err != nil {
 		return "", errors.Wrap(err, "Failed to launch exporter")
 	}

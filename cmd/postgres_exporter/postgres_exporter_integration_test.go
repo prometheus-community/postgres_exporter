@@ -156,7 +156,11 @@ func (s *IntegrationSuite) TestExtendQueriesDoesntCrash(c *C) {
 
 	exporter := NewExporter(
 		strings.Split(dsn, ","),
-		WithUserQueriesPath("../user_queries_test.yaml"),
+		WithUserQueriesPath(map[MetricResolution]string{
+			HR: "../user_queries_test.yaml",
+			MR: "../user_queries_test.yaml",
+			LR: "../user_queries_test.yaml",
+		}),
 	)
 	c.Assert(exporter, NotNil)
 
