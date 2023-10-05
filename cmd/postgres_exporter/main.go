@@ -41,8 +41,12 @@ var (
 		Config: &config.Config{},
 	}
 
-	configFile             = kingpin.Flag("config.file", "Postgres exporter configuration file.").Default("postgres_exporter.yml").String()
-	webConfig              = kingpinflag.AddFlags(kingpin.CommandLine, ":9187")
+	configFile    = kingpin.Flag("config.file", "Postgres exporter configuration file.").Default("postgres_exporter.yml").String()
+	webConfig     = kingpinflag.AddFlags(kingpin.CommandLine, ":9187")
+	webConfigFile = kingpin.Flag(
+		"web.config",
+		"[EXPERIMENTAL] Path to config yaml file that can enable TLS or authentication.",
+	).Default("").String() // added for compatibility reasons to not break it in PMM 2.
 	metricsPath            = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").Envar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
 	disableDefaultMetrics  = kingpin.Flag("disable-default-metrics", "Do not include default metrics.").Default("false").Envar("PG_EXPORTER_DISABLE_DEFAULT_METRICS").Bool()
 	disableSettingsMetrics = kingpin.Flag("disable-settings-metrics", "Do not include pg_settings metrics.").Default("false").Envar("PG_EXPORTER_DISABLE_SETTINGS_METRICS").Bool()
@@ -76,6 +80,7 @@ func main() {
 	promlogConfig := &promlog.Config{}
 	flag.AddFlags(kingpin.CommandLine, promlogConfig)
 	kingpin.HelpFlag.Short('h')
+	webConfig.WebConfigFile = webConfigFile
 	kingpin.Parse()
 	logger = promlog.New(promlogConfig)
 
