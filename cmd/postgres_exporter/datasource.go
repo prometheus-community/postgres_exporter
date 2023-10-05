@@ -49,19 +49,17 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			continue
 		}
 
-		server, err := e.servers.GetServer(dsn)
+		server, err := e.servers.GetServer(dsn, e.resolutionEnabled)
 		if err != nil {
 			level.Error(logger).Log("msg", "Error opening connection to database", "dsn", loggableDSN(dsn), "err", err)
 			continue
 		}
-		server.dbMtx.Lock()
 		dsns[dsn] = struct{}{}
 
 		// If autoDiscoverDatabases is true, set first dsn as master database (Default: false)
 		server.master = true
 
 		databaseNames, err := queryDatabases(server)
-		server.dbMtx.Unlock()
 		if err != nil {
 			level.Error(logger).Log("msg", "Error querying databases", "dsn", loggableDSN(dsn), "err", err)
 			continue
@@ -102,11 +100,7 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 }
 
 func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
-	server, err := e.servers.GetServer(dsn)
-	server.dbMtx.Lock()
-	defer server.dbMtx.Unlock()
-
-	level.Debug(logger).Log("msg", "scrapeDSN:"+dsn)
+	server, err := e.servers.GetServer(dsn, e.resolutionEnabled)
 
 	if err != nil {
 		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), err.Error())}
@@ -122,7 +116,7 @@ func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 		level.Warn(logger).Log("msg", "Proceeding with outdated query maps, as the Postgres version could not be determined", "err", err)
 	}
 
-	return server.Scrape(ch, e.disableSettingsMetrics, e.resolutionEnabled)
+	return server.Scrape(ch, e.disableSettingsMetrics)
 }
 
 // try to get the DataSource
