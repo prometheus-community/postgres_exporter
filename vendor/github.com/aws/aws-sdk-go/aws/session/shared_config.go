@@ -2,6 +2,8 @@ package session
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -16,12 +18,26 @@ const (
 	sessionTokenKey = `aws_session_token`     // optional
 
 	// Assume Role Credentials group
-	roleArnKey          = `role_arn`          // group required
-	sourceProfileKey    = `source_profile`    // group required (or credential_source)
-	credentialSourceKey = `credential_source` // group required (or source_profile)
-	externalIDKey       = `external_id`       // optional
-	mfaSerialKey        = `mfa_serial`        // optional
-	roleSessionNameKey  = `role_session_name` // optional
+	roleArnKey             = `role_arn`          // group required
+	sourceProfileKey       = `source_profile`    // group required (or credential_source)
+	credentialSourceKey    = `credential_source` // group required (or source_profile)
+	externalIDKey          = `external_id`       // optional
+	mfaSerialKey           = `mfa_serial`        // optional
+	roleSessionNameKey     = `role_session_name` // optional
+	roleDurationSecondsKey = "duration_seconds"  // optional
+
+	// Prefix to be used for SSO sections. These are supposed to only exist in
+	// the shared config file, not the credentials file.
+	ssoSectionPrefix = `sso-session `
+
+	// AWS Single Sign-On (AWS SSO) group
+	ssoSessionNameKey = "sso_session"
+
+	// AWS Single Sign-On (AWS SSO) group
+	ssoAccountIDKey = "sso_account_id"
+	ssoRegionKey    = "sso_region"
+	ssoRoleNameKey  = "sso_role_name"
+	ssoStartURL     = "sso_start_url"
 
 	// CSM options
 	csmEnabledKey  = `csm_enabled`
@@ -31,6 +47,9 @@ const (
 
 	// Additional Config fields
 	regionKey = `region`
+
+	// custom CA Bundle filename
+	customCABundleKey = `ca_bundle`
 
 	// endpoint discovery group
 	enableEndpointDiscoveryKey = `endpoint_discovery_enabled` // optional
@@ -51,10 +70,27 @@ const (
 	// loading configuration from the config files if another profile name
 	// is not provided.
 	DefaultSharedConfigProfile = `default`
+
+	// S3 ARN Region Usage
+	s3UseARNRegionKey = "s3_use_arn_region"
+
+	// EC2 IMDS Endpoint Mode
+	ec2MetadataServiceEndpointModeKey = "ec2_metadata_service_endpoint_mode"
+
+	// EC2 IMDS Endpoint
+	ec2MetadataServiceEndpointKey = "ec2_metadata_service_endpoint"
+
+	// Use DualStack Endpoint Resolution
+	useDualStackEndpoint = "use_dualstack_endpoint"
+
+	// Use FIPS Endpoint Resolution
+	useFIPSEndpointKey = "use_fips_endpoint"
 )
 
 // sharedConfig represents the configuration fields of the SDK config files.
 type sharedConfig struct {
+	Profile string
+
 	// Credentials values from the config file. Both aws_access_key_id and
 	// aws_secret_access_key must be provided together in the same file to be
 	// considered valid. The values will be ignored if not a complete group.
@@ -70,10 +106,20 @@ type sharedConfig struct {
 	CredentialProcess    string
 	WebIdentityTokenFile string
 
-	RoleARN         string
-	RoleSessionName string
-	ExternalID      string
-	MFASerial       string
+	// SSO session options
+	SSOSessionName string
+	SSOSession     *ssoSession
+
+	SSOAccountID string
+	SSORegion    string
+	SSORoleName  string
+	SSOStartURL  string
+
+	RoleARN            string
+	RoleSessionName    string
+	ExternalID         string
+	MFASerial          string
+	AssumeRoleDuration *time.Duration
 
 	SourceProfileName string
 	SourceProfile     *sharedConfig
@@ -84,11 +130,21 @@ type sharedConfig struct {
 	//	region
 	Region string
 
+	// CustomCABundle is the file path to a PEM file the SDK will read and
+	// use to configure the HTTP transport with additional CA certs that are
+	// not present in the platforms default CA store.
+	//
+	// This value will be ignored if the file does not exist.
+	//
+	//  ca_bundle
+	CustomCABundle string
+
 	// EnableEndpointDiscovery can be enabled in the shared config by setting
 	// endpoint_discovery_enabled to true
 	//
 	//	endpoint_discovery_enabled = true
 	EnableEndpointDiscovery *bool
+
 	// CSM Options
 	CSMEnabled  *bool
 	CSMHost     string
@@ -106,11 +162,53 @@ type sharedConfig struct {
 	// s3_us_east_1_regional_endpoint = regional
 	// This can take value as `LegacyS3UsEast1Endpoint` or `RegionalS3UsEast1Endpoint`
 	S3UsEast1RegionalEndpoint endpoints.S3UsEast1RegionalEndpoint
+
+	// Specifies if the S3 service should allow ARNs to direct the region
+	// the client's requests are sent to.
+	//
+	// s3_use_arn_region=true
+	S3UseARNRegion bool
+
+	// Specifies the EC2 Instance Metadata Service default endpoint selection mode (IPv4 or IPv6)
+	//
+	// ec2_metadata_service_endpoint_mode=IPv6
+	EC2IMDSEndpointMode endpoints.EC2IMDSEndpointModeState
+
+	// Specifies the EC2 Instance Metadata Service endpoint to use. If specified it overrides EC2IMDSEndpointMode.
+	//
+	// ec2_metadata_service_endpoint=http://fd00:ec2::254
+	EC2IMDSEndpoint string
+
+	// Specifies that SDK clients must resolve a dual-stack endpoint for
+	// services.
+	//
+	// use_dualstack_endpoint=true
+	UseDualStackEndpoint endpoints.DualStackEndpointState
+
+	// Specifies that SDK clients must resolve a FIPS endpoint for
+	// services.
+	//
+	// use_fips_endpoint=true
+	UseFIPSEndpoint endpoints.FIPSEndpointState
 }
 
 type sharedConfigFile struct {
 	Filename string
 	IniData  ini.Sections
+}
+
+// SSOSession provides the shared configuration parameters of the sso-session
+// section.
+type ssoSession struct {
+	Name        string
+	SSORegion   string
+	SSOStartURL string
+}
+
+func (s *ssoSession) setFromIniSection(section ini.Section) {
+	updateString(&s.Name, section, ssoSessionNameKey)
+	updateString(&s.SSORegion, section, ssoRegionKey)
+	updateString(&s.SSOStartURL, section, ssoStartURL)
 }
 
 // loadSharedConfig retrieves the configuration from the list of files using
@@ -164,6 +262,8 @@ func loadSharedConfigIniFiles(filenames []string) ([]sharedConfigFile, error) {
 }
 
 func (cfg *sharedConfig) setFromIniFiles(profiles map[string]struct{}, profile string, files []sharedConfigFile, exOpts bool) error {
+	cfg.Profile = profile
+
 	// Trim files from the list that don't exist.
 	var skippedFiles int
 	var profileNotFoundErr error
@@ -191,13 +291,13 @@ func (cfg *sharedConfig) setFromIniFiles(profiles map[string]struct{}, profile s
 		// profile only have credential provider options.
 		cfg.clearAssumeRoleOptions()
 	} else {
-		// First time a profile has been seen, It must either be a assume role
-		// or credentials. Assert if the credential type requires a role ARN,
-		// the ARN is also set.
-		if err := cfg.validateCredentialsRequireARN(profile); err != nil {
+		// First time a profile has been seen. Assert if the credential type
+		// requires a role ARN, the ARN is also set
+		if err := cfg.validateCredentialsConfig(profile); err != nil {
 			return err
 		}
 	}
+
 	profiles[profile] = struct{}{}
 
 	if err := cfg.validateCredentialType(); err != nil {
@@ -233,6 +333,30 @@ func (cfg *sharedConfig) setFromIniFiles(profiles map[string]struct{}, profile s
 		cfg.SourceProfile = srcCfg
 	}
 
+	// If the profile contains an SSO session parameter, the session MUST exist
+	// as a section in the config file. Load the SSO session using the name
+	// provided. If the session section is not found or incomplete an error
+	// will be returned.
+	if cfg.hasSSOTokenProviderConfiguration() {
+		skippedFiles = 0
+		for _, f := range files {
+			section, ok := f.IniData.GetSection(fmt.Sprintf(ssoSectionPrefix + strings.TrimSpace(cfg.SSOSessionName)))
+			if ok {
+				var ssoSession ssoSession
+				ssoSession.setFromIniSection(section)
+				ssoSession.Name = cfg.SSOSessionName
+				cfg.SSOSession = &ssoSession
+				break
+			}
+			skippedFiles++
+		}
+		if skippedFiles == len(files) {
+			// If all files were skipped because the sso session section is not found, return
+			// the sso section not found error.
+			return fmt.Errorf("failed to find SSO session section, %v", cfg.SSOSessionName)
+		}
+	}
+
 	return nil
 }
 
@@ -263,6 +387,19 @@ func (cfg *sharedConfig) setFromIniFile(profile string, file sharedConfigFile, e
 		updateString(&cfg.SourceProfileName, section, sourceProfileKey)
 		updateString(&cfg.CredentialSource, section, credentialSourceKey)
 		updateString(&cfg.Region, section, regionKey)
+		updateString(&cfg.CustomCABundle, section, customCABundleKey)
+
+		// we're retaining a behavioral quirk with this field that existed before
+		// the removal of literal parsing for (aws-sdk-go-v2/#2276):
+		//   - if the key is missing, the config field will not be set
+		//   - if the key is set to a non-numeric, the config field will be set to 0
+		if section.Has(roleDurationSecondsKey) {
+			var d time.Duration
+			if v, ok := section.Int(roleDurationSecondsKey); ok {
+				d = time.Duration(v) * time.Second
+			}
+			cfg.AssumeRoleDuration = &d
+		}
 
 		if v := section.String(stsRegionalEndpointSharedKey); len(v) != 0 {
 			sre, err := endpoints.GetSTSRegionalEndpoint(v)
@@ -281,6 +418,26 @@ func (cfg *sharedConfig) setFromIniFile(profile string, file sharedConfigFile, e
 			}
 			cfg.S3UsEast1RegionalEndpoint = sre
 		}
+
+		// AWS Single Sign-On (AWS SSO)
+		// SSO session options
+		updateString(&cfg.SSOSessionName, section, ssoSessionNameKey)
+
+		// AWS Single Sign-On (AWS SSO)
+		updateString(&cfg.SSOAccountID, section, ssoAccountIDKey)
+		updateString(&cfg.SSORegion, section, ssoRegionKey)
+		updateString(&cfg.SSORoleName, section, ssoRoleNameKey)
+		updateString(&cfg.SSOStartURL, section, ssoStartURL)
+
+		if err := updateEC2MetadataServiceEndpointMode(&cfg.EC2IMDSEndpointMode, section, ec2MetadataServiceEndpointModeKey); err != nil {
+			return fmt.Errorf("failed to load %s from shared config, %s, %v",
+				ec2MetadataServiceEndpointModeKey, file.Filename, err)
+		}
+		updateString(&cfg.EC2IMDSEndpoint, section, ec2MetadataServiceEndpointKey)
+
+		updateUseDualStackEndpoint(&cfg.UseDualStackEndpoint, section, useDualStackEndpoint)
+
+		updateUseFIPSEndpoint(&cfg.UseFIPSEndpoint, section, useFIPSEndpointKey)
 	}
 
 	updateString(&cfg.CredentialProcess, section, credentialProcessKey)
@@ -305,6 +462,24 @@ func (cfg *sharedConfig) setFromIniFile(profile string, file sharedConfigFile, e
 	updateString(&cfg.CSMHost, section, csmHostKey)
 	updateString(&cfg.CSMPort, section, csmPortKey)
 	updateString(&cfg.CSMClientID, section, csmClientIDKey)
+
+	updateBool(&cfg.S3UseARNRegion, section, s3UseARNRegionKey)
+
+	return nil
+}
+
+func updateEC2MetadataServiceEndpointMode(endpointMode *endpoints.EC2IMDSEndpointModeState, section ini.Section, key string) error {
+	if !section.Has(key) {
+		return nil
+	}
+	value := section.String(key)
+	return endpointMode.SetFromString(value)
+}
+
+func (cfg *sharedConfig) validateCredentialsConfig(profile string) error {
+	if err := cfg.validateCredentialsRequireARN(profile); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -345,12 +520,31 @@ func (cfg *sharedConfig) validateCredentialType() error {
 	return nil
 }
 
+func (cfg *sharedConfig) validateSSOConfiguration() error {
+	if cfg.hasSSOTokenProviderConfiguration() {
+		err := cfg.validateSSOTokenProviderConfiguration()
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	if cfg.hasLegacySSOConfiguration() {
+		err := cfg.validateLegacySSOConfiguration()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (cfg *sharedConfig) hasCredentials() bool {
 	switch {
 	case len(cfg.SourceProfileName) != 0:
 	case len(cfg.CredentialSource) != 0:
 	case len(cfg.CredentialProcess) != 0:
 	case len(cfg.WebIdentityTokenFile) != 0:
+	case cfg.hasSSOConfiguration():
 	case cfg.Creds.HasKeys():
 	default:
 		return false
@@ -364,6 +558,10 @@ func (cfg *sharedConfig) clearCredentialOptions() {
 	cfg.CredentialProcess = ""
 	cfg.WebIdentityTokenFile = ""
 	cfg.Creds = credentials.Value{}
+	cfg.SSOAccountID = ""
+	cfg.SSORegion = ""
+	cfg.SSORoleName = ""
+	cfg.SSOStartURL = ""
 }
 
 func (cfg *sharedConfig) clearAssumeRoleOptions() {
@@ -372,6 +570,79 @@ func (cfg *sharedConfig) clearAssumeRoleOptions() {
 	cfg.MFASerial = ""
 	cfg.RoleSessionName = ""
 	cfg.SourceProfileName = ""
+}
+
+func (cfg *sharedConfig) hasSSOConfiguration() bool {
+	return cfg.hasSSOTokenProviderConfiguration() || cfg.hasLegacySSOConfiguration()
+}
+
+func (c *sharedConfig) hasSSOTokenProviderConfiguration() bool {
+	return len(c.SSOSessionName) > 0
+}
+
+func (c *sharedConfig) hasLegacySSOConfiguration() bool {
+	return len(c.SSORegion) > 0 || len(c.SSOAccountID) > 0 || len(c.SSOStartURL) > 0 || len(c.SSORoleName) > 0
+}
+
+func (c *sharedConfig) validateSSOTokenProviderConfiguration() error {
+	var missing []string
+
+	if len(c.SSOSessionName) == 0 {
+		missing = append(missing, ssoSessionNameKey)
+	}
+
+	if c.SSOSession == nil {
+		missing = append(missing, ssoSectionPrefix)
+	} else {
+		if len(c.SSOSession.SSORegion) == 0 {
+			missing = append(missing, ssoRegionKey)
+		}
+
+		if len(c.SSOSession.SSOStartURL) == 0 {
+			missing = append(missing, ssoStartURL)
+		}
+	}
+
+	if len(missing) > 0 {
+		return fmt.Errorf("profile %q is configured to use SSO but is missing required configuration: %s",
+			c.Profile, strings.Join(missing, ", "))
+	}
+
+	if len(c.SSORegion) > 0 && c.SSORegion != c.SSOSession.SSORegion {
+		return fmt.Errorf("%s in profile %q must match %s in %s", ssoRegionKey, c.Profile, ssoRegionKey, ssoSectionPrefix)
+	}
+
+	if len(c.SSOStartURL) > 0 && c.SSOStartURL != c.SSOSession.SSOStartURL {
+		return fmt.Errorf("%s in profile %q must match %s in %s", ssoStartURL, c.Profile, ssoStartURL, ssoSectionPrefix)
+	}
+
+	return nil
+}
+
+func (c *sharedConfig) validateLegacySSOConfiguration() error {
+	var missing []string
+
+	if len(c.SSORegion) == 0 {
+		missing = append(missing, ssoRegionKey)
+	}
+
+	if len(c.SSOStartURL) == 0 {
+		missing = append(missing, ssoStartURL)
+	}
+
+	if len(c.SSOAccountID) == 0 {
+		missing = append(missing, ssoAccountIDKey)
+	}
+
+	if len(c.SSORoleName) == 0 {
+		missing = append(missing, ssoRoleNameKey)
+	}
+
+	if len(missing) > 0 {
+		return fmt.Errorf("profile %q is configured to use SSO but is missing required configuration: %s",
+			c.Profile, strings.Join(missing, ", "))
+	}
+	return nil
 }
 
 func oneOrNone(bs ...bool) bool {
@@ -398,14 +669,29 @@ func updateString(dst *string, section ini.Section, key string) {
 	*dst = section.String(key)
 }
 
+// updateBool will only update the dst with the value in the section key, key
+// is present in the section.
+func updateBool(dst *bool, section ini.Section, key string) {
+	if !section.Has(key) {
+		return
+	}
+
+	// retains pre-(aws-sdk-go-v2#2276) behavior where non-bool value would resolve to false
+	v, _ := section.Bool(key)
+	*dst = v
+}
+
 // updateBoolPtr will only update the dst with the value in the section key,
 // key is present in the section.
 func updateBoolPtr(dst **bool, section ini.Section, key string) {
 	if !section.Has(key) {
 		return
 	}
+
+	// retains pre-(aws-sdk-go-v2#2276) behavior where non-bool value would resolve to false
+	v, _ := section.Bool(key)
 	*dst = new(bool)
-	**dst = section.Bool(key)
+	**dst = v
 }
 
 // SharedConfigLoadError is an error for the shared config file failed to load.
@@ -523,4 +809,38 @@ func (e CredentialRequiresARNError) OrigErr() error {
 // Error satisfies the error interface.
 func (e CredentialRequiresARNError) Error() string {
 	return awserr.SprintError(e.Code(), e.Message(), "", nil)
+}
+
+// updateEndpointDiscoveryType will only update the dst with the value in the section, if
+// a valid key and corresponding EndpointDiscoveryType is found.
+func updateUseDualStackEndpoint(dst *endpoints.DualStackEndpointState, section ini.Section, key string) {
+	if !section.Has(key) {
+		return
+	}
+
+	// retains pre-(aws-sdk-go-v2/#2276) behavior where non-bool value would resolve to false
+	if v, _ := section.Bool(key); v {
+		*dst = endpoints.DualStackEndpointStateEnabled
+	} else {
+		*dst = endpoints.DualStackEndpointStateDisabled
+	}
+
+	return
+}
+
+// updateEndpointDiscoveryType will only update the dst with the value in the section, if
+// a valid key and corresponding EndpointDiscoveryType is found.
+func updateUseFIPSEndpoint(dst *endpoints.FIPSEndpointState, section ini.Section, key string) {
+	if !section.Has(key) {
+		return
+	}
+
+	// retains pre-(aws-sdk-go-v2/#2276) behavior where non-bool value would resolve to false
+	if v, _ := section.Bool(key); v {
+		*dst = endpoints.FIPSEndpointStateEnabled
+	} else {
+		*dst = endpoints.FIPSEndpointStateDisabled
+	}
+
+	return
 }

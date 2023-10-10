@@ -6,6 +6,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -64,6 +65,14 @@ func UnmarshalXML(v interface{}, d *xml.Decoder, wrapper string) error {
 // parse deserializes any value from the XMLNode. The type tag is used to infer the type, or reflect
 // will be used to determine the type from r.
 func parse(r reflect.Value, node *XMLNode, tag reflect.StructTag) error {
+	xml := tag.Get("xml")
+	if len(xml) != 0 {
+		name := strings.SplitAfterN(xml, ",", 2)[0]
+		if name == "-" {
+			return nil
+		}
+	}
+
 	rtype := r.Type()
 	if rtype.Kind() == reflect.Ptr {
 		rtype = rtype.Elem() // check kind of actual element type
@@ -268,9 +277,20 @@ func parseScalar(r reflect.Value, node *XMLNode, tag reflect.StructTag) error {
 		}
 		r.Set(reflect.ValueOf(&v))
 	case *float64:
-		v, err := strconv.ParseFloat(node.Text, 64)
-		if err != nil {
-			return err
+		var v float64
+		switch {
+		case strings.EqualFold(node.Text, floatNaN):
+			v = math.NaN()
+		case strings.EqualFold(node.Text, floatInf):
+			v = math.Inf(1)
+		case strings.EqualFold(node.Text, floatNegInf):
+			v = math.Inf(-1)
+		default:
+			var err error
+			v, err = strconv.ParseFloat(node.Text, 64)
+			if err != nil {
+				return err
+			}
 		}
 		r.Set(reflect.ValueOf(&v))
 	case *time.Time:

@@ -5,13 +5,17 @@
 // variable "AWS_EC2_METADATA_DISABLED=true". This environment variable set to
 // true instructs the SDK to disable the EC2 Metadata client. The client cannot
 // be used while the environment variable is set to true, (case insensitive).
+//
+// The endpoint of the EC2 IMDS client can be configured via the environment
+// variable, AWS_EC2_METADATA_SERVICE_ENDPOINT when creating the client with a
+// Session. See aws/session#Options.EC2IMDSEndpoint for more details.
 package ec2metadata
 
 import (
 	"bytes"
-	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -41,7 +45,7 @@ const (
 	enableTokenProviderHandlerName = "enableTokenProviderHandler"
 
 	// TTL constants
-	defaultTTL = 21600 * time.Second
+	defaultTTL          = 21600 * time.Second
 	ttlExpirationWindow = 30 * time.Second
 )
 
@@ -53,13 +57,13 @@ type EC2Metadata struct {
 // New creates a new instance of the EC2Metadata client with a session.
 // This client is safe to use across multiple goroutines.
 //
-//
 // Example:
-//     // Create a EC2Metadata client from just a session.
-//     svc := ec2metadata.New(mySession)
 //
-//     // Create a EC2Metadata client with additional configuration
-//     svc := ec2metadata.New(mySession, aws.NewConfig().WithLogLevel(aws.LogDebugHTTPBody))
+//	// Create a EC2Metadata client from just a session.
+//	svc := ec2metadata.New(mySession)
+//
+//	// Create a EC2Metadata client with additional configuration
+//	svc := ec2metadata.New(mySession, aws.NewConfig().WithLogLevel(aws.LogDebugHTTPBody))
 func New(p client.ConfigProvider, cfgs ...*aws.Config) *EC2Metadata {
 	c := p.ClientConfig(ServiceName, cfgs...)
 	return NewClient(*c.Config, c.Handlers, c.Endpoint, c.SigningRegion)
@@ -68,6 +72,9 @@ func New(p client.ConfigProvider, cfgs ...*aws.Config) *EC2Metadata {
 // NewClient returns a new EC2Metadata client. Should be used to create
 // a client when not using a session. Generally using just New with a session
 // is preferred.
+//
+// Will remove the URL path from the endpoint provided to ensure the EC2 IMDS
+// client is able to communicate with the EC2 IMDS API.
 //
 // If an unmodified HTTP client is provided from the stdlib default, or no client
 // the EC2RoleProvider's EC2Metadata HTTP client's timeout will be shortened.
@@ -80,8 +87,19 @@ func NewClient(cfg aws.Config, handlers request.Handlers, endpoint, signingRegio
 			// use a shorter timeout than default because the metadata
 			// service is local if it is running, and to fail faster
 			// if not running on an ec2 instance.
-			Timeout: 5 * time.Second,
+			Timeout: 1 * time.Second,
 		}
+		// max number of retries on the client operation
+		cfg.MaxRetries = aws.Int(2)
+	}
+
+	if u, err := url.Parse(endpoint); err == nil {
+		// Remove path from the endpoint since it will be added by requests.
+		// This is an artifact of the SDK adding `/latest` to the endpoint for
+		// EC2 IMDS, but this is now moved to the operation definition.
+		u.Path = ""
+		u.RawPath = ""
+		endpoint = u.String()
 	}
 
 	svc := &EC2Metadata{
@@ -158,6 +176,7 @@ type tokenOutput struct {
 var unmarshalTokenHandler = request.NamedHandler{
 	Name: unmarshalTokenHandlerName,
 	Fn: func(r *request.Request) {
+		defer r.HTTPResponse.Body.Close()
 		var b bytes.Buffer
 		if _, err := io.Copy(&b, r.HTTPResponse.Body); err != nil {
 			r.Error = awserr.NewRequestFailure(awserr.New(request.ErrCodeSerialization,
@@ -214,7 +233,8 @@ func unmarshalError(r *request.Request) {
 
 	// Response body format is not consistent between metadata endpoints.
 	// Grab the error message as a string and include that as the source error
-	r.Error = awserr.NewRequestFailure(awserr.New("EC2MetadataError", "failed to make EC2Metadata request", errors.New(b.String())),
+	r.Error = awserr.NewRequestFailure(
+		awserr.New("EC2MetadataError", "failed to make EC2Metadata request\n"+b.String(), nil),
 		r.HTTPResponse.StatusCode, r.RequestID)
 }
 

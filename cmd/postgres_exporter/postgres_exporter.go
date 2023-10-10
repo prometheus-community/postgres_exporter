@@ -18,24 +18,16 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/blang/semver"
 	"github.com/blang/semver/v4"
-	"github.com/form3tech-oss/go-vault-client/pkg/vaultclient"
+	"github.com/form3tech-oss/go-vault-client/v4/pkg/vaultclient"
 	"github.com/go-kit/log/level"
-	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/log"
-	"github.com/prometheus/common/version"
-	"gopkg.in/alecthomas/kingpin.v2"
-	"gopkg.in/yaml.v2"
 )
 
 // Branch is set during build to the git branch.
@@ -53,31 +45,6 @@ var Version = "0.0.1-rev"
 
 // VersionShort is set during build to the semantic version.
 var VersionShort = "0.0.1"
-
-var (
-	listenAddress          = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9187").Envar("PG_EXPORTER_WEB_LISTEN_ADDRESS").String()
-	metricPath             = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").Envar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
-	disableDefaultMetrics  = kingpin.Flag("disable-default-metrics", "Do not include default metrics.").Default("false").Envar("PG_EXPORTER_DISABLE_DEFAULT_METRICS").Bool()
-	disableSettingsMetrics = kingpin.Flag("disable-settings-metrics", "Do not include pg_settings metrics.").Default("false").Envar("PG_EXPORTER_DISABLE_SETTINGS_METRICS").Bool()
-	autoDiscoverDatabases  = kingpin.Flag("auto-discover-databases", "Whether to discover the databases on a server dynamically.").Default("false").Envar("PG_EXPORTER_AUTO_DISCOVER_DATABASES").Bool()
-	queriesPath            = kingpin.Flag("extend.query-path", "Path to custom queries to run.").Default("").Envar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
-	onlyDumpMaps           = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
-	constantLabelsList     = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,).").Default("").Envar("PG_EXPORTER_CONSTANT_LABELS").String()
-	excludeDatabases       = kingpin.Flag("exclude-databases", "A list of databases to remove when autoDiscoverDatabases is enabled").Default("").Envar("PG_EXPORTER_EXCLUDE_DATABASES").String()
-)
-
-// Metric name parts.
-const (
-	// Namespace for all metrics.
-	namespace = "pg"
-	// Subsystems.
-	exporter = "exporter"
-	// Metric label used for static string data thats handy to send to Prometheus
-	// e.g. version
-	staticLabelName = "static"
-	// Metric label used for server identification.
-	serverLabelName = "server"
-)
 
 // ColumnUsage should be one of several enum values which describe how a
 // queried row is to be converted to a Prometheus metric.
@@ -752,62 +719,6 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 	}
 }
 
-func (e *Exporter) discoverDatabaseDSNs() []string {
-	dsns := make(map[string]struct{})
-	for _, dsn := range e.dsn {
-		parsedDSN, err := url.Parse(dsn)
-		if err != nil {
-			log.Errorf("Unable to parse DSN (%s): %v", loggableDSN(dsn), err)
-			continue
-		}
-
-		dsns[dsn] = struct{}{}
-		server, err := e.servers.GetServer(dsn)
-		if err != nil {
-			log.Errorf("Error opening connection to database (%s): %v", loggableDSN(dsn), err)
-			continue
-		}
-
-		server.master = true
-
-		databaseNames, err := queryDatabases(server)
-		if err != nil {
-			log.Errorf("Error querying databases (%s): %v", loggableDSN(dsn), err)
-			continue
-		}
-		for _, databaseName := range databaseNames {
-			if contains(e.excludeDatabases, databaseName) {
-				continue
-			}
-			parsedDSN.Path = databaseName
-			dsns[parsedDSN.String()] = struct{}{}
-		}
-	}
-
-	result := make([]string, len(dsns))
-	index := 0
-	for dsn := range dsns {
-		result[index] = dsn
-		index++
-	}
-
-	return result
-}
-
-func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
-	server, err := e.servers.GetServer(dsn)
-	if err != nil {
-		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), err.Error())}
-	}
-
-	// Check if map versions need to be updated
-	if err := e.checkMapVersions(ch, server); err != nil {
-		log.Warnln("Proceeding with outdated query maps, as the Postgres version could not be determined:", err)
-	}
-
-	return server.Scrape(ch, e.disableSettingsMetrics)
-}
-
 func loadSecrets() (map[string]interface{}, error) {
 	result := make(map[string]interface{})
 	vaultAuth, err := vaultclient.NewVaultAuth(vaultclient.NewDefaultConfig())
@@ -826,7 +737,7 @@ func loadSecrets() (map[string]interface{}, error) {
 			result[key] = value
 		}
 	} else {
-		log.Warnln("error reading vault secrets from /secret/application", err)
+		level.Warn(logger).Log("error reading vault secrets from /secret/application", err)
 	}
 
 	secret, err = client.Logical().Read("/secret/postgres_exporter")
@@ -835,7 +746,7 @@ func loadSecrets() (map[string]interface{}, error) {
 			result[key] = value
 		}
 	} else {
-		log.Warnln("error reading vault secrets from /secret/postgres_exporter", err)
+		level.Warn(logger).Log("error reading vault secrets from /secret/postgres_exporter", err)
 	}
 
 	dbCredsPath := os.Getenv("VAULT_DB_CREDENTIALS_PATH")
@@ -845,128 +756,8 @@ func loadSecrets() (map[string]interface{}, error) {
 			result[key] = value
 		}
 	} else {
-		log.Warnln("error reading vault secrets from "+dbCredsPath, err)
+		level.Warn(logger).Log("error reading vault secrets from "+dbCredsPath, err)
 	}
 
 	return result, nil
-}
-
-// try to get the DataSource
-// DATA_SOURCE_NAME always wins so we do not break older versions
-// reading secrets from files wins over secrets in environment variables
-// DATA_SOURCE_NAME > DATA_SOURCE_{USER|PASS}_FILE > DATA_SOURCE_{USER|PASS}
-func getDataSources() []string {
-	var dsn = os.Getenv("DATA_SOURCE_NAME")
-	if len(dsn) == 0 {
-		var user string
-		var pass string
-
-		if len(os.Getenv("DATA_SOURCE_USER_FILE")) != 0 {
-			fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_USER_FILE"))
-			if err != nil {
-				panic(err)
-			}
-			user = strings.TrimSpace(string(fileContents))
-		} else {
-			user = os.Getenv("DATA_SOURCE_USER")
-		}
-
-		if len(os.Getenv("DATA_SOURCE_PASS_FILE")) != 0 {
-			fileContents, err := ioutil.ReadFile(os.Getenv("DATA_SOURCE_PASS_FILE"))
-			if err != nil {
-				panic(err)
-			}
-			pass = strings.TrimSpace(string(fileContents))
-		} else {
-			pass = os.Getenv("DATA_SOURCE_PASS")
-		}
-
-		if len(user) == 0 || len(pass) == 0 {
-			secrets, err := loadSecrets()
-			if err != nil {
-				panic(err)
-			}
-
-			if len(user) == 0 {
-				user = secrets["database-username"].(string)
-			}
-
-			if len(pass) == 0 {
-				pass = secrets["database-password"].(string)
-			}
-		}
-
-		ui := url.UserPassword(user, pass).String()
-		uri := os.Getenv("DATA_SOURCE_URI")
-		dsn = "postgresql://" + ui + "@" + uri
-
-		return []string{dsn}
-	}
-	return strings.Split(dsn, ",")
-}
-
-func contains(a []string, x string) bool {
-	for _, n := range a {
-		if x == n {
-			return true
-		}
-	}
-	return false
-}
-
-func main() {
-	kingpin.Version(fmt.Sprintf("postgres_exporter %s (built with %s)\n", Version, runtime.Version()))
-	log.AddFlags(kingpin.CommandLine)
-	kingpin.Parse()
-
-	// landingPage contains the HTML served at '/'.
-	// TODO: Make this nicer and more informative.
-	var landingPage = []byte(`<html>
-	<head><title>Postgres exporter</title></head>
-	<body>
-	<h1>Postgres exporter</h1>
-	<p><a href='` + *metricPath + `'>Metrics</a></p>
-	</body>
-	</html>
-	`)
-
-	if *onlyDumpMaps {
-		dumpMaps()
-		return
-	}
-
-	dsn := getDataSources()
-	if len(dsn) == 0 {
-		log.Fatal("couldn't find environment variables describing the datasource to use")
-	}
-
-	exporter := NewExporter(dsn,
-		DisableDefaultMetrics(*disableDefaultMetrics),
-		DisableSettingsMetrics(*disableSettingsMetrics),
-		AutoDiscoverDatabases(*autoDiscoverDatabases),
-		WithUserQueriesPath(*queriesPath),
-		WithConstantLabels(*constantLabelsList),
-		ExcludeDatabases(*excludeDatabases),
-	)
-	defer func() {
-		exporter.servers.Close()
-	}()
-
-	// Setup build info metric.
-	version.Branch = Branch
-	version.BuildDate = BuildDate
-	version.Revision = Revision
-	version.Version = VersionShort
-	prometheus.MustRegister(version.NewCollector("postgres_exporter"))
-
-	prometheus.MustRegister(exporter)
-
-	http.Handle(*metricPath, promhttp.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=UTF-8") // nolint: errcheck
-		w.Write(landingPage)                                       // nolint: errcheck
-	})
-
-	log.Infof("Starting Server: %s", *listenAddress)
-	log.Fatal(http.ListenAndServe(*listenAddress, nil))
 }

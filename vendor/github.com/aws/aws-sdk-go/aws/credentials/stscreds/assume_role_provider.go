@@ -9,7 +9,7 @@ to refresh the credentials will be synchronized. But, the SDK is unable to
 ensure synchronous usage of the AssumeRoleProvider if the value is shared
 between multiple Credentials, Sessions or service clients.
 
-Assume Role
+# Assume Role
 
 To assume an IAM role using STS with the SDK you can create a new Credentials
 with the SDKs's stscreds package.
@@ -27,7 +27,7 @@ with the SDKs's stscreds package.
 	// from assumed role.
 	svc := s3.New(sess, &aws.Config{Credentials: creds})
 
-Assume Role with static MFA Token
+# Assume Role with static MFA Token
 
 To assume an IAM role with a MFA token you can either specify a MFA token code
 directly or provide a function to prompt the user each time the credentials
@@ -49,7 +49,7 @@ credentials.
 	// from assumed role.
 	svc := s3.New(sess, &aws.Config{Credentials: creds})
 
-Assume Role with MFA Token Provider
+# Assume Role with MFA Token Provider
 
 To assume an IAM role with MFA for longer running tasks where the credentials
 may need to be refreshed setting the TokenProvider field of AssumeRoleProvider
@@ -74,7 +74,6 @@ single Credentials with an AssumeRoleProvider can be shared safely.
 	// Create service client value configured for credentials
 	// from assumed role.
 	svc := s3.New(sess, &aws.Config{Credentials: creds})
-
 */
 package stscreds
 
@@ -87,6 +86,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/internal/sdkrand"
 	"github.com/aws/aws-sdk-go/service/sts"
 )
@@ -94,7 +94,7 @@ import (
 // StdinTokenProvider will prompt on stderr and read from stdin for a string value.
 // An error is returned if reading from stdin fails.
 //
-// Use this function go read MFA tokens from stdin. The function makes no attempt
+// Use this function to read MFA tokens from stdin. The function makes no attempt
 // to make atomic prompts from stdin across multiple gorouties.
 //
 // Using StdinTokenProvider with multiple AssumeRoleProviders, or Credentials will
@@ -116,6 +116,10 @@ const ProviderName = "AssumeRoleProvider"
 // AssumeRoler represents the minimal subset of the STS client API used by this provider.
 type AssumeRoler interface {
 	AssumeRole(input *sts.AssumeRoleInput) (*sts.AssumeRoleOutput, error)
+}
+
+type assumeRolerWithContext interface {
+	AssumeRoleWithContext(aws.Context, *sts.AssumeRoleInput, ...request.Option) (*sts.AssumeRoleOutput, error)
 }
 
 // DefaultDuration is the default amount of time in minutes that the credentials
@@ -144,6 +148,13 @@ type AssumeRoleProvider struct {
 	// Session name, if you wish to reuse the credentials elsewhere.
 	RoleSessionName string
 
+	// Optional, you can pass tag key-value pairs to your session. These tags are called session tags.
+	Tags []*sts.Tag
+
+	// A list of keys for session tags that you want to set as transitive.
+	// If you set a tag key as transitive, the corresponding key and value passes to subsequent sessions in a role chain.
+	TransitiveTagKeys []*string
+
 	// Expiry duration of the STS credentials. Defaults to 15 minutes if not set.
 	Duration time.Duration
 
@@ -157,12 +168,39 @@ type AssumeRoleProvider struct {
 	// size.
 	Policy *string
 
+	// The ARNs of IAM managed policies you want to use as managed session policies.
+	// The policies must exist in the same account as the role.
+	//
+	// This parameter is optional. You can provide up to 10 managed policy ARNs.
+	// However, the plain text that you use for both inline and managed session
+	// policies can't exceed 2,048 characters.
+	//
+	// An AWS conversion compresses the passed session policies and session tags
+	// into a packed binary format that has a separate limit. Your request can fail
+	// for this limit even if your plain text meets the other requirements. The
+	// PackedPolicySize response element indicates by percentage how close the policies
+	// and tags for your request are to the upper size limit.
+	//
+	// Passing policies to this operation returns new temporary credentials. The
+	// resulting session's permissions are the intersection of the role's identity-based
+	// policy and the session policies. You can use the role's temporary credentials
+	// in subsequent AWS API calls to access resources in the account that owns
+	// the role. You cannot use session policies to grant more permissions than
+	// those allowed by the identity-based policy of the role that is being assumed.
+	// For more information, see Session Policies (https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html#policies_session)
+	// in the IAM User Guide.
+	PolicyArns []*sts.PolicyDescriptorType
+
 	// The identification number of the MFA device that is associated with the user
 	// who is making the AssumeRole call. Specify this value if the trust policy
 	// of the role being assumed includes a condition that requires MFA authentication.
 	// The value is either the serial number for a hardware device (such as GAHT12345678)
 	// or an Amazon Resource Name (ARN) for a virtual device (such as arn:aws:iam::123456789012:mfa/user).
 	SerialNumber *string
+
+	// The SourceIdentity which is used to identity a persistent identity through the whole session.
+	// For more details see https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_control-access_monitor.html
+	SourceIdentity *string
 
 	// The value provided by the MFA device, if the trust policy of the role being
 	// assumed requires MFA (that is, if the policy includes a condition that tests
@@ -209,9 +247,11 @@ type AssumeRoleProvider struct {
 	MaxJitterFrac float64
 }
 
-// NewCredentials returns a pointer to a new Credentials object wrapping the
+// NewCredentials returns a pointer to a new Credentials value wrapping the
 // AssumeRoleProvider. The credentials will expire every 15 minutes and the
-// role will be named after a nanosecond timestamp of this operation.
+// role will be named after a nanosecond timestamp of this operation. The
+// Credentials value will attempt to refresh the credentials using the provider
+// when Credentials.Get is called, if the cached credentials are expiring.
 //
 // Takes a Config provider to create the STS client. The ConfigProvider is
 // satisfied by the session.Session type.
@@ -233,9 +273,11 @@ func NewCredentials(c client.ConfigProvider, roleARN string, options ...func(*As
 	return credentials.NewCredentials(p)
 }
 
-// NewCredentialsWithClient returns a pointer to a new Credentials object wrapping the
+// NewCredentialsWithClient returns a pointer to a new Credentials value wrapping the
 // AssumeRoleProvider. The credentials will expire every 15 minutes and the
-// role will be named after a nanosecond timestamp of this operation.
+// role will be named after a nanosecond timestamp of this operation. The
+// Credentials value will attempt to refresh the credentials using the provider
+// when Credentials.Get is called, if the cached credentials are expiring.
 //
 // Takes an AssumeRoler which can be satisfied by the STS client.
 //
@@ -258,6 +300,11 @@ func NewCredentialsWithClient(svc AssumeRoler, roleARN string, options ...func(*
 
 // Retrieve generates a new set of temporary credentials using STS.
 func (p *AssumeRoleProvider) Retrieve() (credentials.Value, error) {
+	return p.RetrieveWithContext(aws.BackgroundContext())
+}
+
+// RetrieveWithContext generates a new set of temporary credentials using STS.
+func (p *AssumeRoleProvider) RetrieveWithContext(ctx credentials.Context) (credentials.Value, error) {
 	// Apply defaults where parameters are not set.
 	if p.RoleSessionName == "" {
 		// Try to work out a role name that will hopefully end up unique.
@@ -269,10 +316,14 @@ func (p *AssumeRoleProvider) Retrieve() (credentials.Value, error) {
 	}
 	jitter := time.Duration(sdkrand.SeededRand.Float64() * p.MaxJitterFrac * float64(p.Duration))
 	input := &sts.AssumeRoleInput{
-		DurationSeconds: aws.Int64(int64((p.Duration - jitter) / time.Second)),
-		RoleArn:         aws.String(p.RoleARN),
-		RoleSessionName: aws.String(p.RoleSessionName),
-		ExternalId:      p.ExternalID,
+		DurationSeconds:   aws.Int64(int64((p.Duration - jitter) / time.Second)),
+		RoleArn:           aws.String(p.RoleARN),
+		RoleSessionName:   aws.String(p.RoleSessionName),
+		ExternalId:        p.ExternalID,
+		Tags:              p.Tags,
+		PolicyArns:        p.PolicyArns,
+		TransitiveTagKeys: p.TransitiveTagKeys,
+		SourceIdentity:    p.SourceIdentity,
 	}
 	if p.Policy != nil {
 		input.Policy = p.Policy
@@ -295,7 +346,15 @@ func (p *AssumeRoleProvider) Retrieve() (credentials.Value, error) {
 		}
 	}
 
-	roleOutput, err := p.Client.AssumeRole(input)
+	var roleOutput *sts.AssumeRoleOutput
+	var err error
+
+	if c, ok := p.Client.(assumeRolerWithContext); ok {
+		roleOutput, err = c.AssumeRoleWithContext(ctx, input)
+	} else {
+		roleOutput, err = p.Client.AssumeRole(input)
+	}
+
 	if err != nil {
 		return credentials.Value{ProviderName: ProviderName}, err
 	}

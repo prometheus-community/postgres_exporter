@@ -17,10 +17,10 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/form3tech-oss/postgres_exporter/collector"
+	"github.com/form3tech-oss/postgres_exporter/config"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/prometheus-community/postgres_exporter/collector"
-	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )

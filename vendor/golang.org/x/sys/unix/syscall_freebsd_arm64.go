@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build arm64 && freebsd
 // +build arm64,freebsd
 
 package unix
@@ -39,6 +40,10 @@ func (msghdr *Msghdr) SetIovlen(length int) {
 
 func (cmsg *Cmsghdr) SetLen(length int) {
 	cmsg.Len = uint32(length)
+}
+
+func (d *PtraceIoDesc) SetLen(length int) {
+	d.Len = uint64(length)
 }
 
 func sendfile(outfd int, infd int, offset *int64, count int) (written int, err error) {
