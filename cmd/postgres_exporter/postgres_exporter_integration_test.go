@@ -1,6 +1,20 @@
+// Copyright 2021 The Prometheus Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // These are specialized integration tests. We only build them when we're doing
 // a lot of additional work to keep the external docker environment they require
 // working.
+//go:build integration
 // +build integration
 
 package main
@@ -75,7 +89,7 @@ func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 }
 
 // TestInvalidDsnDoesntCrash tests that specifying an invalid DSN doesn't crash
-// the exporter. Related to https://github.com/wrouesnel/postgres_exporter/issues/93
+// the exporter. Related to https://github.com/prometheus-community/postgres_exporter/issues/93
 // although not a replication of the scenario.
 func (s *IntegrationSuite) TestInvalidDsnDoesntCrash(c *C) {
 	// Setup a dummy channel to consume metrics
@@ -125,4 +139,40 @@ func (s *IntegrationSuite) TestUnknownMetricParsingDoesntCrash(c *C) {
 
 	// scrape the exporter and make sure it works
 	exporter.scrape(ch)
+}
+
+// TestExtendQueriesDoesntCrash tests that specifying extend.query-path doesn't
+// crash.
+func (s *IntegrationSuite) TestExtendQueriesDoesntCrash(c *C) {
+	// Setup a dummy channel to consume metrics
+	ch := make(chan prometheus.Metric, 100)
+	go func() {
+		for range ch {
+		}
+	}()
+
+	dsn := os.Getenv("DATA_SOURCE_NAME")
+	c.Assert(dsn, Not(Equals), "")
+
+	exporter := NewExporter(
+		strings.Split(dsn, ","),
+		WithUserQueriesPath("../user_queries_test.yaml"),
+	)
+	c.Assert(exporter, NotNil)
+
+	// scrape the exporter and make sure it works
+	exporter.scrape(ch)
+}
+
+func (s *IntegrationSuite) TestAutoDiscoverDatabases(c *C) {
+	dsn := os.Getenv("DATA_SOURCE_NAME")
+
+	exporter := NewExporter(
+		strings.Split(dsn, ","),
+	)
+	c.Assert(exporter, NotNil)
+
+	dsns := exporter.discoverDatabaseDSNs()
+
+	c.Assert(len(dsns), Equals, 2)
 }

@@ -1,0 +1,20 @@
+go:
+    # This must match .circle/config.yml.
+    version: 1.20
+repository:
+    path: github.com/prometheus-community/postgres_exporter
+build:
+    binaries:
+        - name: postgres_exporter
+          path: ./cmd/postgres_exporter
+    flags: -a -tags 'netgo static_build'
+    ldflags: |
+        -X github.com/prometheus/common/version.Version={{.Version}}
+        -X github.com/prometheus/common/version.Revision={{.Revision}}
+        -X github.com/prometheus/common/version.Branch={{.Branch}}
+        -X github.com/prometheus/common/version.BuildUser={{user}}@{{host}}
+        -X github.com/prometheus/common/version.BuildDate={{date "20060102-15:04:05"}}
+tarball:
+    files:
+        - LICENSE
+        - NOTICE
