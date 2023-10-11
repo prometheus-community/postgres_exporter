@@ -1,0 +1,81 @@
+name: CI
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - '**'
+  pull_request:
+
+jobs:
+  calculate-tag:
+    uses: ./.github/workflows/calculate-tag.yaml
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3 # v3.5.0
+      - name: Setup Golang
+        uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
+        with:
+          go-version-file: go.mod
+      - name: Test
+        run: make test
+  build:
+    runs-on: ubuntu-latest
+    needs: [ calculate-tag, test ]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3 # v3.5.0
+      - name: Setup Golang
+        uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
+        with:
+          go-version-file: go.mod
+      - name: Build
+        run: make crossbuild
+      - name: Set version
+        run: echo "${{ needs.calculate-tag.outputs.tag }}" | sed s/v//g > VERSION
+      - name: Package
+        run: make crossbuild-tarballs
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: tarballs
+          path: ./.tarballs/*.tar.gz
+
+  commit-message:
+    runs-on: ubuntu-latest
+    outputs:
+      head-commit-message: ${{ steps.get_head_commit_message.outputs.headCommitMsg }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3 # v3.5.0
+        with:
+          fetch-depth: 0
+          ref: ${{github.event.after}}
+      - name: Print head git commit message
+        id: get_head_commit_message
+        run: |
+          msg="$(git show -s --format=%s)"
+          echo "Latest msg is $msg"
+          echo "headCommitMsg=$msg" >> $GITHUB_OUTPUT
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [ calculate-tag, build, commit-message ]
+    permissions: write-all
+    if: contains(needs.commit-message.outputs.head-commit-message, 'pre-release') || startsWith(github.base_ref, '/refs/tags')
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: tarballs
+      - name: Create GH release
+        uses: softprops/action-gh-release@v1
+        id: release
+        with:
+          generate_release_notes: true
+          tag_name: ${{ needs.calculate-tag.outputs.tag }}
+          prerelease: "${{ github.event_name == 'pull_request' }}"
+          files: |
+              *.tar.gz

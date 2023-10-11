@@ -78,7 +78,7 @@ ifeq ($(GOHOSTOS),$(filter $(GOHOSTOS),linux darwin))
 	endif
 endif
 
-PREFIX                  ?= $(shell pwd)
+PREFIX                  ?= $(shell pwd)/build
 BIN_DIR                 ?= $(shell pwd)
 DOCKER_IMAGE_TAG        ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 DOCKERFILE_PATH         ?= ./Dockerfile
@@ -199,10 +199,20 @@ common-build: promu
 	@echo ">> building binaries"
 	$(PROMU) build --prefix $(PREFIX) $(PROMU_BINARIES)
 
+.PHONY: common-crossbuild
+common-crossbuild: promu
+	@echo ">> building binaries"
+	$(PROMU) crossbuild -v
+
+.PHONY: common-crossbuild-tarballs
+common-crossbuild-tarballs: promu
+	@echo ">> building tarballs"
+	$(PROMU) crossbuild -v "tarballs"
+
 .PHONY: common-tarball
 common-tarball: promu
 	@echo ">> building release tarball"
-	$(PROMU) tarball --prefix $(PREFIX) $(BIN_DIR)
+	$(PROMU) tarball --prefix="$(BIN_DIR)" $(BIN_DIR)/.bin
 
 .PHONY: common-docker $(BUILD_DOCKER_ARCHS)
 common-docker: $(BUILD_DOCKER_ARCHS)

@@ -17,10 +17,10 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/form3tech-oss/postgres_exporter/collector"
+	"github.com/form3tech-oss/postgres_exporter/config"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/prometheus-community/postgres_exporter/collector"
-	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -85,7 +85,6 @@ func handleProbe(logger log.Logger, excludeDatabases []string) http.HandlerFunc 
 		// Run the probe
 		pc, err := collector.NewProbeCollector(tl, excludeDatabases, registry, dsn)
 		if err != nil {
-			level.Error(logger).Log("msg", "Error creating probe collector", "err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

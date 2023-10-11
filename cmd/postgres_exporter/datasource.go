@@ -20,6 +20,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/form3tech-oss/go-vault-client/v4/pkg/vaultclient"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -149,6 +150,21 @@ func getDataSources() ([]string, error) {
 		pass = os.Getenv("DATA_SOURCE_PASS")
 	}
 
+	if len(user) == 0 || len(pass) == 0 {
+		secrets, err := loadSecrets()
+		if err != nil {
+			panic(err)
+		}
+
+		if len(user) == 0 {
+			user = secrets["database-username"].(string)
+		}
+
+		if len(pass) == 0 {
+			pass = secrets["database-password"].(string)
+		}
+	}
+
 	ui := url.UserPassword(user, pass).String()
 	dataSrouceURIFile := os.Getenv("DATA_SOURCE_URI_FILE")
 	if len(dataSrouceURIFile) != 0 {
@@ -170,4 +186,47 @@ func getDataSources() ([]string, error) {
 	dsn = "postgresql://" + ui + "@" + uri
 
 	return []string{dsn}, nil
+}
+
+func loadSecrets() (map[string]interface{}, error) {
+	result := make(map[string]interface{})
+	vaultAuth, err := vaultclient.NewVaultAuth(vaultclient.NewDefaultConfig())
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := vaultAuth.VaultClient()
+	if err != nil {
+		return nil, err
+	}
+
+	secret, err := client.Logical().Read("/secret/application")
+	if err == nil {
+		for key, value := range secret.Data {
+			result[key] = value
+		}
+	} else {
+		level.Warn(logger).Log("msg", "error reading vault secrets from /secret/application", "err", err)
+	}
+
+	secret, err = client.Logical().Read("/secret/postgres_exporter")
+	if err == nil && secret != nil {
+		for key, value := range secret.Data {
+			result[key] = value
+		}
+	} else {
+		level.Warn(logger).Log("msg", "error reading vault secrets from /secret/postgres_exporter", "err", err)
+	}
+
+	dbCredsPath := os.Getenv("VAULT_DB_CREDENTIALS_PATH")
+	secret, err = client.Logical().Read(dbCredsPath)
+	if err == nil {
+		for key, value := range secret.Data {
+			result[key] = value
+		}
+	} else {
+		level.Warn(logger).Log("error reading vault secrets from "+dbCredsPath, err)
+	}
+
+	return result, nil
 }

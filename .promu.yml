@@ -2,7 +2,7 @@ go:
     # This must match .circle/config.yml.
     version: 1.20
 repository:
-    path: github.com/prometheus-community/postgres_exporter
+    path: github.com/form3tech-oss/postgres_exporter
 build:
     binaries:
         - name: postgres_exporter
@@ -12,8 +12,11 @@ build:
         -X github.com/prometheus/common/version.Version={{.Version}}
         -X github.com/prometheus/common/version.Revision={{.Revision}}
         -X github.com/prometheus/common/version.Branch={{.Branch}}
-        -X github.com/prometheus/common/version.BuildUser={{user}}@{{host}}
         -X github.com/prometheus/common/version.BuildDate={{date "20060102-15:04:05"}}
+crossbuild:
+    platforms:
+        - linux/amd64
+        - linux/arm64
 tarball:
     files:
         - LICENSE
