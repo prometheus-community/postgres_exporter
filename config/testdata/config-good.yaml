@@ -1,0 +1,8 @@
+auth_modules:
+  first:
+    type: userpass
+    userpass:
+      username: first
+      password: firstpass
+    options:
+      sslmode: disable

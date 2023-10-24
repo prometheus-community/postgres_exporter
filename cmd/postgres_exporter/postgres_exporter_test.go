@@ -1,14 +1,29 @@
+// Copyright 2021 The Prometheus Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+//go:build !integration
 // +build !integration
 
 package main
 
 import (
-	"io/ioutil"
+	"math"
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
-	"github.com/blang/semver"
+	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
 	. "gopkg.in/check.v1"
 )
@@ -111,7 +126,11 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
 
 	var expected = "postgresql://custom_username$&+,%2F%3A;=%3F%40:custom_password$&+,%2F%3A;=%3F%40@localhost:5432/?sslmode=disable"
 
-	dsn := getDataSources()
+	dsn, err := getDataSources()
+	if err != nil {
+		c.Errorf("Unexpected error reading datasources")
+	}
+
 	if len(dsn) == 0 {
 		c.Errorf("Expected one data source, zero found")
 	}
@@ -127,7 +146,11 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDns(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_NAME")
 
-	dsn := getDataSources()
+	dsn, err := getDataSources()
+	if err != nil {
+		c.Errorf("Unexpected error reading datasources")
+	}
+
 	if len(dsn) == 0 {
 		c.Errorf("Expected one data source, zero found")
 	}
@@ -151,7 +174,11 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDnsAndSecrets(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_PASS")
 
-	dsn := getDataSources()
+	dsn, err := getDataSources()
+	if err != nil {
+		c.Errorf("Unexpected error reading datasources")
+	}
+
 	if len(dsn) == 0 {
 		c.Errorf("Expected one data source, zero found")
 	}
@@ -275,6 +302,22 @@ func UnsetEnvironment(c *C, d string) {
 	c.Assert(err, IsNil)
 }
 
+type isNaNChecker struct {
+	*CheckerInfo
+}
+
+var IsNaN Checker = &isNaNChecker{
+	&CheckerInfo{Name: "IsNaN", Params: []string{"value"}},
+}
+
+func (checker *isNaNChecker) Check(params []interface{}, names []string) (result bool, error string) {
+	param, ok := (params[0]).(float64)
+	if !ok {
+		return false, "obtained value type is not a float"
+	}
+	return math.IsNaN(param), ""
+}
+
 // test boolean metric type gets converted to float
 func (s *FunctionalSuite) TestBooleanConversionToValueAndString(c *C) {
 
@@ -282,6 +325,7 @@ func (s *FunctionalSuite) TestBooleanConversionToValueAndString(c *C) {
 		input          interface{}
 		expectedString string
 		expectedValue  float64
+		expectedCount  uint64
 		expectedOK     bool
 	}
 
@@ -290,19 +334,71 @@ func (s *FunctionalSuite) TestBooleanConversionToValueAndString(c *C) {
 			input:          true,
 			expectedString: "true",
 			expectedValue:  1.0,
+			expectedCount:  1,
 			expectedOK:     true,
 		},
 		{
 			input:          false,
 			expectedString: "false",
 			expectedValue:  0.0,
+			expectedCount:  0,
+			expectedOK:     true,
+		},
+		{
+			input:          nil,
+			expectedString: "",
+			expectedValue:  math.NaN(),
+			expectedCount:  0,
+			expectedOK:     true,
+		},
+		{
+			input:          TestCase{},
+			expectedString: "",
+			expectedValue:  math.NaN(),
+			expectedCount:  0,
+			expectedOK:     false,
+		},
+		{
+			input:          123.0,
+			expectedString: "123",
+			expectedValue:  123.0,
+			expectedCount:  123,
+			expectedOK:     true,
+		},
+		{
+			input:          "123",
+			expectedString: "123",
+			expectedValue:  123.0,
+			expectedCount:  123,
+			expectedOK:     true,
+		},
+		{
+			input:          []byte("123"),
+			expectedString: "123",
+			expectedValue:  123.0,
+			expectedCount:  123,
+			expectedOK:     true,
+		},
+		{
+			input:          time.Unix(1600000000, 0),
+			expectedString: "1600000000",
+			expectedValue:  1600000000.0,
+			expectedCount:  1600000000,
 			expectedOK:     true,
 		},
 	}
 
 	for _, cs := range cases {
 		value, ok := dbToFloat64(cs.input)
-		c.Assert(value, Equals, cs.expectedValue)
+		if math.IsNaN(cs.expectedValue) {
+			c.Assert(value, IsNaN)
+		} else {
+			c.Assert(value, Equals, cs.expectedValue)
+		}
+		c.Assert(ok, Equals, cs.expectedOK)
+
+		count, ok := dbToUint64(cs.input)
+		c.Assert(count, Equals, cs.expectedCount)
 		c.Assert(ok, Equals, cs.expectedOK)
 
 		str, ok := dbToString(cs.input)
@@ -312,7 +408,7 @@ func (s *FunctionalSuite) TestBooleanConversionToValueAndString(c *C) {
 }
 
 func (s *FunctionalSuite) TestParseUserQueries(c *C) {
-	userQueriesData, err := ioutil.ReadFile("./tests/user_queries_ok.yaml")
+	userQueriesData, err := os.ReadFile("./tests/user_queries_ok.yaml")
 	if err == nil {
 		metricMaps, newQueryOverrides, err := parseUserQueries(userQueriesData)
 		c.Assert(err, Equals, nil)

@@ -4,7 +4,7 @@
 # REQUIRE: LOGIN
 # KEYWORD: shutdown
 #
-# rc-script for postgres_exporter 
+# rc-script for postgres_exporter
 #
 #
 # Add the following lines to /etc/rc.conf.local or /etc/rc.conf
@@ -29,23 +29,8 @@
 # postgres_exporter_pg_port (string):  	    Set the Postgres database port
 #		Defaults to "5432"
 
-# Add extra arguments via "postgres_exporter_args" which could be choosen from:
+# Add extra arguments via "postgres_exporter_args"
 # (see $ postgres_exporter --help)
-#
-#  -dumpmaps
-#    	Do not run, simply dump the maps.
-#  -extend.query-path string
-#    	Path to custom queries to run.
-#  -log.level value
-#    	Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal].
-#  -version
-#    	print version and exit
-#  -web.telemetry-path string
-#    	Path under which to expose metrics. (default "/metrics")
-#  -log.format value
-#    	If set use a syslog logger or JSON logging. Example: logger:syslog?appname=bob&local=7 or logger:stdout?json=true. Defaults to stderr.
-#  -extend.query-path string
-#    	Path to custom queries to run.
 
 
 . /etc/rc.subr
@@ -71,8 +56,9 @@ postgres_exporter_data_source_name="postgresql://${postgres_exporter_pg_user}:${
 pidfile=/var/run/postgres_exporter.pid
 command="/usr/sbin/daemon"
 procname="/usr/local/bin/postgres_exporter"
-command_args="-p ${pidfile} /usr/bin/env DATA_SOURCE_NAME="${postgres_exporter_data_source_name}" ${procname} \
-    -web.listen-address=${postgres_exporter_listen_address} \
+command_args="-f -p ${pidfile} -T ${name} \
+    /usr/bin/env DATA_SOURCE_NAME="${postgres_exporter_data_source_name}" ${procname} \
+    --web.listen-address=${postgres_exporter_listen_address} \
     ${postgres_exporter_args}"
 
 start_precmd=postgres_exporter_startprecmd
@@ -86,4 +72,3 @@ postgres_exporter_startprecmd()
 
 load_rc_config $name
 run_rc_command "$1"
-

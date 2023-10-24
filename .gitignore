@@ -20,3 +20,5 @@
 /.metrics.*.removed
 /tools/src
 /assets
+/vendor
+/build

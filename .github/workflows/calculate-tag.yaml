@@ -1,0 +1,56 @@
+name: Calculate new tag
+
+on:
+  workflow_call:
+    outputs:
+      tag:
+        description: "The the next semantic version tag based on commit messages."
+        value: ${{ jobs.calculate-tag.outputs.tag }}
+    inputs:
+      head_ref:
+        description: "Head ref to be used as pre-release suffix"
+        type: string
+        default: "${{ github.head_ref }}"
+      f3_tag:
+        description: "Additional tag to be prefixed to the latest upstream release tag"
+        type: string
+        default: "${{ github.sha }}"
+
+jobs:
+  calculate-tag:
+    runs-on: ubuntu-20.04
+    permissions: read-all
+    outputs:
+      tag: "${{ steps.tag.outputs.tag }}"
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Get the tag name
+        id: latest_tag
+        run: |
+          latest_tag=""
+          echo "latest_tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          if [[ "${{ github.ref_type }}" = "tag" ]]; then
+            latest_tag="${GITHUB_REF#refs/tags/}"
+          else
+            latest_tag=$(git describe --tags --abbrev=0)
+          fi
+          echo "latest_tag=$latest_tag" >> $GITHUB_OUTPUT
+      - name: Calculate pre-release suffix
+        id: tag-suffix
+        run: |
+          echo "event name ${{ github.event_name }}"
+          SUFFIX="${{ inputs.head_ref }}"
+          if [[ "${{ github.event_name }}" = "push" && "${{ github.ref_type }}" = "branch" && "${{ github.ref_name }}" = "builder" ]]; then
+            SUFFIX="release-$(date +%Y-%m-%d)"
+          fi
+          underscores_and_slashes_to_dashes_suffix="${SUFFIX//[\/_]/-}"
+          echo "tag-suffix=-${underscores_and_slashes_to_dashes_suffix}" >> $GITHUB_OUTPUT
+
+      - name: Compute next tag
+        id: tag
+        run: |
+          latest_tag="${{ steps.latest_tag.outputs.latest_tag }}"
+          tag="${latest_tag}-f3${{steps.tag-suffix.outputs.tag-suffix}}"
+          echo "tag=$tag" >> $GITHUB_OUTPUT
