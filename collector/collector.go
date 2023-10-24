@@ -17,6 +17,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -76,10 +77,11 @@ func registerCollector(name string, isDefaultEnabled bool, createFunc func(colle
 
 	// Create flag for this collector
 	flagName := fmt.Sprintf("collector.%s", name)
+	envName := fmt.Sprintf("PG_EXPORTER_COLLECTOR_%s", strings.ToUpper(name))
 	flagHelp := fmt.Sprintf("Enable the %s collector (default: %s).", name, helpDefaultState)
 	defaultValue := fmt.Sprintf("%v", isDefaultEnabled)
 
-	flag := kingpin.Flag(flagName, flagHelp).Default(defaultValue).Action(collectorFlagAction(name)).Bool()
+	flag := kingpin.Flag(flagName, flagHelp).Default(defaultValue).Envar(envName).Action(collectorFlagAction(name)).Bool()
 	collectorState[name] = flag
 
 	// Register the create function for this collector
