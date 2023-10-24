@@ -18,8 +18,6 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/alecthomas/kingpin/v2"
-	"strings"
-
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -36,10 +34,9 @@ func init() {
 	registerCollector(statStatementsSubsystem, defaultDisabled, NewPGStatStatementsCollector)
 
 	flagName := fmt.Sprintf("collector.%s.include_query", statStatementsSubsystem)
-	flagEnvName := fmt.Sprintf("PG_EXPORTER_COLLECTOR_%s_INCLUDE_QUERY", strings.ToUpper(statStatementsSubsystem))
 	flagHelp := "Enable selecting statement query together with queryId. (default: false)"
 	defaultValue := fmt.Sprintf("%v", defaultDisabled)
-	includeQueryFlag = kingpin.Flag(flagName, flagHelp).Default(defaultValue).Envar(flagEnvName).Bool()
+	includeQueryFlag = kingpin.Flag(flagName, flagHelp).Default(defaultValue).Bool()
 }
 
 type PGStatStatementsCollector struct {
