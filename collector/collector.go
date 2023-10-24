@@ -124,6 +124,7 @@ func NewPostgresCollector(logger log.Logger, excludeDatabases []string, dsn stri
 	initiatedCollectorsMtx.Lock()
 	defer initiatedCollectorsMtx.Unlock()
 	for key, enabled := range collectorState {
+		level.Debug(logger).Log("msg", "collector state", "name", key, "enabled", enabled)
 		if !*enabled || (len(f) > 0 && !f[key]) {
 			continue
 		}
