@@ -52,7 +52,7 @@ jobs:
         run: |
           latest_tag="${{ steps.latest_tag.outputs.latest_tag }}"
           if [[ "${{ github.ref_type }}" = "tag" ]]; then
-            tag="${latest_tag}
+            tag="${latest_tag}"
           else
             tag="${latest_tag}${{steps.tag_suffix.outputs.tag_suffix}}"
           fi
