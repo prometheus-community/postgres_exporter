@@ -90,7 +90,7 @@ var (
 		prometheus.Labels{},
 	)
 
-	pgStatStatementQuerySelect = "pg_stat_statements.query,"
+	pgStatStatementQuerySelect = "LEFT(pg_stat_statements.query, 120) as query,"
 
 	pgStatStatementsQuery = `SELECT
 		pg_get_userbyid(userid) as user,
