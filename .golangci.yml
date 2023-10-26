@@ -1,4 +1,9 @@
 ---
+linters:
+  enable:
+  - misspell
+  - revive
+
 issues:
   exclude-rules:
   - path: _test.go
@@ -7,4 +12,12 @@ issues:
 
 linters-settings:
   errcheck:
-    exclude: scripts/errcheck_excludes.txt
+    exclude-functions:
+      # Never check for logger errors.
+      - (github.com/go-kit/log.Logger).Log
+  revive:
+    rules:
+      # https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md#unused-parameter
+      - name: unused-parameter
+        severity: warning
+        disabled: true

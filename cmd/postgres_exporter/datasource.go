@@ -15,7 +15,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"regexp"
@@ -50,7 +49,7 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			continue
 		}
 
-		server, err := e.servers.GetServer(dsn)
+		server, err := e.servers.GetServer(dsn, e.resolutionEnabled)
 		if err != nil {
 			level.Error(logger).Log("msg", "Error opening connection to database", "dsn", loggableDSN(dsn), "err", err)
 			continue
@@ -101,7 +100,7 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 }
 
 func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
-	server, err := e.servers.GetServer(dsn)
+	server, err := e.servers.GetServer(dsn, e.resolutionEnabled)
 
 	if err != nil {
 		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), err.Error())}
@@ -134,7 +133,7 @@ func getDataSources() ([]string, error) {
 
 	dataSourceUserFile := os.Getenv("DATA_SOURCE_USER_FILE")
 	if len(dataSourceUserFile) != 0 {
-		fileContents, err := ioutil.ReadFile(dataSourceUserFile)
+		fileContents, err := os.ReadFile(dataSourceUserFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed loading data source user file %s: %s", dataSourceUserFile, err.Error())
 		}
@@ -145,7 +144,7 @@ func getDataSources() ([]string, error) {
 
 	dataSourcePassFile := os.Getenv("DATA_SOURCE_PASS_FILE")
 	if len(dataSourcePassFile) != 0 {
-		fileContents, err := ioutil.ReadFile(dataSourcePassFile)
+		fileContents, err := os.ReadFile(dataSourcePassFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed loading data source pass file %s: %s", dataSourcePassFile, err.Error())
 		}
@@ -157,13 +156,19 @@ func getDataSources() ([]string, error) {
 	ui := url.UserPassword(user, pass).String()
 	dataSrouceURIFile := os.Getenv("DATA_SOURCE_URI_FILE")
 	if len(dataSrouceURIFile) != 0 {
-		fileContents, err := ioutil.ReadFile(dataSrouceURIFile)
+		fileContents, err := os.ReadFile(dataSrouceURIFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed loading data source URI file %s: %s", dataSrouceURIFile, err.Error())
 		}
 		uri = strings.TrimSpace(string(fileContents))
 	} else {
 		uri = os.Getenv("DATA_SOURCE_URI")
+	}
+
+	// No datasources found. This allows us to support the multi-target pattern
+	// without an explicit datasource.
+	if uri == "" {
+		return []string{}, nil
 	}
 
 	dsn = "postgresql://" + ui + "@" + uri

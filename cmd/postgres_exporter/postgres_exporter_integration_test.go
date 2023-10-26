@@ -62,7 +62,11 @@ func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 
 	for _, dsn := range s.e.dsn {
 		// Open a database connection
-		server, err := NewServer(dsn)
+		db, err := NewDB(dsn)
+		c.Assert(db, NotNil)
+		c.Assert(err, IsNil)
+
+		server, err := NewServer(dsn, db)
 		c.Assert(server, NotNil)
 		c.Assert(err, IsNil)
 
@@ -156,7 +160,11 @@ func (s *IntegrationSuite) TestExtendQueriesDoesntCrash(c *C) {
 
 	exporter := NewExporter(
 		strings.Split(dsn, ","),
-		WithUserQueriesPath("../user_queries_test.yaml"),
+		WithUserQueriesPath(map[MetricResolution]string{
+			HR: "../user_queries_test.yaml",
+			MR: "../user_queries_test.yaml",
+			LR: "../user_queries_test.yaml",
+		}),
 	)
 	c.Assert(exporter, NotNil)
 

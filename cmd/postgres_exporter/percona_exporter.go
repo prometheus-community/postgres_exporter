@@ -2,21 +2,25 @@ package main
 
 import (
 	"crypto/sha256"
+	"database/sql"
 	"fmt"
-	"github.com/blang/semver"
-	"github.com/go-kit/log/level"
-	"github.com/prometheus/client_golang/prometheus"
-	"gopkg.in/alecthomas/kingpin.v2"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
+
+	"github.com/alecthomas/kingpin/v2"
+	"github.com/blang/semver/v4"
+	"github.com/go-kit/log/level"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type MetricResolution string
 
 const (
-	LR MetricResolution = "lr"
-	MR MetricResolution = "mr"
-	HR MetricResolution = "hr"
+	DISABLED MetricResolution = ""
+	LR       MetricResolution = "lr"
+	MR       MetricResolution = "mr"
+	HR       MetricResolution = "hr"
 )
 
 var (
@@ -28,71 +32,53 @@ var (
 	collectCustomQueryHrDirectory = kingpin.Flag("collect.custom_query.hr.directory", "Path to custom queries with high resolution directory.").Envar("PG_EXPORTER_EXTEND_QUERY_HR_PATH").String()
 )
 
-func initializePerconaExporters(dsn []string, opts []ExporterOpt) (func(), *Exporter, *Exporter, *Exporter) {
+func initializePerconaExporters(dsn []string, servers *Servers) (func(), *Exporter, *Exporter, *Exporter) {
 	queriesPath := map[MetricResolution]string{
 		HR: *collectCustomQueryHrDirectory,
 		MR: *collectCustomQueryMrDirectory,
 		LR: *collectCustomQueryLrDirectory,
 	}
 
-	defaultOpts := []ExporterOpt{CollectorName("exporter")}
-	defaultOpts = append(defaultOpts, opts...)
-	defaultExporter := NewExporter(
-		dsn,
-		defaultOpts...,
-	)
-	prometheus.MustRegister(defaultExporter)
-
-	hrExporter := NewExporter(dsn,
-		CollectorName("custom_query.hr"),
+	excludedDatabases := strings.Split(*excludeDatabases, ",")
+	opts := []ExporterOpt{
 		DisableDefaultMetrics(true),
 		DisableSettingsMetrics(true),
 		AutoDiscoverDatabases(*autoDiscoverDatabases),
-		WithUserQueriesEnabled(map[MetricResolution]bool{
-			HR: *collectCustomQueryHr,
-			MR: false,
-			LR: false,
-		}),
+		WithServers(servers),
 		WithUserQueriesPath(queriesPath),
-		WithConstantLabels(*constantLabelsList),
-		ExcludeDatabases(*excludeDatabases),
+		ExcludeDatabases(excludedDatabases),
+	}
+	hrExporter := NewExporter(dsn,
+		append(opts,
+			CollectorName("custom_query.hr"),
+			WithUserQueriesResolutionEnabled(HR),
+			WithEnabled(*collectCustomQueryHr),
+			WithConstantLabels(*constantLabelsList),
+		)...,
 	)
 	prometheus.MustRegister(hrExporter)
 
 	mrExporter := NewExporter(dsn,
-		CollectorName("custom_query.mr"),
-		DisableDefaultMetrics(true),
-		DisableSettingsMetrics(true),
-		AutoDiscoverDatabases(*autoDiscoverDatabases),
-		WithUserQueriesEnabled(map[MetricResolution]bool{
-			HR: false,
-			MR: *collectCustomQueryMr,
-			LR: false,
-		}),
-		WithUserQueriesPath(queriesPath),
-		WithConstantLabels(*constantLabelsList),
-		ExcludeDatabases(*excludeDatabases),
+		append(opts,
+			CollectorName("custom_query.mr"),
+			WithUserQueriesResolutionEnabled(MR),
+			WithEnabled(*collectCustomQueryMr),
+			WithConstantLabels(*constantLabelsList),
+		)...,
 	)
 	prometheus.MustRegister(mrExporter)
 
 	lrExporter := NewExporter(dsn,
-		CollectorName("custom_query.lr"),
-		DisableDefaultMetrics(true),
-		DisableSettingsMetrics(true),
-		AutoDiscoverDatabases(*autoDiscoverDatabases),
-		WithUserQueriesEnabled(map[MetricResolution]bool{
-			HR: false,
-			MR: false,
-			LR: *collectCustomQueryLr,
-		}),
-		WithUserQueriesPath(queriesPath),
-		WithConstantLabels(*constantLabelsList),
-		ExcludeDatabases(*excludeDatabases),
+		append(opts,
+			CollectorName("custom_query.lr"),
+			WithUserQueriesResolutionEnabled(LR),
+			WithEnabled(*collectCustomQueryLr),
+			WithConstantLabels(*constantLabelsList),
+		)...,
 	)
 	prometheus.MustRegister(lrExporter)
 
 	return func() {
-		defaultExporter.servers.Close()
 		hrExporter.servers.Close()
 		mrExporter.servers.Close()
 		lrExporter.servers.Close()
@@ -107,6 +93,7 @@ func (e *Exporter) loadCustomQueries(res MetricResolution, version semver.Versio
 				"err", err)
 			return
 		}
+		level.Debug(logger).Log("msg", fmt.Sprintf("reading dir %q for custom query", e.userQueriesPath[res]))
 
 		for _, v := range fi {
 			if v.IsDir() {
@@ -140,4 +127,22 @@ func (e *Exporter) addCustomQueriesFromFile(path string, version semver.Version,
 
 	// Mark user queries as successfully loaded
 	e.userQueriesError.WithLabelValues(path, hashsumStr).Set(0)
+}
+
+// NewDB establishes a new connection using DSN.
+func NewDB(dsn string) (*sql.DB, error) {
+	fingerprint, err := parseFingerprint(dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return nil, err
+	}
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+
+	level.Info(logger).Log("msg", "Established new database connection", "fingerprint", fingerprint)
+	return db, nil
 }

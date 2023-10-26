@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	postgresHost     = "127.0.0.1"
+	postgresHost     = "postgres"
 	postgresPort     = 5432
 	postgresUser     = "postgres"
 	postgresPassword = "postgres"
@@ -28,16 +28,20 @@ const (
 
 	exporterWaitTimeoutMs = 3000 // time to wait for exporter process start
 
-	updatedExporterFileName = "assets/postgres_exporter"
-	oldExporterFileName     = "assets/postgres_exporter_percona"
+	updatedExporterFileName = "/usr/src/myapp/percona_tests/assets/postgres_exporter"
+	oldExporterFileName     = "/usr/src/myapp/percona_tests/assets/postgres_exporter_percona"
+	updatedExporterArgs     = "/usr/src/myapp/percona_tests/assets/test.new-flags.txt"
+	oldExporterArgs         = "/usr/src/myapp/percona_tests/assets/test.old-flags.txt"
+	updatedExporterMetrics  = "/usr/src/myapp/percona_tests/assets/metrics.new"
+	oldExporterMetrics      = "/usr/src/myapp/percona_tests/assets/metrics.old"
 )
 
 func getBool(val *bool) bool {
 	return val != nil && *val
 }
 
-func launchExporter(fileName string) (cmd *exec.Cmd, port int, collectOutput func() string, _ error) {
-	lines, err := os.ReadFile("assets/test.exporter-flags.txt")
+func launchExporter(fileName string, argsFile string) (cmd *exec.Cmd, port int, collectOutput func() string, _ error) {
+	lines, err := os.ReadFile(argsFile)
 	if err != nil {
 		return nil, 0, nil, errors.Wrapf(err, "Unable to read exporter args file")
 	}
@@ -115,6 +119,8 @@ func stopExporter(cmd *exec.Cmd, collectOutput func() string) error {
 	if err != nil && err.Error() != "signal: interrupt" {
 		return errors.Wrapf(err, "Failed to wait for exporter process termination.%s\n", collectOutput())
 	}
+
+	fmt.Println(collectOutput())
 
 	return nil
 }

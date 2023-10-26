@@ -23,7 +23,22 @@ services:
     networks:
       - postgres-test-srv-net
 
+  golang:
+    image: golang:1.21
+    container_name: golang-test
+    command: >
+      tail -f ./assets/test.new-flags.txt
+    volumes:
+      - ../:/usr/src/myapp
+      - go-modules:/go/pkg/mod # Put modules cache into a separate volume
+    working_dir: /usr/src/myapp/percona_tests
+    depends_on:
+      - postgres
+    networks:
+      - postgres-test-srv-net
+
 volumes:
+  go-modules: # Define the volume
   postgres-test-srv-vol:
 
 networks:

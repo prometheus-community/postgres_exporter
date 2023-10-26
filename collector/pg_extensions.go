@@ -39,22 +39,17 @@ type ExtensionsCollector struct {
 	logger log.Logger
 }
 
-func NewExtensionsCollector(logger log.Logger) (Collector, error) {
-	return &ExtensionsCollector{logger: logger}, nil
+func NewExtensionsCollector(collectorConfig collectorConfig) (Collector, error) {
+	return &ExtensionsCollector{logger: collectorConfig.logger}, nil
 }
 
-func (e *ExtensionsCollector) Update(ctx context.Context, server *server, ch chan<- prometheus.Metric) error {
-	db, err := server.GetDB()
+func (e *ExtensionsCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	err := e.scrapeAvailableExtensions(ctx, instance.db, ch)
 	if err != nil {
 		return err
 	}
 
-	err = e.scrapeAvailableExtensions(ctx, db, ch)
-	if err != nil {
-		return err
-	}
-
-	err = e.scrapeInstalledExtensions(ctx, db, ch)
+	err = e.scrapeInstalledExtensions(ctx, instance.db, ch)
 	if err != nil {
 		return err
 	}

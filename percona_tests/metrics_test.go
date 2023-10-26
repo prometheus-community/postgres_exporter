@@ -22,7 +22,7 @@ const lowResolutionEndpoint = "metrics?collect%5B%5D=custom_query.lr"
 
 // that metric is disabled by default in new exporters, so will trigger test
 // however we don't use it at all in our dashboards, so for now - safe to skip it
-const skipMetricName = "go_memstats_gc_cpu_fraction"
+var skipMetricNames = []string{"go_memstats_gc_cpu_fraction", "go_info"}
 
 type Metric struct {
 	name             string
@@ -44,16 +44,26 @@ func TestMissingMetrics(t *testing.T) {
 		return
 	}
 
-	newMetrics, err := getMetrics(updatedExporterFileName)
+	endpoint := "metrics?collect[]=exporter&collect[]=postgres&collect[]=custom_query.mr"
+	newMetrics, err := getMetricsFrom(updatedExporterFileName, updatedExporterArgs, endpoint)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	oldMetrics, err := getMetrics(oldExporterFileName)
+	oldMetrics, err := getMetricsFrom(oldExporterFileName, oldExporterArgs, endpoint)
 	if err != nil {
 		t.Error(err)
 		return
+	}
+
+	err = os.WriteFile(updatedExporterMetrics, []byte(newMetrics), os.ModePerm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = os.WriteFile(oldExporterMetrics, []byte(oldMetrics), os.ModePerm)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	oldMetricsCollection := parseMetricsCollection(oldMetrics)
@@ -70,16 +80,25 @@ func TestMissingLabels(t *testing.T) {
 		return
 	}
 
-	newMetrics, err := getMetrics(updatedExporterFileName)
+	newMetrics, err := getMetrics(updatedExporterFileName, updatedExporterArgs)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	oldMetrics, err := getMetrics(oldExporterFileName)
+	oldMetrics, err := getMetrics(oldExporterFileName, oldExporterArgs)
 	if err != nil {
 		t.Error(err)
 		return
+	}
+
+	err = os.WriteFile(updatedExporterMetrics+"-labels", []byte(newMetrics), os.ModePerm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = os.WriteFile(oldExporterMetrics+"-labels", []byte(oldMetrics), os.ModePerm)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	oldMetricsCollection := parseMetricsCollection(oldMetrics)
@@ -108,13 +127,13 @@ func TestDumpMetrics(t *testing.T) {
 		ep = "metrics"
 	}
 
-	newMetrics, err := getMetricsFrom(updatedExporterFileName, ep)
+	newMetrics, err := getMetricsFrom(updatedExporterFileName, updatedExporterArgs, ep)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	oldMetrics, err := getMetricsFrom(oldExporterFileName, ep)
+	oldMetrics, err := getMetricsFrom(oldExporterFileName, oldExporterArgs, ep)
 	if err != nil {
 		t.Error(err)
 		return
@@ -132,19 +151,19 @@ func TestResolutionsMetricDuplicates(t *testing.T) {
 		return
 	}
 
-	hrMetrics, err := getMetricsFrom(updatedExporterFileName, highResolutionEndpoint)
+	hrMetrics, err := getMetricsFrom(updatedExporterFileName, updatedExporterArgs, highResolutionEndpoint)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	mrMetrics, err := getMetricsFrom(updatedExporterFileName, medResolutionEndpoint)
+	mrMetrics, err := getMetricsFrom(updatedExporterFileName, updatedExporterArgs, medResolutionEndpoint)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	lrMetrics, err := getMetricsFrom(updatedExporterFileName, lowResolutionEndpoint)
+	lrMetrics, err := getMetricsFrom(updatedExporterFileName, updatedExporterArgs, lowResolutionEndpoint)
 	if err != nil {
 		t.Error(err)
 		return
@@ -203,16 +222,25 @@ func TestResolutions(t *testing.T) {
 }
 
 func testResolution(t *testing.T, resolutionEp, resolutionName string) {
-	newMetrics, err := getMetricsFrom(updatedExporterFileName, resolutionEp)
+	newMetrics, err := getMetricsFrom(updatedExporterFileName, updatedExporterArgs, resolutionEp)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	oldMetrics, err := getMetricsFrom(oldExporterFileName, resolutionEp)
+	oldMetrics, err := getMetricsFrom(oldExporterFileName, oldExporterArgs, resolutionEp)
 	if err != nil {
 		t.Error(err)
 		return
+	}
+
+	err = os.WriteFile(fmt.Sprintf("%s-%s", updatedExporterMetrics, resolutionName), []byte(newMetrics), os.ModePerm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = os.WriteFile(fmt.Sprintf("%s-%s", oldExporterMetrics, resolutionName), []byte(oldMetrics), os.ModePerm)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	oldMetricsCollection := parseMetricsCollection(oldMetrics)
@@ -224,7 +252,10 @@ func testResolution(t *testing.T, resolutionEp, resolutionName string) {
 	missingLabels := ""
 	for _, oldMetric := range oldMetricsCollection.MetricsData {
 		// skip empty lines, comments and redundant metrics
-		if oldMetric.name == "" || strings.HasPrefix(oldMetric.name, "# ") || oldMetric.name == skipMetricName {
+		if oldMetric.name == "" || strings.HasPrefix(oldMetric.name, "# ") {
+			continue
+		}
+		if skipMetric(oldMetric.name) {
 			continue
 		}
 
@@ -250,10 +281,10 @@ func testResolution(t *testing.T, resolutionEp, resolutionName string) {
 
 		if !metricFound {
 			missingCount++
-			missingMetrics += fmt.Sprintf("%s\n", oldMetric.name)
+			missingMetrics += fmt.Sprintf("%s\n", oldMetric)
 		} else if !labelsMatch {
 			missingLabelsCount++
-			missingLabels += fmt.Sprintf("%s\n", oldMetric.name)
+			missingLabels += fmt.Sprintf("%s\n", oldMetric)
 		}
 	}
 
@@ -262,7 +293,7 @@ func testResolution(t *testing.T, resolutionEp, resolutionName string) {
 	}
 
 	if missingLabelsCount > 0 {
-		t.Errorf("%d metrics's labels missing in new exporter for %s resolution:\n%s", missingCount, resolutionName, missingLabels)
+		t.Errorf("%d metrics's labels missing in new exporter for %s resolution:\n%s", missingLabelsCount, resolutionName, missingLabels)
 	}
 
 	extraCount := 0
@@ -280,6 +311,16 @@ func testResolution(t *testing.T, resolutionEp, resolutionName string) {
 	if extraCount > 0 {
 		fmt.Printf("[WARN] %d metrics are redundant in new exporter for %s resolution\n%s", extraCount, resolutionName, extraMetrics)
 	}
+}
+
+func skipMetric(oldMetricName string) bool {
+	skip := false
+	for _, name := range skipMetricNames {
+		if name == oldMetricName {
+			skip = true
+		}
+	}
+	return skip
 }
 
 func dumpMetricsInfo(oldMetricsCollection, newMetricsCollection MetricsCollection) {
@@ -331,7 +372,7 @@ func testForMissingMetricsLabels(oldMetricsCollection, newMetricsCollection Metr
 func testForMissingMetrics(oldMetricsCollection, newMetricsCollection MetricsCollection) (bool, string) {
 	missingMetrics := make([]string, 0)
 	for metricName := range oldMetricsCollection.LabelsByMetric {
-		if metricName == skipMetricName {
+		if skipMetric(metricName) {
 			continue
 		}
 
@@ -541,12 +582,12 @@ func getMetricNames(metrics []string) []string {
 	return ret
 }
 
-func getMetrics(fileName string) (string, error) {
-	return getMetricsFrom(fileName, "metrics")
+func getMetrics(fileName, argsFile string) (string, error) {
+	return getMetricsFrom(fileName, argsFile, "metrics")
 }
 
-func getMetricsFrom(fileName, endpoint string) (string, error) {
-	cmd, port, collectOutput, err := launchExporter(fileName)
+func getMetricsFrom(fileName, argsFile, endpoint string) (string, error) {
+	cmd, port, collectOutput, err := launchExporter(fileName, argsFile)
 	if err != nil {
 		return "", errors.Wrap(err, "Failed to launch exporter")
 	}
