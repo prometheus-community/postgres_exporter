@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -87,7 +87,7 @@ func initializePerconaExporters(dsn []string, servers *Servers) (func(), *Export
 
 func (e *Exporter) loadCustomQueries(res MetricResolution, version semver.Version, server *Server) {
 	if e.userQueriesPath[res] != "" {
-		fi, err := ioutil.ReadDir(e.userQueriesPath[res])
+		fi, err := os.ReadDir(e.userQueriesPath[res])
 		if err != nil {
 			level.Error(logger).Log("msg", fmt.Sprintf("failed read dir %q for custom query", e.userQueriesPath[res]),
 				"err", err)
@@ -110,7 +110,7 @@ func (e *Exporter) loadCustomQueries(res MetricResolution, version semver.Versio
 
 func (e *Exporter) addCustomQueriesFromFile(path string, version semver.Version, server *Server) {
 	// Calculate the hashsum of the useQueries
-	userQueriesData, err := ioutil.ReadFile(path)
+	userQueriesData, err := os.ReadFile(path)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to reload user queries:"+path, "err", err)
 		e.userQueriesError.WithLabelValues(path, "").Set(1)

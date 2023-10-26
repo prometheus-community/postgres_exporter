@@ -3,7 +3,7 @@ package percona_tests
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -154,7 +154,7 @@ func doTest(iterations int, fileName, argsFile string) (cpu, hwm, data int64, _ 
 }
 
 func getCPUMem(pid int) (hwm, data int64) {
-	contents, err := ioutil.ReadFile(fmt.Sprintf("/proc/%d/status", pid))
+	contents, err := os.ReadFile(fmt.Sprintf("/proc/%d/status", pid))
 	if err != nil {
 		return 0, 0
 	}
@@ -178,7 +178,7 @@ func getCPUMem(pid int) (hwm, data int64) {
 }
 
 func getCPUTime(pid int) (total int64) {
-	contents, err := ioutil.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
+	contents, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
 	if err != nil {
 		return
 	}
