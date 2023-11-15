@@ -53,7 +53,8 @@ func newInstance(dsn string) (*instance, error) {
 // copy returns a copy of the instance.
 func (i *instance) copy() *instance {
 	return &instance{
-		dsn: i.dsn,
+		dsn:  i.dsn,
+		name: i.name,
 	}
 }
 
