@@ -50,6 +50,14 @@ func newInstance(dsn string) (*instance, error) {
 	return i, nil
 }
 
+// copy returns a copy of the instance.
+func (i *instance) copy() *instance {
+	return &instance{
+		dsn:  i.dsn,
+		name: i.name,
+	}
+}
+
 func (i *instance) setup() error {
 	db, err := sql.Open("postgres", i.dsn)
 	if err != nil {
