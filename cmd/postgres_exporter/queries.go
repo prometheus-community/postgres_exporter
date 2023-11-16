@@ -277,7 +277,7 @@ func addQueries(content []byte, pgVersion semver.Version, server *Server) error 
 }
 
 func queryDatabases(server *Server) ([]string, error) {
-	rows, err := server.db.Query("SELECT datname FROM pg_database WHERE datallowconn = true AND datistemplate = false AND datname != current_database()")
+	rows, err := server.db.Query("SELECT datname FROM pg_database WHERE datallowconn = true AND datistemplate = false AND datname != current_database() AND has_database_privilege(current_user, datname, 'connect')")
 	if err != nil {
 		return nil, fmt.Errorf("Error retrieving databases: %v", err)
 	}
