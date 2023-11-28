@@ -209,9 +209,9 @@ var (
 	statDatabaseActiveTime = prometheus.NewDesc(prometheus.BuildFQName(
 		namespace,
 		statDatabaseSubsystem,
-		"active_time",
+		"active_time_seconds_total",
 	),
-		"Time spent executing SQL statements in this database, in milliseconds",
+		"Time spent executing SQL statements in this database, in seconds",
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
 	)
@@ -485,7 +485,7 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseActiveTime,
 			prometheus.CounterValue,
-			activeTime.Float64,
+			activeTime.Float64/1000.0,
 			labels...,
 		)
 
