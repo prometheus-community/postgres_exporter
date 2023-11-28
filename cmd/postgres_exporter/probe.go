@@ -85,6 +85,7 @@ func handleProbe(logger log.Logger, excludeDatabases []string) http.HandlerFunc 
 		// Run the probe
 		pc, err := collector.NewProbeCollector(tl, excludeDatabases, registry, dsn)
 		if err != nil {
+			level.Error(logger).Log("msg", "Error creating probe collector", "err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

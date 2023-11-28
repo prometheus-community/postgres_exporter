@@ -1,3 +1,27 @@
+## 0.15.0 / 2023-10-27
+
+* [ENHANCEMENT] Add 1kB and 2kB units #915
+* [BUGFIX] Add error log when probe collector creation fails #918
+* [BUGFIX] Fix test build failures on 32-bit arch #919
+* [BUGFIX] Adjust collector to use separate connection per scrape #936
+
+## 0.14.0 / 2023-09-11
+
+* [CHANGE] Add `state` label to pg_process_idle_seconds #862
+* [CHANGE] Change database connections to one per scrape #882 #902
+* [ENHANCEMENT] Add wal collector #858
+* [ENHANCEMENT] Add database_wraparound collector #834
+* [ENHANCEMENT] Add stat_activity_autovacuum collector #840
+* [ENHANCEMENT] Add stat_wal_receiver collector #844
+* [ENHANCEMENT] Add xlog_location collector #849
+* [ENHANCEMENT] Add statio_user_indexes collector #845
+* [ENHANCEMENT] Add long_running_transactions collector #836
+* [ENHANCEMENT] Add pg_stat_user_tables_size_bytes metric #904
+* [BUGFIX] Fix tests on 32-bit systems #857
+* [BUGFIX] Fix pg_stat_statements metrics on Postgres 13+ #874 #876
+* [BUGFIX] Fix pg_stat_database metrics for NULL stats_reset #877
+* [BUGFIX] Fix pg_replication_lag_seconds on Postgres 10+ when master is idle #895
+
 ## 0.13.2 / 2023-07-21
 
 * [BUGFIX] Fix type issues on pg_postmaster metrics #828

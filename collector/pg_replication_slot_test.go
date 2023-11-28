@@ -31,9 +31,9 @@ func TestPgReplicationSlotCollectorActive(t *testing.T) {
 
 	inst := &instance{db: db}
 
-	columns := []string{"slot_name", "current_wal_lsn", "confirmed_flush_lsn", "active"}
+	columns := []string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active"}
 	rows := sqlmock.NewRows(columns).
-		AddRow("test_slot", 5, 3, true)
+		AddRow("test_slot", "physical", 5, 3, true)
 	mock.ExpectQuery(sanitizeQuery(pgReplicationSlotQuery)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -47,9 +47,9 @@ func TestPgReplicationSlotCollectorActive(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
-		{labels: labelMap{"slot_name": "test_slot"}, value: 5, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{"slot_name": "test_slot"}, value: 3, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{"slot_name": "test_slot"}, value: 1, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "test_slot", "slot_type": "physical"}, value: 5, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "test_slot", "slot_type": "physical"}, value: 3, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "test_slot", "slot_type": "physical"}, value: 1, metricType: dto.MetricType_GAUGE},
 	}
 
 	convey.Convey("Metrics comparison", t, func() {
@@ -72,9 +72,9 @@ func TestPgReplicationSlotCollectorInActive(t *testing.T) {
 
 	inst := &instance{db: db}
 
-	columns := []string{"slot_name", "current_wal_lsn", "confirmed_flush_lsn", "active"}
+	columns := []string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active"}
 	rows := sqlmock.NewRows(columns).
-		AddRow("test_slot", 6, 12, false)
+		AddRow("test_slot", "physical", 6, 12, false)
 	mock.ExpectQuery(sanitizeQuery(pgReplicationSlotQuery)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -88,8 +88,8 @@ func TestPgReplicationSlotCollectorInActive(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
-		{labels: labelMap{"slot_name": "test_slot"}, value: 6, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{"slot_name": "test_slot"}, value: 0, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "test_slot", "slot_type": "physical"}, value: 6, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "test_slot", "slot_type": "physical"}, value: 0, metricType: dto.MetricType_GAUGE},
 	}
 
 	convey.Convey("Metrics comparison", t, func() {
@@ -113,9 +113,9 @@ func TestPgReplicationSlotCollectorActiveNil(t *testing.T) {
 
 	inst := &instance{db: db}
 
-	columns := []string{"slot_name", "current_wal_lsn", "confirmed_flush_lsn", "active"}
+	columns := []string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active"}
 	rows := sqlmock.NewRows(columns).
-		AddRow("test_slot", 6, 12, nil)
+		AddRow("test_slot", "physical", 6, 12, nil)
 	mock.ExpectQuery(sanitizeQuery(pgReplicationSlotQuery)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -129,8 +129,8 @@ func TestPgReplicationSlotCollectorActiveNil(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
-		{labels: labelMap{"slot_name": "test_slot"}, value: 6, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{"slot_name": "test_slot"}, value: 0, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "test_slot", "slot_type": "physical"}, value: 6, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "test_slot", "slot_type": "physical"}, value: 0, metricType: dto.MetricType_GAUGE},
 	}
 
 	convey.Convey("Metrics comparison", t, func() {
@@ -153,9 +153,9 @@ func TestPgReplicationSlotCollectorTestNilValues(t *testing.T) {
 
 	inst := &instance{db: db}
 
-	columns := []string{"slot_name", "current_wal_lsn", "confirmed_flush_lsn", "active"}
+	columns := []string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active"}
 	rows := sqlmock.NewRows(columns).
-		AddRow(nil, nil, nil, true)
+		AddRow(nil, nil, nil, nil, true)
 	mock.ExpectQuery(sanitizeQuery(pgReplicationSlotQuery)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -169,9 +169,9 @@ func TestPgReplicationSlotCollectorTestNilValues(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
-		{labels: labelMap{"slot_name": "unknown"}, value: 0, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{"slot_name": "unknown"}, value: 0, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{"slot_name": "unknown"}, value: 1, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "unknown", "slot_type": "unknown"}, value: 0, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "unknown", "slot_type": "unknown"}, value: 0, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "unknown", "slot_type": "unknown"}, value: 1, metricType: dto.MetricType_GAUGE},
 	}
 
 	convey.Convey("Metrics comparison", t, func() {
