@@ -15,8 +15,9 @@ package collector
 
 import (
 	"context"
-
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/blang/semver/v4"
+	"database/sql"
 )
 
 const replicationSubsystem = "replication"
@@ -52,7 +53,7 @@ var (
 		[]string{}, nil,
 	)
 
-	pgReplicationQuery = `SELECT
+	pgReplicationQueryBeforeVersion10 = `SELECT
 	CASE
 		WHEN NOT pg_is_in_recovery() THEN 0
                 WHEN pg_last_wal_receive_lsn () = pg_last_wal_replay_lsn () THEN 0
@@ -62,13 +63,31 @@ var (
 		WHEN pg_is_in_recovery() THEN 1
 		ELSE 0
 	END as is_replica`
+
+	pgReplicationQueryAfterVersion10 = `SELECT
+        CASE
+                WHEN NOT pg_is_in_recovery() THEN 0
+                ELSE GREATEST (0, EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())))
+        END AS lag,
+        CASE
+                WHEN pg_is_in_recovery() THEN 1
+                ELSE 0
+        END as is_replica`
 )
 
 func (c *PGReplicationCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
-	row := db.QueryRowContext(ctx,
-		pgReplicationQuery,
-	)
+	after10 := instance.version.Compare(semver.MustParse("10.0.0"))
+	var row *sql.Row
+        if after10 >= 0 {
+		row = db.QueryRowContext(ctx,
+                        pgReplicationQueryAfterVersion10,
+                )
+        } else {
+		row = db.QueryRowContext(ctx,
+                        pgReplicationQueryBeforeVersion10,
+                )
+        }
 
 	var lag float64
 	var isReplica int64
