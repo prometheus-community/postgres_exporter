@@ -34,7 +34,11 @@ func TestPgReplicationCollector(t *testing.T) {
 	columns := []string{"lag", "is_replica"}
 	rows := sqlmock.NewRows(columns).
 		AddRow(1000, 1)
-	mock.ExpectQuery(sanitizeQuery(pgReplicationQuery)).WillReturnRows(rows)
+	if instance.version.GE(semver.MustParse("10.0.0")) {
+		mock.ExpectQuery(sanitizeQuery(pgReplicationQueryAfterVersion10)).WillReturnRows(rows)
+	} else {
+		mock.ExpectQuery(sanitizeQuery(pgReplicationQueryBeforeVersion10)).WillReturnRows(rows)
+	}
 
 	ch := make(chan prometheus.Metric)
 	go func() {
