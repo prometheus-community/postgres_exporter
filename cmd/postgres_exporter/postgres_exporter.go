@@ -252,6 +252,7 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 			"state":            {LABEL, "connection state", nil, semver.MustParseRange(">=9.2.0")},
 			"usename":          {LABEL, "connection usename", nil, nil},
 			"application_name": {LABEL, "connection application_name", nil, nil},
+			"client_addr":      {LABEL, "connection client_addr", nil, nil},
 			"count":            {GAUGE, "number of connections in this state", nil, nil},
 			"max_tx_duration":  {GAUGE, "max duration in seconds any active transaction has been running", nil, nil},
 		},
