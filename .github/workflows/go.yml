@@ -20,9 +20,6 @@ jobs:
           - postgres:13
           - postgres:14
     runs-on: ubuntu-latest
-    # The environment this job references
-    environment:
-      name: CI
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -51,10 +48,8 @@ jobs:
     - name: Run debug commands on failure
       if: ${{ failure() }}
       run: |
-        env
-        go version
-        go env
-        pwd
+        env | sort
+        go env | sort
         git status
         docker --version
         docker-compose --version
