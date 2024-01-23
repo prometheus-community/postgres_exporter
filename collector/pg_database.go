@@ -63,7 +63,7 @@ var (
 		[]string{"datname"}, nil,
 	)
 
-	pgDatabaseQuery     = "SELECT pg_database.datname,pg_database.datconnlimit FROM pg_database;"
+	pgDatabaseQuery     = "SELECT pg_database.datname, pg_database.datconnlimit FROM pg_database;"
 	pgDatabaseSizeQuery = "SELECT pg_database_size($1)"
 )
 
