@@ -48,7 +48,7 @@ var (
 		[]string{"rolname"}, nil,
 	)
 
-	pgRolesConnectionLimitsQuery = "select pg_roles.rolname,pg_roles.rolconnlimit FROM pg_roles"
+	pgRolesConnectionLimitsQuery = "SELECT pg_roles.rolname, pg_roles.rolconnlimit FROM pg_roles"
 )
 
 // Update implements Collector and exposes roles connection limits.
