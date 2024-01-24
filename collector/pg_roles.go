@@ -71,15 +71,15 @@ func (c PGRolesCollector) Update(ctx context.Context, instance *instance, ch cha
 			return err
 		}
 
-		rolnameLabel := "unknown"
-		if rolname.Valid {
-			rolnameLabel = rolname.String
+		if !rolname.Valid {
+			continue
 		}
+		rolnameLabel := rolname.String
 
-		connLimitMetric := 0.0
-		if connLimit.Valid {
-			connLimitMetric = float64(connLimit.Int64)
+		if !connLimit.Valid {
+			continue
 		}
+		connLimitMetric := float64(connLimit.Int64)
 
 		ch <- prometheus.MustNewConstMetric(
 			pgRolesConnectionLimitsDesc,
