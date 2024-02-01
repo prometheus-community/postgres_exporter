@@ -3,7 +3,7 @@ module github.com/prometheus-community/postgres_exporter
 go 1.19
 
 require (
-	github.com/DATA-DOG/go-sqlmock v1.5.0
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/alecthomas/kingpin/v2 v2.3.2
 	github.com/blang/semver/v4 v4.0.0
 	github.com/go-kit/log v0.2.1
