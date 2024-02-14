@@ -515,13 +515,6 @@ func WithConstantLabels(s string) ExporterOpt {
 	}
 }
 
-// WithServers configures constant labels.
-func WithServers(s *Servers) ExporterOpt {
-	return func(e *Exporter) {
-		e.servers = s
-	}
-}
-
 func parseConstLabels(s string) prometheus.Labels {
 	labels := make(prometheus.Labels)
 
@@ -561,6 +554,7 @@ func NewExporter(dsn []string, opts ...ExporterOpt) *Exporter {
 	}
 
 	e.setupInternalMetrics()
+	e.servers = NewServers(ServerWithLabels(e.constantLabels))
 
 	return e
 }
@@ -655,7 +649,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 	}
 
 	// Check if semantic version changed and recalculate maps if needed.
-	//if semanticVersion.NE(server.lastMapVersion[e.resolutionEnabled]) || server.metricMap == nil {
+	// if semanticVersion.NE(server.lastMapVersion[e.resolutionEnabled]) || server.metricMap == nil {
 	//	level.Info(logger).Log("msg", "Semantic version changed", "server", server, "from", server.lastMapVersion[e.resolutionEnabled], "to", semanticVersion)
 	server.mappingMtx.Lock()
 
@@ -668,7 +662,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 		server.queryOverrides = make(map[string]string)
 	}
 
-	//server.lastMapVersion[e.resolutionEnabled] = semanticVersion
+	// server.lastMapVersion[e.resolutionEnabled] = semanticVersion
 
 	if e.userQueriesPath[HR] != "" || e.userQueriesPath[MR] != "" || e.userQueriesPath[LR] != "" {
 		// Clear the metric while reload
@@ -678,7 +672,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 	e.loadCustomQueries(e.resolutionEnabled, semanticVersion, server)
 
 	server.mappingMtx.Unlock()
-	//}
+	// }
 
 	// Output the version as a special metric only for master database
 	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),

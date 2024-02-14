@@ -28,7 +28,6 @@ import (
 // Also it contains metrics map and query overrides.
 type Server struct {
 	db          *sql.DB
-	dbMtx       sync.Mutex
 	labels      prometheus.Labels
 	master      bool
 	runonserver string
@@ -113,7 +112,7 @@ func (s *Server) String() string {
 }
 
 // Scrape loads metrics.
-func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool, res MetricResolution) error {
+func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool) error {
 	s.mappingMtx.RLock()
 	defer s.mappingMtx.RUnlock()
 
@@ -125,7 +124,7 @@ func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool
 		}
 	}
 
-	errMap := queryNamespaceMappings(ch, s, res)
+	errMap := queryNamespaceMappings(ch, s)
 	if len(errMap) > 0 {
 		err = fmt.Errorf("queryNamespaceMappings returned %d errors", len(errMap))
 		level.Error(logger).Log("msg", "NAMESPACE ERRORS FOUND")

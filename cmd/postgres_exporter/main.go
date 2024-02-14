@@ -16,10 +16,9 @@ package main
 import (
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"strings"
-
-	_ "net/http/pprof"
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
@@ -51,7 +50,7 @@ var (
 	disableDefaultMetrics  = kingpin.Flag("disable-default-metrics", "Do not include default metrics.").Default("false").Envar("PG_EXPORTER_DISABLE_DEFAULT_METRICS").Bool()
 	disableSettingsMetrics = kingpin.Flag("disable-settings-metrics", "Do not include pg_settings metrics.").Default("false").Envar("PG_EXPORTER_DISABLE_SETTINGS_METRICS").Bool()
 	autoDiscoverDatabases  = kingpin.Flag("auto-discover-databases", "Whether to discover the databases on a server dynamically. (DEPRECATED)").Default("false").Envar("PG_EXPORTER_AUTO_DISCOVER_DATABASES").Bool()
-	//queriesPath            = kingpin.Flag("extend.query-path", "Path to custom queries to run. (DEPRECATED)").Default("").Envar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
+	// queriesPath            = kingpin.Flag("extend.query-path", "Path to custom queries to run. (DEPRECATED)").Default("").Envar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
 	onlyDumpMaps       = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
 	constantLabelsList = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,). (DEPRECATED)").Default("").Envar("PG_EXPORTER_CONSTANT_LABELS").String()
 	excludeDatabases   = kingpin.Flag("exclude-databases", "A list of databases to remove when autoDiscoverDatabases is enabled (DEPRECATED)").Default("").Envar("PG_EXPORTER_EXCLUDE_DATABASES").String()
@@ -103,9 +102,9 @@ func main() {
 	excludedDatabases := strings.Split(*excludeDatabases, ",")
 	logger.Log("msg", "Excluded databases", "databases", fmt.Sprintf("%v", excludedDatabases))
 
-	//if *queriesPath != "" {
+	// if *queriesPath != "" {
 	//	level.Warn(logger).Log("msg", "The extended queries.yaml config is DEPRECATED", "file", *queriesPath)
-	//}
+	// }
 
 	if *autoDiscoverDatabases || *excludeDatabases != "" || *includeDatabases != "" {
 		level.Warn(logger).Log("msg", "Scraping additional databases via auto discovery is DEPRECATED")
@@ -115,15 +114,11 @@ func main() {
 		level.Warn(logger).Log("msg", "Constant labels on all metrics is DEPRECATED")
 	}
 
-	servers := NewServers(ServerWithLabels(parseConstLabels(*constantLabelsList)))
-
 	opts := []ExporterOpt{
-		CollectorName("exporter"),
 		DisableDefaultMetrics(*disableDefaultMetrics),
 		DisableSettingsMetrics(*disableSettingsMetrics),
 		AutoDiscoverDatabases(*autoDiscoverDatabases),
 		WithConstantLabels(*constantLabelsList),
-		WithServers(servers),
 		ExcludeDatabases(excludedDatabases),
 		IncludeDatabases(*includeDatabases),
 	}
@@ -144,7 +139,7 @@ func main() {
 		dsn = dsns[0]
 	}
 
-	cleanup, hr, mr, lr := initializePerconaExporters(dsns, servers)
+	cleanup, hr, mr, lr := initializePerconaExporters(dsns)
 	defer cleanup()
 
 	pe, err := collector.NewPostgresCollector(
@@ -274,7 +269,7 @@ func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
 	handler := promhttp.HandlerFor(
 		registry,
 		promhttp.HandlerOpts{
-			//ErrorLog:       log.NewNopLogger() .NewErrorLogger(),
+			// ErrorLog:       log.NewNopLogger() .NewErrorLogger(),
 			ErrorHandling: promhttp.ContinueOnError,
 		},
 	)
