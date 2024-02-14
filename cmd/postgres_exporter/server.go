@@ -28,6 +28,7 @@ import (
 // Also it contains metrics map and query overrides.
 type Server struct {
 	db          *sql.DB
+	dbMtx       sync.Mutex
 	labels      prometheus.Labels
 	master      bool
 	runonserver string
@@ -59,11 +60,20 @@ func ServerWithLabels(labels prometheus.Labels) ServerOpt {
 }
 
 // NewServer establishes a new connection using DSN.
-func NewServer(dsn string, db *sql.DB, opts ...ServerOpt) (*Server, error) {
+func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 	fingerprint, err := parseFingerprint(dsn)
 	if err != nil {
 		return nil, err
 	}
+
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return nil, err
+	}
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+
+	level.Info(logger).Log("msg", "Established new database connection", "fingerprint", fingerprint)
 
 	s := &Server{
 		db:     db,
@@ -103,7 +113,7 @@ func (s *Server) String() string {
 }
 
 // Scrape loads metrics.
-func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool) error {
+func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool, res MetricResolution) error {
 	s.mappingMtx.RLock()
 	defer s.mappingMtx.RUnlock()
 
@@ -115,7 +125,7 @@ func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool
 		}
 	}
 
-	errMap := queryNamespaceMappings(ch, s)
+	errMap := queryNamespaceMappings(ch, s, res)
 	if len(errMap) > 0 {
 		err = fmt.Errorf("queryNamespaceMappings returned %d errors", len(errMap))
 		level.Error(logger).Log("msg", "NAMESPACE ERRORS FOUND")
@@ -131,7 +141,6 @@ func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool
 type Servers struct {
 	m       sync.Mutex
 	servers map[string]*Server
-	dbs     map[string]*sql.DB
 	opts    []ServerOpt
 }
 
@@ -139,47 +148,34 @@ type Servers struct {
 func NewServers(opts ...ServerOpt) *Servers {
 	return &Servers{
 		servers: make(map[string]*Server),
-		dbs:     make(map[string]*sql.DB),
 		opts:    opts,
 	}
 }
 
 // GetServer returns established connection from a collection.
-func (s *Servers) GetServer(dsn string, res MetricResolution) (*Server, error) {
+func (s *Servers) GetServer(dsn string) (*Server, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	var err error
 	var ok bool
 	errCount := 0 // start at zero because we increment before doing work
 	retries := 1
-	var db *sql.DB
 	var server *Server
 	for {
 		if errCount++; errCount > retries {
 			return nil, err
 		}
-		db, ok = s.dbs[dsn]
+		server, ok = s.servers[dsn]
 		if !ok {
-			db, err = NewDB(dsn)
+			server, err = NewServer(dsn, s.opts...)
 			if err != nil {
 				time.Sleep(time.Duration(errCount) * time.Second)
 				continue
 			}
-			s.dbs[dsn] = db
-		}
-		key := dsn + ":" + string(res)
-		server, ok = s.servers[key]
-		if !ok {
-			server, err = NewServer(dsn, db, s.opts...)
-			if err != nil {
-				time.Sleep(time.Duration(errCount) * time.Second)
-				continue
-			}
-			s.servers[key] = server
+			s.servers[dsn] = server
 		}
 		if err = server.Ping(); err != nil {
-			delete(s.servers, key)
-			delete(s.dbs, dsn)
+			delete(s.servers, dsn)
 			time.Sleep(time.Duration(errCount) * time.Second)
 			continue
 		}

@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/sha256"
-	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -51,7 +50,7 @@ func initializePerconaExporters(dsn []string, servers *Servers) (func(), *Export
 	hrExporter := NewExporter(dsn,
 		append(opts,
 			CollectorName("custom_query.hr"),
-			WithUserQueriesResolutionEnabled(HR),
+			WithUserQueriesEnabled(HR),
 			WithEnabled(*collectCustomQueryHr),
 			WithConstantLabels(*constantLabelsList),
 		)...,
@@ -61,7 +60,7 @@ func initializePerconaExporters(dsn []string, servers *Servers) (func(), *Export
 	mrExporter := NewExporter(dsn,
 		append(opts,
 			CollectorName("custom_query.mr"),
-			WithUserQueriesResolutionEnabled(MR),
+			WithUserQueriesEnabled(MR),
 			WithEnabled(*collectCustomQueryMr),
 			WithConstantLabels(*constantLabelsList),
 		)...,
@@ -71,7 +70,7 @@ func initializePerconaExporters(dsn []string, servers *Servers) (func(), *Export
 	lrExporter := NewExporter(dsn,
 		append(opts,
 			CollectorName("custom_query.lr"),
-			WithUserQueriesResolutionEnabled(LR),
+			WithUserQueriesEnabled(LR),
 			WithEnabled(*collectCustomQueryLr),
 			WithConstantLabels(*constantLabelsList),
 		)...,
@@ -127,22 +126,4 @@ func (e *Exporter) addCustomQueriesFromFile(path string, version semver.Version,
 
 	// Mark user queries as successfully loaded
 	e.userQueriesError.WithLabelValues(path, hashsumStr).Set(0)
-}
-
-// NewDB establishes a new connection using DSN.
-func NewDB(dsn string) (*sql.DB, error) {
-	fingerprint, err := parseFingerprint(dsn)
-	if err != nil {
-		return nil, err
-	}
-
-	db, err := sql.Open("postgres", dsn)
-	if err != nil {
-		return nil, err
-	}
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
-
-	level.Info(logger).Log("msg", "Established new database connection", "fingerprint", fingerprint)
-	return db, nil
 }

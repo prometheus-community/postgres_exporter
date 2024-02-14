@@ -183,7 +183,7 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 
 // Iterate through all the namespace mappings in the exporter and run their
 // queries.
-func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server) map[string]error {
+func queryNamespaceMappings(ch chan<- prometheus.Metric, server *Server, res MetricResolution) map[string]error {
 	// Return a map of namespace -> errors
 	namespaceErrors := make(map[string]error)
 

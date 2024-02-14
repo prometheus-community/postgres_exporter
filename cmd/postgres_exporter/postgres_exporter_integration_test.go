@@ -62,11 +62,7 @@ func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 
 	for _, dsn := range s.e.dsn {
 		// Open a database connection
-		db, err := NewDB(dsn)
-		c.Assert(db, NotNil)
-		c.Assert(err, IsNil)
-
-		server, err := NewServer(dsn, db)
+		server, err := NewServer(dsn)
 		c.Assert(server, NotNil)
 		c.Assert(err, IsNil)
 

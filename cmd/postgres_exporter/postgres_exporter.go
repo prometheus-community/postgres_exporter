@@ -452,14 +452,14 @@ func CollectorName(name string) ExporterOpt {
 	}
 }
 
-// WithUserQueriesResolutionEnabled enables resolution for user's queries.
-func WithUserQueriesResolutionEnabled(p MetricResolution) ExporterOpt {
+// WithUserQueriesEnabled enables user's queries.
+func WithUserQueriesEnabled(p MetricResolution) ExporterOpt {
 	return func(e *Exporter) {
 		e.resolutionEnabled = p
 	}
 }
 
-// WithEnabled enables user's queries.
+// WithUserQueriesEnabled enables user's queries.
 func WithEnabled(p bool) ExporterOpt {
 	return func(e *Exporter) {
 		e.enabled = p
@@ -655,30 +655,30 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 	}
 
 	// Check if semantic version changed and recalculate maps if needed.
-	if semanticVersion.NE(server.lastMapVersion) || server.metricMap == nil {
-		level.Info(logger).Log("msg", "Semantic version changed", "server", server, "from", server.lastMapVersion, "to", semanticVersion)
-		server.mappingMtx.Lock()
+	//if semanticVersion.NE(server.lastMapVersion[e.resolutionEnabled]) || server.metricMap == nil {
+	//	level.Info(logger).Log("msg", "Semantic version changed", "server", server, "from", server.lastMapVersion[e.resolutionEnabled], "to", semanticVersion)
+	server.mappingMtx.Lock()
 
-		// Get Default Metrics only for master database
-		if !e.disableDefaultMetrics && server.master {
-			server.metricMap = makeDescMap(semanticVersion, server.labels, e.builtinMetricMaps)
-			server.queryOverrides = makeQueryOverrideMap(semanticVersion, queryOverrides)
-		} else {
-			server.metricMap = make(map[string]MetricMapNamespace)
-			server.queryOverrides = make(map[string]string)
-		}
-
-		server.lastMapVersion = semanticVersion
-
-		if e.userQueriesPath[e.resolutionEnabled] != "" {
-			// Clear the metric while reload
-			e.userQueriesError.Reset()
-		}
-
-		e.loadCustomQueries(e.resolutionEnabled, semanticVersion, server)
-
-		server.mappingMtx.Unlock()
+	// Get Default Metrics only for master database
+	if !e.disableDefaultMetrics && server.master {
+		server.metricMap = makeDescMap(semanticVersion, server.labels, e.builtinMetricMaps)
+		server.queryOverrides = makeQueryOverrideMap(semanticVersion, queryOverrides)
+	} else {
+		server.metricMap = make(map[string]MetricMapNamespace)
+		server.queryOverrides = make(map[string]string)
 	}
+
+	//server.lastMapVersion[e.resolutionEnabled] = semanticVersion
+
+	if e.userQueriesPath[HR] != "" || e.userQueriesPath[MR] != "" || e.userQueriesPath[LR] != "" {
+		// Clear the metric while reload
+		e.userQueriesError.Reset()
+	}
+
+	e.loadCustomQueries(e.resolutionEnabled, semanticVersion, server)
+
+	server.mappingMtx.Unlock()
+	//}
 
 	// Output the version as a special metric only for master database
 	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
