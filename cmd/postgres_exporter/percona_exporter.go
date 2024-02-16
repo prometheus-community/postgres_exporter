@@ -1,16 +1,24 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/blang/semver/v4"
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/prometheus-community/postgres_exporter/collector"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"golang.org/x/sync/semaphore"
 )
 
 type MetricResolution string
@@ -31,56 +39,180 @@ var (
 	collectCustomQueryHrDirectory = kingpin.Flag("collect.custom_query.hr.directory", "Path to custom queries with high resolution directory.").Envar("PG_EXPORTER_EXTEND_QUERY_HR_PATH").String()
 )
 
-func initializePerconaExporters(dsn []string) (func(), *Exporter, *Exporter, *Exporter) {
+// Handler returns a http.Handler that serves metrics. Can be used instead of
+// run for hooking up custom HTTP servers.
+func Handler(logger log.Logger, dsns []string, connSema *semaphore.Weighted, globalCollectors map[string]prometheus.Collector) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seconds, err := strconv.Atoi(r.Header.Get("X-Prometheus-Scrape-Timeout-Seconds"))
+		// To support also older ones vmagents.
+		if err != nil {
+			seconds = 10
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), time.Duration(seconds)*time.Second)
+		defer cancel()
+
+		filters := r.URL.Query()["collect[]"]
+		level.Debug(logger).Log("msg", "Collect query", "filters", filters)
+
+		var f Filters
+		if len(filters) == 0 {
+			f.EnableAllCollectors = true
+		} else {
+			for _, filter := range filters {
+				switch filter {
+				case "standard.process":
+					f.EnableProcessCollector = true
+				case "standard.go":
+					f.EnableGoCollector = true
+				case "standard.version":
+					f.EnableVersionCollector = true
+				case "standard.default":
+					f.EnableDefaultCollector = true
+				case "standard.hr":
+					f.EnableHRCollector = true
+				case "standard.mr":
+					f.EnableMRCollector = true
+				case "standard.lr":
+					f.EnableLRCollector = true
+				case "postgres":
+					f.EnablePostgresCollector = true
+				}
+			}
+		}
+
+		registry := makeRegistry(ctx, dsns, connSema, globalCollectors, f)
+
+		// Delegate http serving to Prometheus client library, which will call collector.Collect.
+		h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{
+			ErrorHandling: promhttp.ContinueOnError,
+			// ErrorLog:      logger, //TODO!!!
+		})
+
+		h.ServeHTTP(w, r)
+	})
+}
+
+// Filters is a struct to enable or disable collectors.
+type Filters struct {
+	EnableAllCollectors     bool
+	EnableLRCollector       bool
+	EnableMRCollector       bool
+	EnableHRCollector       bool
+	EnableDefaultCollector  bool
+	EnableGoCollector       bool
+	EnableVersionCollector  bool
+	EnableProcessCollector  bool
+	EnablePostgresCollector bool
+}
+
+// makeRegistry creates a new prometheus registry with default and percona exporters.
+func makeRegistry(ctx context.Context, dsns []string, connSema *semaphore.Weighted, globlalCollectors map[string]prometheus.Collector, filters Filters) *prometheus.Registry {
+	registry := prometheus.NewRegistry()
+
+	excludedDatabases := strings.Split(*excludeDatabases, ",")
+	logger.Log("msg", "Excluded databases", "databases", fmt.Sprintf("%v", excludedDatabases))
+
 	queriesPath := map[MetricResolution]string{
 		HR: *collectCustomQueryHrDirectory,
 		MR: *collectCustomQueryMrDirectory,
 		LR: *collectCustomQueryLrDirectory,
 	}
 
-	excludedDatabases := strings.Split(*excludeDatabases, ",")
 	opts := []ExporterOpt{
-		DisableDefaultMetrics(true),
-		DisableSettingsMetrics(true),
 		AutoDiscoverDatabases(*autoDiscoverDatabases),
-		WithUserQueriesPath(queriesPath),
+		WithConstantLabels(*constantLabelsList),
 		ExcludeDatabases(excludedDatabases),
+		WithConnectionsSemaphore(connSema),
+		WithContext(ctx),
 	}
-	hrExporter := NewExporter(dsn,
-		append(opts,
-			CollectorName("custom_query.hr"),
-			WithUserQueriesEnabled(HR),
-			WithEnabled(*collectCustomQueryHr),
-			WithConstantLabels(*constantLabelsList),
-		)...,
-	)
-	prometheus.MustRegister(hrExporter)
 
-	mrExporter := NewExporter(dsn,
-		append(opts,
-			CollectorName("custom_query.mr"),
-			WithUserQueriesEnabled(MR),
-			WithEnabled(*collectCustomQueryMr),
-			WithConstantLabels(*constantLabelsList),
-		)...,
-	)
-	prometheus.MustRegister(mrExporter)
+	if filters.EnableAllCollectors || filters.EnableDefaultCollector {
+		defaultExporter := NewExporter(dsns, append(
+			opts,
+			DisableDefaultMetrics(*disableDefaultMetrics),
+			DisableSettingsMetrics(*disableSettingsMetrics),
+			IncludeDatabases(*includeDatabases),
+		)...)
+		registry.MustRegister(defaultExporter)
+	}
 
-	lrExporter := NewExporter(dsn,
-		append(opts,
-			CollectorName("custom_query.lr"),
-			WithUserQueriesEnabled(LR),
-			WithEnabled(*collectCustomQueryLr),
-			WithConstantLabels(*constantLabelsList),
-		)...,
-	)
-	prometheus.MustRegister(lrExporter)
+	if filters.EnableAllCollectors || filters.EnableHRCollector {
+		hrExporter := NewExporter(dsns,
+			append(opts,
+				CollectorName("custom_query.hr"),
+				WithUserQueriesEnabled(HR),
+				WithEnabled(*collectCustomQueryHr),
+				DisableDefaultMetrics(true),
+				DisableSettingsMetrics(true),
+				WithUserQueriesPath(queriesPath),
+			)...)
+		registry.MustRegister(hrExporter)
 
-	return func() {
-		hrExporter.servers.Close()
-		mrExporter.servers.Close()
-		lrExporter.servers.Close()
-	}, hrExporter, mrExporter, lrExporter
+	}
+
+	if filters.EnableAllCollectors || filters.EnableMRCollector {
+		mrExporter := NewExporter(dsns,
+			append(opts,
+				CollectorName("custom_query.mr"),
+				WithUserQueriesEnabled(MR),
+				WithEnabled(*collectCustomQueryMr),
+				DisableDefaultMetrics(true),
+				DisableSettingsMetrics(true),
+				WithUserQueriesPath(queriesPath),
+			)...)
+		registry.MustRegister(mrExporter)
+	}
+
+	if filters.EnableAllCollectors || filters.EnableLRCollector {
+		lrExporter := NewExporter(dsns,
+			append(opts,
+				CollectorName("custom_query.lr"),
+				WithUserQueriesEnabled(LR),
+				WithEnabled(*collectCustomQueryLr),
+				DisableDefaultMetrics(true),
+				DisableSettingsMetrics(true),
+				WithUserQueriesPath(queriesPath),
+			)...)
+		registry.MustRegister(lrExporter)
+	}
+
+	if filters.EnableAllCollectors || filters.EnableGoCollector {
+		registry.MustRegister(globlalCollectors["standard.go"])
+	}
+
+	if filters.EnableAllCollectors || filters.EnableProcessCollector {
+		registry.MustRegister(globlalCollectors["standard.process"])
+	}
+
+	if filters.EnableAllCollectors || filters.EnableVersionCollector {
+		registry.MustRegister(globlalCollectors["version"])
+	}
+
+	if filters.EnableAllCollectors || filters.EnablePostgresCollector {
+		// This chunk moved here from main.go
+		// TODO(@sysadmind): Remove this with multi-target support. We are removing multiple DSN support
+		dsn := ""
+		if len(dsns) > 0 {
+			dsn = dsns[0]
+		}
+
+		pe, err := collector.NewPostgresCollector(
+			logger,
+			excludedDatabases,
+			dsn,
+			[]string{},
+			collector.WithContext(ctx),
+			collector.WithConnectionsSemaphore(connSema),
+		)
+		if err != nil {
+			level.Error(logger).Log("msg", "Failed to create PostgresCollector", "err", err.Error())
+		} else {
+			registry.MustRegister(pe)
+		}
+	}
+
+	return registry
 }
 
 func (e *Exporter) loadCustomQueries(res MetricResolution, version semver.Version, server *Server) {

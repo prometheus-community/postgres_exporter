@@ -174,6 +174,7 @@ func (s *Servers) GetServer(dsn string) (*Server, error) {
 			s.servers[dsn] = server
 		}
 		if err = server.Ping(); err != nil {
+			server.Close()
 			delete(s.servers, dsn)
 			time.Sleep(time.Duration(errCount) * time.Second)
 			continue

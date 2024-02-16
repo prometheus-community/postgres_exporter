@@ -23,9 +23,10 @@ import (
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"golang.org/x/sync/semaphore"
 )
 
-func handleProbe(logger log.Logger, excludeDatabases []string) http.HandlerFunc {
+func handleProbe(logger log.Logger, excludeDatabases []string, connSema *semaphore.Weighted) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		conf := c.GetConfig()
@@ -69,21 +70,24 @@ func handleProbe(logger log.Logger, excludeDatabases []string) http.HandlerFunc 
 			DisableDefaultMetrics(*disableDefaultMetrics),
 			DisableSettingsMetrics(*disableSettingsMetrics),
 			AutoDiscoverDatabases(*autoDiscoverDatabases),
-			//WithUserQueriesPath(*queriesPath),
+			// WithUserQueriesPath(*queriesPath),
 			WithConstantLabels(*constantLabelsList),
 			ExcludeDatabases(excludeDatabases),
 			IncludeDatabases(*includeDatabases),
+			WithContext(ctx),
+			WithConnectionsSemaphore(connSema),
 		}
 
 		dsns := []string{dsn.GetConnectionString()}
 		exporter := NewExporter(dsns, opts...)
-		defer func() {
-			exporter.servers.Close()
-		}()
+
+		// defer func() {
+		// 	exporter.servers.Close()
+		// }()
 		registry.MustRegister(exporter)
 
 		// Run the probe
-		pc, err := collector.NewProbeCollector(tl, excludeDatabases, registry, dsn)
+		pc, err := collector.NewProbeCollector(tl, excludeDatabases, registry, dsn, connSema)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

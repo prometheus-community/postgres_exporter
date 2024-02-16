@@ -21,6 +21,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/sync/semaphore"
 )
 
 type ProbeCollector struct {
@@ -28,9 +29,10 @@ type ProbeCollector struct {
 	collectors map[string]Collector
 	logger     log.Logger
 	instance   *instance
+	connSema   *semaphore.Weighted
 }
 
-func NewProbeCollector(logger log.Logger, excludeDatabases []string, registry *prometheus.Registry, dsn config.DSN) (*ProbeCollector, error) {
+func NewProbeCollector(logger log.Logger, excludeDatabases []string, registry *prometheus.Registry, dsn config.DSN, connSema *semaphore.Weighted) (*ProbeCollector, error) {
 	collectors := make(map[string]Collector)
 	initiatedCollectorsMtx.Lock()
 	defer initiatedCollectorsMtx.Unlock()
@@ -68,6 +70,7 @@ func NewProbeCollector(logger log.Logger, excludeDatabases []string, registry *p
 		collectors: collectors,
 		logger:     logger,
 		instance:   instance,
+		connSema:   connSema,
 	}, nil
 }
 
@@ -75,6 +78,12 @@ func (pc *ProbeCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (pc *ProbeCollector) Collect(ch chan<- prometheus.Metric) {
+	if err := pc.connSema.Acquire(context.TODO(), 1); err != nil {
+		level.Warn(pc.logger).Log("msg", "Failed to acquire semaphore", "err", err)
+		return
+	}
+	defer pc.connSema.Release(1)
+
 	// Set up the database connection for the collector.
 	err := pc.instance.setup()
 	if err != nil {

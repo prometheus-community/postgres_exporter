@@ -49,19 +49,8 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			continue
 		}
 
-		server, err := e.servers.GetServer(dsn)
+		databaseNames, err := e.getDatabaseNames(dsn)
 		if err != nil {
-			level.Error(logger).Log("msg", "Error opening connection to database", "dsn", loggableDSN(dsn), "err", err)
-			continue
-		}
-		dsns[dsn] = struct{}{}
-
-		// If autoDiscoverDatabases is true, set first dsn as master database (Default: false)
-		server.master = true
-
-		databaseNames, err := queryDatabases(server)
-		if err != nil {
-			level.Error(logger).Log("msg", "Error querying databases", "dsn", loggableDSN(dsn), "err", err)
 			continue
 		}
 		for _, databaseName := range databaseNames {
@@ -99,11 +88,40 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 	return result
 }
 
+func (e *Exporter) getDatabaseNames(dsn string) ([]string, error) {
+	if e.connSema != nil {
+		if err := e.connSema.Acquire(e.ctx, 1); err != nil {
+			level.Warn(logger).Log("msg", "Failed to acquire semaphore", "err", err)
+			return nil, err
+		}
+		defer e.connSema.Release(1)
+	}
+
+	server, err := e.GetServer(dsn)
+	if err != nil {
+		level.Error(logger).Log("msg", "Error opening connection to database", "dsn", loggableDSN(dsn), "err", err)
+		return nil, err // TODO
+	}
+	defer server.Close()
+
+	// If autoDiscoverDatabases is true, set first dsn as master database (Default: false)
+	server.master = true
+
+	dbNames, err := queryDatabases(e.ctx, server)
+	if err != nil {
+		level.Error(logger).Log("msg", "Error querying databases", "dsn", loggableDSN(dsn), "err", err)
+		return nil, err
+	}
+
+	return dbNames, nil
+}
+
 func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
-	server, err := e.servers.GetServer(dsn)
+	server, err := e.GetServer(dsn)
 	if err != nil {
 		return err // TODO
 	}
+	defer server.Close()
 
 	level.Debug(logger).Log("msg", "scrapeDSN:"+dsn)
 
