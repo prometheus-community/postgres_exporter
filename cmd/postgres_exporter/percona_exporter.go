@@ -37,6 +37,8 @@ var (
 	collectCustomQueryLrDirectory = kingpin.Flag("collect.custom_query.lr.directory", "Path to custom queries with low resolution directory.").Envar("PG_EXPORTER_EXTEND_QUERY_LR_PATH").String()
 	collectCustomQueryMrDirectory = kingpin.Flag("collect.custom_query.mr.directory", "Path to custom queries with medium resolution directory.").Envar("PG_EXPORTER_EXTEND_QUERY_MR_PATH").String()
 	collectCustomQueryHrDirectory = kingpin.Flag("collect.custom_query.hr.directory", "Path to custom queries with high resolution directory.").Envar("PG_EXPORTER_EXTEND_QUERY_HR_PATH").String()
+
+	maxConnections = kingpin.Flag("max-connections", "Maximum number of connections to use").Default("5").Envar("PG_EXPORTER_MAX_CONNECTIONS").Int64()
 )
 
 // Handler returns a http.Handler that serves metrics. Can be used instead of

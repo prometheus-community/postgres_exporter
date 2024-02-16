@@ -123,7 +123,7 @@ func main() {
 		"version":          versionCollector,
 	}
 
-	connSema := semaphore.NewWeighted(5)
+	connSema := semaphore.NewWeighted(*maxConnections)
 	http.Handle(*metricsPath, Handler(logger, dsns, connSema, globalCollectors))
 
 	if *metricsPath != "/" && *metricsPath != "" {
