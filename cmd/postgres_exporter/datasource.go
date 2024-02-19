@@ -100,7 +100,7 @@ func (e *Exporter) getDatabaseNames(dsn string) ([]string, error) {
 	server, err := e.GetServer(dsn)
 	if err != nil {
 		level.Error(logger).Log("msg", "Error opening connection to database", "dsn", loggableDSN(dsn), "err", err)
-		return nil, err // TODO
+		return nil, err
 	}
 	defer server.Close()
 
