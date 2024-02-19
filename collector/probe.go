@@ -30,9 +30,10 @@ type ProbeCollector struct {
 	logger     log.Logger
 	instance   *instance
 	connSema   *semaphore.Weighted
+	ctx        context.Context
 }
 
-func NewProbeCollector(logger log.Logger, excludeDatabases []string, registry *prometheus.Registry, dsn config.DSN, connSema *semaphore.Weighted) (*ProbeCollector, error) {
+func NewProbeCollector(ctx context.Context, logger log.Logger, excludeDatabases []string, registry *prometheus.Registry, dsn config.DSN, connSema *semaphore.Weighted) (*ProbeCollector, error) {
 	collectors := make(map[string]Collector)
 	initiatedCollectorsMtx.Lock()
 	defer initiatedCollectorsMtx.Unlock()
@@ -71,6 +72,7 @@ func NewProbeCollector(logger log.Logger, excludeDatabases []string, registry *p
 		logger:     logger,
 		instance:   instance,
 		connSema:   connSema,
+		ctx:        ctx,
 	}, nil
 }
 
@@ -78,7 +80,7 @@ func (pc *ProbeCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (pc *ProbeCollector) Collect(ch chan<- prometheus.Metric) {
-	if err := pc.connSema.Acquire(context.TODO(), 1); err != nil {
+	if err := pc.connSema.Acquire(pc.ctx, 1); err != nil {
 		level.Warn(pc.logger).Log("msg", "Failed to acquire semaphore", "err", err)
 		return
 	}
@@ -96,7 +98,7 @@ func (pc *ProbeCollector) Collect(ch chan<- prometheus.Metric) {
 	wg.Add(len(pc.collectors))
 	for name, c := range pc.collectors {
 		go func(name string, c Collector) {
-			execute(context.TODO(), name, c, pc.instance, ch, pc.logger)
+			execute(pc.ctx, name, c, pc.instance, ch, pc.logger)
 			wg.Done()
 		}(name, c)
 	}

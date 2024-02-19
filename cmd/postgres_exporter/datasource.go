@@ -119,15 +119,11 @@ func (e *Exporter) getDatabaseNames(dsn string) ([]string, error) {
 func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 	server, err := e.GetServer(dsn)
 	if err != nil {
-		return err // TODO
+		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), err.Error())}
 	}
 	defer server.Close()
 
 	level.Debug(logger).Log("msg", "scrapeDSN:"+dsn)
-
-	if err != nil {
-		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), err.Error())}
-	}
 
 	// Check if autoDiscoverDatabases is false, set dsn as master database (Default: false)
 	if !e.autoDiscoverDatabases {

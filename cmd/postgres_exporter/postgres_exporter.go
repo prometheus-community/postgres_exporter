@@ -721,7 +721,6 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 	e.loadCustomQueries(e.resolutionEnabled, semanticVersion, server)
 
 	server.mappingMtx.Unlock()
-	// }
 
 	// Output the version as a special metric only for master database
 	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),

@@ -185,8 +185,6 @@ func (p PostgresCollector) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements the prometheus.Collector interface.
 func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
-	ctx := context.TODO()
-
 	// copy the instance so that concurrent scrapes have independent instances
 	inst := p.instance.copy()
 
@@ -210,7 +208,7 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 	wg.Add(len(p.Collectors))
 	for name, c := range p.Collectors {
 		go func(name string, c Collector) {
-			execute(ctx, name, c, inst, ch, p.logger)
+			execute(p.ctx, name, c, inst, ch, p.logger)
 			wg.Done()
 		}(name, c)
 	}
