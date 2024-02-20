@@ -25,10 +25,9 @@ import (
 type MetricResolution string
 
 const (
-	DISABLED MetricResolution = ""
-	LR       MetricResolution = "lr"
-	MR       MetricResolution = "mr"
-	HR       MetricResolution = "hr"
+	LR MetricResolution = "lr"
+	MR MetricResolution = "mr"
+	HR MetricResolution = "hr"
 )
 
 var (
