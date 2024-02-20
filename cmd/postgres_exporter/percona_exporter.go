@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	stdlog "log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -88,7 +89,7 @@ func Handler(logger log.Logger, dsns []string, connSema *semaphore.Weighted, glo
 		// Delegate http serving to Prometheus client library, which will call collector.Collect.
 		h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{
 			ErrorHandling: promhttp.ContinueOnError,
-			// ErrorLog:      logger, //TODO!!!
+			ErrorLog:      stdlog.New(log.NewStdlibAdapter(logger), "handler", 0),
 		})
 
 		h.ServeHTTP(w, r)
