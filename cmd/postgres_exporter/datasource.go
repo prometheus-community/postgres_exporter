@@ -123,8 +123,6 @@ func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 	}
 	defer server.Close()
 
-	level.Debug(logger).Log("msg", "scrapeDSN:"+dsn)
-
 	// Check if autoDiscoverDatabases is false, set dsn as master database (Default: false)
 	if !e.autoDiscoverDatabases {
 		server.master = true

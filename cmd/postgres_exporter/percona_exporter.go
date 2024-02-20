@@ -109,7 +109,7 @@ type Filters struct {
 }
 
 // makeRegistry creates a new prometheus registry with default and percona exporters.
-func makeRegistry(ctx context.Context, dsns []string, connSema *semaphore.Weighted, globlalCollectors map[string]prometheus.Collector, filters Filters) *prometheus.Registry {
+func makeRegistry(ctx context.Context, dsns []string, connSema *semaphore.Weighted, globalCollectors map[string]prometheus.Collector, filters Filters) *prometheus.Registry {
 	registry := prometheus.NewRegistry()
 
 	excludedDatabases := strings.Split(*excludeDatabases, ",")
@@ -180,15 +180,15 @@ func makeRegistry(ctx context.Context, dsns []string, connSema *semaphore.Weight
 	}
 
 	if filters.EnableAllCollectors || filters.EnableGoCollector {
-		registry.MustRegister(globlalCollectors["standard.go"])
+		registry.MustRegister(globalCollectors["standard.go"])
 	}
 
 	if filters.EnableAllCollectors || filters.EnableProcessCollector {
-		registry.MustRegister(globlalCollectors["standard.process"])
+		registry.MustRegister(globalCollectors["standard.process"])
 	}
 
 	if filters.EnableAllCollectors || filters.EnableVersionCollector {
-		registry.MustRegister(globlalCollectors["version"])
+		registry.MustRegister(globalCollectors["version"])
 	}
 
 	if filters.EnableAllCollectors || filters.EnablePostgresCollector {
