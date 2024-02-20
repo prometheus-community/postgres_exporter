@@ -67,15 +67,15 @@ func Handler(logger log.Logger, dsns []string, connSema *semaphore.Weighted, glo
 					f.EnableProcessCollector = true
 				case "standard.go":
 					f.EnableGoCollector = true
-				case "standard.version":
+				case "version":
 					f.EnableVersionCollector = true
-				case "standard.default":
+				case "exporter":
 					f.EnableDefaultCollector = true
-				case "standard.hr":
+				case "custom_query.hr":
 					f.EnableHRCollector = true
-				case "standard.mr":
+				case "custom_query.mr":
 					f.EnableMRCollector = true
-				case "standard.lr":
+				case "custom_query.lr":
 					f.EnableLRCollector = true
 				case "postgres":
 					f.EnablePostgresCollector = true
