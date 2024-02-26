@@ -132,6 +132,7 @@ func makeRegistry(ctx context.Context, dsns []string, connSema *semaphore.Weight
 	if filters.EnableAllCollectors || filters.EnableDefaultCollector {
 		defaultExporter := NewExporter(dsns, append(
 			opts,
+			CollectorName("exporter"),
 			DisableDefaultMetrics(*disableDefaultMetrics),
 			DisableSettingsMetrics(*disableSettingsMetrics),
 			IncludeDatabases(*includeDatabases),
