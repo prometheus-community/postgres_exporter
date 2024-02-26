@@ -45,13 +45,15 @@ var (
 			"count",
 		),
 		"Number of locks",
-		[]string{"datname", "mode"}, nil,
+		[]string{"datname", "mode", "usename", "application_name"}, nil,
 	)
 
 	pgLocksQuery = `
 		SELECT 
 		  pg_database.datname as datname,
 		  tmp.mode as mode,
+		  COALESCE(usename, ''),
+		  COALESCE(application_name, ''),
 		  COALESCE(count, 0) as count 
 		FROM 
 		  (
@@ -71,14 +73,18 @@ var (
 		    SELECT 
 		      database, 
 		      lower(mode) AS mode, 
-		      count(*) AS count 
-		    FROM 
-		      pg_locks 
+		      count(*) AS count,
+		      usename,
+		      application_name
+		    FROM
+		      pg_locks l JOIN pg_stat_activity a ON a.pid = l.pid
 		    WHERE 
 		      database IS NOT NULL 
-		    GROUP BY 
-		      database, 
-		      lower(mode)
+		    GROUP BY
+			  database,
+			  lower(mode),
+			  usename,
+			  application_name
 		  ) AS tmp2 ON tmp.mode = tmp2.mode 
 		  and pg_database.oid = tmp2.database 
 		ORDER BY 
@@ -99,15 +105,15 @@ func (c PGLocksCollector) Update(ctx context.Context, instance *instance, ch cha
 	}
 	defer rows.Close()
 
-	var datname, mode sql.NullString
+	var datname, mode, usename, applicationName sql.NullString
 	var count sql.NullInt64
 
 	for rows.Next() {
-		if err := rows.Scan(&datname, &mode, &count); err != nil {
+		if err := rows.Scan(&datname, &mode, &usename, &applicationName, &count); err != nil {
 			return err
 		}
 
-		if !datname.Valid || !mode.Valid {
+		if !datname.Valid || !mode.Valid || !usename.Valid || !applicationName.Valid {
 			continue
 		}
 
@@ -119,7 +125,7 @@ func (c PGLocksCollector) Update(ctx context.Context, instance *instance, ch cha
 		ch <- prometheus.MustNewConstMetric(
 			pgLocksDesc,
 			prometheus.GaugeValue, countMetric,
-			datname.String, mode.String,
+			datname.String, mode.String, usename.String, applicationName.String,
 		)
 	}
 	if err := rows.Err(); err != nil {
