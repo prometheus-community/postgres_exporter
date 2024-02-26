@@ -123,7 +123,6 @@ func makeRegistry(ctx context.Context, dsns []string, connSema *semaphore.Weight
 
 	opts := []ExporterOpt{
 		AutoDiscoverDatabases(*autoDiscoverDatabases),
-		WithConstantLabels(*constantLabelsList),
 		ExcludeDatabases(excludedDatabases),
 		WithConnectionsSemaphore(connSema),
 		WithContext(ctx),
@@ -133,6 +132,7 @@ func makeRegistry(ctx context.Context, dsns []string, connSema *semaphore.Weight
 		defaultExporter := NewExporter(dsns, append(
 			opts,
 			CollectorName("exporter"),
+			WithConstantLabels(*constantLabelsList), // This option depends on collectors name, so keep it after CollectorName option
 			DisableDefaultMetrics(*disableDefaultMetrics),
 			DisableSettingsMetrics(*disableSettingsMetrics),
 			IncludeDatabases(*includeDatabases),
@@ -144,6 +144,7 @@ func makeRegistry(ctx context.Context, dsns []string, connSema *semaphore.Weight
 		hrExporter := NewExporter(dsns,
 			append(opts,
 				CollectorName("custom_query.hr"),
+				WithConstantLabels(*constantLabelsList), // This option depends on collectors name, so keep it after CollectorName option
 				WithUserQueriesEnabled(HR),
 				WithEnabled(*collectCustomQueryHr),
 				DisableDefaultMetrics(true),
@@ -158,6 +159,7 @@ func makeRegistry(ctx context.Context, dsns []string, connSema *semaphore.Weight
 		mrExporter := NewExporter(dsns,
 			append(opts,
 				CollectorName("custom_query.mr"),
+				WithConstantLabels(*constantLabelsList), // This option depends on collectors name, so keep it after CollectorName option
 				WithUserQueriesEnabled(MR),
 				WithEnabled(*collectCustomQueryMr),
 				DisableDefaultMetrics(true),
@@ -171,6 +173,7 @@ func makeRegistry(ctx context.Context, dsns []string, connSema *semaphore.Weight
 		lrExporter := NewExporter(dsns,
 			append(opts,
 				CollectorName("custom_query.lr"),
+				WithConstantLabels(*constantLabelsList), // This option depends on collectors name, so keep it after CollectorName option
 				WithUserQueriesEnabled(LR),
 				WithEnabled(*collectCustomQueryLr),
 				DisableDefaultMetrics(true),
