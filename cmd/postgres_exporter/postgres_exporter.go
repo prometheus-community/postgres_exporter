@@ -438,8 +438,9 @@ type Exporter struct {
 	// servers contains metrics map and query overrides.
 	// servers *Servers
 
-	connSema *semaphore.Weighted
-	ctx      context.Context
+	connSema  *semaphore.Weighted
+	ctx       context.Context
+	masterDSN string
 }
 
 // ExporterOpt configures Exporter.
