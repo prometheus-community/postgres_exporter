@@ -48,22 +48,16 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			level.Error(logger).Log("msg", "Unable to parse DSN as either URI or connstring", "dsn", loggableDSN(dsn))
 			continue
 		}
-
-		server, err := e.servers.GetServer(dsn, e.resolutionEnabled)
-		if err != nil {
-			level.Error(logger).Log("msg", "Error opening connection to database", "dsn", loggableDSN(dsn), "err", err)
-			continue
-		}
 		dsns[dsn] = struct{}{}
 
 		// If autoDiscoverDatabases is true, set first dsn as master database (Default: false)
-		server.master = true
+		e.masterDSN = dsn
 
-		databaseNames, err := queryDatabases(server)
+		databaseNames, err := e.getDatabaseNames(dsn)
 		if err != nil {
-			level.Error(logger).Log("msg", "Error querying databases", "dsn", loggableDSN(dsn), "err", err)
 			continue
 		}
+
 		for _, databaseName := range databaseNames {
 			if contains(e.excludeDatabases, databaseName) {
 				continue
@@ -99,15 +93,40 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 	return result
 }
 
-func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
-	server, err := e.servers.GetServer(dsn, e.resolutionEnabled)
+func (e *Exporter) getDatabaseNames(dsn string) ([]string, error) {
+	if e.connSema != nil {
+		if err := e.connSema.Acquire(e.ctx, 1); err != nil {
+			level.Warn(logger).Log("msg", "Failed to acquire semaphore", "err", err)
+			return nil, err
+		}
+		defer e.connSema.Release(1)
+	}
 
+	server, err := e.GetServer(dsn)
+	if err != nil {
+		level.Error(logger).Log("msg", "Error opening connection to database", "dsn", loggableDSN(dsn), "err", err)
+		return nil, err
+	}
+	defer server.Close()
+
+	dbNames, err := queryDatabases(e.ctx, server)
+	if err != nil {
+		level.Error(logger).Log("msg", "Error querying databases", "dsn", loggableDSN(dsn), "err", err)
+		return nil, err
+	}
+
+	return dbNames, nil
+}
+
+func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
+	server, err := e.GetServer(dsn)
 	if err != nil {
 		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), err.Error())}
 	}
+	defer server.Close()
 
 	// Check if autoDiscoverDatabases is false, set dsn as master database (Default: false)
-	if !e.autoDiscoverDatabases {
+	if !e.autoDiscoverDatabases || e.masterDSN == dsn {
 		server.master = true
 	}
 

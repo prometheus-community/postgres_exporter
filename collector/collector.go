@@ -24,6 +24,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/sync/semaphore"
 )
 
 var (
@@ -92,6 +93,9 @@ type PostgresCollector struct {
 	logger     log.Logger
 
 	instance *instance
+
+	connSema *semaphore.Weighted
+	ctx      context.Context
 }
 
 type Option func(*PostgresCollector) error
@@ -157,6 +161,22 @@ func NewPostgresCollector(logger log.Logger, excludeDatabases []string, dsn stri
 	return p, nil
 }
 
+// WithContext sets context for the collector.
+func WithContext(ctx context.Context) Option {
+	return func(c *PostgresCollector) error {
+		c.ctx = ctx
+		return nil
+	}
+}
+
+// WithConnectionsSemaphore sets the semaphore for limiting the number of connections to the database instance.
+func WithConnectionsSemaphore(sem *semaphore.Weighted) Option {
+	return func(c *PostgresCollector) error {
+		c.connSema = sem
+		return nil
+	}
+}
+
 // Describe implements the prometheus.Collector interface.
 func (p PostgresCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- scrapeDurationDesc
@@ -165,10 +185,16 @@ func (p PostgresCollector) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements the prometheus.Collector interface.
 func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
-	ctx := context.TODO()
-
 	// copy the instance so that concurrent scrapes have independent instances
 	inst := p.instance.copy()
+
+	if p.connSema != nil {
+		if err := p.connSema.Acquire(p.ctx, 1); err != nil {
+			level.Warn(p.logger).Log("msg", "Failed to acquire semaphore", "err", err)
+			return
+		}
+		defer p.connSema.Release(1)
+	}
 
 	// Set up the database connection for the collector.
 	err := inst.setup()
@@ -182,7 +208,7 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 	wg.Add(len(p.Collectors))
 	for name, c := range p.Collectors {
 		go func(name string, c Collector) {
-			execute(ctx, name, c, inst, ch, p.logger)
+			execute(p.ctx, name, c, inst, ch, p.logger)
 			wg.Done()
 		}(name, c)
 	}

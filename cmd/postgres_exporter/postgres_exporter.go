@@ -14,17 +14,21 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"math"
 	"regexp"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/sync/semaphore"
 )
 
 // ColumnUsage should be one of several enum values which describe how a
@@ -432,7 +436,11 @@ type Exporter struct {
 
 	// servers are used to allow re-using the DB connection between scrapes.
 	// servers contains metrics map and query overrides.
-	servers *Servers
+	// servers *Servers
+
+	connSema  *semaphore.Weighted
+	ctx       context.Context
+	masterDSN string
 }
 
 // ExporterOpt configures Exporter.
@@ -452,17 +460,31 @@ func CollectorName(name string) ExporterOpt {
 	}
 }
 
-// WithUserQueriesResolutionEnabled enables resolution for user's queries.
-func WithUserQueriesResolutionEnabled(p MetricResolution) ExporterOpt {
+// WithUserQueriesEnabled enables user's queries.
+func WithUserQueriesEnabled(p MetricResolution) ExporterOpt {
 	return func(e *Exporter) {
 		e.resolutionEnabled = p
 	}
 }
 
-// WithEnabled enables user's queries.
+// WithUserQueriesEnabled enables user's queries.
 func WithEnabled(p bool) ExporterOpt {
 	return func(e *Exporter) {
 		e.enabled = p
+	}
+}
+
+// WithContext sets context for the exporter.
+func WithContext(ctx context.Context) ExporterOpt {
+	return func(e *Exporter) {
+		e.ctx = ctx
+	}
+}
+
+// WithConnectionsSemaphore sets the semaphore for limiting the number of connections to the database instance.
+func WithConnectionsSemaphore(sem *semaphore.Weighted) ExporterOpt {
+	return func(e *Exporter) {
+		e.connSema = sem
 	}
 }
 
@@ -515,13 +537,6 @@ func WithConstantLabels(s string) ExporterOpt {
 	}
 }
 
-// WithServers configures constant labels.
-func WithServers(s *Servers) ExporterOpt {
-	return func(e *Exporter) {
-		e.servers = s
-	}
-}
-
 func parseConstLabels(s string) prometheus.Labels {
 	labels := make(prometheus.Labels)
 
@@ -554,6 +569,7 @@ func NewExporter(dsn []string, opts ...ExporterOpt) *Exporter {
 		dsn:               dsn,
 		builtinMetricMaps: builtinMetricMaps,
 		enabled:           true,
+		ctx:               context.Background(),
 	}
 
 	for _, opt := range opts {
@@ -561,8 +577,36 @@ func NewExporter(dsn []string, opts ...ExporterOpt) *Exporter {
 	}
 
 	e.setupInternalMetrics()
+	// e.servers = NewServers(ServerWithLabels(e.constantLabels))
 
 	return e
+}
+
+// GetServer returns a new Server instance for the provided DSN.
+func (e *Exporter) GetServer(dsn string, opts ...ServerOpt) (*Server, error) {
+	var err error
+	errCount := 0 // start at zero because we increment before doing work
+	retries := 1
+	var server *Server
+	for {
+		if errCount++; errCount > retries {
+			return nil, err
+		}
+
+		server, err = NewServer(dsn, opts...)
+		if err != nil {
+			time.Sleep(time.Duration(errCount) * time.Second)
+			continue
+		}
+
+		if err = server.Ping(); err != nil {
+			server.Close()
+			time.Sleep(time.Duration(errCount) * time.Second)
+			continue
+		}
+		break
+	}
+	return server, nil
 }
 
 func (e *Exporter) setupInternalMetrics() {
@@ -655,30 +699,29 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 	}
 
 	// Check if semantic version changed and recalculate maps if needed.
-	if semanticVersion.NE(server.lastMapVersion) || server.metricMap == nil {
-		level.Info(logger).Log("msg", "Semantic version changed", "server", server, "from", server.lastMapVersion, "to", semanticVersion)
-		server.mappingMtx.Lock()
+	// if semanticVersion.NE(server.lastMapVersion[e.resolutionEnabled]) || server.metricMap == nil {
+	//	level.Info(logger).Log("msg", "Semantic version changed", "server", server, "from", server.lastMapVersion[e.resolutionEnabled], "to", semanticVersion)
+	server.mappingMtx.Lock()
 
-		// Get Default Metrics only for master database
-		if !e.disableDefaultMetrics && server.master {
-			server.metricMap = makeDescMap(semanticVersion, server.labels, e.builtinMetricMaps)
-			server.queryOverrides = makeQueryOverrideMap(semanticVersion, queryOverrides)
-		} else {
-			server.metricMap = make(map[string]MetricMapNamespace)
-			server.queryOverrides = make(map[string]string)
-		}
-
-		server.lastMapVersion = semanticVersion
-
-		if e.userQueriesPath[e.resolutionEnabled] != "" {
-			// Clear the metric while reload
-			e.userQueriesError.Reset()
-		}
-
-		e.loadCustomQueries(e.resolutionEnabled, semanticVersion, server)
-
-		server.mappingMtx.Unlock()
+	// Get Default Metrics only for master database
+	if !e.disableDefaultMetrics && server.master {
+		server.metricMap = makeDescMap(semanticVersion, server.labels, e.builtinMetricMaps)
+		server.queryOverrides = makeQueryOverrideMap(semanticVersion, queryOverrides)
+	} else {
+		server.metricMap = make(map[string]MetricMapNamespace)
+		server.queryOverrides = make(map[string]string)
 	}
+
+	// server.lastMapVersion[e.resolutionEnabled] = semanticVersion
+
+	if e.userQueriesPath[HR] != "" || e.userQueriesPath[MR] != "" || e.userQueriesPath[LR] != "" {
+		// Clear the metric while reload
+		e.userQueriesError.Reset()
+	}
+
+	e.loadCustomQueries(e.resolutionEnabled, semanticVersion, server)
+
+	server.mappingMtx.Unlock()
 
 	// Output the version as a special metric only for master database
 	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
@@ -703,29 +746,45 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 		dsns = e.discoverDatabaseDSNs()
 	}
 
-	var errorsCount int
-	var connectionErrorsCount int
+	var errorsCount atomic.Int32
+	var connectionErrorsCount atomic.Int32
+	var wg sync.WaitGroup
 
 	for _, dsn := range dsns {
-		if err := e.scrapeDSN(ch, dsn); err != nil {
-			errorsCount++
+		dsn := dsn
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 
-			level.Error(logger).Log("err", err)
-
-			if _, ok := err.(*ErrorConnectToServer); ok {
-				connectionErrorsCount++
+			if e.connSema != nil {
+				if err := e.connSema.Acquire(e.ctx, 1); err != nil {
+					level.Warn(logger).Log("msg", "Failed to acquire semaphore", "err", err)
+					return
+				}
+				defer e.connSema.Release(1)
 			}
-		}
+			if err := e.scrapeDSN(ch, dsn); err != nil {
+				errorsCount.Add(1)
+
+				level.Error(logger).Log("err", err)
+
+				if _, ok := err.(*ErrorConnectToServer); ok {
+					connectionErrorsCount.Add(1)
+				}
+			}
+		}()
 	}
 
+	wg.Wait()
+
 	switch {
-	case connectionErrorsCount >= len(dsns):
+	case int(connectionErrorsCount.Load()) >= len(dsns):
 		e.psqlUp.Set(0)
 	default:
 		e.psqlUp.Set(1) // Didn't fail, can mark connection as up for this scrape.
 	}
 
-	switch errorsCount {
+	switch errorsCount.Load() {
 	case 0:
 		e.error.Set(0)
 	default:
