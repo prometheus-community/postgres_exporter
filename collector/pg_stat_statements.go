@@ -70,9 +70,29 @@ var (
 		[]string{"user", "datname", "queryid"},
 		prometheus.Labels{},
 	)
-	// Query Fix to avoid scrapper resulting in duplicate records on (queryid)
-	// This Query is compatible with PostgreSQL 14 onwards
-	pgStatStatementsQuery = `SELECT DISTINCT ON (pss.queryid)
+	// Query is compatible for versions lesser than PostgreSQL 13.
+	pgStatStatementsQuery = `WITH percentiles AS (
+    			SELECT percentile_cont(0.1) WITHIN GROUP (ORDER BY total_time) AS percentile
+    			FROM pg_stat_statements
+		)
+		SELECT DISTINCT ON (pss.queryid)
+    		pg_get_userbyid(pss.userid) as user,
+    		pg_database.datname,
+    		pss.queryid,
+    		pss.calls as calls_total,
+    		pss.total_time / 1000.0 as seconds_total,
+    		pss.rows as rows_total,
+    		pss.blk_read_time / 1000.0 as block_read_seconds_total,
+    		pss.blk_write_time / 1000.0 as block_write_seconds_total
+		FROM pg_stat_statements pss
+		JOIN pg_database ON pg_database.oid = pss.dbid
+		CROSS JOIN percentiles
+		WHERE pss.total_time > (SELECT percentile FROM percentiles)
+		ORDER BY pss.queryid, pss.userid DESC
+		LIMIT 100;`
+
+	// Query is compatible from PostgreSQL 13 and higher versions.
+	pgStatStatementsNewQuery = `SELECT DISTINCT ON (pss.queryid)
     		pg_get_userbyid(pss.userid) as user,
     		pg_database.datname,
     		pss.queryid,
@@ -87,27 +107,6 @@ var (
     			SELECT percentile_cont(0.1) WITHIN GROUP (ORDER BY total_exec_time) AS percentile_val
     			FROM pg_stat_statements
 		) AS perc ON pss.total_exec_time > perc.percentile_val
-		ORDER BY pss.queryid, pss.userid DESC
-		LIMIT 100;`
-
-	// This Query is compatible with PostgreSQL 13 - Slight change in the logic as postgres 13 doesnt support using aggregates in where clause hence its a lateral join
-	pgStatStatementsNewQuery = `WITH percentiles AS (
-    			SELECT percentile_cont(0.1) WITHIN GROUP (ORDER BY total_exec_time) AS percentile
-    			FROM pg_stat_statements
-			)
-		SELECT DISTINCT ON (pss.queryid)
-    		pg_get_userbyid(pss.userid) as user,
-    		pg_database.datname,
-    		pss.queryid,
-    		pss.calls as calls_total,
-    		pss.total_exec_time / 1000.0 as seconds_total,
-    		pss.rows as rows_total,
-    		pss.blk_read_time / 1000.0 as block_read_seconds_total,
-    		pss.blk_write_time / 1000.0 as block_write_seconds_total
-		FROM pg_stat_statements pss
-		JOIN pg_database ON pg_database.oid = pss.dbid
-		CROSS JOIN percentiles
-		WHERE pss.total_exec_time > (SELECT percentile FROM percentiles)
 		ORDER BY pss.queryid, pss.userid DESC
 		LIMIT 100;`
 )
