@@ -15,7 +15,7 @@ require (
 	github.com/prometheus/common v0.44.0
 	github.com/prometheus/exporter-toolkit v0.10.0
 	github.com/smartystreets/goconvey v1.8.1
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/tklauser/go-sysconf v0.3.13
 	golang.org/x/sync v0.2.0
 	golang.org/x/sys v0.18.0
