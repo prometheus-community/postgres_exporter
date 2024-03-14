@@ -6,7 +6,7 @@ require (
 	github.com/golangci/golangci-lint v1.56.2
 	github.com/prometheus/promu v0.15.0
 	github.com/reviewdog/reviewdog v0.17.0
-	honnef.co/go/tools v0.4.6
+	honnef.co/go/tools v0.4.7
 )
 
 require (
