@@ -88,8 +88,8 @@ func TestPgReplicationSlotCollectorInActive(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
-		{labels: labelMap{"slot_name": "test_slot", "slot_type": "physical"}, value: 6, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{"slot_name": "test_slot", "slot_type": "physical"}, value: 0, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "test_slot", "plugin": "test_decoding", "slot_type": "physical"}, value: 6, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "test_slot", "plugin": "test_decoding", "slot_type": "physical"}, value: 0, metricType: dto.MetricType_GAUGE},
 	}
 
 	convey.Convey("Metrics comparison", t, func() {
