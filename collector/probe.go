@@ -15,10 +15,10 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 	"sync"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -27,7 +27,7 @@ type ProbeCollector struct {
 	registry   *prometheus.Registry
 	collectors map[string]Collector
 	logger     log.Logger
-	db         *sql.DB
+	instance   *instance
 }
 
 func NewProbeCollector(logger log.Logger, excludeDatabases []string, registry *prometheus.Registry, dsn config.DSN) (*ProbeCollector, error) {
@@ -58,18 +58,16 @@ func NewProbeCollector(logger log.Logger, excludeDatabases []string, registry *p
 		}
 	}
 
-	db, err := sql.Open("postgres", dsn.GetConnectionString())
+	instance, err := newInstance(dsn.GetConnectionString())
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
 
 	return &ProbeCollector{
 		registry:   registry,
 		collectors: collectors,
 		logger:     logger,
-		db:         db,
+		instance:   instance,
 	}, nil
 }
 
@@ -77,11 +75,19 @@ func (pc *ProbeCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (pc *ProbeCollector) Collect(ch chan<- prometheus.Metric) {
+	// Set up the database connection for the collector.
+	err := pc.instance.setup()
+	if err != nil {
+		level.Error(pc.logger).Log("msg", "Error opening connection to database", "err", err)
+		return
+	}
+	defer pc.instance.Close()
+
 	wg := sync.WaitGroup{}
 	wg.Add(len(pc.collectors))
 	for name, c := range pc.collectors {
 		go func(name string, c Collector) {
-			execute(context.TODO(), name, c, pc.db, ch, pc.logger)
+			execute(context.TODO(), name, c, pc.instance, ch, pc.logger)
 			wg.Done()
 		}(name, c)
 	}
@@ -89,5 +95,5 @@ func (pc *ProbeCollector) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (pc *ProbeCollector) Close() error {
-	return pc.db.Close()
+	return pc.instance.Close()
 }

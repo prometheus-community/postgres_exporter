@@ -18,7 +18,7 @@ import (
 )
 
 func TestLoadConfig(t *testing.T) {
-	ch := &ConfigHandler{
+	ch := &Handler{
 		Config: &Config{},
 	}
 
@@ -29,7 +29,7 @@ func TestLoadConfig(t *testing.T) {
 }
 
 func TestLoadBadConfigs(t *testing.T) {
-	ch := &ConfigHandler{
+	ch := &Handler{
 		Config: &Config{},
 	}
 

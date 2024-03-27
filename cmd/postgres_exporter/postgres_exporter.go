@@ -163,31 +163,6 @@ func dumpMaps() {
 }
 
 var builtinMetricMaps = map[string]intermediateMetricMap{
-	"pg_stat_database": {
-		map[string]ColumnMapping{
-			"datid":          {LABEL, "OID of a database", nil, nil},
-			"datname":        {LABEL, "Name of this database", nil, nil},
-			"numbackends":    {GAUGE, "Number of backends currently connected to this database. This is the only column in this view that returns a value reflecting current state; all other columns return the accumulated values since the last reset.", nil, nil},
-			"xact_commit":    {COUNTER, "Number of transactions in this database that have been committed", nil, nil},
-			"xact_rollback":  {COUNTER, "Number of transactions in this database that have been rolled back", nil, nil},
-			"blks_read":      {COUNTER, "Number of disk blocks read in this database", nil, nil},
-			"blks_hit":       {COUNTER, "Number of times disk blocks were found already in the buffer cache, so that a read was not necessary (this only includes hits in the PostgreSQL buffer cache, not the operating system's file system cache)", nil, nil},
-			"tup_returned":   {COUNTER, "Number of rows returned by queries in this database", nil, nil},
-			"tup_fetched":    {COUNTER, "Number of rows fetched by queries in this database", nil, nil},
-			"tup_inserted":   {COUNTER, "Number of rows inserted by queries in this database", nil, nil},
-			"tup_updated":    {COUNTER, "Number of rows updated by queries in this database", nil, nil},
-			"tup_deleted":    {COUNTER, "Number of rows deleted by queries in this database", nil, nil},
-			"conflicts":      {COUNTER, "Number of queries canceled due to conflicts with recovery in this database. (Conflicts occur only on standby servers; see pg_stat_database_conflicts for details.)", nil, nil},
-			"temp_files":     {COUNTER, "Number of temporary files created by queries in this database. All temporary files are counted, regardless of why the temporary file was created (e.g., sorting or hashing), and regardless of the log_temp_files setting.", nil, nil},
-			"temp_bytes":     {COUNTER, "Total amount of data written to temporary files by queries in this database. All temporary files are counted, regardless of why the temporary file was created, and regardless of the log_temp_files setting.", nil, nil},
-			"deadlocks":      {COUNTER, "Number of deadlocks detected in this database", nil, nil},
-			"blk_read_time":  {COUNTER, "Time spent reading data file blocks by backends in this database, in milliseconds", nil, nil},
-			"blk_write_time": {COUNTER, "Time spent writing data file blocks by backends in this database, in milliseconds", nil, nil},
-			"stats_reset":    {COUNTER, "Time at which these statistics were last reset", nil, nil},
-		},
-		true,
-		0,
-	},
 	"pg_stat_database_conflicts": {
 		map[string]ColumnMapping{
 			"datid":            {LABEL, "OID of a database", nil, nil},
@@ -197,15 +172,6 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 			"confl_snapshot":   {COUNTER, "Number of queries in this database that have been canceled due to old snapshots", nil, nil},
 			"confl_bufferpin":  {COUNTER, "Number of queries in this database that have been canceled due to pinned buffers", nil, nil},
 			"confl_deadlock":   {COUNTER, "Number of queries in this database that have been canceled due to deadlocks", nil, nil},
-		},
-		true,
-		0,
-	},
-	"pg_locks": {
-		map[string]ColumnMapping{
-			"datname": {LABEL, "Name of this database", nil, nil},
-			"mode":    {LABEL, "Type of Lock", nil, nil},
-			"count":   {GAUGE, "Number of locks", nil, nil},
 		},
 		true,
 		0,

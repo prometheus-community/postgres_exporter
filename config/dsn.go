@@ -65,7 +65,7 @@ func (d DSN) GetConnectionString() string {
 // dsnFromString parses a connection string into a dsn. It will attempt to parse the string as
 // a URL and as a set of key=value pairs. If both attempts fail, dsnFromString will return an error.
 func dsnFromString(in string) (DSN, error) {
-	if strings.HasPrefix(in, "postgresql://") {
+	if strings.HasPrefix(in, "postgresql://") || strings.HasPrefix(in, "postgres://") {
 		return dsnFromURL(in)
 	}
 

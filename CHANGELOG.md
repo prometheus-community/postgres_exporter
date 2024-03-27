@@ -1,4 +1,64 @@
-## master / unreleased
+## 0.15.0 / 2023-10-27
+
+* [ENHANCEMENT] Add 1kB and 2kB units #915
+* [BUGFIX] Add error log when probe collector creation fails #918
+* [BUGFIX] Fix test build failures on 32-bit arch #919
+* [BUGFIX] Adjust collector to use separate connection per scrape #936
+
+## 0.14.0 / 2023-09-11
+
+* [CHANGE] Add `state` label to pg_process_idle_seconds #862
+* [CHANGE] Change database connections to one per scrape #882 #902
+* [ENHANCEMENT] Add wal collector #858
+* [ENHANCEMENT] Add database_wraparound collector #834
+* [ENHANCEMENT] Add stat_activity_autovacuum collector #840
+* [ENHANCEMENT] Add stat_wal_receiver collector #844
+* [ENHANCEMENT] Add xlog_location collector #849
+* [ENHANCEMENT] Add statio_user_indexes collector #845
+* [ENHANCEMENT] Add long_running_transactions collector #836
+* [ENHANCEMENT] Add pg_stat_user_tables_size_bytes metric #904
+* [BUGFIX] Fix tests on 32-bit systems #857
+* [BUGFIX] Fix pg_stat_statements metrics on Postgres 13+ #874 #876
+* [BUGFIX] Fix pg_stat_database metrics for NULL stats_reset #877
+* [BUGFIX] Fix pg_replication_lag_seconds on Postgres 10+ when master is idle #895
+
+## 0.13.2 / 2023-07-21
+
+* [BUGFIX] Fix type issues on pg_postmaster metrics #828
+* [BUGFIX] Fix pg_replication collector instantiation #854
+* [BUGFIX] Fix pg_process_idle metrics #855
+
+## 0.13.1 / 2023-06-27
+
+* [BUGFIX] Make collectors not fail on null values #823
+
+## 0.13.0 / 2023-06-21
+
+BREAKING CHANGES:
+
+Please note, the following features are deprecated and may be removed in a future release:
+- `auto-discover-databases`
+- `extend.query-path`
+- `constantLabels`
+- `exclude-databases`
+- `include-databases`
+
+This exporter is meant to monitor PostgresSQL servers, not the user data/databases. If
+you need a generic SQL report exporter https://github.com/burningalchemist/sql_exporter
+is recommended.
+
+* [CHANGE] Adjust log level for collector startup #784
+* [CHANGE] Move queries from queries.yaml to collectors #801
+* [CHANGE] Deprecate extend queries feature #811
+* [CHANGE] Deprecate additional database features #815
+* [CHANGE] Convert pg_stat_database to new collector #685
+* [ENHANCEMENT] Supports alternate postgres:// prefix in URLs #787
+* [BUGFIX] Fix pg_setting different help values #771
+* [BUGFIX] Fix column type for pg_replication_slots #777
+* [BUGFIX] Fix pg_stat_database collector #809
+
+## 0.12.1 / 2023-06-12
+* [BUGFIX] Fix column type for pg_replication_slots #777
 
 ## 0.12.0 / 2023-03-21
 

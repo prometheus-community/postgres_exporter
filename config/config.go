@@ -54,18 +54,18 @@ type UserPass struct {
 	Password string `yaml:"password"`
 }
 
-type ConfigHandler struct {
+type Handler struct {
 	sync.RWMutex
 	Config *Config
 }
 
-func (ch *ConfigHandler) GetConfig() *Config {
+func (ch *Handler) GetConfig() *Config {
 	ch.RLock()
 	defer ch.RUnlock()
 	return ch.Config
 }
 
-func (ch *ConfigHandler) ReloadConfig(f string, logger log.Logger) error {
+func (ch *Handler) ReloadConfig(f string, logger log.Logger) error {
 	config := &Config{}
 	var err error
 	defer func() {

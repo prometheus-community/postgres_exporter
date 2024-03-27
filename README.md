@@ -7,7 +7,7 @@
 
 Prometheus exporter for PostgreSQL server metrics.
 
-CI Tested PostgreSQL versions: `10`, `11`, `12`, `13`, `14`, `15`
+CI Tested PostgreSQL versions: `11`, `12`, `13`, `14`, `15`, `16`
 
 ## Quick Start
 This package is available for Docker:
@@ -29,6 +29,26 @@ This exporter supports the [multi-target pattern](https://prometheus.io/docs/gui
 To use the multi-target functionality, send an http request to the endpoint `/probe?target=foo:5432` where target is set to the DSN of the postgres instance to scrape metrics from.
 
 To avoid putting sensitive information like username and password in the URL, preconfigured auth modules are supported via the [auth_modules](#auth_modules) section of the config file. auth_modules for DSNs can be used with the `/probe` endpoint by specifying the `?auth_module=foo` http parameter.
+
+Example Prometheus config:
+```yaml
+scrape_configs:
+  - job_name: 'postgres'
+    static_configs:
+      - targets:
+        - server1:5432
+        - server2:5432
+    metrics_path: /probe
+    params:
+      auth_module: [foo]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9116  # The postgres exporter's real hostname:port.
+```
 
 ## Configuration File
 
@@ -61,7 +81,7 @@ auth_modules:
 To build the Docker image:
 
     make promu
-    promu crossbuild -p linux/amd64 -p linux/armv7 -p linux/amd64 -p linux/ppc64le
+    promu crossbuild -p linux/amd64 -p linux/armv7 -p linux/arm64 -p linux/ppc64le
     make docker
 
 This will build the docker image as `prometheuscommunity/postgres_exporter:${branch}`.
@@ -71,14 +91,60 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `help`
   Show context-sensitive help (also try --help-long and --help-man).
 
-* `collector.database`
-  Enable the pg_database collector. Default is `enabled`
 
-* `collector.bgwriter`
-  Enable the pg_stat_bgwriter collector. Default is `enabled`
+* `[no-]collector.database`
+  Enable the `database` collector (default: enabled).
 
-* `collector.replication_slot`
-  Enable the replication_slot collector. Default is `enabled`
+* `[no-]collector.database_wraparound`
+  Enable the `database_wraparound` collector (default: disabled).
+
+* `[no-]collector.locks`
+  Enable the `locks` collector (default: enabled).
+
+* `[no-]collector.long_running_transactions`
+  Enable the `long_running_transactions` collector (default: disabled).
+
+* `[no-]collector.postmaster`
+   Enable the `postmaster` collector (default: disabled).
+
+* `[no-]collector.process_idle`
+  Enable the `process_idle` collector (default: disabled).
+
+* `[no-]collector.replication`
+  Enable the `replication` collector (default: enabled).
+
+* `[no-]collector.replication_slot`
+  Enable the `replication_slot` collector (default: enabled).
+
+* `[no-]collector.stat_activity_autovacuum`
+  Enable the `stat_activity_autovacuum` collector (default: disabled).
+
+* `[no-]collector.stat_bgwriter`
+  Enable the `stat_bgwriter` collector (default: enabled).
+
+* `[no-]collector.stat_database`
+  Enable the `stat_database` collector (default: enabled).
+
+* `[no-]collector.stat_statements`
+  Enable the `stat_statements` collector (default: disabled).
+
+* `[no-]collector.stat_user_tables`
+  Enable the `stat_user_tables` collector (default: enabled).
+
+* `[no-]collector.stat_wal_receiver`
+  Enable the `stat_wal_receiver` collector (default: disabled).
+
+* `[no-]collector.statio_user_indexes`
+  Enable the `statio_user_indexes` collector (default: disabled).
+
+* `[no-]collector.statio_user_tables`
+  Enable the `statio_user_tables` collector (default: enabled).
+
+* `[no-]collector.wal`
+  Enable the `wal` collector (default: enabled).
+
+* `[no-]collector.xlog_location`
+  Enable the `xlog_location` collector (default: disabled).
 
 * `config.file`
   Set the config file path. Default is `postgres_exporter.yml`
@@ -102,10 +168,10 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `disable-settings-metrics`
   Use the flag if you don't want to scrape `pg_settings`.  Default is `false`.
 
-* `auto-discover-databases`
+* `auto-discover-databases` (DEPRECATED)
   Whether to discover the databases on a server dynamically.  Default is `false`.
 
-* `extend.query-path`
+* `extend.query-path` (DEPRECATED)
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
   for examples of the format.
 
@@ -113,16 +179,16 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
   Do not run - print the internal representation of the metric maps. Useful when debugging a custom
   queries file.
 
-* `constantLabels`
+* `constantLabels` (DEPRECATED)
   Labels to set in all metrics. A list of `label=value` pairs, separated by commas.
 
 * `version`
   Show application version.
 
-* `exclude-databases`
+* `exclude-databases` (DEPRECATED)
   A list of databases to remove when autoDiscoverDatabases is enabled.
 
-* `include-databases`
+* `include-databases` (DEPRECATED)
   A list of databases to only include when autoDiscoverDatabases is enabled.
 
 * `log.level`
@@ -170,20 +236,20 @@ The following environment variables configure the exporter:
 * `PG_EXPORTER_DISABLE_SETTINGS_METRICS`
   Use the flag if you don't want to scrape `pg_settings`. Value can be `true` or `false`. Default is `false`.
 
-* `PG_EXPORTER_AUTO_DISCOVER_DATABASES`
+* `PG_EXPORTER_AUTO_DISCOVER_DATABASES` (DEPRECATED)
   Whether to discover the databases on a server dynamically. Value can be `true` or `false`. Default is `false`.
 
 * `PG_EXPORTER_EXTEND_QUERY_PATH`
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
   for examples of the format.
 
-* `PG_EXPORTER_CONSTANT_LABELS`
+* `PG_EXPORTER_CONSTANT_LABELS` (DEPRECATED)
   Labels to set in all metrics. A list of `label=value` pairs, separated by commas.
 
-* `PG_EXPORTER_EXCLUDE_DATABASES`
+* `PG_EXPORTER_EXCLUDE_DATABASES` (DEPRECATED)
   A comma-separated list of databases to remove when autoDiscoverDatabases is enabled. Default is empty string.
 
-* `PG_EXPORTER_INCLUDE_DATABASES`
+* `PG_EXPORTER_INCLUDE_DATABASES` (DEPRECATED)
   A comma-separated list of databases to only include when autoDiscoverDatabases is enabled. Default is empty string,
   means allow all.
 
@@ -222,7 +288,9 @@ for l in StringIO(x):
 Adjust the value of the resultant prometheus value type appropriately. This helps build
 rich self-documenting metrics for the exporter.
 
-### Adding new metrics via a config file
+### Adding new metrics via a config file (DEPRECATED)
+
+This feature is deprecated in favor of built-in collector functions. For generic SQL database monitoring see the [sql_exporter](https://github.com/burningalchemist/sql_exporter).
 
 The -extend.query-path command-line argument specifies a YAML file containing additional queries to run.
 Some examples are provided in [queries.yaml](queries.yaml).
@@ -233,7 +301,7 @@ or variants of postgres (e.g. Greenplum), you can disable the default metrics wi
 flag. This removes all built-in metrics, and uses only metrics defined by queries in the `queries.yaml` file you supply
 (so you must supply one, otherwise the exporter will return nothing but internal statuses and not your database).
 
-### Automatically discover databases
+### Automatically discover databases (DEPRECATED)
 To scrape metrics from all databases on a database server, the database DSN's can be dynamically discovered via the
 `--auto-discover-databases` flag. When true, `SELECT datname FROM pg_database WHERE datallowconn = true AND datistemplate = false and datname != current_database()` is run for all configured DSN's. From the
 result a new set of DSN's is created for which the metrics are scraped.
