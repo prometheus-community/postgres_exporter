@@ -25,6 +25,7 @@ import (
 	"github.com/prometheus-community/postgres_exporter/collector"
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
+	cversion "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/promlog/flag"
@@ -122,7 +123,7 @@ func main() {
 		exporter.servers.Close()
 	}()
 
-	prometheus.MustRegister(version.NewCollector(exporterName))
+	prometheus.MustRegister(cversion.NewCollector(exporterName))
 
 	prometheus.MustRegister(exporter)
 
