@@ -1,3 +1,10 @@
+## 0.15.0 / 2023-10-27
+
+* [ENHANCEMENT] Add 1kB and 2kB units #915
+* [BUGFIX] Add error log when probe collector creation fails #918
+* [BUGFIX] Fix test build failures on 32-bit arch #919
+* [BUGFIX] Adjust collector to use separate connection per scrape #936
+
 ## 0.14.0 / 2023-09-11
 
 * [CHANGE] Add `state` label to pg_process_idle_seconds #862
