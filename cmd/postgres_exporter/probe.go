@@ -89,6 +89,7 @@ func handleProbe(logger log.Logger, excludeDatabases []string, connSema *semapho
 		// Run the probe
 		pc, err := collector.NewProbeCollector(ctx, tl, excludeDatabases, registry, dsn, connSema)
 		if err != nil {
+			level.Error(logger).Log("msg", "Error creating probe collector", "err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
