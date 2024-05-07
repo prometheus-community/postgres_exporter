@@ -72,6 +72,15 @@ var (
 		"number of bytes that can be written to WAL such that this slot is not in danger of getting in state lost",
 		[]string{"slot_name", "slot_type"}, nil,
 	)
+	pgReplicationSlotWalStatus = prometheus.NewDesc(
+		prometheus.BuildFQName(
+			namespace,
+			replicationSlotSubsystem,
+			"wal_status",
+		),
+		"availability of WAL files claimed by this slot",
+		[]string{"slot_name", "slot_type", "wal_status"}, nil,
+	)
 
 	pgReplicationSlotQuery = `SELECT
 		slot_name,
@@ -83,7 +92,8 @@ var (
 		END AS current_wal_lsn,
 		COALESCE(confirmed_flush_lsn, '0/0') - '0/0' AS confirmed_flush_lsn,
 		active,
-		safe_wal_size
+		safe_wal_size,
+		wal_status
 	FROM pg_replication_slots;`
 )
 
@@ -103,7 +113,8 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, instance *instance
 		var flushLSN sql.NullFloat64
 		var isActive sql.NullBool
 		var safeWalSize sql.NullInt64
-		if err := rows.Scan(&slotName, &slotType, &walLSN, &flushLSN, &isActive, &safeWalSize); err != nil {
+		var walStatus sql.NullString
+		if err := rows.Scan(&slotName, &slotType, &walLSN, &flushLSN, &isActive, &safeWalSize, &walStatus); err != nil {
 			return err
 		}
 
@@ -147,6 +158,13 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, instance *instance
 			ch <- prometheus.MustNewConstMetric(
 				pgReplicationSlotSafeWal,
 				prometheus.GaugeValue, float64(safeWalSize.Int64), slotNameLabel, slotTypeLabel,
+			)
+		}
+
+		if walStatus.Valid {
+			ch <- prometheus.MustNewConstMetric(
+				pgReplicationSlotWalStatus,
+				prometheus.GaugeValue, 1, slotNameLabel, slotTypeLabel, walStatus.String,
 			)
 		}
 	}
