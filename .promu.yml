@@ -8,6 +8,7 @@ build:
     binaries:
         - name: postgres_exporter
           path: ./cmd/postgres_exporter
+    flags: -a -tags strictfipsruntime
     ldflags: |
         -X github.com/prometheus/common/version.Version={{.Version}}
         -X github.com/prometheus/common/version.Revision={{.Revision}}
