@@ -4,6 +4,7 @@ go:
 repository:
     path: github.com/prometheus-community/postgres_exporter
 build:
+    static: false
     binaries:
         - name: postgres_exporter
           path: ./cmd/postgres_exporter
