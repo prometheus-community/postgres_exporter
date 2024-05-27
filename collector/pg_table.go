@@ -45,7 +45,7 @@ var (
 			"total_relation",
 		),
 		"Total Relation Size of the table",
-		[]string{"schemaname", "datname", "relname"}, nil,
+		[]string{"schemaname", "relname", "datname"}, nil,
 	)
 	pgTableIndexSizeDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(
@@ -54,7 +54,7 @@ var (
 			"index",
 		),
 		"Indexes Size of the Table",
-		[]string{"schemaname", "datname", "relname"}, nil,
+		[]string{"schemaname", "relname", "datname"}, nil,
 	)
 	pgRelationSizeDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(
@@ -63,11 +63,11 @@ var (
 			"relation",
 		),
 		"Relation Size of the table",
-		[]string{"schemaname", "datname", "relname"}, nil,
+		[]string{"schemaname", "relname", "datname"}, nil,
 	)
 	pgTableSizeQuery = `SELECT
-        table_catalog datname,
-        table_name relname,
+        table_catalog relname,
+        table_name datname,
         table_schema schemaname,
         pg_total_relation_size('"'||table_schema||'"."'||table_name||'"') total_relation_size,
         pg_relation_size('"'||table_schema||'"."'||table_name||'"') relation_size,
@@ -86,14 +86,14 @@ func (c PGTableSizeCollector) Update(ctx context.Context, instance *instance, ch
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var tableSchema, tableName, databaseName sql.NullString
+		var schemaName, relName, databaseName sql.NullString
 		var totalRelationSize, relationSize, indexesSize sql.NullInt64
 
-		if err := rows.Scan(&databaseName, &tableName, &tableSchema, &totalRelationSize, &relationSize, &indexesSize); err != nil {
+		if err := rows.Scan(&databaseName, &relName, &schemaName, &totalRelationSize, &relationSize, &indexesSize); err != nil {
 			return err
 		}
 
-		if !tableSchema.Valid || !tableName.Valid || !databaseName.Valid {
+		if !schemaName.Valid || !relName.Valid || !databaseName.Valid {
 			continue
 		}
 
@@ -115,19 +115,19 @@ func (c PGTableSizeCollector) Update(ctx context.Context, instance *instance, ch
 		ch <- prometheus.MustNewConstMetric(
 			pgTableTotalRelationDesc,
 			prometheus.CounterValue, totalRelationsSizeMetric,
-			tableSchema.String, databaseName.String, tableName.String,
+			schemaName.String, relName.String, databaseName.String,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			pgRelationSizeDesc,
 			prometheus.CounterValue, relationSizeMetric,
-			tableSchema.String, databaseName.String, tableName.String,
+			schemaName.String, relName.String, databaseName.String,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			pgTableIndexSizeDesc,
 			prometheus.CounterValue, indexesSizeMetric,
-			tableSchema.String, databaseName.String, tableName.String,
+			schemaName.String, relName.String, databaseName.String,
 		)
 	}
 
