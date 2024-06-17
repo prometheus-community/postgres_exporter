@@ -43,7 +43,7 @@ var (
 			"slot_current_wal_lsn",
 		),
 		"current wal lsn value",
-		[]string{"slot_name"}, nil,
+		[]string{"slot_name", "slot_type"}, nil,
 	)
 	pgReplicationSlotCurrentFlushDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(
@@ -52,7 +52,7 @@ var (
 			"slot_confirmed_flush_lsn",
 		),
 		"last lsn confirmed flushed to the replication slot",
-		[]string{"slot_name"}, nil,
+		[]string{"slot_name", "slot_type"}, nil,
 	)
 	pgReplicationSlotIsActiveDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(
@@ -61,18 +61,39 @@ var (
 			"slot_is_active",
 		),
 		"whether the replication slot is active or not",
-		[]string{"slot_name"}, nil,
+		[]string{"slot_name", "slot_type"}, nil,
+	)
+	pgReplicationSlotSafeWal = prometheus.NewDesc(
+		prometheus.BuildFQName(
+			namespace,
+			replicationSlotSubsystem,
+			"safe_wal_size_bytes",
+		),
+		"number of bytes that can be written to WAL such that this slot is not in danger of getting in state lost",
+		[]string{"slot_name", "slot_type"}, nil,
+	)
+	pgReplicationSlotWalStatus = prometheus.NewDesc(
+		prometheus.BuildFQName(
+			namespace,
+			replicationSlotSubsystem,
+			"wal_status",
+		),
+		"availability of WAL files claimed by this slot",
+		[]string{"slot_name", "slot_type", "wal_status"}, nil,
 	)
 
 	pgReplicationSlotQuery = `SELECT
 		slot_name,
-		CASE WHEN pg_is_in_recovery() THEN 
+		slot_type,
+		CASE WHEN pg_is_in_recovery() THEN
 		    pg_last_wal_receive_lsn() - '0/0'
-		ELSE 
-		    pg_current_wal_lsn() - '0/0' 
+		ELSE
+		    pg_current_wal_lsn() - '0/0'
 		END AS current_wal_lsn,
-		COALESCE(confirmed_flush_lsn, '0/0') - '0/0',
-		active
+		COALESCE(confirmed_flush_lsn, '0/0') - '0/0' AS confirmed_flush_lsn,
+		active,
+		safe_wal_size,
+		wal_status
 	FROM pg_replication_slots;`
 )
 
@@ -87,10 +108,13 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, instance *instance
 
 	for rows.Next() {
 		var slotName sql.NullString
+		var slotType sql.NullString
 		var walLSN sql.NullFloat64
 		var flushLSN sql.NullFloat64
 		var isActive sql.NullBool
-		if err := rows.Scan(&slotName, &walLSN, &flushLSN, &isActive); err != nil {
+		var safeWalSize sql.NullInt64
+		var walStatus sql.NullString
+		if err := rows.Scan(&slotName, &slotType, &walLSN, &flushLSN, &isActive, &safeWalSize, &walStatus); err != nil {
 			return err
 		}
 
@@ -102,6 +126,10 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, instance *instance
 		if slotName.Valid {
 			slotNameLabel = slotName.String
 		}
+		slotTypeLabel := "unknown"
+		if slotType.Valid {
+			slotTypeLabel = slotType.String
+		}
 
 		var walLSNMetric float64
 		if walLSN.Valid {
@@ -109,7 +137,7 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, instance *instance
 		}
 		ch <- prometheus.MustNewConstMetric(
 			pgReplicationSlotCurrentWalDesc,
-			prometheus.GaugeValue, walLSNMetric, slotNameLabel,
+			prometheus.GaugeValue, walLSNMetric, slotNameLabel, slotTypeLabel,
 		)
 		if isActive.Valid && isActive.Bool {
 			var flushLSNMetric float64
@@ -118,13 +146,27 @@ func (PGReplicationSlotCollector) Update(ctx context.Context, instance *instance
 			}
 			ch <- prometheus.MustNewConstMetric(
 				pgReplicationSlotCurrentFlushDesc,
-				prometheus.GaugeValue, flushLSNMetric, slotNameLabel,
+				prometheus.GaugeValue, flushLSNMetric, slotNameLabel, slotTypeLabel,
 			)
 		}
 		ch <- prometheus.MustNewConstMetric(
 			pgReplicationSlotIsActiveDesc,
-			prometheus.GaugeValue, isActiveValue, slotNameLabel,
+			prometheus.GaugeValue, isActiveValue, slotNameLabel, slotTypeLabel,
 		)
+
+		if safeWalSize.Valid {
+			ch <- prometheus.MustNewConstMetric(
+				pgReplicationSlotSafeWal,
+				prometheus.GaugeValue, float64(safeWalSize.Int64), slotNameLabel, slotTypeLabel,
+			)
+		}
+
+		if walStatus.Valid {
+			ch <- prometheus.MustNewConstMetric(
+				pgReplicationSlotWalStatus,
+				prometheus.GaugeValue, 1, slotNameLabel, slotTypeLabel, walStatus.String,
+			)
+		}
 	}
 	return rows.Err()
 }

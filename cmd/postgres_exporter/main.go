@@ -93,7 +93,7 @@ func main() {
 	}
 
 	excludedDatabases := strings.Split(*excludeDatabases, ",")
-	logger.Log("msg", "Excluded databases", "databases", fmt.Sprintf("%v", excludedDatabases))
+	level.Info(logger).Log("msg", "Excluded databases", "databases", fmt.Sprintf("%v", excludedDatabases))
 
 	if *queriesPath != "" {
 		level.Warn(logger).Log("msg", "The extended queries.yaml config is DEPRECATED", "file", *queriesPath)
