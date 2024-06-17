@@ -52,6 +52,7 @@ func TestPGStatDatabaseCollector(t *testing.T) {
 		"deadlocks",
 		"blk_read_time",
 		"blk_write_time",
+		"active_time",
 		"stats_reset",
 	}
 
@@ -80,6 +81,7 @@ func TestPGStatDatabaseCollector(t *testing.T) {
 			925,
 			16,
 			823,
+			33,
 			srT)
 
 	mock.ExpectQuery(sanitizeQuery(statDatabaseQuery)).WillReturnRows(rows)
@@ -113,6 +115,7 @@ func TestPGStatDatabaseCollector(t *testing.T) {
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 925},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 16},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 823},
+		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 0.033},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 1685059842},
 	}
 
@@ -159,6 +162,7 @@ func TestPGStatDatabaseCollectorNullValues(t *testing.T) {
 		"deadlocks",
 		"blk_read_time",
 		"blk_write_time",
+		"active_time",
 		"stats_reset",
 	}
 
@@ -182,6 +186,7 @@ func TestPGStatDatabaseCollectorNullValues(t *testing.T) {
 			925,
 			16,
 			823,
+			32,
 			srT).
 		AddRow(
 			"pid",
@@ -202,6 +207,7 @@ func TestPGStatDatabaseCollectorNullValues(t *testing.T) {
 			925,
 			16,
 			823,
+			32,
 			srT)
 	mock.ExpectQuery(sanitizeQuery(statDatabaseQuery)).WillReturnRows(rows)
 
@@ -234,6 +240,7 @@ func TestPGStatDatabaseCollectorNullValues(t *testing.T) {
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 925},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 16},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 823},
+		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 0.032},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 1685059842},
 	}
 
@@ -275,6 +282,7 @@ func TestPGStatDatabaseCollectorRowLeakTest(t *testing.T) {
 		"deadlocks",
 		"blk_read_time",
 		"blk_write_time",
+		"active_time",
 		"stats_reset",
 	}
 
@@ -303,8 +311,10 @@ func TestPGStatDatabaseCollectorRowLeakTest(t *testing.T) {
 			925,
 			16,
 			823,
+			14,
 			srT).
 		AddRow(
+			nil,
 			nil,
 			nil,
 			nil,
@@ -344,6 +354,7 @@ func TestPGStatDatabaseCollectorRowLeakTest(t *testing.T) {
 			926,
 			17,
 			824,
+			15,
 			srT)
 	mock.ExpectQuery(sanitizeQuery(statDatabaseQuery)).WillReturnRows(rows)
 
@@ -376,7 +387,9 @@ func TestPGStatDatabaseCollectorRowLeakTest(t *testing.T) {
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 925},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 16},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 823},
+		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 0.014},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 1685059842},
+
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_GAUGE, value: 355},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 4946},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 289097745},
@@ -393,6 +406,7 @@ func TestPGStatDatabaseCollectorRowLeakTest(t *testing.T) {
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 926},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 17},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 824},
+		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 0.015},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 1685059842},
 	}
 
@@ -435,6 +449,7 @@ func TestPGStatDatabaseCollectorTestNilStatReset(t *testing.T) {
 		"deadlocks",
 		"blk_read_time",
 		"blk_write_time",
+		"active_time",
 		"stats_reset",
 	}
 
@@ -458,6 +473,7 @@ func TestPGStatDatabaseCollectorTestNilStatReset(t *testing.T) {
 			925,
 			16,
 			823,
+			7,
 			nil)
 
 	mock.ExpectQuery(sanitizeQuery(statDatabaseQuery)).WillReturnRows(rows)
@@ -491,6 +507,7 @@ func TestPGStatDatabaseCollectorTestNilStatReset(t *testing.T) {
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 925},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 16},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 823},
+		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 0.007},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 0},
 	}
 

@@ -206,6 +206,15 @@ var (
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
 	)
+	statDatabaseActiveTime = prometheus.NewDesc(prometheus.BuildFQName(
+		namespace,
+		statDatabaseSubsystem,
+		"active_time_seconds_total",
+	),
+		"Time spent executing SQL statements in this database, in seconds",
+		[]string{"datid", "datname"},
+		prometheus.Labels{},
+	)
 
 	statDatabaseQuery = `
 		SELECT
@@ -227,6 +236,7 @@ var (
 			,deadlocks
 			,blk_read_time
 			,blk_write_time
+		    ,active_time
 			,stats_reset
 		FROM pg_stat_database;
 	`
@@ -244,7 +254,7 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 
 	for rows.Next() {
 		var datid, datname sql.NullString
-		var numBackends, xactCommit, xactRollback, blksRead, blksHit, tupReturned, tupFetched, tupInserted, tupUpdated, tupDeleted, conflicts, tempFiles, tempBytes, deadlocks, blkReadTime, blkWriteTime sql.NullFloat64
+		var numBackends, xactCommit, xactRollback, blksRead, blksHit, tupReturned, tupFetched, tupInserted, tupUpdated, tupDeleted, conflicts, tempFiles, tempBytes, deadlocks, blkReadTime, blkWriteTime, activeTime sql.NullFloat64
 		var statsReset sql.NullTime
 
 		err := rows.Scan(
@@ -266,6 +276,7 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 			&deadlocks,
 			&blkReadTime,
 			&blkWriteTime,
+			&activeTime,
 			&statsReset,
 		)
 		if err != nil {
@@ -342,6 +353,10 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 		}
 		if !blkWriteTime.Valid {
 			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no blk_write_time")
+			continue
+		}
+		if !activeTime.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no active_time")
 			continue
 		}
 
@@ -464,6 +479,13 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 			statDatabaseBlkWriteTime,
 			prometheus.CounterValue,
 			blkWriteTime.Float64,
+			labels...,
+		)
+
+		ch <- prometheus.MustNewConstMetric(
+			statDatabaseActiveTime,
+			prometheus.CounterValue,
+			activeTime.Float64/1000.0,
 			labels...,
 		)
 
