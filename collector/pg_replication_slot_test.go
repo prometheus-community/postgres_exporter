@@ -31,7 +31,7 @@ func TestPgReplicationSlotCollectorActive(t *testing.T) {
 
 	inst := &instance{db: db}
 
-	columns := []string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active", "safe_wal_size", "wal_status"}
+	columns := []string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active", "wal_status"}
 	rows := sqlmock.NewRows(columns).
 		AddRow("test_slot", "physical", 5, 3, true, 323906992, "reserved")
 	mock.ExpectQuery(sanitizeQuery(pgReplicationSlotQuery)).WillReturnRows(rows)
@@ -74,7 +74,7 @@ func TestPgReplicationSlotCollectorInActive(t *testing.T) {
 
 	inst := &instance{db: db}
 
-	columns := []string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active", "safe_wal_size", "wal_status"}
+	columns := []string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active", "wal_status"}
 	rows := sqlmock.NewRows(columns).
 		AddRow("test_slot", "physical", 6, 12, false, -4000, "extended")
 	mock.ExpectQuery(sanitizeQuery(pgReplicationSlotQuery)).WillReturnRows(rows)
@@ -117,7 +117,7 @@ func TestPgReplicationSlotCollectorActiveNil(t *testing.T) {
 
 	inst := &instance{db: db}
 
-	columns := []string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active", "safe_wal_size", "wal_status"}
+	columns := []string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active", "wal_status"}
 	rows := sqlmock.NewRows(columns).
 		AddRow("test_slot", "physical", 6, 12, nil, nil, "lost")
 	mock.ExpectQuery(sanitizeQuery(pgReplicationSlotQuery)).WillReturnRows(rows)
@@ -158,7 +158,7 @@ func TestPgReplicationSlotCollectorTestNilValues(t *testing.T) {
 
 	inst := &instance{db: db}
 
-	columns := []string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active", "safe_wal_size", "wal_status"}
+	columns := []string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active", "wal_status"}
 	rows := sqlmock.NewRows(columns).
 		AddRow(nil, nil, nil, nil, true, nil, nil)
 	mock.ExpectQuery(sanitizeQuery(pgReplicationSlotQuery)).WillReturnRows(rows)
