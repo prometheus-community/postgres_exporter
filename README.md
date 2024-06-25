@@ -17,9 +17,28 @@ docker run --net=host -it --rm -e POSTGRES_PASSWORD=password postgres
 # Connect to it
 docker run \
   --net=host \
-  -e DATA_SOURCE_NAME="postgresql://postgres:password@localhost:5432/postgres?sslmode=disable" \
+  -e DATA_SOURCE_URI="localhost:5432/postgres?sslmode=disable" \
+  -e DATA_SOURCE_USER=postgres \
+  -e DATA_SOURCE_PASS=password \
   quay.io/prometheuscommunity/postgres-exporter
 ```
+
+Test with:
+```bash
+curl "http://localhost:9187/metrics"
+```
+
+Example Prometheus config:
+```yaml
+scrape_configs:
+  - job_name: postgres
+    static_configs:
+      - targets: ["127.0.0.1:9187"] # Replace IP with the hostname of the docker container if you're running the container in a separate network
+```
+
+Now use the DATA_SOURCE_PASS_FILE with a mounted file containing the password to prevent having the password in an environment variable.
+
+The container process runs with uid/gid 65534 (important for file permissions).
 
 ## Multi-Target Support (BETA)
 **This Feature is in beta and may require changes in future releases. Feedback is welcome.**
@@ -208,7 +227,7 @@ The following environment variables configure the exporter:
 * `DATA_SOURCE_URI`
    an alternative to `DATA_SOURCE_NAME` which exclusively accepts the hostname
    without a username and password component. For example, `my_pg_hostname` or
-   `my_pg_hostname?sslmode=disable`.
+   `my_pg_hostname:5432/postgres?sslmode=disable`.
 
 * `DATA_SOURCE_URI_FILE`
    The same as above but reads the URI from a file.
