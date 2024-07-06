@@ -217,5 +217,14 @@ func loggableDSN(dsn string) string {
 		pDSN.User = url.UserPassword(pDSN.User.Username(), "PASSWORD_REMOVED")
 	}
 
+	// Blank password data from parameters if not nil
+	q := pDSN.Query()
+	if q != nil {
+		if q.Get("password") != "" {
+			q.Set("password", "PASSWORD_REMOVED")
+			pDSN.RawQuery = q.Encode()
+		}
+	}
+
 	return pDSN.String()
 }
