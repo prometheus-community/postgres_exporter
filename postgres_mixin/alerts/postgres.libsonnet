@@ -202,7 +202,7 @@
             },
           },
           {
-            alert: 'PostgresReplicationLagging_More_1Hour',
+            alert: 'PostgresReplicationLaggingMore1Hour',
             annotations: {
               description: '{{ $labels.instance }} replication lag exceeds 1 hour. Check for network issues or load imbalances.',
               summary: 'PostgreSQL replication lagging more than 1 hour.',
