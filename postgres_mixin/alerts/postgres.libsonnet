@@ -174,9 +174,7 @@
             expr: 'rate(pg_xlog_position_bytes{asserts_env!=""}[5m]) < 200000',
             'for': '5m',
             labels: {
-              asserts_severity: 'critical',
-              asserts_entity_type: 'Service',
-              asserts_alert_category: 'failure',
+              severity: 'critical',
             },
           },
           {
@@ -188,9 +186,7 @@
             expr: 'rate(pg_xlog_position_bytes{asserts_env!=""}[2m]) > 36700160 and on (instance, asserts_env, asserts_site) (pg_replication_is_replica{asserts_env!=""} == 0)',
             'for': '10m',
             labels: {
-              asserts_severity: 'critical',
-              asserts_entity_type: 'Service',
-              asserts_alert_category: 'failure',
+              severity: 'critical',
             },
           },
           {
@@ -202,9 +198,7 @@
             expr: 'pg_stat_replication_pg_xlog_location_diff{asserts_env!=""} != 0',
             'for': '5m',
             labels: {
-              asserts_severity: 'critical',
-              asserts_entity_type: 'Service',
-              asserts_alert_category: 'failure',
+              severity: 'critical',
             },
           },
           {
@@ -216,9 +210,7 @@
             expr: '(pg_replication_lag{asserts_env!=""} > 3600) and on (instance) (pg_replication_is_replica{asserts_env!=""} == 1)',
             'for': '5m',
             labels: {
-              asserts_severity: 'warning',
-              asserts_entity_type: 'Service',
-              asserts_alert_category: 'failure',
+              severity: 'warning',
             },
           },
           {
@@ -230,9 +222,7 @@
             expr: '(pg_xlog_position_bytes{asserts_env!=""} and pg_replication_is_replica{asserts_env!=""} == 0) - on (job, service, asserts_env, asserts_site) group_right(instance) (pg_xlog_position_bytes{asserts_env!=""} and pg_replication_is_replica{asserts_env!=""} == 1) > 1e+09',
             'for': '5m',
             labels: {
-              asserts_severity: 'critical',
-              asserts_entity_type: 'Service',
-              asserts_alert_category: 'failure',
+              severity: 'critical',
             },
           },
           {
@@ -244,9 +234,7 @@
             expr: 'pg_replication_slots_active{asserts_env!=""} == 0',
             'for': '30m',
             labels: {
-              asserts_severity: 'critical',
-              asserts_entity_type: 'Service',
-              asserts_alert_category: 'failure',
+              severity: 'critical',
             },
           },
           {
@@ -258,9 +246,7 @@
             expr: 'pg_replication_slots_xmin_age{asserts_env!="", slot_name =~ "^repmgr_slot_[0-9]+"} > 20000',
             'for': '30m',
             labels: {
-              asserts_severity: 'critical',
-              asserts_entity_type: 'Service',
-              asserts_alert_category: 'failure',
+              severity: 'critical',
             },
           },
           {
@@ -271,9 +257,7 @@
             },
             expr: 'pg_replication_is_replica{asserts_env!=""} and changes(pg_replication_is_replica{asserts_env!=""}[1m]) > 0',
             labels: {
-              asserts_severity: 'warning',
-              asserts_entity_type: 'Service',
-              asserts_alert_category: 'failure',
+              severity: 'warning',
             },
           },
           {
@@ -285,9 +269,7 @@
             expr: 'pg_exporter_last_scrape_error{asserts_env!=""} > 0',
             'for': '30m',
             labels: {
-              asserts_severity: 'critical',
-              asserts_entity_type: 'Service',
-              asserts_alert_category: 'failure',
+              severity: 'critical',
             },
           },
           {
@@ -299,9 +281,7 @@
             expr: '(sum without(relname) (pg_stat_user_tables_n_dead_tup{asserts_env!="", db_name!~"template.*|^$"}) > 10000) / ((sum without(relname) (pg_stat_user_tables_n_live_tup{asserts_env!="", db_name!~"template.*|^$"}) + sum without(relname)(pg_stat_user_tables_n_dead_tup{asserts_env!="", db_name!~"template.*|^$"})) > 0) >= 0.1 unless on(instance, asserts_env, asserts_site) (pg_replication_is_replica{asserts_env!=""} == 1)',
             'for': '5m',
             labels: {
-              asserts_severity: 'warning',
-              asserts_entity_type: 'Service',
-              asserts_alert_category: 'failure',
+              severity: 'warning',
             },
           },
           {
@@ -313,9 +293,7 @@
             expr: 'group without(pod, instance)(timestamp(pg_stat_user_tables_n_dead_tup{asserts_env!=""} > pg_stat_user_tables_n_live_tup{asserts_env!=""} * on(asserts_env, asserts_site, namespace, job, service, instance, server) group_left pg_settings_autovacuum_vacuum_scale_factor{asserts_env!=""} + on(asserts_env, asserts_site, namespace, job, service, instance, server) group_left pg_settings_autovacuum_vacuum_threshold{asserts_env!=""})) < time() - 36000',
             'for': '30m',
             labels: {
-              asserts_severity: 'critical',
-              asserts_entity_type: 'Service',
-              asserts_alert_category: 'failure',
+              severity: 'critical',
             },
           },
           {
@@ -324,20 +302,9 @@
               description: '{{ $labels.instance }} table has not been analyzed recently, which might lead to inefficient query planning.',
               summary: 'PostgreSQL table not analyzed.',
             },
-            expr: '
-              group without(pod, instance)(
-                timestamp(
-                pg_stat_user_tables_n_dead_tup{asserts_env!=""} >
-                  pg_stat_user_tables_n_live_tup{asserts_env!=""}
-                      * on(asserts_env, asserts_site, namespace, job, service, instance, server) group_left pg_settings_autovacuum_analyze_scale_factor{asserts_env!=""}
-                      + on(asserts_env, asserts_site, namespace, job, service, instance, server) group_left pg_settings_autovacuum_analyze_threshold{asserts_env!=""}
-                )
-                -
-                pg_stat_user_tables_last_autoanalyze{asserts_env!=""}
-                > 24 * 60 * 60
-              )',
+            expr: '\n              group without(pod, instance)(\n                timestamp(\n                pg_stat_user_tables_n_dead_tup{asserts_env!=""} >\n                  pg_stat_user_tables_n_live_tup{asserts_env!=""}\n                      * on(asserts_env, asserts_site, namespace, job, service, instance, server) group_left pg_settings_autovacuum_analyze_scale_factor{asserts_env!=""}\n                      + on(asserts_env, asserts_site, namespace, job, service, instance, server) group_left pg_settings_autovacuum_analyze_threshold{asserts_env!=""}\n                )\n                -\n                pg_stat_user_tables_last_autoanalyze{asserts_env!=""}\n                > 24 * 60 * 60\n              )',
             labels: {
-              asserts_severity: 'warning',
+              severity: 'warning',
               asserts_entity_type: 'DataSource',
               asserts_alert_category: 'failure',
             },
@@ -348,15 +315,10 @@
               description: '{{ $labels.instance }} is requesting too many checkpoints, which may lead to performance degradation.',
               summary: 'PostgreSQL too many checkpoints requested.',
             },
-            expr:'
-              rate(pg_stat_bgwriter_checkpoints_timed_total{asserts_env!=""}[5m]) /
-              (rate(pg_stat_bgwriter_checkpoints_timed_total{asserts_env!=""}[5m]) + rate(pg_stat_bgwriter_checkpoints_req_total{asserts_env!=""}[5m]))
-              < 0.5',
+            expr: '\n              rate(pg_stat_bgwriter_checkpoints_timed_total{asserts_env!=""}[5m]) /\n              (rate(pg_stat_bgwriter_checkpoints_timed_total{asserts_env!=""}[5m]) + rate(pg_stat_bgwriter_checkpoints_req_total{asserts_env!=""}[5m]))\n              < 0.5',
             'for': '5m',
             labels: {
-              asserts_severity: 'warning',
-              asserts_entity_type: 'Service',
-              asserts_alert_category: 'failure',
+              severity: 'warning',
             },
           },
         ],
