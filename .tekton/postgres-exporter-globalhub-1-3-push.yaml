@@ -24,7 +24,7 @@ spec:
   - name: output-image
     value: quay.io/redhat-user-workloads/acm-multicluster-glo-tenant/release-globalhub-1-3/postgres-exporter-globalhub-1-3:{{revision}}
   - name: dockerfile
-    value: Dockerfile
+    value: Containerfile.operator
   - name: path-context
     value: .
   pipelineSpec:

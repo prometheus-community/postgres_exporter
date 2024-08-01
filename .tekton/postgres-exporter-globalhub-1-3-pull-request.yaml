@@ -27,7 +27,7 @@ spec:
   - name: image-expires-after
     value: 5d
   - name: dockerfile
-    value: Dockerfile
+    value: Containerfile.operator
   - name: path-context
     value: .
   pipelineSpec:
