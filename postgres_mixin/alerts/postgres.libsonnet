@@ -248,7 +248,7 @@
               description: '{{ $labels.instance }} replication slots have not been updated for a significant period, indicating potential issues with replication.',
               summary: 'PostgreSQL replication slots are stale.',
             },
-            expr: 'pg_replication_slots_xmin_age{, slot_name =~ "^repmgr_slot_[0-9]+"} > 20000',
+            expr: 'pg_replication_slots_xmin_age{slot_name =~ "^repmgr_slot_[0-9]+"} > 20000',
             'for': '30m',
             labels: {
               severity: 'critical',
@@ -285,12 +285,12 @@
             },
             expr: |||
               (sum without(relname) (
-                pg_stat_user_tables_n_dead_tup{, %(dbNameFilter)s}
+                pg_stat_user_tables_n_dead_tup{%(dbNameFilter)s}
               ) > 10000) /
               ((sum without(relname) (
-                pg_stat_user_tables_n_live_tup{, %(dbNameFilter)s}
+                pg_stat_user_tables_n_live_tup{%(dbNameFilter)s}
               ) + sum without(relname)(
-                pg_stat_user_tables_n_dead_tup{, %(dbNameFilter)s}
+                pg_stat_user_tables_n_dead_tup{%(dbNameFilter)s}
               )) > 0) >= 0.1 unless on(instance) (
                 pg_replication_is_replica{} == 1
               )
