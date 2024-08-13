@@ -1,14 +1,14 @@
 In order to start PostgreSQL with SSL support, we need to change the file permissions
 for the ssl cert and key.
 
-Please run these commands if you want to run docker-compose locally.
+Please run these commands if you want to run `docker compose` locally.
 
 sudo chown 999:999 testdata/ssl/server/*
 sudo chmod 0600 testdata/ssl/server/*
 
 Start the container:
 ```
-docker-compose up
+`docker compose` up
 ```
 
 To be able to connect from pgsql you need to own the certs

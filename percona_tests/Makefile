@@ -41,9 +41,9 @@ prepare-base-exporter:
 	tar -xf assets/postgres_exporter_percona.tar.gz -C assets/
 
 start-postgres-db:
-	docker-compose up -d --force-recreate --renew-anon-volumes --remove-orphans
+	docker compose up -d --force-recreate --renew-anon-volumes --remove-orphans
 
 stop-postgres-db:
-	docker-compose down
+	docker compose down
 
 prepare-env-from-repo: prepare-exporter-from-repo prepare-base-exporter start-postgres-db

@@ -25,7 +25,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v5.0.2
+      uses: actions/setup-go@v5
       with:
         go-version-file: ${{ github.workspace }}/go.mod
 
@@ -39,7 +39,7 @@ jobs:
       run: |
         sudo chown 999:999 testdata/ssl/server/*
         sudo chmod 600 testdata/ssl/server/*
-        docker-compose up -d
+        docker compose up -d
         make
         make test
       env:
@@ -52,5 +52,5 @@ jobs:
         go env | sort
         git status
         docker --version
-        docker-compose --version
-        docker-compose logs
+        docker compose --version
+        docker compose logs
