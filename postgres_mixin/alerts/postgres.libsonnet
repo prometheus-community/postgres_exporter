@@ -166,42 +166,6 @@
             },
           },
           {
-            alert: 'PostgresXLOGConsumptionVeryLow',
-            annotations: {
-              description: 'PostgreSQL instance {{ $labels.instance }} has a very low XLOG consumption rate.',
-              summary: 'PostgreSQL XLOG consumption is very low.',
-            },
-            expr: 'rate(pg_xlog_position_bytes{}[5m]) < 200000',
-            'for': '5m',
-            labels: {
-              severity: 'critical',
-            },
-          },
-          {
-            alert: 'PostgresXLOGConsumptionVeryHigh',
-            annotations: {
-              description: '{{ $labels.instance }} is experiencing very high XLOG consumption rate, which might indicate excessive write operations.',
-              summary: 'PostgreSQL very high XLOG consumption rate.',
-            },
-            expr: 'rate(pg_xlog_position_bytes{}[2m]) > 36700160 and on (instance) (pg_replication_is_replica{} == 0)',
-            'for': '10m',
-            labels: {
-              severity: 'critical',
-            },
-          },
-          {
-            alert: 'PostgresReplicationStopped',
-            annotations: {
-              description: 'PostgreSQL instance {{ $labels.instance }} has stopped replication.',
-              summary: 'PostgreSQL replication has stopped.',
-            },
-            expr: 'pg_stat_replication_pg_xlog_location_diff{} != 0',
-            'for': '5m',
-            labels: {
-              severity: 'critical',
-            },
-          },
-          {
             alert: 'PostgresReplicationLaggingMore1Hour',
             annotations: {
               description: '{{ $labels.instance }} replication lag exceeds 1 hour. Check for network issues or load imbalances.',
@@ -211,23 +175,6 @@
             'for': '5m',
             labels: {
               severity: 'warning',
-            },
-          },
-          {
-            alert: 'PostgresReplicationLagBytesAreTooLarge',
-            annotations: {
-              description: '{{ $labels.instance }} replication lag in bytes is too large, which might indicate replication issues or network bottlenecks.',
-              summary: 'PostgreSQL replication lag in bytes too large.',
-            },
-            expr: |||
-              (pg_xlog_position_bytes{} and pg_replication_is_replica{} == 0)
-              - on (job, service) group_right(instance) (
-                pg_xlog_position_bytes{} and pg_replication_is_replica{} == 1
-              ) > 1e+09
-            |||,
-            'for': '5m',
-            labels: {
-              severity: 'critical',
             },
           },
           {
