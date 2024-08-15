@@ -235,28 +235,6 @@
             },
           },
           {
-            alert: 'PostgresTablesNotVaccumed',
-            annotations: {
-              description: '{{ $labels.instance }} tables have not been vacuumed recently, which may lead to performance degradation.',
-              summary: 'PostgreSQL tables not vacuumed.',
-            },
-            expr: |||
-              group without(pod, instance)(
-                timestamp(
-                  pg_stat_user_tables_n_dead_tup{} >
-                    pg_stat_user_tables_n_live_tup{}
-                      * on(namespace, job, service, instance, server) group_left pg_settings_autovacuum_vacuum_scale_factor{}
-                      + on(namespace, job, service, instance, server) group_left pg_settings_autovacuum_vacuum_threshold{}
-                )
-                < time() - 36000
-              )
-            |||,
-            'for': '30m',
-            labels: {
-              severity: 'critical',
-            },
-          },
-          {
             alert: 'PostgresTooManyCheckpointsRequested',
             annotations: {
               description: '{{ $labels.instance }} is requesting too many checkpoints, which may lead to performance degradation.',
