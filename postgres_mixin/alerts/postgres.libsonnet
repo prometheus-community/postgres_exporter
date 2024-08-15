@@ -190,18 +190,6 @@
             },
           },
           {
-            alert: 'PostgresReplicationIsStale',
-            annotations: {
-              description: '{{ $labels.instance }} replication slots have not been updated for a significant period, indicating potential issues with replication.',
-              summary: 'PostgreSQL replication slots are stale.',
-            },
-            expr: 'pg_replication_slots_xmin_age{slot_name =~ "^repmgr_slot_[0-9]+"} > 20000',
-            'for': '30m',
-            labels: {
-              severity: 'critical',
-            },
-          },
-          {
             alert: 'PostgresReplicationRoleChanged',
             annotations: {
               description: '{{ $labels.instance }} replication role has changed. Verify if this is expected or if it indicates a failover.',
@@ -225,32 +213,9 @@
             },
           },
           {
-            alert: 'PostgresHasTooManyDeadTuples',
-            annotations: {
-              description: '{{ $labels.instance }} has too many dead tuples, which may lead to inefficient query performance. Consider vacuuming the database.',
-              summary: 'PostgreSQL has too many dead tuples.',
-            },
-            expr: |||
-              (sum without(relname) (
-                pg_stat_user_tables_n_dead_tup{%(dbNameFilter)s}
-              ) > 10000) /
-              ((sum without(relname) (
-                pg_stat_user_tables_n_live_tup{%(dbNameFilter)s}
-              ) + sum without(relname)(
-                pg_stat_user_tables_n_dead_tup{%(dbNameFilter)s}
-              )) > 0) >= 0.1 unless on(instance) (
-                pg_replication_is_replica{} == 1
-              )
-            ||| % $._config,
-            'for': '5m',
-            labels: {
-              severity: 'warning',
-            },
-          },
-          {
             alert: 'PostgresTablesNotVaccumed',
             annotations: {
-              description: '{{ $labels.instance }} tables have not been vacuumed recently, which may lead to performance degradation.',
+              description: '{{ $labels.instance }} tables have not been vacuumed recently within the last hour, which may lead to performance degradation.',
               summary: 'PostgreSQL tables not vacuumed.',
             },
             expr: |||
