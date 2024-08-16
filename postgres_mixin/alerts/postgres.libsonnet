@@ -1,5 +1,5 @@
 {
-  prometheusAlerts+:: {
+  prometheusAlerts+: {
     groups+: [
       {
         name: 'PostgreSQL',
@@ -63,7 +63,7 @@
             expr: |||
               avg by (datname) (
                 rate (
-                  pg_stat_activity_max_tx_duration{datname!~"template.*",%(postgresExporterSelector)s}[2m]
+                  pg_stat_activity_max_tx_duration{%(dbNameFilter)s,%(postgresExporterSelector)s}[2m]
                 )
               ) > 2 * 60
             ||| % $._config,
@@ -81,11 +81,11 @@
             expr: |||
               avg by (datname) (
                 irate(
-                  pg_stat_database_xact_commit{datname!~"template.*",%(postgresExporterSelector)s}[5m]
+                  pg_stat_database_xact_commit{%(dbNameFilter)s,%(postgresExporterSelector)s}[5m]
                 )
                 +
                 irate(
-                  pg_stat_database_xact_rollback{datname!~"template.*",%(postgresExporterSelector)s}[5m]
+                  pg_stat_database_xact_rollback{%(dbNameFilter)s,%(postgresExporterSelector)s}[5m]
                 )
               ) > 10000
             ||| % $._config,
@@ -102,19 +102,149 @@
             },
             expr: |||
               avg by (datname) (
-                rate(pg_stat_database_blks_hit{datname!~"template.*",%(postgresExporterSelector)s}[5m])
+                rate(pg_stat_database_blks_hit{%(dbNameFilter)s,%(postgresExporterSelector)s}[5m])
                 /
                 (
                   rate(
-                    pg_stat_database_blks_hit{datname!~"template.*",%(postgresExporterSelector)s}[5m]
+                    pg_stat_database_blks_hit{%(dbNameFilter)s,%(postgresExporterSelector)s}[5m]
                   )
                   +
                   rate(
-                    pg_stat_database_blks_read{datname!~"template.*",%(postgresExporterSelector)s}[5m]
+                    pg_stat_database_blks_read{%(dbNameFilter)s,%(postgresExporterSelector)s}[5m]
                   )
                 )
               ) < 0.98
             ||| % $._config,
+            'for': '5m',
+            labels: {
+              severity: 'warning',
+            },
+          },
+          {
+            alert: 'PostgresHasTooManyRollbacks',
+            annotations: {
+              description: 'PostgreSQL has too many rollbacks on {{ $labels.cluster }} for database {{ $labels.datname }} with a value of {{ $value }}',
+              summary: 'PostgreSQL has too many rollbacks.',
+            },
+            expr: |||
+              avg without(pod, instance)
+              (rate(pg_stat_database_xact_rollback{%(dbNameFilter)s}[5m]) /
+              (rate(pg_stat_database_xact_commit{%(dbNameFilter)s}[5m]) + rate(pg_stat_database_xact_rollback{%(dbNameFilter)s}[5m]))) > 0.10
+            ||| % $._config,
+            'for': '5m',
+            labels: {
+              severity: 'warning',
+            },
+          },
+          {
+            alert: 'PostgresHasHighDeadLocks',
+            annotations: {
+              description: 'PostgreSQL has too high deadlocks on {{ $labels.cluster }} for database {{ $labels.datname }} with a value of {{ $value }}',
+              summary: 'PostgreSQL has high number of deadlocks.',
+            },
+            expr: |||
+              max without(pod, instance) (rate(pg_stat_database_deadlocks{%(dbNameFilter)s}[5m]) * 60) > 5
+            ||| % $._config,
+            'for': '5m',
+            labels: {
+              severity: 'warning',
+            },
+          },
+          {
+            alert: 'PostgresAcquiredTooManyLocks',
+            annotations: {
+              description: 'PostgreSQL has acquired too many locks on {{ $labels.cluster }} for database {{ $labels.datname }} with a value of {{ $value }}',
+              summary: 'PostgreSQL has high number of acquired locks.',
+            },
+            expr: |||
+              max by( server, job, datname, namespace) ((pg_locks_count{%(dbNameFilter)s}) /
+              on(instance, namespace) group_left(server) (pg_settings_max_locks_per_transaction{} * pg_settings_max_connections{})) > 0.20
+            ||| % $._config,
+            'for': '5m',
+            labels: {
+              severity: 'warning',
+            },
+          },
+          {
+            alert: 'PostgresReplicationLaggingMore1Hour',
+            annotations: {
+              description: '{{ $labels.instance }} replication lag exceeds 1 hour. Check for network issues or load imbalances.',
+              summary: 'PostgreSQL replication lagging more than 1 hour.',
+            },
+            expr: '(pg_replication_lag{} > 3600) and on (instance) (pg_replication_is_replica{} == 1)',
+            'for': '5m',
+            labels: {
+              severity: 'warning',
+            },
+          },
+          {
+            alert: 'PostgresHasReplicationSlotUsed',
+            annotations: {
+              description: '{{ $labels.instance }} has replication slots that are not used, which might lead to replication lag or data inconsistency.',
+              summary: 'PostgreSQL has unused replication slots.',
+            },
+            expr: 'pg_replication_slots_active{} == 0',
+            'for': '30m',
+            labels: {
+              severity: 'critical',
+            },
+          },
+          {
+            alert: 'PostgresReplicationRoleChanged',
+            annotations: {
+              description: '{{ $labels.instance }} replication role has changed. Verify if this is expected or if it indicates a failover.',
+              summary: 'PostgreSQL replication role change detected.',
+            },
+            expr: 'pg_replication_is_replica{} and changes(pg_replication_is_replica{}[1m]) > 0',
+            labels: {
+              severity: 'warning',
+            },
+          },
+          {
+            alert: 'PostgresHasExporterErrors',
+            annotations: {
+              description: '{{ $labels.instance }} exporter is experiencing errors. Verify exporter health and configuration.',
+              summary: 'PostgreSQL exporter errors detected.',
+            },
+            expr: 'pg_exporter_last_scrape_error{} > 0',
+            'for': '30m',
+            labels: {
+              severity: 'critical',
+            },
+          },
+          {
+            alert: 'PostgresTablesNotVaccumed',
+            annotations: {
+              description: '{{ $labels.instance }} tables have not been vacuumed recently within the last hour, which may lead to performance degradation.',
+              summary: 'PostgreSQL tables not vacuumed.',
+            },
+            expr: |||
+              group without(pod, instance)(
+                timestamp(
+                  pg_stat_user_tables_n_dead_tup{} >
+                    pg_stat_user_tables_n_live_tup{}
+                      * on(namespace, job, service, instance, server) group_left pg_settings_autovacuum_vacuum_scale_factor{}
+                      + on(namespace, job, service, instance, server) group_left pg_settings_autovacuum_vacuum_threshold{}
+                )
+                < time() - 36000
+              )
+            |||,
+            'for': '30m',
+            labels: {
+              severity: 'critical',
+            },
+          },
+          {
+            alert: 'PostgresTooManyCheckpointsRequested',
+            annotations: {
+              description: '{{ $labels.instance }} is requesting too many checkpoints, which may lead to performance degradation.',
+              summary: 'PostgreSQL too many checkpoints requested.',
+            },
+            expr: |||
+              rate(pg_stat_bgwriter_checkpoints_timed_total{}[5m]) /
+              (rate(pg_stat_bgwriter_checkpoints_timed_total{}[5m]) + rate(pg_stat_bgwriter_checkpoints_req_total{}[5m]))
+              < 0.5
+            |||,
             'for': '5m',
             labels: {
               severity: 'warning',
