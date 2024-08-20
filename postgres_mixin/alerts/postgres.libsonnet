@@ -157,9 +157,14 @@
               summary: 'PostgreSQL has high number of acquired locks.',
             },
             expr: |||
-              max by(datname, %(agg)s) ((pg_locks_count{%(dbNameFilter)s}) /
-              on(%(agg)s) group_left(server) (pg_settings_max_locks_per_transaction{} * pg_settings_max_connections{})) > 0.20
-            ||| % $._config { agg: std.join(', ', $._config.groupLabels + $._config.instanceLabels) },
+              max by(datname, %(agg)s) (
+                (pg_locks_count{%(dbNameFilter)s}) 
+                /
+                on(%(aggWithoutServer)s) group_left(server) (
+                  pg_settings_max_locks_per_transaction{} * pg_settings_max_connections{}
+                )
+              ) > 0.20
+            ||| % $._config { agg: std.join(',', $._config.groupLabels + $._config.instanceLabels), aggWithoutServer: std.join(',', std.filter(function(x) x != "server", $._config.groupLabels + $._config.instanceLabels)) },
             'for': '5m',
             labels: {
               severity: 'warning',
