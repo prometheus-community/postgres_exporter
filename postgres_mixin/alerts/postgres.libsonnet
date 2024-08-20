@@ -7,7 +7,7 @@
           {
             alert: 'PostgreSQLMaxConnectionsReached',
             annotations: {
-              description: '{{ $labels.instance }} is exceeding the currently configured maximum Postgres connection limit (current value: {{ $value }}s). Services may be degraded - please take immediate action (you probably need to increase max_connections in the Docker image and re-deploy.',
+              description: '{{ $labels.instance }} is exceeding the currently configured maximum Postgres connection limit (current value: {{ $value }}s). Services may be degraded - please take immediate action (you probably need to increase max_connections in the Docker image and re-deploy).',
               summary: 'Postgres connections count is over the maximum amount.',
             },
             expr: |||
@@ -172,7 +172,7 @@
               summary: 'PostgreSQL replication lagging more than 1 hour.',
             },
             expr: |||
-              (pg_replication_lag{} > 3600) and on (%(agg)s) (pg_replication_is_replica{} == 1)'
+              (pg_replication_lag{} > 3600) and on (%(agg)s) (pg_replication_is_replica{} == 1)
             ||| % $._config { agg: std.join(',', $._config.groupLabels + $._config.instanceLabels) },
             'for': '5m',
             labels: {
