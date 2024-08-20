@@ -11,12 +11,12 @@
               summary: 'Postgres connections count is over the maximum amount.',
             },
             expr: |||
-              sum by (instance) (pg_stat_activity_count{%(postgresExporterSelector)s})
+              sum by (%(agg)s) (pg_stat_activity_count{%(postgresExporterSelector)s})
               >=
               sum by (instance) (pg_settings_max_connections{%(postgresExporterSelector)s})
               -
-              sum by (instance) (pg_settings_superuser_reserved_connections{%(postgresExporterSelector)s})
-            ||| % $._config,
+              sum by (%(agg)s) (pg_settings_superuser_reserved_connections{%(postgresExporterSelector)s})
+            ||| % $._config { agg: std.join(',', $._config.groupLabels + $._config.instanceLabels) },
             'for': '1m',
             labels: {
               severity: 'warning',
@@ -29,14 +29,14 @@
               summary: 'Postgres connections count is over 80% of maximum amount.',
             },
             expr: |||
-              sum by (instance) (pg_stat_activity_count{%(postgresExporterSelector)s})
+              sum by (%(agg)s) (pg_stat_activity_count{%(postgresExporterSelector)s})
               >
               (
-                sum by (instance) (pg_settings_max_connections{%(postgresExporterSelector)s})
+                sum by (%(agg)s) (pg_settings_max_connections{%(postgresExporterSelector)s})
                 -
-                sum by (instance) (pg_settings_superuser_reserved_connections{%(postgresExporterSelector)s})
+                sum by (%(agg)s) (pg_settings_superuser_reserved_connections{%(postgresExporterSelector)s})
               ) * 0.8
-            ||| % $._config,
+            ||| % $._config { agg: std.join(',', $._config.groupLabels + $._config.instanceLabels) },
             'for': '10m',
             labels: {
               severity: 'warning',
@@ -61,12 +61,12 @@
               summary: 'PostgreSQL high number of slow queries.',
             },
             expr: |||
-              avg by (datname) (
+              avg by (%(agg)s) (
                 rate (
                   pg_stat_activity_max_tx_duration{%(dbNameFilter)s,%(postgresExporterSelector)s}[2m]
                 )
               ) > 2 * 60
-            ||| % $._config,
+            ||| % $._config { agg: std.join(',', $._config.groupLabels + $._config.instanceLabels) },
             'for': '2m',
             labels: {
               severity: 'warning',
@@ -79,7 +79,7 @@
               summary: 'PostgreSQL high number of queries per second.',
             },
             expr: |||
-              avg by (datname) (
+              avg by (datname, %(agg)s) (
                 irate(
                   pg_stat_database_xact_commit{%(dbNameFilter)s,%(postgresExporterSelector)s}[5m]
                 )
@@ -88,7 +88,7 @@
                   pg_stat_database_xact_rollback{%(dbNameFilter)s,%(postgresExporterSelector)s}[5m]
                 )
               ) > 10000
-            ||| % $._config,
+            ||| % $._config { agg: std.join(',', $._config.groupLabels + $._config.instanceLabels) },
             'for': '5m',
             labels: {
               severity: 'warning',
@@ -101,7 +101,7 @@
               summary: 'PostgreSQL low cache hit rate.',
             },
             expr: |||
-              avg by (datname) (
+              avg by (datname, %(agg)s) (
                 rate(pg_stat_database_blks_hit{%(dbNameFilter)s,%(postgresExporterSelector)s}[5m])
                 /
                 (
@@ -114,7 +114,7 @@
                   )
                 )
               ) < 0.98
-            ||| % $._config,
+            ||| % $._config { agg: std.join(',', $._config.groupLabels + $._config.instanceLabels) },
             'for': '5m',
             labels: {
               severity: 'warning',
@@ -157,9 +157,9 @@
               summary: 'PostgreSQL has high number of acquired locks.',
             },
             expr: |||
-              max by( server, job, datname, namespace) ((pg_locks_count{%(dbNameFilter)s}) /
-              on(instance, namespace) group_left(server) (pg_settings_max_locks_per_transaction{} * pg_settings_max_connections{})) > 0.20
-            ||| % $._config,
+              max by(datname, %(agg)s) ((pg_locks_count{%(dbNameFilter)s}) /
+              on(%(agg)s) group_left(server) (pg_settings_max_locks_per_transaction{} * pg_settings_max_connections{})) > 0.20
+            ||| % $._config { agg: std.join(',', $._config.groupLabels + $._config.instanceLabels) },
             'for': '5m',
             labels: {
               severity: 'warning',
@@ -171,7 +171,9 @@
               description: '{{ $labels.instance }} replication lag exceeds 1 hour. Check for network issues or load imbalances.',
               summary: 'PostgreSQL replication lagging more than 1 hour.',
             },
-            expr: '(pg_replication_lag{} > 3600) and on (instance) (pg_replication_is_replica{} == 1)',
+            expr: |||
+              (pg_replication_lag{} > 3600) and on (%(agg)s) (pg_replication_is_replica{} == 1)'
+            ||| % $._config { agg: std.join(',', $._config.groupLabels + $._config.instanceLabels) },
             'for': '5m',
             labels: {
               severity: 'warning',
@@ -223,12 +225,12 @@
                 timestamp(
                   pg_stat_user_tables_n_dead_tup{} >
                     pg_stat_user_tables_n_live_tup{}
-                      * on(namespace, job, service, instance, server) group_left pg_settings_autovacuum_vacuum_scale_factor{}
-                      + on(namespace, job, service, instance, server) group_left pg_settings_autovacuum_vacuum_threshold{}
+                      * on(%(agg)s) group_left pg_settings_autovacuum_vacuum_scale_factor{}
+                      + on(%(agg)s) group_left pg_settings_autovacuum_vacuum_threshold{}
                 )
                 < time() - 36000
               )
-            |||,
+            ||| % $._config { agg: std.join(',', $._config.groupLabels + $._config.instanceLabels) },
             'for': '30m',
             labels: {
               severity: 'critical',
