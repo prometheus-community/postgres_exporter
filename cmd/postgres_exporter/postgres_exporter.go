@@ -604,7 +604,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 		return fmt.Errorf("Error fetching version string on %q: %v", server, err)
 	}
 
-	if !e.disableDefaultMetrics && semanticVersion.LT(lowestSupportedVersion) {
+	if semanticVersion.LT(lowestSupportedVersion) {
 		level.Warn(logger).Log("msg", "PostgreSQL version is lower than our lowest supported version", "server", server, "version", semanticVersion, "lowest_supported_version", lowestSupportedVersion)
 	}
 
