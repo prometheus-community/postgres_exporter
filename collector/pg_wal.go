@@ -78,7 +78,7 @@ func (c PGWALCollector) Update(ctx context.Context, instance *instance, ch chan<
 		segmentsValue = float64(segments.Int64)
 	} else {
 		segmentsValue = 0
-    }
+	}
 
 	var sizeValue float64
 	if size.Valid {
