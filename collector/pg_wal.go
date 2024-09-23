@@ -15,7 +15,7 @@ package collector
 
 import (
 	"context"
-    "database/sql"
+	"database/sql"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -74,18 +74,18 @@ func (c PGWALCollector) Update(ctx context.Context, instance *instance, ch chan<
 	}
 
 	var segmentsValue float64
-    if segments.Valid {
-        segmentsValue = float64(segments.Int64)
-    } else {
-        segmentsValue = 0
+	if segments.Valid {
+		segmentsValue = float64(segments.Int64)
+	} else {
+		segmentsValue = 0
     }
 
-    var sizeValue float64
-    if size.Valid {
-        sizeValue = float64(size.Int64)
-    } else {
-        sizeValue = 0
-    }
+	var sizeValue float64
+	if size.Valid {
+		sizeValue = float64(size.Int64)
+	} else {
+		sizeValue = 0
+	}
 
 	ch <- prometheus.MustNewConstMetric(
 		pgWALSegments,
