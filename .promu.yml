@@ -1,6 +1,6 @@
 go:
     # This must match .circle/config.yml.
-    version: 1.21
+    version: 1.23
 repository:
     path: github.com/prometheus-community/postgres_exporter
 build:
