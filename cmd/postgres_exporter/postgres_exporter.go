@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/blang/semver/v4"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -284,7 +283,7 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 				if !columnMapping.supportedVersions(pgVersion) {
 					// It's very useful to be able to see what columns are being
 					// rejected.
-					level.Debug(logger).Log("msg", "Column is being forced to discard due to version incompatibility", "column", columnName)
+					logger.Debug("Column is being forced to discard due to version incompatibility", "column", columnName)
 					thisMap[columnName] = MetricMap{
 						discard: true,
 						conversion: func(_ interface{}) (float64, bool) {
@@ -371,7 +370,7 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 						case string:
 							durationString = t
 						default:
-							level.Error(logger).Log("msg", "Duration conversion metric was not a string")
+							logger.Error("Duration conversion metric was not a string")
 							return math.NaN(), false
 						}
 
@@ -381,7 +380,7 @@ func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metri
 
 						d, err := time.ParseDuration(durationString)
 						if err != nil {
-							level.Error(logger).Log("msg", "Failed converting result to metric", "column", columnName, "in", in, "err", err)
+							logger.Error("Failed converting result to metric", "column", columnName, "in", in, "err", err)
 							return math.NaN(), false
 						}
 						return float64(d / time.Millisecond), true
@@ -491,7 +490,7 @@ func parseConstLabels(s string) prometheus.Labels {
 	for _, p := range parts {
 		keyValue := strings.Split(strings.TrimSpace(p), "=")
 		if len(keyValue) != 2 {
-			level.Error(logger).Log(`Wrong constant labels format, should be "key=value"`, "input", p)
+			logger.Error(`Wrong constant labels format, should be "key=value"`, "input", p)
 			continue
 		}
 		key := strings.TrimSpace(keyValue[0])
@@ -582,7 +581,7 @@ func newDesc(subsystem, name, help string, labels prometheus.Labels) *prometheus
 }
 
 func checkPostgresVersion(db *sql.DB, server string) (semver.Version, string, error) {
-	level.Debug(logger).Log("msg", "Querying PostgreSQL version", "server", server)
+	logger.Debug("Querying PostgreSQL version", "server", server)
 	versionRow := db.QueryRow("SELECT version();")
 	var versionString string
 	err := versionRow.Scan(&versionString)
@@ -605,12 +604,12 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 	}
 
 	if !e.disableDefaultMetrics && semanticVersion.LT(lowestSupportedVersion) {
-		level.Warn(logger).Log("msg", "PostgreSQL version is lower than our lowest supported version", "server", server, "version", semanticVersion, "lowest_supported_version", lowestSupportedVersion)
+		logger.Warn("PostgreSQL version is lower than our lowest supported version", "server", server, "version", semanticVersion, "lowest_supported_version", lowestSupportedVersion)
 	}
 
 	// Check if semantic version changed and recalculate maps if needed.
 	if semanticVersion.NE(server.lastMapVersion) || server.metricMap == nil {
-		level.Info(logger).Log("msg", "Semantic version changed", "server", server, "from", server.lastMapVersion, "to", semanticVersion)
+		logger.Info("Semantic version changed", "server", server, "from", server.lastMapVersion, "to", semanticVersion)
 		server.mappingMtx.Lock()
 
 		// Get Default Metrics only for master database
@@ -631,13 +630,13 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 			// Calculate the hashsum of the useQueries
 			userQueriesData, err := os.ReadFile(e.userQueriesPath)
 			if err != nil {
-				level.Error(logger).Log("msg", "Failed to reload user queries", "path", e.userQueriesPath, "err", err)
+				logger.Error("Failed to reload user queries", "path", e.userQueriesPath, "err", err)
 				e.userQueriesError.WithLabelValues(e.userQueriesPath, "").Set(1)
 			} else {
 				hashsumStr := fmt.Sprintf("%x", sha256.Sum256(userQueriesData))
 
 				if err := addQueries(userQueriesData, semanticVersion, server); err != nil {
-					level.Error(logger).Log("msg", "Failed to reload user queries", "path", e.userQueriesPath, "err", err)
+					logger.Error("Failed to reload user queries", "path", e.userQueriesPath, "err", err)
 					e.userQueriesError.WithLabelValues(e.userQueriesPath, hashsumStr).Set(1)
 				} else {
 					// Mark user queries as successfully loaded
@@ -679,7 +678,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 		if err := e.scrapeDSN(ch, dsn); err != nil {
 			errorsCount++
 
-			level.Error(logger).Log("err", err)
+			logger.Error("error scraping dsn", "err", err, "dsn", dsn)
 
 			if _, ok := err.(*ErrorConnectToServer); ok {
 				connectionErrorsCount++

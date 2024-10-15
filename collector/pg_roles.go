@@ -16,8 +16,8 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -28,7 +28,7 @@ func init() {
 }
 
 type PGRolesCollector struct {
-	log log.Logger
+	log *slog.Logger
 }
 
 func NewPGRolesCollector(config collectorConfig) (Collector, error) {
