@@ -132,12 +132,7 @@ func main() {
 		dsn = dsns[0]
 	}
 
-	pe, err := collector.NewPostgresCollector(
-		logger,
-		excludedDatabases,
-		dsn,
-		[]string{},
-	)
+	pe, err := collector.NewPostgresCollector(logger, excludedDatabases, dsn)
 	if err != nil {
 		level.Warn(logger).Log("msg", "Failed to create PostgresCollector", "err", err.Error())
 	} else {

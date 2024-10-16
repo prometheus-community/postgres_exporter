@@ -97,34 +97,15 @@ type PostgresCollector struct {
 type Option func(*PostgresCollector) error
 
 // NewPostgresCollector creates a new PostgresCollector.
-func NewPostgresCollector(logger log.Logger, excludeDatabases []string, dsn string, filters []string, options ...Option) (*PostgresCollector, error) {
+func NewPostgresCollector(logger log.Logger, excludeDatabases []string, dsn string) (*PostgresCollector, error) {
 	p := &PostgresCollector{
 		logger: logger,
-	}
-	// Apply options to customize the collector
-	for _, o := range options {
-		err := o(p)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	f := make(map[string]bool)
-	for _, filter := range filters {
-		enabled, exist := collectorState[filter]
-		if !exist {
-			return nil, fmt.Errorf("missing collector: %s", filter)
-		}
-		if !*enabled {
-			return nil, fmt.Errorf("disabled collector: %s", filter)
-		}
-		f[filter] = true
 	}
 	collectors := make(map[string]Collector)
 	initiatedCollectorsMtx.Lock()
 	defer initiatedCollectorsMtx.Unlock()
 	for key, enabled := range collectorState {
-		if !*enabled || (len(f) > 0 && !f[key]) {
+		if !*enabled {
 			continue
 		}
 		if collector, ok := initiatedCollectors[key]; ok {
