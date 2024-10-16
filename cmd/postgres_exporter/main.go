@@ -29,6 +29,7 @@ import (
 	vc "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/promlog/flag"
+	"github.com/prometheus/common/promslog"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	"github.com/prometheus/exporter-toolkit/web/kingpinflag"
@@ -151,7 +152,7 @@ func main() {
 
 	level.Info(logger).Log("msg", "Listening on address", "address", *webConfig.WebListenAddresses)
 	srv := &http.Server{}
-	if err := web.ListenAndServe(srv, webConfig, logger); err != nil {
+	if err := web.ListenAndServe(srv, webConfig, promslog.New(&promslog.Config{})); err != nil {
 		level.Error(logger).Log("msg", "Error running HTTP server", "err", err)
 		os.Exit(1)
 	}
