@@ -22,6 +22,8 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/blang/semver/v4"
@@ -419,6 +421,7 @@ type Exporter struct {
 	psqlUp           prometheus.Gauge
 	userQueriesError *prometheus.GaugeVec
 	totalScrapes     prometheus.Counter
+	workers          *int
 
 	// servers are used to allow re-using the DB connection between scrapes.
 	// servers contains metrics map and query overrides.
@@ -469,6 +472,13 @@ func IncludeDatabases(s string) ExporterOpt {
 func WithUserQueriesPath(p string) ExporterOpt {
 	return func(e *Exporter) {
 		e.userQueriesPath = p
+	}
+}
+
+// Workers configures the number of scrape workers
+func Workers(i *int) ExporterOpt {
+	return func(e *Exporter) {
+		e.workers = i
 	}
 }
 
@@ -672,23 +682,47 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 		dsns = e.discoverDatabaseDSNs()
 	}
 
-	var errorsCount int
-	var connectionErrorsCount int
+	var errorsCount int32
+	var connectionErrorsCount int32
 
-	for _, dsn := range dsns {
-		if err := e.scrapeDSN(ch, dsn); err != nil {
-			errorsCount++
+	dsnsToScrape := make(chan string, len(dsns))
+	var wg sync.WaitGroup
 
-			level.Error(logger).Log("err", err)
-
-			if _, ok := err.(*ErrorConnectToServer); ok {
-				connectionErrorsCount++
-			}
-		}
+	var workers int
+	if e.workers != nil {
+		workers = *e.workers
+	} else {
+		workers = 1
 	}
 
+	for i := 1; i <= workers; i++ {
+		wg.Add(1)
+		go func(dsns chan string, wg *sync.WaitGroup) {
+			defer wg.Done()
+
+			for dsn := range dsns {
+				if err := e.scrapeDSN(ch, dsn); err != nil {
+					errorsCount++
+					atomic.AddInt32(&errorsCount, 1)
+
+					level.Error(logger).Log("err", err)
+					if _, ok := err.(*ErrorConnectToServer); ok {
+						atomic.AddInt32(&connectionErrorsCount, 1)
+					}
+				}
+			}
+		}(dsnsToScrape, &wg)
+	}
+
+	for _, dsn := range dsns {
+		dsnsToScrape <- dsn
+	}
+	close(dsnsToScrape)
+
+	wg.Wait()
+
 	switch {
-	case connectionErrorsCount >= len(dsns):
+	case int(connectionErrorsCount) >= len(dsns):
 		e.psqlUp.Set(0)
 	default:
 		e.psqlUp.Set(1) // Didn't fail, can mark connection as up for this scrape.
