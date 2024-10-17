@@ -16,7 +16,10 @@ package collector
 import (
 	"context"
 	"database/sql"
-
+	"fmt"
+	"os"
+	"net/url"
+	
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -187,260 +190,292 @@ var (
 
 func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
-	rows, err := db.QueryContext(ctx,
-		statUserTablesQuery)
-
+	// Retrieve the list of databases
+	dbs, err := db.QueryContext(ctx, "SELECT datname FROM pg_database WHERE datistemplate = false;")
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer dbs.Close()
 
-	for rows.Next() {
-		var datname, schemaname, relname sql.NullString
-		var seqScan, seqTupRead, idxScan, idxTupFetch, nTupIns, nTupUpd, nTupDel, nTupHotUpd, nLiveTup, nDeadTup,
-			nModSinceAnalyze, vacuumCount, autovacuumCount, analyzeCount, autoanalyzeCount, totalSize sql.NullInt64
-		var lastVacuum, lastAutovacuum, lastAnalyze, lastAutoanalyze sql.NullTime
-
-		if err := rows.Scan(&datname, &schemaname, &relname, &seqScan, &seqTupRead, &idxScan, &idxTupFetch, &nTupIns, &nTupUpd, &nTupDel, &nTupHotUpd, &nLiveTup, &nDeadTup, &nModSinceAnalyze, &lastVacuum, &lastAutovacuum, &lastAnalyze, &lastAutoanalyze, &vacuumCount, &autovacuumCount, &analyzeCount, &autoanalyzeCount, &totalSize); err != nil {
+	for dbs.Next() {
+		var datname string
+		if err := dbs.Scan(&datname); err != nil {
 			return err
 		}
-
-		datnameLabel := "unknown"
-		if datname.Valid {
-			datnameLabel = datname.String
-		}
-		schemanameLabel := "unknown"
-		if schemaname.Valid {
-			schemanameLabel = schemaname.String
-		}
-		relnameLabel := "unknown"
-		if relname.Valid {
-			relnameLabel = relname.String
+		// Skip template databases
+		if datname == "template0" || datname == "template1" {
+			continue
 		}
 
-		seqScanMetric := 0.0
-		if seqScan.Valid {
-			seqScanMetric = float64(seqScan.Int64)
+		// Connect to the database
+		pwd:= os.Getenv("DATA_SOURCE_PASS")
+		encodedPwd := url.QueryEscape(pwd)
+		dsn := fmt.Sprintf("postgresql://postgres:%s@localhost:5432/%s?sslmode=require", encodedPwd,datname)
+		db,err:= sql.Open("postgres",dsn)
+		if err != nil {
+			return err
 		}
-		ch <- prometheus.MustNewConstMetric(
-			statUserTablesSeqScan,
-			prometheus.CounterValue,
-			seqScanMetric,
-			datnameLabel, schemanameLabel, relnameLabel,
-		)
+		defer db.Close()
 
-		seqTupReadMetric := 0.0
-		if seqTupRead.Valid {
-			seqTupReadMetric = float64(seqTupRead.Int64)
-		}
-		ch <- prometheus.MustNewConstMetric(
-			statUserTablesSeqTupRead,
-			prometheus.CounterValue,
-			seqTupReadMetric,
-			datnameLabel, schemanameLabel, relnameLabel,
-		)
+		rows, err := db.QueryContext(ctx,
+			statUserTablesQuery)
 
-		idxScanMetric := 0.0
-		if idxScan.Valid {
-			idxScanMetric = float64(idxScan.Int64)
+		if err != nil {
+			return err
 		}
-		ch <- prometheus.MustNewConstMetric(
-			statUserTablesIdxScan,
-			prometheus.CounterValue,
-			idxScanMetric,
-			datnameLabel, schemanameLabel, relnameLabel,
-		)
+		defer rows.Close()
 
-		idxTupFetchMetric := 0.0
-		if idxTupFetch.Valid {
-			idxTupFetchMetric = float64(idxTupFetch.Int64)
-		}
-		ch <- prometheus.MustNewConstMetric(
-			statUserTablesIdxTupFetch,
-			prometheus.CounterValue,
-			idxTupFetchMetric,
-			datnameLabel, schemanameLabel, relnameLabel,
-		)
+		for rows.Next() {
+			var datname, schemaname, relname sql.NullString
+			var seqScan, seqTupRead, idxScan, idxTupFetch, nTupIns, nTupUpd, nTupDel, nTupHotUpd, nLiveTup, nDeadTup,
+				nModSinceAnalyze, vacuumCount, autovacuumCount, analyzeCount, autoanalyzeCount, totalSize sql.NullInt64
+			var lastVacuum, lastAutovacuum, lastAnalyze, lastAutoanalyze sql.NullTime
 
-		nTupInsMetric := 0.0
-		if nTupIns.Valid {
-			nTupInsMetric = float64(nTupIns.Int64)
-		}
-		ch <- prometheus.MustNewConstMetric(
-			statUserTablesNTupIns,
-			prometheus.CounterValue,
-			nTupInsMetric,
-			datnameLabel, schemanameLabel, relnameLabel,
-		)
+			if err := rows.Scan(&datname, &schemaname, &relname, &seqScan, &seqTupRead, &idxScan, &idxTupFetch, &nTupIns, &nTupUpd, &nTupDel, &nTupHotUpd, &nLiveTup, &nDeadTup, &nModSinceAnalyze, &lastVacuum, &lastAutovacuum, &lastAnalyze, &lastAutoanalyze, &vacuumCount, &autovacuumCount, &analyzeCount, &autoanalyzeCount, &totalSize); err != nil {
+				return err
+			}
 
-		nTupUpdMetric := 0.0
-		if nTupUpd.Valid {
-			nTupUpdMetric = float64(nTupUpd.Int64)
-		}
-		ch <- prometheus.MustNewConstMetric(
-			statUserTablesNTupUpd,
-			prometheus.CounterValue,
-			nTupUpdMetric,
-			datnameLabel, schemanameLabel, relnameLabel,
-		)
+			datnameLabel := "unknown"
+			if datname.Valid {
+				datnameLabel = datname.String
+			}
+			schemanameLabel := "unknown"
+			if schemaname.Valid {
+				schemanameLabel = schemaname.String
+			}
+			relnameLabel := "unknown"
+			if relname.Valid {
+				relnameLabel = relname.String
+			}
 
-		nTupDelMetric := 0.0
-		if nTupDel.Valid {
-			nTupDelMetric = float64(nTupDel.Int64)
-		}
-		ch <- prometheus.MustNewConstMetric(
-			statUserTablesNTupDel,
-			prometheus.CounterValue,
-			nTupDelMetric,
-			datnameLabel, schemanameLabel, relnameLabel,
-		)
+			seqScanMetric := 0.0
+			if seqScan.Valid {
+				seqScanMetric = float64(seqScan.Int64)
+			}
+			ch <- prometheus.MustNewConstMetric(
+				statUserTablesSeqScan,
+				prometheus.CounterValue,
+				seqScanMetric,
+				datnameLabel, schemanameLabel, relnameLabel,
+			)
 
-		nTupHotUpdMetric := 0.0
-		if nTupHotUpd.Valid {
-			nTupHotUpdMetric = float64(nTupHotUpd.Int64)
-		}
-		ch <- prometheus.MustNewConstMetric(
-			statUserTablesNTupHotUpd,
-			prometheus.CounterValue,
-			nTupHotUpdMetric,
-			datnameLabel, schemanameLabel, relnameLabel,
-		)
+			seqTupReadMetric := 0.0
+			if seqTupRead.Valid {
+				seqTupReadMetric = float64(seqTupRead.Int64)
+			}
+			ch <- prometheus.MustNewConstMetric(
+				statUserTablesSeqTupRead,
+				prometheus.CounterValue,
+				seqTupReadMetric,
+				datnameLabel, schemanameLabel, relnameLabel,
+			)
 
-		nLiveTupMetric := 0.0
-		if nLiveTup.Valid {
-			nLiveTupMetric = float64(nLiveTup.Int64)
-		}
-		ch <- prometheus.MustNewConstMetric(
-			statUserTablesNLiveTup,
-			prometheus.GaugeValue,
-			nLiveTupMetric,
-			datnameLabel, schemanameLabel, relnameLabel,
-		)
+			idxScanMetric := 0.0
+			if idxScan.Valid {
+				idxScanMetric = float64(idxScan.Int64)
+			}
+			ch <- prometheus.MustNewConstMetric(
+				statUserTablesIdxScan,
+				prometheus.CounterValue,
+				idxScanMetric,
+				datnameLabel, schemanameLabel, relnameLabel,
+			)
 
-		nDeadTupMetric := 0.0
-		if nDeadTup.Valid {
-			nDeadTupMetric = float64(nDeadTup.Int64)
-		}
-		ch <- prometheus.MustNewConstMetric(
-			statUserTablesNDeadTup,
-			prometheus.GaugeValue,
-			nDeadTupMetric,
-			datnameLabel, schemanameLabel, relnameLabel,
-		)
+			idxTupFetchMetric := 0.0
+			if idxTupFetch.Valid {
+				idxTupFetchMetric = float64(idxTupFetch.Int64)
+			}
+			ch <- prometheus.MustNewConstMetric(
+				statUserTablesIdxTupFetch,
+				prometheus.CounterValue,
+				idxTupFetchMetric,
+				datnameLabel, schemanameLabel, relnameLabel,
+			)
 
-		nModSinceAnalyzeMetric := 0.0
-		if nModSinceAnalyze.Valid {
-			nModSinceAnalyzeMetric = float64(nModSinceAnalyze.Int64)
-		}
-		ch <- prometheus.MustNewConstMetric(
-			statUserTablesNModSinceAnalyze,
-			prometheus.GaugeValue,
-			nModSinceAnalyzeMetric,
-			datnameLabel, schemanameLabel, relnameLabel,
-		)
+			nTupInsMetric := 0.0
+			if nTupIns.Valid {
+				nTupInsMetric = float64(nTupIns.Int64)
+			}
+			ch <- prometheus.MustNewConstMetric(
+				statUserTablesNTupIns,
+				prometheus.CounterValue,
+				nTupInsMetric,
+				datnameLabel, schemanameLabel, relnameLabel,
+			)
 
-		lastVacuumMetric := 0.0
-		if lastVacuum.Valid {
-			lastVacuumMetric = float64(lastVacuum.Time.Unix())
-		}
-		ch <- prometheus.MustNewConstMetric(
-			statUserTablesLastVacuum,
-			prometheus.GaugeValue,
-			lastVacuumMetric,
-			datnameLabel, schemanameLabel, relnameLabel,
-		)
+			nTupUpdMetric := 0.0
+			if nTupUpd.Valid {
+				nTupUpdMetric = float64(nTupUpd.Int64)
+			}
+			ch <- prometheus.MustNewConstMetric(
+				statUserTablesNTupUpd,
+				prometheus.CounterValue,
+				nTupUpdMetric,
+				datnameLabel, schemanameLabel, relnameLabel,
+			)
 
-		lastAutovacuumMetric := 0.0
-		if lastAutovacuum.Valid {
-			lastAutovacuumMetric = float64(lastAutovacuum.Time.Unix())
-		}
-		ch <- prometheus.MustNewConstMetric(
-			statUserTablesLastAutovacuum,
-			prometheus.GaugeValue,
-			lastAutovacuumMetric,
-			datnameLabel, schemanameLabel, relnameLabel,
-		)
+			nTupDelMetric := 0.0
+			if nTupDel.Valid {
+				nTupDelMetric = float64(nTupDel.Int64)
+			}
+			ch <- prometheus.MustNewConstMetric(
+				statUserTablesNTupDel,
+				prometheus.CounterValue,
+				nTupDelMetric,
+				datnameLabel, schemanameLabel, relnameLabel,
+			)
 
-		lastAnalyzeMetric := 0.0
-		if lastAnalyze.Valid {
-			lastAnalyzeMetric = float64(lastAnalyze.Time.Unix())
-		}
-		ch <- prometheus.MustNewConstMetric(
-			statUserTablesLastAnalyze,
-			prometheus.GaugeValue,
-			lastAnalyzeMetric,
-			datnameLabel, schemanameLabel, relnameLabel,
-		)
+			nTupHotUpdMetric := 0.0
+			if nTupHotUpd.Valid {
+				nTupHotUpdMetric = float64(nTupHotUpd.Int64)
+			}
+			ch <- prometheus.MustNewConstMetric(
+				statUserTablesNTupHotUpd,
+				prometheus.CounterValue,
+				nTupHotUpdMetric,
+				datnameLabel, schemanameLabel, relnameLabel,
+			)
 
-		lastAutoanalyzeMetric := 0.0
-		if lastAutoanalyze.Valid {
-			lastAutoanalyzeMetric = float64(lastAutoanalyze.Time.Unix())
-		}
-		ch <- prometheus.MustNewConstMetric(
-			statUserTablesLastAutoanalyze,
-			prometheus.GaugeValue,
-			lastAutoanalyzeMetric,
-			datnameLabel, schemanameLabel, relnameLabel,
-		)
+			nLiveTupMetric := 0.0
+			if nLiveTup.Valid {
+				nLiveTupMetric = float64(nLiveTup.Int64)
+			}
+			ch <- prometheus.MustNewConstMetric(
+				statUserTablesNLiveTup,
+				prometheus.GaugeValue,
+				nLiveTupMetric,
+				datnameLabel, schemanameLabel, relnameLabel,
+			)
 
-		vacuumCountMetric := 0.0
-		if vacuumCount.Valid {
-			vacuumCountMetric = float64(vacuumCount.Int64)
-		}
-		ch <- prometheus.MustNewConstMetric(
-			statUserTablesVacuumCount,
-			prometheus.CounterValue,
-			vacuumCountMetric,
-			datnameLabel, schemanameLabel, relnameLabel,
-		)
+			nDeadTupMetric := 0.0
+			if nDeadTup.Valid {
+				nDeadTupMetric = float64(nDeadTup.Int64)
+			}
+			ch <- prometheus.MustNewConstMetric(
+				statUserTablesNDeadTup,
+				prometheus.GaugeValue,
+				nDeadTupMetric,
+				datnameLabel, schemanameLabel, relnameLabel,
+			)
 
-		autovacuumCountMetric := 0.0
-		if autovacuumCount.Valid {
-			autovacuumCountMetric = float64(autovacuumCount.Int64)
-		}
-		ch <- prometheus.MustNewConstMetric(
-			statUserTablesAutovacuumCount,
-			prometheus.CounterValue,
-			autovacuumCountMetric,
-			datnameLabel, schemanameLabel, relnameLabel,
-		)
+			nModSinceAnalyzeMetric := 0.0
+			if nModSinceAnalyze.Valid {
+				nModSinceAnalyzeMetric = float64(nModSinceAnalyze.Int64)
+			}
+			ch <- prometheus.MustNewConstMetric(
+				statUserTablesNModSinceAnalyze,
+				prometheus.GaugeValue,
+				nModSinceAnalyzeMetric,
+				datnameLabel, schemanameLabel, relnameLabel,
+			)
 
-		analyzeCountMetric := 0.0
-		if analyzeCount.Valid {
-			analyzeCountMetric = float64(analyzeCount.Int64)
-		}
-		ch <- prometheus.MustNewConstMetric(
-			statUserTablesAnalyzeCount,
-			prometheus.CounterValue,
-			analyzeCountMetric,
-			datnameLabel, schemanameLabel, relnameLabel,
-		)
+			lastVacuumMetric := 0.0
+			if lastVacuum.Valid {
+				lastVacuumMetric = float64(lastVacuum.Time.Unix())
+			}
+			ch <- prometheus.MustNewConstMetric(
+				statUserTablesLastVacuum,
+				prometheus.GaugeValue,
+				lastVacuumMetric,
+				datnameLabel, schemanameLabel, relnameLabel,
+			)
 
-		autoanalyzeCountMetric := 0.0
-		if autoanalyzeCount.Valid {
-			autoanalyzeCountMetric = float64(autoanalyzeCount.Int64)
-		}
-		ch <- prometheus.MustNewConstMetric(
-			statUserTablesAutoanalyzeCount,
-			prometheus.CounterValue,
-			autoanalyzeCountMetric,
-			datnameLabel, schemanameLabel, relnameLabel,
-		)
+			lastAutovacuumMetric := 0.0
+			if lastAutovacuum.Valid {
+				lastAutovacuumMetric = float64(lastAutovacuum.Time.Unix())
+			}
+			ch <- prometheus.MustNewConstMetric(
+				statUserTablesLastAutovacuum,
+				prometheus.GaugeValue,
+				lastAutovacuumMetric,
+				datnameLabel, schemanameLabel, relnameLabel,
+			)
 
-		totalSizeMetric := 0.0
-		if totalSize.Valid {
-			totalSizeMetric = float64(totalSize.Int64)
+			lastAnalyzeMetric := 0.0
+			if lastAnalyze.Valid {
+				lastAnalyzeMetric = float64(lastAnalyze.Time.Unix())
+			}
+			ch <- prometheus.MustNewConstMetric(
+				statUserTablesLastAnalyze,
+				prometheus.GaugeValue,
+				lastAnalyzeMetric,
+				datnameLabel, schemanameLabel, relnameLabel,
+			)
+
+			lastAutoanalyzeMetric := 0.0
+			if lastAutoanalyze.Valid {
+				lastAutoanalyzeMetric = float64(lastAutoanalyze.Time.Unix())
+			}
+			ch <- prometheus.MustNewConstMetric(
+				statUserTablesLastAutoanalyze,
+				prometheus.GaugeValue,
+				lastAutoanalyzeMetric,
+				datnameLabel, schemanameLabel, relnameLabel,
+			)
+
+			vacuumCountMetric := 0.0
+			if vacuumCount.Valid {
+				vacuumCountMetric = float64(vacuumCount.Int64)
+			}
+			ch <- prometheus.MustNewConstMetric(
+				statUserTablesVacuumCount,
+				prometheus.CounterValue,
+				vacuumCountMetric,
+				datnameLabel, schemanameLabel, relnameLabel,
+			)
+
+			autovacuumCountMetric := 0.0
+			if autovacuumCount.Valid {
+				autovacuumCountMetric = float64(autovacuumCount.Int64)
+			}
+			ch <- prometheus.MustNewConstMetric(
+				statUserTablesAutovacuumCount,
+				prometheus.CounterValue,
+				autovacuumCountMetric,
+				datnameLabel, schemanameLabel, relnameLabel,
+			)
+
+			analyzeCountMetric := 0.0
+			if analyzeCount.Valid {
+				analyzeCountMetric = float64(analyzeCount.Int64)
+			}
+			ch <- prometheus.MustNewConstMetric(
+				statUserTablesAnalyzeCount,
+				prometheus.CounterValue,
+				analyzeCountMetric,
+				datnameLabel, schemanameLabel, relnameLabel,
+			)
+
+			autoanalyzeCountMetric := 0.0
+			if autoanalyzeCount.Valid {
+				autoanalyzeCountMetric = float64(autoanalyzeCount.Int64)
+			}
+			ch <- prometheus.MustNewConstMetric(
+				statUserTablesAutoanalyzeCount,
+				prometheus.CounterValue,
+				autoanalyzeCountMetric,
+				datnameLabel, schemanameLabel, relnameLabel,
+			)
+
+			totalSizeMetric := 0.0
+			if totalSize.Valid {
+				totalSizeMetric = float64(totalSize.Int64)
+			}
+			ch <- prometheus.MustNewConstMetric(
+				statUserTablesTotalSize,
+				prometheus.GaugeValue,
+				totalSizeMetric,
+				datnameLabel, schemanameLabel, relnameLabel,
+			)
 		}
-		ch <- prometheus.MustNewConstMetric(
-			statUserTablesTotalSize,
-			prometheus.GaugeValue,
-			totalSizeMetric,
-			datnameLabel, schemanameLabel, relnameLabel,
-		)
+
+		if err := rows.Err(); err != nil {
+			return err
+		}
 	}
-
-	if err := rows.Err(); err != nil {
+	if err := dbs.Err(); err != nil {
 		return err
 	}
 	return nil
 }
+
