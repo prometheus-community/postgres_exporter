@@ -218,6 +218,15 @@ var (
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
 	)
+	statDatabaseIdleInTransaction = prometheus.NewDesc(prometheus.BuildFQName(
+		namespace,
+		statDatabaseSubsystem,
+		"idle_in_transaction_time_seconds_total",
+	),
+		"Time spent idling while in a transaction in this database, in seconds",
+		[]string{"datid", "datname"},
+		prometheus.Labels{},
+	)
 )
 
 func statDatabaseQuery(columns []string) string {
@@ -254,6 +263,11 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 		columns = append(columns, "active_time")
 	}
 
+	idleInTransactionTimeAvail := instance.version.GTE(semver.MustParse("15.0.0"))
+	if idleInTransactionTimeAvail {
+		columns = append(columns, "idle_in_transaction_time")
+	}
+
 	rows, err := db.QueryContext(ctx,
 		statDatabaseQuery(columns),
 	)
@@ -264,7 +278,7 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 
 	for rows.Next() {
 		var datid, datname sql.NullString
-		var numBackends, xactCommit, xactRollback, blksRead, blksHit, tupReturned, tupFetched, tupInserted, tupUpdated, tupDeleted, conflicts, tempFiles, tempBytes, deadlocks, blkReadTime, blkWriteTime, activeTime sql.NullFloat64
+		var numBackends, xactCommit, xactRollback, blksRead, blksHit, tupReturned, tupFetched, tupInserted, tupUpdated, tupDeleted, conflicts, tempFiles, tempBytes, deadlocks, blkReadTime, blkWriteTime, activeTime, idleInTransactionTime sql.NullFloat64
 		var statsReset sql.NullTime
 
 		r := []any{
@@ -291,6 +305,10 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 
 		if activeTimeAvail {
 			r = append(r, &activeTime)
+		}
+
+		if idleInTransactionTimeAvail {
+			r = append(r, &idleInTransactionTime)
 		}
 
 		err := rows.Scan(r...)
@@ -372,6 +390,11 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 		}
 		if activeTimeAvail && !activeTime.Valid {
 			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no active_time")
+			continue
+		}
+
+		if idleInTransactionTimeAvail && !idleInTransactionTime.Valid {
+			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no idle_in_transaction_time")
 			continue
 		}
 
@@ -509,6 +532,15 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 				statDatabaseActiveTime,
 				prometheus.CounterValue,
 				activeTime.Float64/1000.0,
+				labels...,
+			)
+		}
+
+		if idleInTransactionTimeAvail {
+			ch <- prometheus.MustNewConstMetric(
+				statDatabaseIdleInTransaction,
+				prometheus.CounterValue,
+				idleInTransactionTime.Float64/1000.0,
 				labels...,
 			)
 		}
