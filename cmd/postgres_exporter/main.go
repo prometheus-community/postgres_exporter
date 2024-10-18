@@ -25,11 +25,11 @@ import (
 	"github.com/prometheus-community/postgres_exporter/collector"
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/collectors/version"
+	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/promlog/flag"
-	commonVersion "github.com/prometheus/common/version"
+	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	"github.com/prometheus/exporter-toolkit/web/kingpinflag"
 )
@@ -70,7 +70,7 @@ const (
 )
 
 func main() {
-	kingpin.Version(commonVersion.Print(exporterName))
+	kingpin.Version(version.Print(exporterName))
 	promlogConfig := &promlog.Config{}
 	flag.AddFlags(kingpin.CommandLine, promlogConfig)
 	kingpin.HelpFlag.Short('h')
@@ -123,7 +123,7 @@ func main() {
 		exporter.servers.Close()
 	}()
 
-	prometheus.MustRegister(version.NewCollector(exporterName))
+	prometheus.MustRegister(versioncollector.NewCollector(exporterName))
 
 	prometheus.MustRegister(exporter)
 
@@ -151,7 +151,7 @@ func main() {
 		landingConfig := web.LandingConfig{
 			Name:        "Postgres Exporter",
 			Description: "Prometheus PostgreSQL server Exporter",
-			Version:     commonVersion.Info(),
+			Version:     version.Info(),
 			Links: []web.LandingLinks{
 				{
 					Address: *metricsPath,
