@@ -172,11 +172,11 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 
 	// Set up the database connection for the collector.
 	err := inst.setup()
+	defer inst.Close()
 	if err != nil {
 		level.Error(p.logger).Log("msg", "Error opening connection to database", "err", err)
 		return
 	}
-	defer inst.Close()
 
 	wg := sync.WaitGroup{}
 	wg.Add(len(p.Collectors))
@@ -187,6 +187,10 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 		}(name, c)
 	}
 	wg.Wait()
+}
+
+func (p *PostgresCollector) Close() error {
+	return p.instance.Close()
 }
 
 func execute(ctx context.Context, name string, c Collector, instance *instance, ch chan<- prometheus.Metric, logger log.Logger) {
