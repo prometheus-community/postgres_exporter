@@ -14,15 +14,15 @@ package collector
 
 import (
 	"context"
-	"testing"
-
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/smartystreets/goconvey/convey"
+	"testing"
 )
 
-func TestPgReplicationCollector(t *testing.T) {
+func TestPgReplicationCollectorBeforeVersion10(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("Error opening a stub db connection: %s", err)
@@ -32,9 +32,49 @@ func TestPgReplicationCollector(t *testing.T) {
 	inst := &instance{db: db}
 
 	columns := []string{"lag", "is_replica"}
-	rows := sqlmock.NewRows(columns).
-		AddRow(1000, 1)
-	mock.ExpectQuery(sanitizeQuery(pgReplicationQuery)).WillReturnRows(rows)
+	rows := sqlmock.NewRows(columns).AddRow(1000, 1)
+	mock.ExpectQuery(sanitizeQuery(pgReplicationQueryBeforeVersion10)).WillReturnRows(rows)
+
+	ch := make(chan prometheus.Metric)
+	go func() {
+		defer close(ch)
+		c := PGReplicationCollector{}
+
+		if err := c.Update(context.Background(), inst, ch); err != nil {
+			t.Errorf("Error calling PGReplicationCollector.Update: %s", err)
+		}
+	}()
+
+	expected := []MetricResult{
+		{labels: labelMap{}, value: 1000, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{}, value: 1, metricType: dto.MetricType_GAUGE},
+	}
+
+	convey.Convey("Metrics comparison", t, func() {
+		for _, expect := range expected {
+			m := readMetric(<-ch)
+			convey.So(expect, convey.ShouldResemble, m)
+		}
+	})
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled exceptions: %s", err)
+	}
+}
+
+func TestPgReplicationCollectorAfterVersion10(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Error opening a stub db connection: %s", err)
+	}
+	defer db.Close()
+
+	//inst := &instance{db: db}
+	// Force test with a defined DB instance version, so ExpectQuery(pgReplicationQueryAfterVersion10) will match with PGReplicationCollector.Update query variable value
+	inst := &instance{db: db, version: semver.MustParse("10.0.0")}
+
+	columns := []string{"lag", "is_replica"}
+	rows := sqlmock.NewRows(columns).AddRow(1000, 1)
+	mock.ExpectQuery(sanitizeQuery(pgReplicationQueryAfterVersion10)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
