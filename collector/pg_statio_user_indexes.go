@@ -15,8 +15,8 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -25,7 +25,7 @@ func init() {
 }
 
 type PGStatioUserIndexesCollector struct {
-	log log.Logger
+	log *slog.Logger
 }
 
 const statioUserIndexesSubsystem = "statio_user_indexes"

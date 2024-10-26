@@ -15,8 +15,8 @@ package collector
 
 import (
 	"context"
+	"log/slog"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -27,7 +27,7 @@ func init() {
 }
 
 type PGLongRunningTransactionsCollector struct {
-	log log.Logger
+	log *slog.Logger
 }
 
 func NewPGLongRunningTransactionsCollector(config collectorConfig) (Collector, error) {
