@@ -1,4 +1,4 @@
-## Next
+## 0.16.0 / 2024-11-10
 
 BREAKING CHANGES:
 
