@@ -1,3 +1,19 @@
+## Next
+
+BREAKING CHANGES:
+
+The logging system has been replaced with log/slog from the stdlib. This change is being made across the prometheus ecosystem. The logging output has changed, but the messages and levels remain the same. The `ts` label for the timestamp has bewen replaced with `time`, the accuracy is less, and the timezone is not forced to UTC. The `caller` field has been replaced by the `source` field, which now includes the full path to the source file. The `level` field now exposes the log level in capital letters.
+
+* [CHANGE] Replace logging system #1073
+* [ENHANCEMENT] Add save_wal_size and wal_status to replication_slot collector #1027
+* [ENHANCEMENT] Add roles collector and connection limit metrics to database collector #997
+* [ENHANCEMENT] Excluded databases log messgae is now info level #1003
+* [ENHANCEMENT] Add active_time to stat_database collector #961
+* [ENHANCEMENT] Add slot_type label to replication_slot collector #960
+* [BUGFIX] Fix walreceiver collectore when no repmgr #1086
+* [BUGFIX] Remove logging errors on replicas #1048
+* [BUGFIX] Fix active_time query on postgres>=14 #1045
+
 ## 0.15.0 / 2023-10-27
 
 * [ENHANCEMENT] Add 1kB and 2kB units #915
