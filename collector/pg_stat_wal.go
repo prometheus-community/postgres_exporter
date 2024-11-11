@@ -37,7 +37,7 @@ func NewPGStatWALCollector(config collectorConfig) (Collector, error) {
 }
 
 var statsWALRecordsDesc = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, statWALSubsystem, "wal_records"),
+	prometheus.BuildFQName(namespace, statWALSubsystem, "wal_records_total"),
 	"Total number of WAL records generated",
 	[]string{},
 	prometheus.Labels{},
