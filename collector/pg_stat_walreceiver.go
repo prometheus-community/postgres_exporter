@@ -203,10 +203,6 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 			c.log.Debug("Skipping wal receiver stats because latest_end_time is null")
 			continue
 		}
-		if !upstreamNode.Valid {
-			c.log.Debug("Skipping wal receiver stats because upstream_node is null")
-			continue
-		}
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverReceiveStartLsn,
 			prometheus.CounterValue,
@@ -257,11 +253,15 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 			latestEndTime.Float64,
 			labels...)
 
-		ch <- prometheus.MustNewConstMetric(
-			statWalReceiverUpstreamNode,
-			prometheus.GaugeValue,
-			float64(upstreamNode.Int64),
-			labels...)
+		if !upstreamNode.Valid {
+			c.log.Debug("Skipping wal receiver stats upstream_node because it is null")
+		} else {
+			ch <- prometheus.MustNewConstMetric(
+				statWalReceiverUpstreamNode,
+				prometheus.GaugeValue,
+				float64(upstreamNode.Int64),
+				labels...)
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return err
