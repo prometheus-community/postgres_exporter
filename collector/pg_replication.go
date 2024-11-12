@@ -51,6 +51,15 @@ var (
 		"Indicates if the server is a replica",
 		[]string{}, nil,
 	)
+	pgReplicationLastReplay = prometheus.NewDesc(
+		prometheus.BuildFQName(
+			namespace,
+			replicationSubsystem,
+			"last_replay_seconds",
+		),
+		"Age of last replay in seconds",
+		[]string{}, nil,
+	)
 
 	pgReplicationQuery = `SELECT
 	CASE
@@ -61,7 +70,8 @@ var (
 	CASE
 		WHEN pg_is_in_recovery() THEN 1
 		ELSE 0
-	END as is_replica`
+	END as is_replica,
+	GREATEST (0, EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp()))) as last_replay`
 )
 
 func (c *PGReplicationCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
@@ -72,7 +82,8 @@ func (c *PGReplicationCollector) Update(ctx context.Context, instance *instance,
 
 	var lag float64
 	var isReplica int64
-	err := row.Scan(&lag, &isReplica)
+	var replayAge float64
+	err := row.Scan(&lag, &isReplica, &replayAge)
 	if err != nil {
 		return err
 	}
@@ -83,6 +94,10 @@ func (c *PGReplicationCollector) Update(ctx context.Context, instance *instance,
 	ch <- prometheus.MustNewConstMetric(
 		pgReplicationIsReplica,
 		prometheus.GaugeValue, float64(isReplica),
+	)
+	ch <- prometheus.MustNewConstMetric(
+		pgReplicationLastReplay,
+		prometheus.GaugeValue, replayAge,
 	)
 	return nil
 }
