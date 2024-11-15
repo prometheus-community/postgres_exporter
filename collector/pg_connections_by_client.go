@@ -68,28 +68,28 @@ func (c PGConnectionByClientCollector) Update(ctx context.Context, instance *ins
 		return err
 	}
 	defer rows.Close()
-	var clientCount sql.NullInt64
-	var clientName sql.NullString
+	var count sql.NullInt64
+	var name sql.NullString
 
 	for rows.Next() {
-		if err := rows.Scan(&clientCount, &clientName); err != nil {
+		if err := rows.Scan(&count, &name); err != nil {
 			return err
 		}
 
-		if !clientName.Valid {
+		if !name.Valid {
 			continue
 		}
 
 		countMetric := 0.0
-		if clientCount.Valid {
-			countMetric = float64(clientCount.Int64)
+		if count.Valid {
+			countMetric = float64(count.Int64)
 		}
 
 		ch <- prometheus.MustNewConstMetric(
 			pgClientCountDesc,
 			prometheus.GaugeValue,
 			countMetric,
-			clientName.String,
+			name.String,
 		)
 	}
 	if err := rows.Err(); err != nil {
