@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"strings"
 
+	"log/slog"
+
 	"github.com/blang/semver/v4"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -29,7 +29,7 @@ func init() {
 }
 
 type PGStatUserIndexesCollector struct {
-	log log.Logger
+	log *slog.Logger
 }
 
 const statUserIndexesSubsystem = "stat_user_indexes"
@@ -137,7 +137,7 @@ func (c *PGStatUserIndexesCollector) Update(ctx context.Context, instance *insta
 		}
 
 		if lastIdxScanAvail && !lastIdxScan.Valid {
-			level.Debug(c.log).Log("msg", "Skipping collecting metric because it has no active_time")
+			c.log.Debug("Skipping collecting metric because it has no active_time")
 			continue
 		}
 

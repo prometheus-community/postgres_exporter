@@ -18,7 +18,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/go-kit/log"
+	"log/slog"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -27,7 +28,7 @@ func init() {
 }
 
 type PGIndexCollector struct {
-	log log.Logger
+	log *slog.Logger
 }
 
 const pgIndexSubsystem = "index"
