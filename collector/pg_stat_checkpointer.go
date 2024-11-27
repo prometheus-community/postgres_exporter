@@ -110,8 +110,8 @@ var (
 func (c PGStatCheckpointerCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
 
-	before17 := instance.version.Compare(semver.MustParse("17.0.0"))
-	if before17 < 0 {
+	before17 := instance.version.LT(semver.MustParse("17.0.0"))
+	if before17 {
 		c.log.Warn("pg_stat_checkpointer collector is not available on PostgreSQL < 17.0.0, skipping")
 		return nil
 	}
