@@ -16,7 +16,7 @@ package collector
 import (
 	"context"
 	"database/sql"
-
+	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -170,7 +170,7 @@ var statBGWriter = map[string]*prometheus.Desc{
 	),
 }
 
-const statBGWriterQuery = `SELECT
+const statBGWriterQueryPrePG17 = `SELECT
 		checkpoints_timed
 		,checkpoints_req
 		,checkpoint_write_time
@@ -184,19 +184,55 @@ const statBGWriterQuery = `SELECT
 		,stats_reset
 	FROM pg_stat_bgwriter;`
 
-func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+const statBGWriterQueryPost17 = `SELECT
+		buffers_clean
+		,maxwritten_clean
+		,buffers_alloc
+		,stats_reset
+	FROM pg_stat_bgwriter;`
 
+const statCheckpointerQuery = `SELECT
+		num_timed
+		,num_requested
+		,restartpoints_timed
+		,restartpoints_req
+		,restartpoints_done
+		,write_time
+		,sync_time
+		,buffers_written
+		,stats_reset
+	FROM pg_stat_checkpointer;`
+
+func (p PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
-	row := db.QueryRowContext(ctx,
-		statBGWriterQuery)
 
 	var cpt, cpr, bcp, bc, mwc, bb, bbf, ba sql.NullInt64
 	var cpwt, cpst sql.NullFloat64
 	var sr sql.NullTime
 
-	err := row.Scan(&cpt, &cpr, &cpwt, &cpst, &bcp, &bc, &mwc, &bb, &bbf, &ba, &sr)
-	if err != nil {
-		return err
+	if instance.version.GE(semver.MustParse("17.0.0")) {
+		row := db.QueryRowContext(ctx,
+			statBGWriterQueryPost17)
+		err := row.Scan(&bc, &mwc, &ba, &sr)
+		if err != nil {
+			return err
+		}
+		var rpt, rpr, rpd sql.NullInt64
+		var csr sql.NullTime
+		// these variables are not used, but I left them here for reference
+		row = db.QueryRowContext(ctx,
+			statCheckpointerQuery)
+		err = row.Scan(&cpt, &cpr, &rpt, &rpr, &rpd, &cpwt, &cpst, &bcp, &csr)
+		if err != nil {
+			return err
+		}
+	} else {
+		row := db.QueryRowContext(ctx,
+			statBGWriterQueryPrePG17)
+		err := row.Scan(&cpt, &cpr, &cpwt, &cpst, &bcp, &bc, &mwc, &bb, &bbf, &ba, &sr)
+		if err != nil {
+			return err
+		}
 	}
 
 	cptMetric := 0.0
@@ -400,6 +436,5 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, c
 		"exporter",
 		instance.name,
 	)
-
 	return nil
 }

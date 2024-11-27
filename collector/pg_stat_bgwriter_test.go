@@ -52,7 +52,7 @@ func TestPGStatBGWriterCollector(t *testing.T) {
 
 	rows := sqlmock.NewRows(columns).
 		AddRow(354, 4945, 289097744, 1242257, int64(3275602074), 89320867, 450139, 2034563757, 0, int64(2725688749), srT)
-	mock.ExpectQuery(sanitizeQuery(statBGWriterQuery)).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(statBGWriterQueryPrePG17)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -114,7 +114,7 @@ func TestPGStatBGWriterCollectorNullValues(t *testing.T) {
 
 	rows := sqlmock.NewRows(columns).
 		AddRow(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-	mock.ExpectQuery(sanitizeQuery(statBGWriterQuery)).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(statBGWriterQueryPrePG17)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
