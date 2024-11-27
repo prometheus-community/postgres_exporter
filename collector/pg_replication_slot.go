@@ -16,9 +16,7 @@ package collector
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log/slog"
-	"strings"
 
 	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
@@ -84,35 +82,42 @@ var (
 		"availability of WAL files claimed by this slot",
 		[]string{"slot_name", "slot_type", "wal_status"}, nil,
 	)
-)
-
-func replicationSlotQuery(columns []string) string {
-	return fmt.Sprintf("SELECT %s FROM pg_replication_slots;", strings.Join(columns, ","))
-}
-
-func (PGReplicationSlotCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
-	db := instance.getDB()
-
-	columns := []string{
-		"slot_name",
-		"slot_type",
-		`CASE WHEN pg_is_in_recovery() THEN
+	pgReplicationSlotQuery = `SELECT
+		slot_name,
+		slot_type,
+		CASE WHEN pg_is_in_recovery() THEN
 		    pg_last_wal_receive_lsn() - '0/0'
 		ELSE
 		    pg_current_wal_lsn() - '0/0'
-		END AS current_wal_lsn`,
-		"COALESCE(confirmed_flush_lsn, '0/0') - '0/0' AS confirmed_flush_lsn",
-		"active",
-	}
+		END AS current_wal_lsn,
+		COALESCE(confirmed_flush_lsn, '0/0') - '0/0' AS confirmed_flush_lsn,
+		active
+	FROM pg_replication_slots;`
+	pgReplicationSlotNewQuery = `SELECT
+		slot_name,
+		slot_type,
+		CASE WHEN pg_is_in_recovery() THEN
+		    pg_last_wal_receive_lsn() - '0/0'
+		ELSE
+		    pg_current_wal_lsn() - '0/0'
+		END AS current_wal_lsn,
+		COALESCE(confirmed_flush_lsn, '0/0') - '0/0' AS confirmed_flush_lsn,
+		active,
+		safe_wal_size,
+		wal_status
+	FROM pg_replication_slots;`
+)
 
+func (PGReplicationSlotCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	query := pgReplicationSlotQuery
 	abovePG13 := instance.version.GTE(semver.MustParse("13.0.0"))
 	if abovePG13 {
-		columns = append(columns, "safe_wal_size")
-		columns = append(columns, "wal_status")
+		query = pgReplicationSlotNewQuery
 	}
 
+	db := instance.getDB()
 	rows, err := db.QueryContext(ctx,
-		replicationSlotQuery(columns))
+		query)
 	if err != nil {
 		return err
 	}
