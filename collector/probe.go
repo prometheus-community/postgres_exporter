@@ -15,10 +15,9 @@ package collector
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -26,11 +25,11 @@ import (
 type ProbeCollector struct {
 	registry   *prometheus.Registry
 	collectors map[string]Collector
-	logger     log.Logger
+	logger     *slog.Logger
 	instance   *instance
 }
 
-func NewProbeCollector(logger log.Logger, excludeDatabases []string, registry *prometheus.Registry, dsn config.DSN) (*ProbeCollector, error) {
+func NewProbeCollector(logger *slog.Logger, excludeDatabases []string, registry *prometheus.Registry, dsn config.DSN) (*ProbeCollector, error) {
 	collectors := make(map[string]Collector)
 	initiatedCollectorsMtx.Lock()
 	defer initiatedCollectorsMtx.Unlock()
@@ -47,7 +46,7 @@ func NewProbeCollector(logger log.Logger, excludeDatabases []string, registry *p
 		} else {
 			collector, err := factories[key](
 				collectorConfig{
-					logger:           log.With(logger, "collector", key),
+					logger:           logger.With("collector", key),
 					excludeDatabases: excludeDatabases,
 				})
 			if err != nil {
@@ -78,7 +77,7 @@ func (pc *ProbeCollector) Collect(ch chan<- prometheus.Metric) {
 	// Set up the database connection for the collector.
 	err := pc.instance.setup()
 	if err != nil {
-		level.Error(pc.logger).Log("msg", "Error opening connection to database", "err", err)
+		pc.logger.Error("Error opening connection to database", "err", err)
 		return
 	}
 	defer pc.instance.Close()

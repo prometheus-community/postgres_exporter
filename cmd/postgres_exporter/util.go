@@ -21,7 +21,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-kit/log/level"
 	"github.com/lib/pq"
 )
 
@@ -82,14 +81,14 @@ func dbToFloat64(t interface{}) (float64, bool) {
 		strV := string(v)
 		result, err := strconv.ParseFloat(strV, 64)
 		if err != nil {
-			level.Info(logger).Log("msg", "Could not parse []byte", "err", err)
+			logger.Info("Could not parse []byte", "err", err)
 			return math.NaN(), false
 		}
 		return result, true
 	case string:
 		result, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			level.Info(logger).Log("msg", "Could not parse string", "err", err)
+			logger.Info("Could not parse string", "err", err)
 			return math.NaN(), false
 		}
 		return result, true
@@ -122,14 +121,14 @@ func dbToUint64(t interface{}) (uint64, bool) {
 		strV := string(v)
 		result, err := strconv.ParseUint(strV, 10, 64)
 		if err != nil {
-			level.Info(logger).Log("msg", "Could not parse []byte", "err", err)
+			logger.Info("Could not parse []byte", "err", err)
 			return 0, false
 		}
 		return result, true
 	case string:
 		result, err := strconv.ParseUint(v, 10, 64)
 		if err != nil {
-			level.Info(logger).Log("msg", "Could not parse string", "err", err)
+			logger.Info("Could not parse string", "err", err)
 			return 0, false
 		}
 		return result, true

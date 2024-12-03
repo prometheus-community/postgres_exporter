@@ -16,9 +16,9 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 
 	"github.com/blang/semver/v4"
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -32,7 +32,7 @@ func init() {
 }
 
 type PGStatStatementsCollector struct {
-	log log.Logger
+	log *slog.Logger
 }
 
 func NewPGStatStatementsCollector(config collectorConfig) (Collector, error) {
