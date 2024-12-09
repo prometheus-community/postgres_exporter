@@ -418,6 +418,7 @@ AS
   SELECT * FROM get_pg_stat_statements();
 
 GRANT SELECT ON postgres_exporter.pg_stat_statements TO postgres_exporter;
+GRANT ALL ON FUNCTION pg_catalog.pg_ls_waldir() TO postgres_exporter;
 ```
 
 > **NOTE**
