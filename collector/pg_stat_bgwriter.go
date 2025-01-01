@@ -17,6 +17,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -101,7 +102,7 @@ var (
 		prometheus.Labels{},
 	)
 
-	statBGWriterQuery = `SELECT
+	statBGWriterQueryBefore17 = `SELECT
 		checkpoints_timed
 		,checkpoints_req
 		,checkpoint_write_time
@@ -114,121 +115,177 @@ var (
 		,buffers_alloc
 		,stats_reset
 	FROM pg_stat_bgwriter;`
+
+	statBGWriterQueryAfter17 = `SELECT
+		buffers_clean
+		,maxwritten_clean
+		,buffers_alloc
+		,stats_reset
+	FROM pg_stat_bgwriter;`
 )
 
 func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
-	db := instance.getDB()
-	row := db.QueryRowContext(ctx,
-		statBGWriterQuery)
+	if instance.version.GE(semver.MustParse("17.0.0")) {
+		db := instance.getDB()
+		row := db.QueryRowContext(ctx, statBGWriterQueryAfter17)
 
-	var cpt, cpr, bcp, bc, mwc, bb, bbf, ba sql.NullInt64
-	var cpwt, cpst sql.NullFloat64
-	var sr sql.NullTime
+		var bc, mwc, ba sql.NullInt64
+		var sr sql.NullTime
 
-	err := row.Scan(&cpt, &cpr, &cpwt, &cpst, &bcp, &bc, &mwc, &bb, &bbf, &ba, &sr)
-	if err != nil {
-		return err
-	}
+		err := row.Scan(&bc, &mwc, &ba, &sr)
+		if err != nil {
+			return err
+		}
 
-	cptMetric := 0.0
-	if cpt.Valid {
-		cptMetric = float64(cpt.Int64)
+		bcMetric := 0.0
+		if bc.Valid {
+			bcMetric = float64(bc.Int64)
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statBGWriterBuffersCleanDesc,
+			prometheus.CounterValue,
+			bcMetric,
+		)
+		mwcMetric := 0.0
+		if mwc.Valid {
+			mwcMetric = float64(mwc.Int64)
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statBGWriterMaxwrittenCleanDesc,
+			prometheus.CounterValue,
+			mwcMetric,
+		)
+		baMetric := 0.0
+		if ba.Valid {
+			baMetric = float64(ba.Int64)
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statBGWriterBuffersAllocDesc,
+			prometheus.CounterValue,
+			baMetric,
+		)
+		srMetric := 0.0
+		if sr.Valid {
+			srMetric = float64(sr.Time.Unix())
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statBGWriterStatsResetDesc,
+			prometheus.CounterValue,
+			srMetric,
+		)
+	} else {
+		db := instance.getDB()
+		row := db.QueryRowContext(ctx, statBGWriterQueryBefore17)
+
+		var cpt, cpr, bcp, bc, mwc, bb, bbf, ba sql.NullInt64
+		var cpwt, cpst sql.NullFloat64
+		var sr sql.NullTime
+
+		err := row.Scan(&cpt, &cpr, &cpwt, &cpst, &bcp, &bc, &mwc, &bb, &bbf, &ba, &sr)
+		if err != nil {
+			return err
+		}
+
+		cptMetric := 0.0
+		if cpt.Valid {
+			cptMetric = float64(cpt.Int64)
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statBGWriterCheckpointsTimedDesc,
+			prometheus.CounterValue,
+			cptMetric,
+		)
+		cprMetric := 0.0
+		if cpr.Valid {
+			cprMetric = float64(cpr.Int64)
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statBGWriterCheckpointsReqDesc,
+			prometheus.CounterValue,
+			cprMetric,
+		)
+		cpwtMetric := 0.0
+		if cpwt.Valid {
+			cpwtMetric = float64(cpwt.Float64)
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statBGWriterCheckpointsReqTimeDesc,
+			prometheus.CounterValue,
+			cpwtMetric,
+		)
+		cpstMetric := 0.0
+		if cpst.Valid {
+			cpstMetric = float64(cpst.Float64)
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statBGWriterCheckpointsSyncTimeDesc,
+			prometheus.CounterValue,
+			cpstMetric,
+		)
+		bcpMetric := 0.0
+		if bcp.Valid {
+			bcpMetric = float64(bcp.Int64)
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statBGWriterBuffersCheckpointDesc,
+			prometheus.CounterValue,
+			bcpMetric,
+		)
+		bcMetric := 0.0
+		if bc.Valid {
+			bcMetric = float64(bc.Int64)
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statBGWriterBuffersCleanDesc,
+			prometheus.CounterValue,
+			bcMetric,
+		)
+		mwcMetric := 0.0
+		if mwc.Valid {
+			mwcMetric = float64(mwc.Int64)
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statBGWriterMaxwrittenCleanDesc,
+			prometheus.CounterValue,
+			mwcMetric,
+		)
+		bbMetric := 0.0
+		if bb.Valid {
+			bbMetric = float64(bb.Int64)
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statBGWriterBuffersBackendDesc,
+			prometheus.CounterValue,
+			bbMetric,
+		)
+		bbfMetric := 0.0
+		if bbf.Valid {
+			bbfMetric = float64(bbf.Int64)
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statBGWriterBuffersBackendFsyncDesc,
+			prometheus.CounterValue,
+			bbfMetric,
+		)
+		baMetric := 0.0
+		if ba.Valid {
+			baMetric = float64(ba.Int64)
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statBGWriterBuffersAllocDesc,
+			prometheus.CounterValue,
+			baMetric,
+		)
+		srMetric := 0.0
+		if sr.Valid {
+			srMetric = float64(sr.Time.Unix())
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statBGWriterStatsResetDesc,
+			prometheus.CounterValue,
+			srMetric,
+		)
 	}
-	ch <- prometheus.MustNewConstMetric(
-		statBGWriterCheckpointsTimedDesc,
-		prometheus.CounterValue,
-		cptMetric,
-	)
-	cprMetric := 0.0
-	if cpr.Valid {
-		cprMetric = float64(cpr.Int64)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		statBGWriterCheckpointsReqDesc,
-		prometheus.CounterValue,
-		cprMetric,
-	)
-	cpwtMetric := 0.0
-	if cpwt.Valid {
-		cpwtMetric = float64(cpwt.Float64)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		statBGWriterCheckpointsReqTimeDesc,
-		prometheus.CounterValue,
-		cpwtMetric,
-	)
-	cpstMetric := 0.0
-	if cpst.Valid {
-		cpstMetric = float64(cpst.Float64)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		statBGWriterCheckpointsSyncTimeDesc,
-		prometheus.CounterValue,
-		cpstMetric,
-	)
-	bcpMetric := 0.0
-	if bcp.Valid {
-		bcpMetric = float64(bcp.Int64)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		statBGWriterBuffersCheckpointDesc,
-		prometheus.CounterValue,
-		bcpMetric,
-	)
-	bcMetric := 0.0
-	if bc.Valid {
-		bcMetric = float64(bc.Int64)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		statBGWriterBuffersCleanDesc,
-		prometheus.CounterValue,
-		bcMetric,
-	)
-	mwcMetric := 0.0
-	if mwc.Valid {
-		mwcMetric = float64(mwc.Int64)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		statBGWriterMaxwrittenCleanDesc,
-		prometheus.CounterValue,
-		mwcMetric,
-	)
-	bbMetric := 0.0
-	if bb.Valid {
-		bbMetric = float64(bb.Int64)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		statBGWriterBuffersBackendDesc,
-		prometheus.CounterValue,
-		bbMetric,
-	)
-	bbfMetric := 0.0
-	if bbf.Valid {
-		bbfMetric = float64(bbf.Int64)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		statBGWriterBuffersBackendFsyncDesc,
-		prometheus.CounterValue,
-		bbfMetric,
-	)
-	baMetric := 0.0
-	if ba.Valid {
-		baMetric = float64(ba.Int64)
-	}
-	ch <- prometheus.MustNewConstMetric(
-		statBGWriterBuffersAllocDesc,
-		prometheus.CounterValue,
-		baMetric,
-	)
-	srMetric := 0.0
-	if sr.Valid {
-		srMetric = float64(sr.Time.Unix())
-	}
-	ch <- prometheus.MustNewConstMetric(
-		statBGWriterStatsResetDesc,
-		prometheus.CounterValue,
-		srMetric,
-	)
 
 	return nil
 }
