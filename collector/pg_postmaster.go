@@ -17,6 +17,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -27,10 +28,11 @@ func init() {
 }
 
 type PGPostmasterCollector struct {
+	log log.Logger
 }
 
-func NewPGPostmasterCollector(collectorConfig) (Collector, error) {
-	return &PGPostmasterCollector{}, nil
+func NewPGPostmasterCollector(config collectorConfig) (Collector, error) {
+	return &PGPostmasterCollector{log: config.logger}, nil
 }
 
 var (
