@@ -678,7 +678,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 		if err := e.scrapeDSN(ch, dsn); err != nil {
 			errorsCount++
 
-			logger.Error("error scraping dsn", "err", err, "dsn", dsn)
+			logger.Error("error scraping dsn", "err", err, "dsn", loggableDSN(dsn))
 
 			if _, ok := err.(*ErrorConnectToServer); ok {
 				connectionErrorsCount++
