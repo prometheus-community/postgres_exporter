@@ -63,6 +63,7 @@ workflows:
             - cimg/postgres:14.9
             - cimg/postgres:15.4
             - cimg/postgres:16.0
+            - cimg/postgres:17.0
     - prometheus/build:
         name: build
         parallelism: 3
