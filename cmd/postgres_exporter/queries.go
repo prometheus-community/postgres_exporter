@@ -115,6 +115,7 @@ var queryOverrides = map[string][]OverrideQuery{
 				tmp.state,
 				tmp2.usename,
 				tmp2.application_name,
+				tmp2.client_addr,
 				COALESCE(count,0) as count,
 				COALESCE(max_tx_duration,0) as max_tx_duration
 			FROM
@@ -133,9 +134,10 @@ var queryOverrides = map[string][]OverrideQuery{
 					state,
 					usename,
 					application_name,
+					client_addr,
 					count(*) AS count,
 					MAX(EXTRACT(EPOCH FROM now() - xact_start))::float AS max_tx_duration
-				FROM pg_stat_activity GROUP BY datname,state,usename,application_name) AS tmp2
+				FROM pg_stat_activity GROUP BY datname,state,usename,application_name, client_addr) AS tmp2
 				ON tmp.state = tmp2.state AND pg_database.datname = tmp2.datname
 			`,
 		},
