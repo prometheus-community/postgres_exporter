@@ -112,12 +112,38 @@ var (
 		)
 	ORDER BY seconds_total DESC
 	LIMIT 100;`
+
+	pgStatStatementsQuery_PG17 = `SELECT
+		pg_get_userbyid(userid) as user,
+		pg_database.datname,
+		pg_stat_statements.queryid,
+		pg_stat_statements.calls as calls_total,
+		pg_stat_statements.total_exec_time / 1000.0 as seconds_total,
+		pg_stat_statements.rows as rows_total,
+		pg_stat_statements.shared_blk_read_time / 1000.0 as block_read_seconds_total,
+		pg_stat_statements.shared_blk_write_time / 1000.0 as block_write_seconds_total
+		FROM pg_stat_statements
+	JOIN pg_database
+		ON pg_database.oid = pg_stat_statements.dbid
+	WHERE
+		total_exec_time > (
+		SELECT percentile_cont(0.1)
+			WITHIN GROUP (ORDER BY total_exec_time)
+			FROM pg_stat_statements
+		)
+	ORDER BY seconds_total DESC
+	LIMIT 100;`
 )
 
 func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
-	query := pgStatStatementsQuery
-	if instance.version.GE(semver.MustParse("13.0.0")) {
+	var query string
+	switch {
+	case instance.version.GE(semver.MustParse("17.0.0")):
+		query = pgStatStatementsQuery_PG17
+	case instance.version.GE(semver.MustParse("13.0.0")):
 		query = pgStatStatementsNewQuery
+	default:
+		query = pgStatStatementsQuery
 	}
 
 	db := instance.getDB()
