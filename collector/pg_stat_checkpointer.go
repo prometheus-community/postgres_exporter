@@ -16,7 +16,9 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 
+	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -29,10 +31,11 @@ func init() {
 }
 
 type PGStatCheckpointerCollector struct {
+	log *slog.Logger
 }
 
-func NewPGStatCheckpointerCollector(collectorConfig) (Collector, error) {
-	return &PGStatCheckpointerCollector{}, nil
+func NewPGStatCheckpointerCollector(config collectorConfig) (Collector, error) {
+	return &PGStatCheckpointerCollector{log: config.logger}, nil
 }
 
 var (
@@ -104,8 +107,15 @@ var (
 	FROM pg_stat_checkpointer;`
 )
 
-func (PGStatCheckpointerCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+func (c PGStatCheckpointerCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
+
+	before17 := instance.version.LT(semver.MustParse("17.0.0"))
+	if before17 {
+		c.log.Warn("pg_stat_checkpointer collector is not available on PostgreSQL < 17.0.0, skipping")
+		return nil
+	}
+
 	row := db.QueryRowContext(ctx, statCheckpointerQuery)
 
 	// num_timed           = nt  = bigint
