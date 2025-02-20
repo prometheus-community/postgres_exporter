@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/smartystreets/goconvey/convey"
@@ -30,7 +31,7 @@ func TestPGStatCheckpointerCollector(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db}
+	inst := &instance{db: db, version: semver.MustParse("17.0.0")}
 
 	columns := []string{
 		"num_timed",
@@ -92,7 +93,7 @@ func TestPGStatCheckpointerCollectorNullValues(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db}
+	inst := &instance{db: db, version: semver.MustParse("17.0.0")}
 
 	columns := []string{
 		"num_timed",
