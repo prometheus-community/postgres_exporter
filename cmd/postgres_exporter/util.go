@@ -159,7 +159,7 @@ func dbToString(t interface{}) (string, bool) {
 		// Try and convert to string
 		return string(v), true
 	case string:
-		return v, true
+		return strings.ToValidUTF8(v, "�"), true
 	case bool:
 		if v {
 			return "true", true
