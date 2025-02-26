@@ -1,3 +1,7 @@
+## 0.17.1 / 2025-02-26
+
+* [BUGFIX] Fix: Handle incoming labels with invalid UTF-8 #1131
+
 ## 0.17.0 / 2025-02-16
 
 ## What's Changed
