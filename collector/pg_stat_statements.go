@@ -40,34 +40,34 @@ func NewPGStatStatementsCollector(config collectorConfig) (Collector, error) {
 }
 
 var (
-	statSTatementsCallsTotal = prometheus.NewDesc(
+	statStatementsCallsTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statStatementsSubsystem, "calls_total"),
 		"Number of times executed",
-		[]string{"user", "datname", "queryid"},
+		[]string{"user", "datname", "queryid", "query", "stmt_type"},
 		prometheus.Labels{},
 	)
 	statStatementsSecondsTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statStatementsSubsystem, "seconds_total"),
 		"Total time spent in the statement, in seconds",
-		[]string{"user", "datname", "queryid"},
+		[]string{"user", "datname", "queryid", "query", "stmt_type"},
 		prometheus.Labels{},
 	)
 	statStatementsRowsTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statStatementsSubsystem, "rows_total"),
 		"Total number of rows retrieved or affected by the statement",
-		[]string{"user", "datname", "queryid"},
+		[]string{"user", "datname", "queryid", "query", "stmt_type"},
 		prometheus.Labels{},
 	)
 	statStatementsBlockReadSecondsTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statStatementsSubsystem, "block_read_seconds_total"),
 		"Total time the statement spent reading blocks, in seconds",
-		[]string{"user", "datname", "queryid"},
+		[]string{"user", "datname", "queryid", "query", "stmt_type"},
 		prometheus.Labels{},
 	)
 	statStatementsBlockWriteSecondsTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statStatementsSubsystem, "block_write_seconds_total"),
 		"Total time the statement spent writing blocks, in seconds",
-		[]string{"user", "datname", "queryid"},
+		[]string{"user", "datname", "queryid", "query", "stmt_type"},
 		prometheus.Labels{},
 	)
 
@@ -75,6 +75,14 @@ var (
 		pg_get_userbyid(userid) as user,
 		pg_database.datname,
 		pg_stat_statements.queryid,
+		LEFT(pg_stat_statements.query, 120) as query,
+	CASE
+		WHEN pg_stat_statements.query ILIKE 'SELECT%' THEN 'SELECT'
+		WHEN pg_stat_statements.query ILIKE 'INSERT%' THEN 'INSERT'
+		WHEN pg_stat_statements.query ILIKE 'UPDATE%' THEN 'UPDATE'
+		WHEN pg_stat_statements.query ILIKE 'DELETE%' THEN 'DELETE'
+		ELSE 'OTHER'
+	END AS stmt_type,
 		pg_stat_statements.calls as calls_total,
 		pg_stat_statements.total_time / 1000.0 as seconds_total,
 		pg_stat_statements.rows as rows_total,
@@ -96,6 +104,14 @@ var (
 		pg_get_userbyid(userid) as user,
 		pg_database.datname,
 		pg_stat_statements.queryid,
+		LEFT(pg_stat_statements.query, 120) as query,
+	CASE
+		WHEN pg_stat_statements.query ILIKE 'SELECT%' THEN 'SELECT'
+		WHEN pg_stat_statements.query ILIKE 'INSERT%' THEN 'INSERT'
+		WHEN pg_stat_statements.query ILIKE 'UPDATE%' THEN 'UPDATE'
+		WHEN pg_stat_statements.query ILIKE 'DELETE%' THEN 'DELETE'
+		ELSE 'OTHER'
+	END AS stmt_type,
 		pg_stat_statements.calls as calls_total,
 		pg_stat_statements.total_exec_time / 1000.0 as seconds_total,
 		pg_stat_statements.rows as rows_total,
@@ -154,11 +170,11 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var user, datname, queryid sql.NullString
+		var user, datname, queryid, query, stmt_type sql.NullString
 		var callsTotal, rowsTotal sql.NullInt64
 		var secondsTotal, blockReadSecondsTotal, blockWriteSecondsTotal sql.NullFloat64
 
-		if err := rows.Scan(&user, &datname, &queryid, &callsTotal, &secondsTotal, &rowsTotal, &blockReadSecondsTotal, &blockWriteSecondsTotal); err != nil {
+		if err := rows.Scan(&user, &datname, &queryid, &query, &stmt_type, &callsTotal, &secondsTotal, &rowsTotal, &blockReadSecondsTotal, &blockWriteSecondsTotal); err != nil {
 			return err
 		}
 
@@ -174,16 +190,23 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 		if queryid.Valid {
 			queryidLabel = queryid.String
 		}
-
+		queryLabel := "unknown"
+		if query.Valid {
+			queryLabel = query.String
+		}
+		stmt_typeLabel := "unknown"
+		if stmt_type.Valid {
+			stmt_typeLabel = stmt_type.String
+		}
 		callsTotalMetric := 0.0
 		if callsTotal.Valid {
 			callsTotalMetric = float64(callsTotal.Int64)
 		}
 		ch <- prometheus.MustNewConstMetric(
-			statSTatementsCallsTotal,
+			statStatementsCallsTotal,
 			prometheus.CounterValue,
 			callsTotalMetric,
-			userLabel, datnameLabel, queryidLabel,
+			userLabel, datnameLabel, queryidLabel, queryLabel, stmt_typeLabel,
 		)
 
 		secondsTotalMetric := 0.0
@@ -194,7 +217,7 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 			statStatementsSecondsTotal,
 			prometheus.CounterValue,
 			secondsTotalMetric,
-			userLabel, datnameLabel, queryidLabel,
+			userLabel, datnameLabel, queryidLabel, queryLabel, stmt_typeLabel,
 		)
 
 		rowsTotalMetric := 0.0
@@ -205,7 +228,7 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 			statStatementsRowsTotal,
 			prometheus.CounterValue,
 			rowsTotalMetric,
-			userLabel, datnameLabel, queryidLabel,
+			userLabel, datnameLabel, queryidLabel, queryLabel, stmt_typeLabel,
 		)
 
 		blockReadSecondsTotalMetric := 0.0
@@ -216,7 +239,7 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 			statStatementsBlockReadSecondsTotal,
 			prometheus.CounterValue,
 			blockReadSecondsTotalMetric,
-			userLabel, datnameLabel, queryidLabel,
+			userLabel, datnameLabel, queryidLabel, queryLabel, stmt_typeLabel,
 		)
 
 		blockWriteSecondsTotalMetric := 0.0
@@ -227,7 +250,7 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 			statStatementsBlockWriteSecondsTotal,
 			prometheus.CounterValue,
 			blockWriteSecondsTotalMetric,
-			userLabel, datnameLabel, queryidLabel,
+			userLabel, datnameLabel, queryidLabel, queryLabel, stmt_typeLabel,
 		)
 	}
 	if err := rows.Err(); err != nil {
