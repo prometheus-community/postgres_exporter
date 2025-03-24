@@ -28,7 +28,7 @@ spec:
     value:
     - linux/x86_64
   - name: dockerfile
-    value: Dockerfile
+    value: Containerfile.konflux
   - name: path-context
     value: .
   pipelineSpec:
