@@ -8,7 +8,7 @@ executors:
   # This must match .promu.yml.
   golang:
     docker:
-    - image: cimg/go:1.23
+    - image: cimg/go:1.24
 
 jobs:
   test:
@@ -23,7 +23,7 @@ jobs:
 
   integration:
     docker:
-    - image: cimg/go:1.23
+    - image: cimg/go:1.24
     - image: << parameters.postgres_image >>
       environment:
         POSTGRES_DB: circle_test
