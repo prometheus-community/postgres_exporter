@@ -214,7 +214,7 @@ var fixtures = []fixture{
 		n: normalised{
 			val:  10,
 			unit: "",
-			err:  `Unknown unit for runtime variable: "nonexistent"`,
+			err:  `unknown unit for runtime variable: "nonexistent"`,
 		},
 	},
 }
@@ -240,7 +240,7 @@ func (s *PgSettingSuite) TestNormaliseUnit(c *C) {
 func (s *PgSettingSuite) TestMetric(c *C) {
 	defer func() {
 		if r := recover(); r != nil {
-			if r.(error).Error() != `Unknown unit for runtime variable: "nonexistent"` {
+			if r.(error).Error() != `unknown unit for runtime variable: "nonexistent"` {
 				panic(r)
 			}
 		}
