@@ -156,6 +156,12 @@ var (
 		[]string{"datname", "schemaname", "relname"},
 		prometheus.Labels{},
 	)
+	statUserTablesOnlySize = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "only_size_bytes"),
+		"Total disk space used by only this table, in bytes",
+		[]string{"datname", "schemaname", "relname"},
+		prometheus.Labels{},
+	)
 
 	statUserTablesQuery = `SELECT
 		current_database() datname,
@@ -180,7 +186,8 @@ var (
 		autovacuum_count,
 		analyze_count,
 		autoanalyze_count,
-		pg_total_relation_size(relid) as total_size
+		pg_total_relation_size(relid) as total_size,
+		pg_table_size(relid) as table_only_size
 	FROM
 		pg_stat_user_tables`
 )
@@ -198,10 +205,10 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 	for rows.Next() {
 		var datname, schemaname, relname sql.NullString
 		var seqScan, seqTupRead, idxScan, idxTupFetch, nTupIns, nTupUpd, nTupDel, nTupHotUpd, nLiveTup, nDeadTup,
-			nModSinceAnalyze, vacuumCount, autovacuumCount, analyzeCount, autoanalyzeCount, totalSize sql.NullInt64
+			nModSinceAnalyze, vacuumCount, autovacuumCount, analyzeCount, autoanalyzeCount, totalSize, tableOnlySize sql.NullInt64
 		var lastVacuum, lastAutovacuum, lastAnalyze, lastAutoanalyze sql.NullTime
 
-		if err := rows.Scan(&datname, &schemaname, &relname, &seqScan, &seqTupRead, &idxScan, &idxTupFetch, &nTupIns, &nTupUpd, &nTupDel, &nTupHotUpd, &nLiveTup, &nDeadTup, &nModSinceAnalyze, &lastVacuum, &lastAutovacuum, &lastAnalyze, &lastAutoanalyze, &vacuumCount, &autovacuumCount, &analyzeCount, &autoanalyzeCount, &totalSize); err != nil {
+		if err := rows.Scan(&datname, &schemaname, &relname, &seqScan, &seqTupRead, &idxScan, &idxTupFetch, &nTupIns, &nTupUpd, &nTupDel, &nTupHotUpd, &nLiveTup, &nDeadTup, &nModSinceAnalyze, &lastVacuum, &lastAutovacuum, &lastAnalyze, &lastAutoanalyze, &vacuumCount, &autovacuumCount, &analyzeCount, &autoanalyzeCount, &totalSize, &tableOnlySize); err != nil {
 			return err
 		}
 
@@ -435,6 +442,17 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			statUserTablesTotalSize,
 			prometheus.GaugeValue,
 			totalSizeMetric,
+			datnameLabel, schemanameLabel, relnameLabel,
+		)
+
+		tableOnlySizeMetric := 0.0
+		if tableOnlySize.Valid {
+			tableOnlySizeMetric = float64(tableOnlySize.Int64)
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statUserTablesOnlySize,
+			prometheus.GaugeValue,
+			tableOnlySizeMetric,
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 	}
