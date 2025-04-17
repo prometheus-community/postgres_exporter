@@ -186,8 +186,8 @@ var (
 		autovacuum_count,
 		analyze_count,
 		autoanalyze_count,
-		pg_total_relation_size(relid) as total_size,
-		pg_table_size(relid) as table_only_size
+		pg_indexes_size(relid) as indexes_size,
+		pg_table_size(relid) as table_size
 	FROM
 		pg_stat_user_tables`
 )
