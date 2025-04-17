@@ -150,15 +150,15 @@ var (
 		[]string{"datname", "schemaname", "relname"},
 		prometheus.Labels{},
 	)
-	statUserTablesTotalSize = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, userTableSubsystem, "size_bytes"),
-		"Total disk space used by this table, in bytes, including all indexes and TOAST data",
+	statUserIndexSize = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, userTableSubsystem, "index_size_bytes"),
+		"Total disk space used by this index, in bytes",
 		[]string{"datname", "schemaname", "relname"},
 		prometheus.Labels{},
 	)
-	statUserTablesOnlySize = prometheus.NewDesc(
+	statUserTableSize = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, userTableSubsystem, "table_size_bytes"),
-		"Total disk space used by only this table, in bytes",
+		"Total disk space used by this table, in bytes",
 		[]string{"datname", "schemaname", "relname"},
 		prometheus.Labels{},
 	)
@@ -205,10 +205,10 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 	for rows.Next() {
 		var datname, schemaname, relname sql.NullString
 		var seqScan, seqTupRead, idxScan, idxTupFetch, nTupIns, nTupUpd, nTupDel, nTupHotUpd, nLiveTup, nDeadTup,
-			nModSinceAnalyze, vacuumCount, autovacuumCount, analyzeCount, autoanalyzeCount, totalSize, tableOnlySize sql.NullInt64
+			nModSinceAnalyze, vacuumCount, autovacuumCount, analyzeCount, autoanalyzeCount, indexSize, tableSize sql.NullInt64
 		var lastVacuum, lastAutovacuum, lastAnalyze, lastAutoanalyze sql.NullTime
 
-		if err := rows.Scan(&datname, &schemaname, &relname, &seqScan, &seqTupRead, &idxScan, &idxTupFetch, &nTupIns, &nTupUpd, &nTupDel, &nTupHotUpd, &nLiveTup, &nDeadTup, &nModSinceAnalyze, &lastVacuum, &lastAutovacuum, &lastAnalyze, &lastAutoanalyze, &vacuumCount, &autovacuumCount, &analyzeCount, &autoanalyzeCount, &totalSize, &tableOnlySize); err != nil {
+		if err := rows.Scan(&datname, &schemaname, &relname, &seqScan, &seqTupRead, &idxScan, &idxTupFetch, &nTupIns, &nTupUpd, &nTupDel, &nTupHotUpd, &nLiveTup, &nDeadTup, &nModSinceAnalyze, &lastVacuum, &lastAutovacuum, &lastAnalyze, &lastAutoanalyze, &vacuumCount, &autovacuumCount, &analyzeCount, &autoanalyzeCount, &indexSize, &tableSize); err != nil {
 			return err
 		}
 
@@ -434,25 +434,25 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		totalSizeMetric := 0.0
-		if totalSize.Valid {
-			totalSizeMetric = float64(totalSize.Int64)
+		indexSizeMetric := 0.0
+		if indexSize.Valid {
+			indexSizeMetric = float64(indexSize.Int64)
 		}
 		ch <- prometheus.MustNewConstMetric(
-			statUserTablesTotalSize,
+			statUserIndexSize,
 			prometheus.GaugeValue,
-			totalSizeMetric,
+			indexSizeMetric,
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		tableOnlySizeMetric := 0.0
-		if tableOnlySize.Valid {
-			tableOnlySizeMetric = float64(tableOnlySize.Int64)
+		tableSizeMetric := 0.0
+		if tableSize.Valid {
+			tableSizeMetric = float64(tableSize.Int64)
 		}
 		ch <- prometheus.MustNewConstMetric(
-			statUserTablesOnlySize,
+			statUserTableSize,
 			prometheus.GaugeValue,
-			tableOnlySizeMetric,
+			tableSizeMetric,
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 	}

@@ -72,8 +72,8 @@ func TestPGStatUserTablesCollector(t *testing.T) {
 		"autovacuum_count",
 		"analyze_count",
 		"autoanalyze_count",
-		"total_size",
-		"table_only_size"}
+		"index_size",
+		"table_size"}
 	rows := sqlmock.NewRows(columns).
 		AddRow("postgres",
 			"public",
@@ -177,8 +177,8 @@ func TestPGStatUserTablesCollectorNullValues(t *testing.T) {
 		"autovacuum_count",
 		"analyze_count",
 		"autoanalyze_count",
-		"total_size",
-		"table_only_size"}
+		"index_size",
+		"table_size"}
 	rows := sqlmock.NewRows(columns).
 		AddRow("postgres",
 			nil,
