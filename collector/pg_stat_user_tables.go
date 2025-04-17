@@ -157,7 +157,7 @@ var (
 		prometheus.Labels{},
 	)
 	statUserTablesOnlySize = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, userTableSubsystem, "only_size_bytes"),
+		prometheus.BuildFQName(namespace, userTableSubsystem, "table_size_bytes"),
 		"Total disk space used by only this table, in bytes",
 		[]string{"datname", "schemaname", "relname"},
 		prometheus.Labels{},
