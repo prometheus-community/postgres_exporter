@@ -117,6 +117,9 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `[no-]collector.database_wraparound`
   Enable the `database_wraparound` collector (default: disabled).
 
+* `[no-]collector.index`
+  Enable the `index` collector (default: disabled).
+
 * `[no-]collector.locks`
   Enable the `locks` collector (default: enabled).
 
@@ -149,6 +152,9 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 
 * `[no-]collector.stat_statements`
   Enable the `stat_statements` collector (default: disabled).
+
+* `[no-]collector.stat_user_indexes`
+  Enable the `stat_user_indexes` collector (default: disabled).
 
 * `[no-]collector.stat_user_tables`
   Enable the `stat_user_tables` collector (default: enabled).
