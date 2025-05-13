@@ -1,6 +1,6 @@
 go:
     # This must match .circle/config.yml.
-    version: 1.21
+    version: 1.23
 repository:
     path: github.com/prometheus-community/postgres_exporter
 build:
@@ -8,7 +8,7 @@ build:
     binaries:
         - name: postgres_exporter
           path: ./cmd/postgres_exporter
-    flags: -a -tags strictfipsruntime
+    flags: -a -tags strictfipsruntime -mod=readonly
     ldflags: |
         -X github.com/prometheus/common/version.Version={{.Version}}
         -X github.com/prometheus/common/version.Revision={{.Revision}}
