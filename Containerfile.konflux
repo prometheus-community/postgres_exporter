@@ -3,9 +3,9 @@ FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_1.23 AS bui
 WORKDIR /workspace
 COPY . .
 
-RUN cd promu && go build -mod=readonly -o /usr/local/bin .
+RUN cd promu && cat go.mod && CGO_ENABLED=1 GOFLAGS="-p=4" go build -mod=readonly -a -v -o /usr/local/bin .
 ENV BUILD_PROMU=false
-RUN promu build -mod=readonly --cgo --prefix ./
+RUN promu build --cgo --prefix ./
 
 # Stage 2: Copy the binaries from the image builder to the base image
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
