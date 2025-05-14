@@ -3,43 +3,30 @@ FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_1.23 AS bui
 WORKDIR /workspace
 COPY . .
 
-RUN git clone https://github.com/prometheus/promu.git && cd promu && go mod vendor && go build -o /usr/local/bin .
+RUN cd promu && CGO_ENABLED=1 GOFLAGS="-p=4" go build -mod=readonly -a -v -o /usr/local/bin .
 ENV BUILD_PROMU=false
-RUN go mod vendor && promu build --cgo --prefix ./
+RUN promu build --cgo --prefix ./
 
 # Stage 2: Copy the binaries from the image builder to the base image
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
-ARG VCS_REF
-ARG VCS_URL
-ARG IMAGE_NAME
-ARG IMAGE_DESCRIPTION
-ARG IMAGE_DISPLAY_NAME
-ARG IMAGE_NAME_ARCH
-ARG IMAGE_MAINTAINER
-ARG IMAGE_VENDOR
-ARG IMAGE_VERSION
-ARG IMAGE_RELEASE
-ARG IMAGE_SUMMARY
-ARG IMAGE_OPENSHIFT_TAGS
+# Red Hat annotations.
+LABEL com.redhat.component="multicluster global hub postgres exporter"
+LABEL org.label-schema.vendor="Red Hat"
+LABEL org.label-schema.license="Red Hat Advanced Cluster Management for Kubernetes EULA"
+LABEL org.label-schema.schema-version="1.0"
 
-LABEL org.label-schema.vendor="Red Hat" \
-    org.label-schema.name="$IMAGE_NAME_ARCH" \
-    org.label-schema.description="$IMAGE_DESCRIPTION" \
-    org.label-schema.vcs-ref=$VCS_REF \
-    org.label-schema.vcs-url=$VCS_URL \
-    org.label-schema.license="Red Hat Advanced Cluster Management for Kubernetes EULA" \
-    org.label-schema.schema-version="1.0" \
-    name="$IMAGE_NAME" \
-    maintainer="$IMAGE_MAINTAINER" \
-    vendor="$IMAGE_VENDOR" \
-    version="$IMAGE_VERSION" \
-    release="$IMAGE_RELEASE" \
-    description="$IMAGE_DESCRIPTION" \
-    summary="$IMAGE_SUMMARY" \
-    io.k8s.display-name="$IMAGE_DISPLAY_NAME" \
-    io.k8s.description="$IMAGE_DESCRIPTION" \
-    io.openshift.tags="$IMAGE_OPENSHIFT_TAGS"
+# Bundle metadata
+LABEL name="multicluster-global-hub/postgres_exporter"
+LABEL version="release-1.5"
+LABEL summary="multicluster global hub postgres exporter"
+LABEL io.openshift.expose-services=""
+LABEL io.openshift.tags="data,images"
+LABEL io.k8s.display-name="multicluster global hub postgres exporter"
+LABEL io.k8s.description="This is the standard release image for the multicluster global hub postgres exporter"
+LABEL maintainer="['acm-component-maintainers@redhat.com']"
+LABEL description="multicluster global hub postgres exporter"
+
 
 COPY --from=builder /workspace/postgres_exporter /bin/postgres_exporter
 
