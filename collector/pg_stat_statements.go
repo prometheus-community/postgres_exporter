@@ -16,7 +16,10 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"github.com/alecthomas/kingpin/v2"
 	"log/slog"
+	"strings"
 
 	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
@@ -24,19 +27,31 @@ import (
 
 const statStatementsSubsystem = "stat_statements"
 
+var includeQueryFlag *bool = nil
+
 func init() {
 	// WARNING:
 	//   Disabled by default because this set of metrics can be quite expensive on a busy server
 	//   Every unique query will cause a new timeseries to be created
 	registerCollector(statStatementsSubsystem, defaultDisabled, NewPGStatStatementsCollector)
+
+	flagName := fmt.Sprintf("collector.%s.include_query", statStatementsSubsystem)
+	flagEnvName := fmt.Sprintf("PG_EXPORTER_COLLECTOR_%s_INCLUDE_QUERY", strings.ToUpper(statStatementsSubsystem))
+	flagHelp := "Enable selecting statement query together with queryId. (default: false)"
+	defaultValue := fmt.Sprintf("%v", defaultDisabled)
+	includeQueryFlag = kingpin.Flag(flagName, flagHelp).Default(defaultValue).Envar(flagEnvName).Bool()
 }
 
 type PGStatStatementsCollector struct {
-	log *slog.Logger
+	log                   *slog.Logger
+	includeQueryStatement bool
 }
 
 func NewPGStatStatementsCollector(config collectorConfig) (Collector, error) {
-	return &PGStatStatementsCollector{log: config.logger}, nil
+	return &PGStatStatementsCollector{
+		log:                   config.logger,
+		includeQueryStatement: *includeQueryFlag,
+	}, nil
 }
 
 var (
@@ -71,10 +86,20 @@ var (
 		prometheus.Labels{},
 	)
 
+	statStatementsQuery = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, statStatementsSubsystem, "query_id"),
+		"SQL Query to queryid mapping",
+		[]string{"queryid", "query"},
+		prometheus.Labels{},
+	)
+
+	pgStatStatementQuerySelect = "pg_stat_statements.query,"
+
 	pgStatStatementsQuery = `SELECT
 		pg_get_userbyid(userid) as user,
 		pg_database.datname,
 		pg_stat_statements.queryid,
+		%s
 		pg_stat_statements.calls as calls_total,
 		pg_stat_statements.total_time / 1000.0 as seconds_total,
 		pg_stat_statements.rows as rows_total,
@@ -96,6 +121,7 @@ var (
 		pg_get_userbyid(userid) as user,
 		pg_database.datname,
 		pg_stat_statements.queryid,
+		%s
 		pg_stat_statements.calls as calls_total,
 		pg_stat_statements.total_exec_time / 1000.0 as seconds_total,
 		pg_stat_statements.rows as rows_total,
@@ -117,6 +143,7 @@ var (
 		pg_get_userbyid(userid) as user,
 		pg_database.datname,
 		pg_stat_statements.queryid,
+		%s
 		pg_stat_statements.calls as calls_total,
 		pg_stat_statements.total_exec_time / 1000.0 as seconds_total,
 		pg_stat_statements.rows as rows_total,
@@ -135,30 +162,42 @@ var (
 	LIMIT 100;`
 )
 
-func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
-	var query string
+func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	var queryTemplate string
 	switch {
 	case instance.version.GE(semver.MustParse("17.0.0")):
-		query = pgStatStatementsQuery_PG17
+		queryTemplate = pgStatStatementsQuery_PG17
 	case instance.version.GE(semver.MustParse("13.0.0")):
-		query = pgStatStatementsNewQuery
+		queryTemplate = pgStatStatementsNewQuery
 	default:
-		query = pgStatStatementsQuery
+		queryTemplate = pgStatStatementsQuery
 	}
+	var querySelect = ""
+	if c.includeQueryStatement {
+		querySelect = pgStatStatementQuerySelect
+	}
+	query := fmt.Sprintf(queryTemplate, querySelect)
 
 	db := instance.getDB()
 	rows, err := db.QueryContext(ctx, query)
+
+	var presentQueryIds = make(map[string]struct{})
 
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var user, datname, queryid sql.NullString
+		var user, datname, queryid, statement sql.NullString
 		var callsTotal, rowsTotal sql.NullInt64
 		var secondsTotal, blockReadSecondsTotal, blockWriteSecondsTotal sql.NullFloat64
-
-		if err := rows.Scan(&user, &datname, &queryid, &callsTotal, &secondsTotal, &rowsTotal, &blockReadSecondsTotal, &blockWriteSecondsTotal); err != nil {
+		var columns []any
+		if c.includeQueryStatement {
+			columns = []any{&user, &datname, &queryid, &statement, &callsTotal, &secondsTotal, &rowsTotal, &blockReadSecondsTotal, &blockWriteSecondsTotal}
+		} else {
+			columns = []any{&user, &datname, &queryid, &callsTotal, &secondsTotal, &rowsTotal, &blockReadSecondsTotal, &blockWriteSecondsTotal}
+		}
+		if err := rows.Scan(columns...); err != nil {
 			return err
 		}
 
@@ -229,6 +268,25 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 			blockWriteSecondsTotalMetric,
 			userLabel, datnameLabel, queryidLabel,
 		)
+
+		if c.includeQueryStatement {
+			_, ok := presentQueryIds[queryidLabel]
+			if !ok {
+				presentQueryIds[queryidLabel] = struct{}{}
+
+				queryLabel := "unknown"
+				if statement.Valid {
+					queryLabel = statement.String
+				}
+
+				ch <- prometheus.MustNewConstMetric(
+					statStatementsQuery,
+					prometheus.CounterValue,
+					1,
+					queryidLabel, queryLabel,
+				)
+			}
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return err
