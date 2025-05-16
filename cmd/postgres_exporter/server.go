@@ -119,6 +119,7 @@ func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool
 	if !disableSettingsMetrics && s.master {
 		if err = querySettings(ch, s); err != nil {
 			err = fmt.Errorf("error retrieving settings: %s", err)
+			return err
 		}
 	}
 
