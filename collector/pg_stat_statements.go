@@ -26,7 +26,10 @@ import (
 
 const statStatementsSubsystem = "stat_statements"
 
-var includeQueryFlag *bool = nil
+var (
+	includeQueryFlag    *bool = nil
+	statementLengthFlag *uint = nil
+)
 
 func init() {
 	// WARNING:
@@ -34,21 +37,29 @@ func init() {
 	//   Every unique query will cause a new timeseries to be created
 	registerCollector(statStatementsSubsystem, defaultDisabled, NewPGStatStatementsCollector)
 
-	flagName := fmt.Sprintf("collector.%s.include_query", statStatementsSubsystem)
-	flagHelp := "Enable selecting statement query together with queryId. (default: false)"
-	defaultValue := fmt.Sprintf("%v", defaultDisabled)
-	includeQueryFlag = kingpin.Flag(flagName, flagHelp).Default(defaultValue).Bool()
+	includeQueryFlag = kingpin.Flag(
+		fmt.Sprint(collectorFlagPrefix, statStatementsSubsystem, ".include_query"),
+		"Enable selecting statement query together with queryId. (default: disabled)").
+		Default(fmt.Sprintf("%v", defaultDisabled)).
+		Bool()
+	statementLengthFlag = kingpin.Flag(
+		fmt.Sprint(collectorFlagPrefix, statStatementsSubsystem, ".query_length"),
+		"Maximum length of the statement text.").
+		Default("120").
+		Uint()
 }
 
 type PGStatStatementsCollector struct {
 	log                   *slog.Logger
 	includeQueryStatement bool
+	statementLength       uint
 }
 
 func NewPGStatStatementsCollector(config collectorConfig) (Collector, error) {
 	return &PGStatStatementsCollector{
 		log:                   config.logger,
 		includeQueryStatement: *includeQueryFlag,
+		statementLength:       *statementLengthFlag,
 	}, nil
 }
 
@@ -90,8 +101,10 @@ var (
 		[]string{"queryid", "query"},
 		prometheus.Labels{},
 	)
+)
 
-	pgStatStatementQuerySelect = "LEFT(pg_stat_statements.query, 120) as query,"
+const (
+	pgStatStatementQuerySelect = `LEFT(pg_stat_statements.query, %d) as query,`
 
 	pgStatStatementsQuery = `SELECT
 		pg_get_userbyid(userid) as user,
@@ -172,7 +185,7 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 	}
 	var querySelect = ""
 	if c.includeQueryStatement {
-		querySelect = pgStatStatementQuerySelect
+		querySelect = fmt.Sprintf(pgStatStatementQuerySelect, c.statementLength)
 	}
 	query := fmt.Sprintf(queryTemplate, querySelect)
 

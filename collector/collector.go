@@ -37,8 +37,9 @@ const (
 	// Namespace for all metrics.
 	namespace = "pg"
 
-	defaultEnabled  = true
-	defaultDisabled = false
+	collectorFlagPrefix = "collector."
+	defaultEnabled      = true
+	defaultDisabled     = false
 )
 
 var (
@@ -74,7 +75,7 @@ func registerCollector(name string, isDefaultEnabled bool, createFunc func(colle
 	}
 
 	// Create flag for this collector
-	flagName := fmt.Sprintf("collector.%s", name)
+	flagName := fmt.Sprint(collectorFlagPrefix, name)
 	flagHelp := fmt.Sprintf("Enable the %s collector (default: %s).", name, helpDefaultState)
 	defaultValue := fmt.Sprintf("%v", isDefaultEnabled)
 
