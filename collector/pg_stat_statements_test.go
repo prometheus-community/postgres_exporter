@@ -337,15 +337,15 @@ func TestPGStateStatementsCollector_PG17_WithStatement(t *testing.T) {
 
 	inst := &instance{db: db, version: semver.MustParse("17.0.0")}
 
-	columns := []string{"user", "datname", "queryid", "query", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
+	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 300) as query", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
 		AddRow("postgres", "postgres", 1500, "select 1 from foo", 5, 0.4, 100, 0.1, 0.2)
-	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG17, pgStatStatementQuerySelect))).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG17, fmt.Sprintf(pgStatStatementQuerySelect, 300)))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
-		c := PGStatStatementsCollector{includeQueryStatement: true}
+		c := PGStatStatementsCollector{includeQueryStatement: true, statementLength: 300}
 
 		if err := c.Update(context.Background(), inst, ch); err != nil {
 			t.Errorf("Error calling PGStatStatementsCollector.Update: %s", err)
