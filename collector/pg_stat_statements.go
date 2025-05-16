@@ -17,9 +17,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/alecthomas/kingpin/v2"
 	"log/slog"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )

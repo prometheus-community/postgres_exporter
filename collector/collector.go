@@ -75,7 +75,7 @@ func registerCollector(name string, isDefaultEnabled bool, createFunc func(colle
 	}
 
 	// Create flag for this collector
-	flagName := fmt.Sprint(collectorFlagPrefix, name)
+	flagName := collectorFlagPrefix + name
 	flagHelp := fmt.Sprintf("Enable the %s collector (default: %s).", name, helpDefaultState)
 	defaultValue := fmt.Sprintf("%v", isDefaultEnabled)
 
