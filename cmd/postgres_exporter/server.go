@@ -129,7 +129,7 @@ func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool
 	}
 	err = fmt.Errorf("queryNamespaceMappings errors encountered")
 	for namespace, errStr := range errMap {
-		err = fmt.Errorf("%s, %s namespace had the following error: %s", err, namespace, errStr)
+		err = fmt.Errorf("%s, namespace: %s error: %s", err, namespace, errStr)
 	}
 
 	return err
