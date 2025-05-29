@@ -94,6 +94,24 @@ var (
 		[]string{"user", "datname", "queryid"},
 		prometheus.Labels{},
 	)
+	statStatementsMaxSeconds = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, statStatementsSubsystem, "max_seconds"),
+		"Maximum time spent in a single execution of the statement, in seconds",
+		[]string{"user", "datname", "queryid"},
+		prometheus.Labels{},
+	)
+	statStatementsMeanSeconds = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, statStatementsSubsystem, "mean_seconds"),
+		"Mean time spent per execution of the statement, in seconds",
+		[]string{"user", "datname", "queryid"},
+		prometheus.Labels{},
+	)
+	statStatementsStddevSeconds = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, statStatementsSubsystem, "stddev_seconds"),
+		"Standard deviation of time spent in the statement, in seconds",
+		[]string{"user", "datname", "queryid"},
+		prometheus.Labels{},
+	)
 
 	statStatementsQuery = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statStatementsSubsystem, "query_id"),
@@ -115,7 +133,10 @@ const (
 		pg_stat_statements.total_time / 1000.0 as seconds_total,
 		pg_stat_statements.rows as rows_total,
 		pg_stat_statements.blk_read_time / 1000.0 as block_read_seconds_total,
-		pg_stat_statements.blk_write_time / 1000.0 as block_write_seconds_total
+		pg_stat_statements.blk_write_time / 1000.0 as block_write_seconds_total,
+		pg_stat_statements.max_time / 1000.0 as max_seconds,
+		pg_stat_statements.mean_time / 1000.0 as mean_seconds,
+		pg_stat_statements.stddev_time / 1000.0 as stddev_seconds
 		FROM pg_stat_statements
 	JOIN pg_database
 		ON pg_database.oid = pg_stat_statements.dbid
@@ -137,7 +158,10 @@ const (
 		pg_stat_statements.total_exec_time / 1000.0 as seconds_total,
 		pg_stat_statements.rows as rows_total,
 		pg_stat_statements.blk_read_time / 1000.0 as block_read_seconds_total,
-		pg_stat_statements.blk_write_time / 1000.0 as block_write_seconds_total
+		pg_stat_statements.blk_write_time / 1000.0 as block_write_seconds_total,
+		pg_stat_statements.max_exec_time / 1000.0 as max_seconds,
+		pg_stat_statements.mean_exec_time / 1000.0 as mean_seconds,
+		pg_stat_statements.stddev_exec_time / 1000.0 as stddev_seconds
 		FROM pg_stat_statements
 	JOIN pg_database
 		ON pg_database.oid = pg_stat_statements.dbid
@@ -159,7 +183,10 @@ const (
 		pg_stat_statements.total_exec_time / 1000.0 as seconds_total,
 		pg_stat_statements.rows as rows_total,
 		pg_stat_statements.shared_blk_read_time / 1000.0 as block_read_seconds_total,
-		pg_stat_statements.shared_blk_write_time / 1000.0 as block_write_seconds_total
+		pg_stat_statements.shared_blk_write_time / 1000.0 as block_write_seconds_total,
+		pg_stat_statements.max_exec_time / 1000.0 as max_seconds,
+		pg_stat_statements.mean_exec_time / 1000.0 as mean_seconds,
+		pg_stat_statements.stddev_exec_time / 1000.0 as stddev_seconds
 		FROM pg_stat_statements
 	JOIN pg_database
 		ON pg_database.oid = pg_stat_statements.dbid
@@ -201,12 +228,12 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 	for rows.Next() {
 		var user, datname, queryid, statement sql.NullString
 		var callsTotal, rowsTotal sql.NullInt64
-		var secondsTotal, blockReadSecondsTotal, blockWriteSecondsTotal sql.NullFloat64
+		var secondsTotal, blockReadSecondsTotal, blockWriteSecondsTotal, maxSeconds, meanSeconds, stddevSeconds sql.NullFloat64
 		var columns []any
 		if c.includeQueryStatement {
-			columns = []any{&user, &datname, &queryid, &statement, &callsTotal, &secondsTotal, &rowsTotal, &blockReadSecondsTotal, &blockWriteSecondsTotal}
+			columns = []any{&user, &datname, &queryid, &statement, &callsTotal, &secondsTotal, &rowsTotal, &blockReadSecondsTotal, &blockWriteSecondsTotal, &maxSeconds, &meanSeconds, &stddevSeconds}
 		} else {
-			columns = []any{&user, &datname, &queryid, &callsTotal, &secondsTotal, &rowsTotal, &blockReadSecondsTotal, &blockWriteSecondsTotal}
+			columns = []any{&user, &datname, &queryid, &callsTotal, &secondsTotal, &rowsTotal, &blockReadSecondsTotal, &blockWriteSecondsTotal, &maxSeconds, &meanSeconds, &stddevSeconds}
 		}
 		if err := rows.Scan(columns...); err != nil {
 			return err
@@ -277,6 +304,39 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 			statStatementsBlockWriteSecondsTotal,
 			prometheus.CounterValue,
 			blockWriteSecondsTotalMetric,
+			userLabel, datnameLabel, queryidLabel,
+		)
+
+		maxSecondsMetric := 0.0
+		if maxSeconds.Valid {
+			maxSecondsMetric = maxSeconds.Float64
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statStatementsMaxSeconds,
+			prometheus.GaugeValue,
+			maxSecondsMetric,
+			userLabel, datnameLabel, queryidLabel,
+		)
+
+		meanSecondsMetric := 0.0
+		if meanSeconds.Valid {
+			meanSecondsMetric = meanSeconds.Float64
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statStatementsMeanSeconds,
+			prometheus.GaugeValue,
+			meanSecondsMetric,
+			userLabel, datnameLabel, queryidLabel,
+		)
+
+		stddevSecondsMetric := 0.0
+		if stddevSeconds.Valid {
+			stddevSecondsMetric = stddevSeconds.Float64
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statStatementsStddevSeconds,
+			prometheus.GaugeValue,
+			stddevSecondsMetric,
 			userLabel, datnameLabel, queryidLabel,
 		)
 
