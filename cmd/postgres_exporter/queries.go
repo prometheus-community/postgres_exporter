@@ -152,7 +152,7 @@ var queryOverrides = map[string][]OverrideQuery{
 					count(*) AS count,
 					MAX(EXTRACT(EPOCH FROM now() - xact_start))::float AS max_tx_duration,
 					MAX(EXTRACT(EPOCH FROM now() - state_change))::float AS max_state_duration
-				FROM pg_stat_activity GROUP BY datname,state,usename,application_name) AS tmp2
+				FROM pg_stat_activity WHERE query not like 'autovacuum:%' GROUP BY datname,state,usename,application_name) AS tmp2
 				ON tmp.state = tmp2.state AND pg_database.datname = tmp2.datname
 			`,
 		},
