@@ -156,6 +156,9 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `--collector.stat_statements.query_length`
   Maximum length of the statement text. Default is 120.
 
+* `--[no-]collector.stat_statements.strip_special`
+  Strip special characters like line breaks, carriage returns, tabs from query text. (default: disabled)
+
 * `[no-]collector.stat_user_tables`
   Enable the `stat_user_tables` collector (default: enabled).
 
