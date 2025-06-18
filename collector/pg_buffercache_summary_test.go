@@ -23,7 +23,7 @@ import (
 	"github.com/smartystreets/goconvey/convey"
 )
 
-func TestBuffercacheCollector(t *testing.T) {
+func TestBuffercacheSummaryCollector(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("Error opening a stub db connection: %s", err)
@@ -46,7 +46,7 @@ func TestBuffercacheCollector(t *testing.T) {
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
-		c := BuffercacheCollector{}
+		c := BuffercacheSummaryCollector{}
 
 		if err := c.Update(context.Background(), inst, ch); err != nil {
 			t.Errorf("Error calling PGStatStatementsCollector.Update: %s", err)

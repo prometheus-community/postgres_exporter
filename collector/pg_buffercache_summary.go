@@ -22,56 +22,56 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const buffercacheSubsystem = "buffercache"
+const buffercacheSummarySubsystem = "buffercache_summary"
 
 func init() {
-	registerCollector(buffercacheSubsystem, defaultDisabled, NewBuffercacheCollector)
+	registerCollector(buffercacheSummarySubsystem, defaultDisabled, NewBuffercacheSummaryCollector)
 }
 
-// BuffercacheCollector collects stats from pg_buffercache: https://www.postgresql.org/docs/current/pgbuffercache.html.
+// BuffercacheSummaryCollector collects stats from pg_buffercache: https://www.postgresql.org/docs/current/pgbuffercache.html.
 //
 // It depends on the extension being loaded with
 //
 //	create extension pg_buffercache;
 //
 // It does not take locks, see the PG docs above.
-type BuffercacheCollector struct {
+type BuffercacheSummaryCollector struct {
 	log *slog.Logger
 }
 
-func NewBuffercacheCollector(config collectorConfig) (Collector, error) {
-	return &BuffercacheCollector{
+func NewBuffercacheSummaryCollector(config collectorConfig) (Collector, error) {
+	return &BuffercacheSummaryCollector{
 		log: config.logger,
 	}, nil
 }
 
 var (
 	buffersUsedDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, buffercacheSubsystem, "buffers_used"),
+		prometheus.BuildFQName(namespace, buffercacheSummarySubsystem, "buffers_used"),
 		"Number of used shared buffers",
 		[]string{},
 		prometheus.Labels{},
 	)
 	buffersUnusedDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, buffercacheSubsystem, "buffers_unused"),
+		prometheus.BuildFQName(namespace, buffercacheSummarySubsystem, "buffers_unused"),
 		"Number of unused shared buffers",
 		[]string{},
 		prometheus.Labels{},
 	)
 	buffersDirtyDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, buffercacheSubsystem, "buffers_dirty"),
+		prometheus.BuildFQName(namespace, buffercacheSummarySubsystem, "buffers_dirty"),
 		"Number of dirty shared buffers",
 		[]string{},
 		prometheus.Labels{},
 	)
 	buffersPinnedDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, buffercacheSubsystem, "buffers_pinned"),
+		prometheus.BuildFQName(namespace, buffercacheSummarySubsystem, "buffers_pinned"),
 		"Number of pinned shared buffers",
 		[]string{},
 		prometheus.Labels{},
 	)
 	usageCountAvgDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, buffercacheSubsystem, "usagecount_avg"),
+		prometheus.BuildFQName(namespace, buffercacheSummarySubsystem, "usagecount_avg"),
 		"Average usage count of used shared buffers",
 		[]string{},
 		prometheus.Labels{},
@@ -99,7 +99,7 @@ func gaugeInt32(m sql.NullInt32, desc *prometheus.Desc, ch chan<- prometheus.Met
 
 // Update implements Collector
 // It is called by the Prometheus registry when collecting metrics.
-func (c BuffercacheCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+func (c BuffercacheSummaryCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	// pg_buffercache_summary is only in v16, and we don't need support for earlier currently.
 	if !instance.version.GE(semver.MustParse("16.0.0")) {
 		return nil
