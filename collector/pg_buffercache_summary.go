@@ -89,14 +89,6 @@ var (
 		`
 )
 
-func gaugeInt32(ch chan<- prometheus.Metric, desc *prometheus.Desc, m sql.NullInt32) {
-	mM := 0.0
-	if m.Valid {
-		mM = float64(m.Int32)
-	}
-	ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, mM)
-}
-
 // Update implements Collector
 // It is called by the Prometheus registry when collecting metrics.
 func (c BuffercacheSummaryCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
@@ -133,10 +125,10 @@ func (c BuffercacheSummaryCollector) Update(ctx context.Context, instance *insta
 			usageCountAvgDesc,
 			prometheus.GaugeValue,
 			usagecountAvgMetric)
-		gaugeInt32(used, buffersUsedDesc, ch)
-		gaugeInt32(unused, buffersUnusedDesc, ch)
-		gaugeInt32(dirty, buffersDirtyDesc, ch)
-		gaugeInt32(pinned, buffersPinnedDesc, ch)
+		ch <- prometheus.MustNewConstMetric(buffersUsedDesc, prometheus.GaugeValue, Int32(used))
+		ch <- prometheus.MustNewConstMetric(buffersUnusedDesc, prometheus.GaugeValue, Int32(unused))
+		ch <- prometheus.MustNewConstMetric(buffersDirtyDesc, prometheus.GaugeValue, Int32(dirty))
+		ch <- prometheus.MustNewConstMetric(buffersPinnedDesc, prometheus.GaugeValue, Int32(pinned))
 	}
 
 	return rows.Err()
