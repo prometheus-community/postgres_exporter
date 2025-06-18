@@ -89,7 +89,7 @@ var (
 		`
 )
 
-func gaugeInt32(m sql.NullInt32, desc *prometheus.Desc, ch chan<- prometheus.Metric) {
+func gaugeInt32(ch chan<- prometheus.Metric, desc *prometheus.Desc, m sql.NullInt32) {
 	mM := 0.0
 	if m.Valid {
 		mM = float64(m.Int32)
