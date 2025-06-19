@@ -15,6 +15,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -227,4 +228,12 @@ var ErrNoData = errors.New("collector returned no data")
 
 func IsNoDataError(err error) bool {
 	return err == ErrNoData
+}
+
+func Int32(m sql.NullInt32) float64 {
+	mM := 0.0
+	if m.Valid {
+		mM = float64(m.Int32)
+	}
+	return mM
 }
