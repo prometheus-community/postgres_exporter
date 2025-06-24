@@ -1,0 +1,231 @@
+pg_custom_replication_slots:
+  query: |
+    SELECT
+      slot_name,
+      plugin,
+      slot_type,
+      active,
+      restart_lsn::pg_lsn - '0/0'::pg_lsn AS restart_lsn_bytes,
+      confirmed_flush_lsn::pg_lsn - '0/0'::pg_lsn AS confirmed_flush_lsn_bytes
+    FROM pg_replication_slots;
+  metrics:
+    - slot_name:
+        usage: "LABEL"
+        description: "Name of the replication slot."
+    - plugin:
+        usage: "LABEL"
+        description: "Plugin associated with the replication slot."
+    - slot_type:
+        usage: "LABEL"
+        description: "Type of replication slot (e.g., logical, physical)."
+    - active:
+        usage: "GAUGE"
+        description: "Whether the slot is active (1 for active, 0 for inactive)."
+    - restart_lsn_bytes:
+        usage: "GAUGE"
+        description: "Restart LSN in bytes for the replication slot."
+    - confirmed_flush_lsn_bytes:
+        usage: "GAUGE"
+        description: "Confirmed flush LSN in bytes for the replication slot."
+
+pg_custom_stat_wal_receiver:
+  query: |
+    SELECT
+      status,
+      sender_host AS primary_host,
+      written_lsn::pg_lsn - '0/0'::pg_lsn AS written_lsn_bytes,
+      latest_end_lsn::pg_lsn - '0/0'::pg_lsn AS latest_end_lsn_bytes,
+      latest_end_lsn::pg_lsn - pg_last_wal_replay_lsn()::pg_lsn AS lag_bytes,
+      EXTRACT(EPOCH FROM latest_end_time) AS latest_end_time_seconds,
+      EXTRACT(EPOCH FROM (now() - latest_end_time)) AS lag_time_seconds,
+      EXTRACT(EPOCH FROM last_msg_send_time) AS last_msg_send_time_seconds,
+      EXTRACT(EPOCH FROM last_msg_receipt_time) AS last_msg_receipt_time_seconds
+    FROM pg_stat_wal_receiver;
+  metrics:
+    - status:
+        usage: "LABEL"
+        description: "WAL receiver's status (e.g., streaming, stopped)."
+    - primary_host:
+        usage: "LABEL"
+        description: "Primary instance host."
+    - written_lsn_bytes:
+        usage: "GAUGE"
+        description: "Bytes of WAL data written by the WAL receiver."
+    - latest_end_lsn_bytes:
+        usage: "GAUGE"
+        description: "Bytes of WAL data received by the WAL receiver."
+    - lag_bytes:
+        usage: "GAUGE"
+        description: "WAL replication lag in bytes."
+    - latest_end_time_seconds:
+        usage: "GAUGE"
+        description: "Timestamp of the latest received WAL segment."
+    - lag_time_seconds:
+        usage: "GAUGE"
+        description: "Replication lag time (difference between now and latest_end_time)."
+    - last_msg_send_time_seconds:
+        usage: "GAUGE"
+        description: "Timestamp of the last message sent in seconds since the epoch."
+    - last_msg_receipt_time_seconds:
+        usage: "GAUGE"
+        description: "Timestamp of the last message received in seconds since the epoch."
+
+
+pg_custom_database_size_custom:
+  query: "SELECT pg_database.datname, pg_database_size(pg_database.datname) as bytes FROM pg_database"
+  master: false
+  cache_seconds: 30
+  metrics:
+    - datname:
+        usage: "LABEL"
+        description: "Name of the database"
+    - bytes:
+        usage: "GAUGE"
+        description: "Disk space used by the database"
+
+pg_custom_replication_wal:
+  query: |
+    SELECT
+      pg_last_wal_receive_lsn() AS received_lsn,
+      pg_last_wal_replay_lsn() AS replayed_lsn,
+      pg_current_wal_lsn() AS current_lsn,
+      pg_current_wal_lsn() - pg_last_wal_replay_lsn() AS lag_bytes;
+  metrics:
+    - received_lsn:
+        usage: "GAUGE"
+        description: "Last WAL location received by the standby server."
+    - replayed_lsn:
+        usage: "GAUGE"
+        description: "Last WAL location replayed by the standby server."
+    - current_lsn:
+        usage: "GAUGE"
+        description: "Current WAL location on the primary server."
+    - lag_bytes:
+        usage: "GAUGE"
+        description: "Current WAL replication lag in bytes."
+
+pg_custom_stat_replication:
+  query: |
+    SELECT
+      pid,
+      usename,
+      application_name,
+      client_addr,
+      state,
+      flush_lsn::pg_lsn - '0/0'::pg_lsn AS flush_lsn_bytes,
+      write_lsn::pg_lsn - '0/0'::pg_lsn AS write_lsn_bytes,
+      replay_lsn::pg_lsn - '0/0'::pg_lsn AS replay_lsn_bytes,
+      EXTRACT(EPOCH FROM write_lag) AS write_lag_seconds,
+      EXTRACT(EPOCH FROM flush_lag) AS flush_lag_seconds,
+      EXTRACT(EPOCH FROM replay_lag) AS replay_lag_seconds,
+      sync_state
+    FROM pg_stat_replication;
+  metrics:
+    - pid:
+        usage: "LABEL"
+        description: "Process ID of the replication connection."
+    - usename:
+        usage: "LABEL"
+        description: "Name of the user connected for replication."
+    - application_name:
+        usage: "LABEL"
+        description: "Application name of the client."
+    - client_addr:
+        usage: "LABEL"
+        description: "Client IP address."
+    - state:
+        usage: "LABEL"
+        description: "State of the replication connection."
+    - flush_lsn_bytes:
+        usage: "GAUGE"
+        description: "Flush LSN in bytes."
+    - write_lsn_bytes:
+        usage: "GAUGE"
+        description: "Write LSN in bytes."
+    - replay_lsn_bytes:
+        usage: "GAUGE"
+        description: "Replay LSN in bytes."
+    - write_lag_seconds:
+        usage: "GAUGE"
+        description: "Write lag in seconds."
+    - flush_lag_seconds:
+        usage: "GAUGE"
+        description: "Flush lag in seconds."
+    - replay_lag_seconds:
+        usage: "GAUGE"
+        description: "Replay lag in seconds."
+    - sync_state:
+        usage: "LABEL"
+        description: "Synchronization state (e.g., async, sync)."
+
+pg_custom_stat_activity_walsender:
+  query: |
+    SELECT
+      pid,
+      usename,
+      application_name,
+      client_addr,
+      extract(epoch from backend_start) AS backend_start_unix,
+      state
+    FROM pg_stat_activity
+    WHERE backend_type = 'walsender';
+  metrics:
+    - pid:
+        usage: "GAUGE"
+        description: "Process ID of the WAL sender"
+    - usename:
+        usage: "LABEL"
+        description: "User name associated with the WAL sender"
+    - application_name:
+        usage: "LABEL"
+        description: "Application name of the WAL sender"
+    - client_addr:
+        usage: "LABEL"
+        description: "Client IP address of the WAL sender"
+    - backend_start_unix:
+        usage: "GAUGE"
+        description: "Start time of the backend as a Unix timestamp"
+    - state:
+        usage: "LABEL"
+        description: "Current state of the WAL sender process"
+
+pg_custom_stat_subscription:
+  query: "SELECT subid, subname, pid, received_lsn, last_msg_send_time, last_msg_receipt_time FROM pg_stat_subscription;"
+  metrics:
+    - subid:
+        usage: "LABEL"
+        description: "Subscription ID"
+    - subname:
+        usage: "LABEL"
+        description: "Subscription Name"    
+    - pid:
+        usage: "GAUGE"
+        description: "Process ID of subscription worker"
+    - received_lsn:
+        usage: "GAUGE"
+        description: "Last received LSN"
+    - last_msg_send_time:
+        usage: "GAUGE"
+        description: "Last message sent time"
+    - last_msg_receipt_time:
+        usage: "GAUGE"
+        description: "Last message receipt time"
+
+pg_custom_publication:
+  query: "SELECT pubname, puballtables, pubinsert, pubupdate, pubdelete FROM pg_publication;"
+  metrics:
+    - pubname:
+        usage: "LABEL"
+        description: "Publication Name"
+    - puballtables:
+        usage: "GAUGE"
+        description: "All tables published"
+    - pubinsert:
+        usage: "GAUGE"
+        description: "Insert operations published"
+    - pubupdate:
+        usage: "GAUGE"
+        description: "Update operations published"
+    - pubdelete:
+        usage: "GAUGE"
+        description: "Delete operations published"
