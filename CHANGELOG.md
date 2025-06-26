@@ -1,3 +1,7 @@
+## 0.17.2 / 2025-06-25
+
+* Update Golang Version to 1.24.1
+
 ## 0.17.1 / 2025-02-26
 
 * [BUGFIX] Fix: Handle incoming labels with invalid UTF-8 #1131
