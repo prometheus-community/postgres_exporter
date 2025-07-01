@@ -8,7 +8,7 @@
             alert: 'PostgreSQLMaxConnectionsReached',
             annotations: {
               description: '{{ $labels.instance }} is exceeding the currently configured maximum Postgres connection limit (current value: {{ $value }}s). Services may be degraded - please take immediate action (you probably need to increase max_connections in the Docker image and re-deploy.',
-              summary: '{{ $labels.instance }} has maxed out Postgres connections.',
+              summary: 'Postgres has maxed out its connections.',
             },
             expr: |||
               sum by (instance) (pg_stat_activity_count{%(postgresExporterSelector)s})
@@ -26,7 +26,7 @@
             alert: 'PostgreSQLHighConnections',
             annotations: {
               description: '{{ $labels.instance }} is exceeding 80% of the currently configured maximum Postgres connection limit (current value: {{ $value }}s). Please check utilization graphs and confirm if this is normal service growth, abuse or an otherwise temporary condition or if new resources need to be provisioned (or the limits increased, which is mostly likely).',
-              summary: '{{ $labels.instance }} is over 80% of max Postgres connections.',
+              summary: 'Postgres is over 80% of max connections.',
             },
             expr: |||
               sum by (instance) (pg_stat_activity_count{%(postgresExporterSelector)s})
@@ -46,7 +46,7 @@
             alert: 'PostgreSQLDown',
             annotations: {
               description: '{{ $labels.instance }} is rejecting query requests from the exporter, and thus probably not allowing DNS requests to work either. User services should not be effected provided at least 1 node is still alive.',
-              summary: 'PostgreSQL is not processing queries: {{ $labels.instance }}',
+              summary: 'Postgres is not processing queries.',
             },
             expr: 'pg_up{%(postgresExporterSelector)s} != 1' % $._config,
             'for': '1m',
@@ -57,8 +57,8 @@
           {
             alert: 'PostgreSQLSlowQueries',
             annotations: {
-              description: 'PostgreSQL high number of slow queries {{ $labels.cluster }} for database {{ $labels.datname }} with a value of {{ $value }} ',
-              summary: 'PostgreSQL high number of slow on {{ $labels.cluster }} for database {{ $labels.datname }} ',
+              description: 'PostgreSQL has high number of slow queries {{ $labels.cluster }} for database {{ $labels.datname }} with a value of {{ $value }} ',
+              summary: 'Postgres has high number of slow queries.',
             },
             expr: |||
               avg by (datname) (
@@ -75,8 +75,8 @@
           {
             alert: 'PostgreSQLQPS',
             annotations: {
-              description: 'PostgreSQL high number of queries per second on {{ $labels.cluster }} for database {{ $labels.datname }} with a value of {{ $value }}',
-              summary: 'PostgreSQL high number of queries per second {{ $labels.cluster }} for database {{ $labels.datname }}',
+              description: 'PostgreSQL has high number of queries per second on {{ $labels.cluster }} for database {{ $labels.datname }} with a value of {{ $value }}',
+              summary: 'Postgres has high number of queries per second.',
             },
             expr: |||
               avg by (datname) (
@@ -97,8 +97,8 @@
           {
             alert: 'PostgreSQLCacheHitRatio',
             annotations: {
-              description: 'PostgreSQL low on cache hit rate on {{ $labels.cluster }} for database {{ $labels.datname }} with a value of {{ $value }}',
-              summary: 'PostgreSQL low cache hit rate on {{ $labels.cluster }} for database {{ $labels.datname }}',
+              description: 'PostgreSQL has low cache hit rate on {{ $labels.cluster }} for database {{ $labels.datname }} with a value of {{ $value }}',
+              summary: 'Postgres has low cache hit rate.',
             },
             expr: |||
               avg by (datname) (
