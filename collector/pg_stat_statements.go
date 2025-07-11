@@ -64,7 +64,7 @@ func NewPGStatStatementsCollector(config collectorConfig) (Collector, error) {
 }
 
 var (
-	statSTatementsCallsTotal = prometheus.NewDesc(
+	statStatementsCallsTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statStatementsSubsystem, "calls_total"),
 		"Number of times executed",
 		[]string{"user", "datname", "queryid"},
@@ -230,7 +230,7 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 			callsTotalMetric = float64(callsTotal.Int64)
 		}
 		ch <- prometheus.MustNewConstMetric(
-			statSTatementsCallsTotal,
+			statStatementsCallsTotal,
 			prometheus.CounterValue,
 			callsTotalMetric,
 			userLabel, datnameLabel, queryidLabel,
