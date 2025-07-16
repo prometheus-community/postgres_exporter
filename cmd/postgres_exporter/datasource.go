@@ -18,6 +18,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -64,11 +65,11 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			continue
 		}
 		for _, databaseName := range databaseNames {
-			if contains(e.excludeDatabases, databaseName) {
+			if slices.Contains(e.excludeDatabases, databaseName) {
 				continue
 			}
 
-			if len(e.includeDatabases) != 0 && !contains(e.includeDatabases, databaseName) {
+			if len(e.includeDatabases) != 0 && !slices.Contains(e.includeDatabases, databaseName) {
 				continue
 			}
 
