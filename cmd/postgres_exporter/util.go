@@ -24,15 +24,6 @@ import (
 	"github.com/lib/pq"
 )
 
-func contains(a []string, x string) bool {
-	for _, n := range a {
-		if x == n {
-			return true
-		}
-	}
-	return false
-}
-
 // convert a string to the corresponding ColumnUsage
 func stringToColumnUsage(s string) (ColumnUsage, error) {
 	var u ColumnUsage
