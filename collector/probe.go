@@ -76,11 +76,11 @@ func (pc *ProbeCollector) Describe(ch chan<- *prometheus.Desc) {
 func (pc *ProbeCollector) Collect(ch chan<- prometheus.Metric) {
 	// Set up the database connection for the collector.
 	err := pc.instance.setup()
+	defer pc.instance.Close()
 	if err != nil {
 		pc.logger.Error("Error opening connection to database", "err", err)
 		return
 	}
-	defer pc.instance.Close()
 
 	wg := sync.WaitGroup{}
 	wg.Add(len(pc.collectors))
