@@ -16,8 +16,9 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"log/slog"
+	"slices"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -28,7 +29,7 @@ func init() {
 }
 
 type PGDatabaseCollector struct {
-	log               log.Logger
+	log               *slog.Logger
 	excludedDatabases []string
 }
 
@@ -102,7 +103,7 @@ func (c PGDatabaseCollector) Update(ctx context.Context, instance *instance, ch 
 		// Ignore excluded databases
 		// Filtering is done here instead of in the query to avoid
 		// a complicated NOT IN query with a variable number of parameters
-		if sliceContains(c.excludedDatabases, database) {
+		if slices.Contains(c.excludedDatabases, database) {
 			continue
 		}
 
@@ -137,13 +138,4 @@ func (c PGDatabaseCollector) Update(ctx context.Context, instance *instance, ch 
 
 	}
 	return rows.Err()
-}
-
-func sliceContains(slice []string, s string) bool {
-	for _, item := range slice {
-		if item == s {
-			return true
-		}
-	}
-	return false
 }

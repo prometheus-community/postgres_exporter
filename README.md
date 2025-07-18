@@ -7,7 +7,7 @@
 
 Prometheus exporter for PostgreSQL server metrics.
 
-CI Tested PostgreSQL versions: `11`, `12`, `13`, `14`, `15`, `16`
+CI Tested PostgreSQL versions: `11`, `12`, `13`, `14`, `15`, `16`, `17`.
 
 ## Quick Start
 This package is available for Docker:
@@ -144,8 +144,17 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `[no-]collector.stat_database`
   Enable the `stat_database` collector (default: enabled).
 
+* `[no-]collector.stat_progress_vacuum`
+  Enable the `stat_progress_vacuum` collector (default: enabled).
+
 * `[no-]collector.stat_statements`
   Enable the `stat_statements` collector (default: disabled).
+
+* `[no-]collector.stat_statements.include_query`
+  Enable selecting statement query together with queryId. (default: disabled)
+
+* `--collector.stat_statements.query_length`
+  Maximum length of the statement text. Default is 120.
 
 * `[no-]collector.stat_user_tables`
   Enable the `stat_user_tables` collector (default: enabled).

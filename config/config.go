@@ -15,10 +15,10 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"sync"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"gopkg.in/yaml.v3"
@@ -65,7 +65,7 @@ func (ch *Handler) GetConfig() *Config {
 	return ch.Config
 }
 
-func (ch *Handler) ReloadConfig(f string, logger log.Logger) error {
+func (ch *Handler) ReloadConfig(f string, logger *slog.Logger) error {
 	config := &Config{}
 	var err error
 	defer func() {
@@ -79,14 +79,14 @@ func (ch *Handler) ReloadConfig(f string, logger log.Logger) error {
 
 	yamlReader, err := os.Open(f)
 	if err != nil {
-		return fmt.Errorf("Error opening config file %q: %s", f, err)
+		return fmt.Errorf("error opening config file %q: %s", f, err)
 	}
 	defer yamlReader.Close()
 	decoder := yaml.NewDecoder(yamlReader)
 	decoder.KnownFields(true)
 
 	if err = decoder.Decode(config); err != nil {
-		return fmt.Errorf("Error parsing config file %q: %s", f, err)
+		return fmt.Errorf("error parsing config file %q: %s", f, err)
 	}
 
 	ch.Lock()

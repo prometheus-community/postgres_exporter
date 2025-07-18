@@ -1,3 +1,45 @@
+## 0.17.1 / 2025-02-26
+
+* [BUGFIX] Fix: Handle incoming labels with invalid UTF-8 #1131
+
+## 0.17.0 / 2025-02-16
+
+## What's Changed
+* [ENHANCEMENT] Add Postgres 17 for CI test by @khiemdoan in https://github.com/prometheus-community/postgres_exporter/pull/1105
+* [ENHANCEMENT] Add wait/backend to pg_stat_activity by @fgalind1 in https://github.com/prometheus-community/postgres_exporter/pull/1106
+* [ENHANCEMENT] Export last replay age in replication collector by @bitfehler in https://github.com/prometheus-community/postgres_exporter/pull/1085
+* [BUGFIX] Fix pg_long_running_transactions time by @jyothikirant-sayukth in https://github.com/prometheus-community/postgres_exporter/pull/1092
+* [BUGFIX] Fix to replace dashes with underscore in the metric names by @aagarwalla-fx in https://github.com/prometheus-community/postgres_exporter/pull/1103
+* [BIGFIX] Checkpoint related columns in PG 17 have been moved from pg_stat_bgwriter to pg_stat_checkpointer by @n-rodriguez in https://github.com/prometheus-community/postgres_exporter/pull/1072
+* [BUGFIX] Fix pg_stat_statements for PG17 by @NevermindZ4 in https://github.com/prometheus-community/postgres_exporter/pull/1114
+* [BUGFIX] Handle pg_replication_slots on pg<13 by @michael-todorovic in https://github.com/prometheus-community/postgres_exporter/pull/1098
+* [BUGFIX] Fix missing dsn sanitization for logging by @sysadmind in https://github.com/prometheus-community/postgres_exporter/pull/1104
+
+## New Contributors
+* @jyothikirant-sayukth made their first contribution in https://github.com/prometheus-community/postgres_exporter/pull/1092
+* @aagarwalla-fx made their first contribution in https://github.com/prometheus-community/postgres_exporter/pull/1103
+* @NevermindZ4 made their first contribution in https://github.com/prometheus-community/postgres_exporter/pull/1114
+* @michael-todorovic made their first contribution in https://github.com/prometheus-community/postgres_exporter/pull/1098
+* @fgalind1 made their first contribution in https://github.com/prometheus-community/postgres_exporter/pull/1106
+
+**Full Changelog**: https://github.com/prometheus-community/postgres_exporter/compare/v0.16.0...v0.17.0
+
+## 0.16.0 / 2024-11-10
+
+BREAKING CHANGES:
+
+The logging system has been replaced with log/slog from the stdlib. This change is being made across the prometheus ecosystem. The logging output has changed, but the messages and levels remain the same. The `ts` label for the timestamp has bewen replaced with `time`, the accuracy is less, and the timezone is not forced to UTC. The `caller` field has been replaced by the `source` field, which now includes the full path to the source file. The `level` field now exposes the log level in capital letters.
+
+* [CHANGE] Replace logging system #1073
+* [ENHANCEMENT] Add save_wal_size and wal_status to replication_slot collector #1027
+* [ENHANCEMENT] Add roles collector and connection limit metrics to database collector #997
+* [ENHANCEMENT] Excluded databases log messgae is now info level #1003
+* [ENHANCEMENT] Add active_time to stat_database collector #961
+* [ENHANCEMENT] Add slot_type label to replication_slot collector #960
+* [BUGFIX] Fix walreceiver collectore when no repmgr #1086
+* [BUGFIX] Remove logging errors on replicas #1048
+* [BUGFIX] Fix active_time query on postgres>=14 #1045
+
 ## 0.15.0 / 2023-10-27
 
 * [ENHANCEMENT] Add 1kB and 2kB units #915

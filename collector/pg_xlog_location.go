@@ -15,10 +15,9 @@ package collector
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/blang/semver/v4"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -29,7 +28,7 @@ func init() {
 }
 
 type PGXlogLocationCollector struct {
-	log log.Logger
+	log *slog.Logger
 }
 
 func NewPGXlogLocationCollector(config collectorConfig) (Collector, error) {
@@ -59,7 +58,7 @@ func (c PGXlogLocationCollector) Update(ctx context.Context, instance *instance,
 	// https://wiki.postgresql.org/wiki/New_in_postgres_10#Renaming_of_.22xlog.22_to_.22wal.22_Globally_.28and_location.2Flsn.29
 	after10 := instance.version.Compare(semver.MustParse("10.0.0"))
 	if after10 >= 0 {
-		level.Warn(c.log).Log("msg", "xlog_location collector is not available on PostgreSQL >= 10.0.0, skipping")
+		c.log.Warn("xlog_location collector is not available on PostgreSQL >= 10.0.0, skipping")
 		return nil
 	}
 

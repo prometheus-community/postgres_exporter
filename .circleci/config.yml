@@ -8,7 +8,7 @@ executors:
   # This must match .promu.yml.
   golang:
     docker:
-    - image: cimg/go:1.21
+    - image: cimg/go:1.24
 
 jobs:
   test:
@@ -23,7 +23,7 @@ jobs:
 
   integration:
     docker:
-    - image: cimg/go:1.20
+    - image: cimg/go:1.24
     - image: << parameters.postgres_image >>
       environment:
         POSTGRES_DB: circle_test
@@ -63,6 +63,7 @@ workflows:
             - cimg/postgres:14.9
             - cimg/postgres:15.4
             - cimg/postgres:16.0
+            - cimg/postgres:17.0
     - prometheus/build:
         name: build
         parallelism: 3

@@ -16,8 +16,8 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 
-	"github.com/go-kit/log"
 	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -28,7 +28,7 @@ func init() {
 }
 
 type PGProcessIdleCollector struct {
-	log log.Logger
+	log *slog.Logger
 }
 
 const processIdleSubsystem = "process_idle"

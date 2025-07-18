@@ -15,8 +15,8 @@ package collector
 
 import (
 	"context"
+	"log/slog"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -27,7 +27,7 @@ func init() {
 }
 
 type PGLongRunningTransactionsCollector struct {
-	log log.Logger
+	log *slog.Logger
 }
 
 func NewPGLongRunningTransactionsCollector(config collectorConfig) (Collector, error) {
@@ -50,11 +50,13 @@ var (
 	)
 
 	longRunningTransactionsQuery = `
-	SELECT
-		COUNT(*) as transactions,
-   		MAX(EXTRACT(EPOCH FROM clock_timestamp())) AS oldest_timestamp_seconds
-    FROM pg_catalog.pg_stat_activity
-    WHERE state is distinct from 'idle' AND query not like 'autovacuum:%'
+	SELECT                                                              
+    COUNT(*) as transactions,
+    MAX(EXTRACT(EPOCH FROM clock_timestamp() - pg_stat_activity.xact_start)) AS oldest_timestamp_seconds
+FROM pg_catalog.pg_stat_activity
+WHERE state IS DISTINCT FROM 'idle'
+AND query NOT LIKE 'autovacuum:%'
+AND pg_stat_activity.xact_start IS NOT NULL;
 	`
 )
 

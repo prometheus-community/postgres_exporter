@@ -1,4 +1,4 @@
-// Copyright 2023 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -17,39 +17,48 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/smartystreets/goconvey/convey"
 )
 
-func TestPgReplicationCollector(t *testing.T) {
+func TestBuffercacheSummaryCollector(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("Error opening a stub db connection: %s", err)
 	}
 	defer db.Close()
 
-	inst := &instance{db: db}
+	inst := &instance{db: db, version: semver.MustParse("16.0.0")}
 
-	columns := []string{"lag", "is_replica", "last_replay"}
-	rows := sqlmock.NewRows(columns).
-		AddRow(1000, 1, 3)
-	mock.ExpectQuery(sanitizeQuery(pgReplicationQuery)).WillReturnRows(rows)
+	columns := []string{
+		"buffers_used",
+		"buffers_unused",
+		"buffers_dirty",
+		"buffers_pinned",
+		"usagecount_avg"}
+
+	rows := sqlmock.NewRows(columns).AddRow(123, 456, 789, 234, 56.6778)
+
+	mock.ExpectQuery(sanitizeQuery(buffercacheQuery)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
-		c := PGReplicationCollector{}
+		c := BuffercacheSummaryCollector{}
 
 		if err := c.Update(context.Background(), inst, ch); err != nil {
-			t.Errorf("Error calling PGReplicationCollector.Update: %s", err)
+			t.Errorf("Error calling PGStatStatementsCollector.Update: %s", err)
 		}
 	}()
 
 	expected := []MetricResult{
-		{labels: labelMap{}, value: 1000, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{}, value: 1, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{}, value: 3, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{}, metricType: dto.MetricType_GAUGE, value: 56.6778},
+		{labels: labelMap{}, metricType: dto.MetricType_GAUGE, value: 123},
+		{labels: labelMap{}, metricType: dto.MetricType_GAUGE, value: 456},
+		{labels: labelMap{}, metricType: dto.MetricType_GAUGE, value: 789},
+		{labels: labelMap{}, metricType: dto.MetricType_GAUGE, value: 234},
 	}
 
 	convey.Convey("Metrics comparison", t, func() {
