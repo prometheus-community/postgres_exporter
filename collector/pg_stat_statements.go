@@ -27,8 +27,9 @@ import (
 const statStatementsSubsystem = "stat_statements"
 
 var (
-	includeQueryFlag    *bool = nil
-	statementLengthFlag *uint = nil
+	includeQueryFlag    		*bool = nil
+	statementStripSpecialFlag	*bool = nil
+	statementLengthFlag 		*uint = nil
 )
 
 func init() {
@@ -42,6 +43,11 @@ func init() {
 		"Enable selecting statement query together with queryId. (default: disabled)").
 		Default(fmt.Sprintf("%v", defaultDisabled)).
 		Bool()
+	statementStripSpecialFlag = kingpin.Flag(
+		fmt.Sprint(collectorFlagPrefix, statStatementsSubsystem, ".strip_special"),
+		"Strip special characters from query text. (default: disabled)").
+		Default(fmt.Sprintf("%v", defaultDisabled)).
+		Bool()
 	statementLengthFlag = kingpin.Flag(
 		fmt.Sprint(collectorFlagPrefix, statStatementsSubsystem, ".query_length"),
 		"Maximum length of the statement text.").
@@ -52,6 +58,7 @@ func init() {
 type PGStatStatementsCollector struct {
 	log                   *slog.Logger
 	includeQueryStatement bool
+	stripSpecialFromQuery bool
 	statementLength       uint
 }
 
@@ -59,6 +66,7 @@ func NewPGStatStatementsCollector(config collectorConfig) (Collector, error) {
 	return &PGStatStatementsCollector{
 		log:                   config.logger,
 		includeQueryStatement: *includeQueryFlag,
+		stripSpecialFromQuery: *statementStripSpecialFlag,
 		statementLength:       *statementLengthFlag,
 	}, nil
 }
@@ -105,6 +113,7 @@ var (
 
 const (
 	pgStatStatementQuerySelect = `LEFT(pg_stat_statements.query, %d) as query,`
+	pgStatStatementQuerySelectStrip = `LEFT(regexp_replace(pg_stat_statements.query, '\s+', ' ', 'g'), %d) as query,`
 
 	pgStatStatementsQuery = `SELECT
 		pg_get_userbyid(userid) as user,
@@ -185,7 +194,11 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 	}
 	var querySelect = ""
 	if c.includeQueryStatement {
-		querySelect = fmt.Sprintf(pgStatStatementQuerySelect, c.statementLength)
+		if c.stripSpecialFromQuery {
+			querySelect = fmt.Sprintf(pgStatStatementQuerySelectStrip, c.statementLength)
+		} else {
+			querySelect = fmt.Sprintf(pgStatStatementQuerySelect, c.statementLength)
+		}
 	}
 	query := fmt.Sprintf(queryTemplate, querySelect)
 
