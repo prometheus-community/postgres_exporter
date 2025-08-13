@@ -52,11 +52,12 @@ func (PGProcessIdleCollector) Update(ctx context.Context, instance *instance, ch
 				SELECT
 				state,
 				application_name,
+				usename,
 				SUM(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - state_change))::bigint)::float AS process_idle_seconds_sum,
 				COUNT(*) AS process_idle_seconds_count
 				FROM pg_stat_activity
 				WHERE state ~ '^idle'
-				GROUP BY state, application_name
+				GROUP BY state, application_name, usename
 			),
 			buckets AS (
 				SELECT
@@ -78,21 +79,23 @@ func (PGProcessIdleCollector) Update(ctx context.Context, instance *instance, ch
 			SELECT
 			state,
 			application_name,
+			usename,
 			process_idle_seconds_sum as seconds_sum,
 			process_idle_seconds_count as seconds_count,
 			ARRAY_AGG(le) AS seconds,
 			ARRAY_AGG(bucket) AS seconds_bucket
 			FROM metrics JOIN buckets USING (state, application_name)
-			GROUP BY 1, 2, 3, 4;`)
+			GROUP BY 1, 2, 3, 4, 5;`)
 
 	var state sql.NullString
 	var applicationName sql.NullString
+	var usename sql.NullString
 	var secondsSum sql.NullFloat64
 	var secondsCount sql.NullInt64
 	var seconds []float64
 	var secondsBucket []int64
 
-	err := row.Scan(&state, &applicationName, &secondsSum, &secondsCount, pq.Array(&seconds), pq.Array(&secondsBucket))
+	err := row.Scan(&state, &applicationName, &usename, &secondsSum, &secondsCount, pq.Array(&seconds), pq.Array(&secondsBucket))
 	if err != nil {
 		return err
 	}
@@ -115,6 +118,11 @@ func (PGProcessIdleCollector) Update(ctx context.Context, instance *instance, ch
 		applicationNameLabel = applicationName.String
 	}
 
+	usenameLabel := "unknown"
+	if usename.Valid {
+		usenameLabel = usename.String
+	}
+
 	var secondsCountMetric uint64
 	if secondsCount.Valid {
 		secondsCountMetric = uint64(secondsCount.Int64)
@@ -126,7 +134,7 @@ func (PGProcessIdleCollector) Update(ctx context.Context, instance *instance, ch
 	ch <- prometheus.MustNewConstHistogram(
 		pgProcessIdleSeconds,
 		secondsCountMetric, secondsSumMetric, buckets,
-		stateLabel, applicationNameLabel,
+		stateLabel, applicationNameLabel, usenameLabel,
 	)
 	return nil
 }
