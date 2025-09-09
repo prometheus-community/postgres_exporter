@@ -14,6 +14,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -95,7 +96,7 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 	return result
 }
 
-func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
+func (e *Exporter) scrapeDSN(ctx context.Context, ch chan<- prometheus.Metric, dsn string) error {
 	server, err := e.servers.GetServer(dsn)
 
 	if err != nil {
@@ -108,11 +109,11 @@ func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 	}
 
 	// Check if map versions need to be updated
-	if err := e.checkMapVersions(ch, server); err != nil {
+	if err := e.checkMapVersions(ctx, ch, server); err != nil {
 		logger.Warn("Proceeding with outdated query maps, as the Postgres version could not be determined", "err", err)
 	}
 
-	return server.Scrape(ch, e.disableSettingsMetrics)
+	return server.Scrape(ctx, ch, e.disableSettingsMetrics)
 }
 
 // try to get the DataSource

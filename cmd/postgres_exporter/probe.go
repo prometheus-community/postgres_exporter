@@ -72,6 +72,7 @@ func handleProbe(logger *slog.Logger, excludeDatabases []string) http.HandlerFun
 			WithConstantLabels(*constantLabelsList),
 			ExcludeDatabases(excludeDatabases),
 			IncludeDatabases(*includeDatabases),
+			WithTimeout(*scrapeTimeout),
 		}
 
 		dsns := []string{dsn.GetConnectionString()}

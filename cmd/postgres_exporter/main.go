@@ -49,6 +49,7 @@ var (
 	excludeDatabases       = kingpin.Flag("exclude-databases", "A list of databases to remove when autoDiscoverDatabases is enabled (DEPRECATED)").Default("").Envar("PG_EXPORTER_EXCLUDE_DATABASES").String()
 	includeDatabases       = kingpin.Flag("include-databases", "A list of databases to include when autoDiscoverDatabases is enabled (DEPRECATED)").Default("").Envar("PG_EXPORTER_INCLUDE_DATABASES").String()
 	metricPrefix           = kingpin.Flag("metric-prefix", "A metric prefix can be used to have non-default (not \"pg\") prefixes for each of the metrics").Default("pg").Envar("PG_EXPORTER_METRIC_PREFIX").String()
+	scrapeTimeout          = kingpin.Flag("scrape-timeout", "Maximum time for a scrape to complete before timing out (0 = no timeout)").Default("0").Envar("PG_EXPORTER_SCRAPE_TIMEOUT").Duration()
 	logger                 = promslog.NewNopLogger()
 )
 
@@ -114,6 +115,7 @@ func main() {
 		WithConstantLabels(*constantLabelsList),
 		ExcludeDatabases(excludedDatabases),
 		IncludeDatabases(*includeDatabases),
+		WithTimeout(*scrapeTimeout),
 	}
 
 	exporter := NewExporter(dsns, opts...)
@@ -136,6 +138,7 @@ func main() {
 		excludedDatabases,
 		dsn,
 		[]string{},
+		collector.WithTimeout(*scrapeTimeout),
 	)
 	if err != nil {
 		logger.Warn("Failed to create PostgresCollector", "err", err.Error())
