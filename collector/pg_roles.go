@@ -53,7 +53,7 @@ var (
 
 // Update implements Collector and exposes roles connection limits.
 // It is called by the Prometheus registry when collecting metrics.
-func (c PGRolesCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+func (c PGRolesCollector) Update(ctx context.Context, instance *Instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
 	// Query the list of databases
 	rows, err := db.QueryContext(ctx,

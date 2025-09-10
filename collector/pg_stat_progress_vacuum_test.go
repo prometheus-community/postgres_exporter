@@ -29,7 +29,7 @@ func TestPGStatProgressVacuumCollector(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db}
+	inst := &Instance{db: db}
 
 	columns := []string{
 		"datname", "relname", "phase", "heap_blks_total", "heap_blks_scanned",
@@ -85,7 +85,7 @@ func TestPGStatProgressVacuumCollectorNullValues(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db}
+	inst := &Instance{db: db}
 
 	columns := []string{
 		"datname", "relname", "phase", "heap_blks_total", "heap_blks_scanned",

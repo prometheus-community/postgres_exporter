@@ -31,7 +31,7 @@ func TestPGStateStatementsCollector(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db, version: semver.MustParse("12.0.0")}
+	inst := &Instance{db: db, version: semver.MustParse("12.0.0")}
 
 	columns := []string{"user", "datname", "queryid", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
@@ -74,7 +74,7 @@ func TestPGStateStatementsCollectorWithStatement(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db, version: semver.MustParse("12.0.0")}
+	inst := &Instance{db: db, version: semver.MustParse("12.0.0")}
 
 	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 100) as query", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
@@ -118,7 +118,7 @@ func TestPGStateStatementsCollectorNull(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db, version: semver.MustParse("13.3.7")}
+	inst := &Instance{db: db, version: semver.MustParse("13.3.7")}
 
 	columns := []string{"user", "datname", "queryid", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
@@ -161,7 +161,7 @@ func TestPGStateStatementsCollectorNullWithStatement(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db, version: semver.MustParse("13.3.7")}
+	inst := &Instance{db: db, version: semver.MustParse("13.3.7")}
 
 	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 200) as query", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
@@ -205,7 +205,7 @@ func TestPGStateStatementsCollectorNewPG(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db, version: semver.MustParse("13.3.7")}
+	inst := &Instance{db: db, version: semver.MustParse("13.3.7")}
 
 	columns := []string{"user", "datname", "queryid", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
@@ -248,7 +248,7 @@ func TestPGStateStatementsCollectorNewPGWithStatement(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db, version: semver.MustParse("13.3.7")}
+	inst := &Instance{db: db, version: semver.MustParse("13.3.7")}
 
 	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 300) as query", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
@@ -292,7 +292,7 @@ func TestPGStateStatementsCollector_PG17(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db, version: semver.MustParse("17.0.0")}
+	inst := &Instance{db: db, version: semver.MustParse("17.0.0")}
 
 	columns := []string{"user", "datname", "queryid", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
@@ -335,7 +335,7 @@ func TestPGStateStatementsCollector_PG17_WithStatement(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db, version: semver.MustParse("17.0.0")}
+	inst := &Instance{db: db, version: semver.MustParse("17.0.0")}
 
 	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 300) as query", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).

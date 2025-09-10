@@ -33,7 +33,7 @@ func TestPGStatWalReceiverCollectorWithFlushedLSN(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db}
+	inst := &Instance{db: db}
 	infoSchemaColumns := []string{
 		"column_name",
 	}
@@ -116,7 +116,7 @@ func TestPGStatWalReceiverCollectorWithNoFlushedLSN(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db}
+	inst := &Instance{db: db}
 	infoSchemaColumns := []string{
 		"column_name",
 	}

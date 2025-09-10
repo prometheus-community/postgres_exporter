@@ -31,7 +31,7 @@ func TestPGStatCheckpointerCollector(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db, version: semver.MustParse("17.0.0")}
+	inst := &Instance{db: db, version: semver.MustParse("17.0.0")}
 
 	columns := []string{
 		"num_timed",
@@ -93,7 +93,7 @@ func TestPGStatCheckpointerCollectorNullValues(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db, version: semver.MustParse("17.0.0")}
+	inst := &Instance{db: db, version: semver.MustParse("17.0.0")}
 
 	columns := []string{
 		"num_timed",

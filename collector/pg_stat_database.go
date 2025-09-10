@@ -223,7 +223,7 @@ func statDatabaseQuery(columns []string) string {
 	return fmt.Sprintf("SELECT %s FROM pg_stat_database;", strings.Join(columns, ","))
 }
 
-func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *Instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
 
 	columns := []string{

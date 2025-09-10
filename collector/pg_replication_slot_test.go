@@ -30,7 +30,7 @@ func TestPgReplicationSlotCollectorActive(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db, version: semver.MustParse("13.3.7")}
+	inst := &Instance{db: db, version: semver.MustParse("13.3.7")}
 
 	columns := []string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active", "safe_wal_size", "wal_status"}
 	rows := sqlmock.NewRows(columns).
@@ -73,7 +73,7 @@ func TestPgReplicationSlotCollectorInActive(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db, version: semver.MustParse("13.3.7")}
+	inst := &Instance{db: db, version: semver.MustParse("13.3.7")}
 
 	columns := []string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active", "safe_wal_size", "wal_status"}
 	rows := sqlmock.NewRows(columns).
@@ -116,7 +116,7 @@ func TestPgReplicationSlotCollectorActiveNil(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db, version: semver.MustParse("13.3.7")}
+	inst := &Instance{db: db, version: semver.MustParse("13.3.7")}
 
 	columns := []string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active", "safe_wal_size", "wal_status"}
 	rows := sqlmock.NewRows(columns).
@@ -157,7 +157,7 @@ func TestPgReplicationSlotCollectorTestNilValues(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db, version: semver.MustParse("13.3.7")}
+	inst := &Instance{db: db, version: semver.MustParse("13.3.7")}
 
 	columns := []string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active", "safe_wal_size", "wal_status"}
 	rows := sqlmock.NewRows(columns).

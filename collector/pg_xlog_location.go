@@ -51,7 +51,7 @@ var (
 	`
 )
 
-func (c PGXlogLocationCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+func (c PGXlogLocationCollector) Update(ctx context.Context, instance *Instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
 
 	// xlog was renmaed to WAL in PostgreSQL 10

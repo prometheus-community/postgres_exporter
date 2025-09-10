@@ -32,7 +32,7 @@ func TestPGStatDatabaseCollector(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db, version: semver.MustParse("14.0.0")}
+	inst := &Instance{db: db, version: semver.MustParse("14.0.0")}
 
 	columns := []string{
 		"datid",
@@ -143,7 +143,7 @@ func TestPGStatDatabaseCollectorNullValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error parsing time: %s", err)
 	}
-	inst := &instance{db: db, version: semver.MustParse("14.0.0")}
+	inst := &Instance{db: db, version: semver.MustParse("14.0.0")}
 
 	columns := []string{
 		"datid",
@@ -265,7 +265,7 @@ func TestPGStatDatabaseCollectorRowLeakTest(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db, version: semver.MustParse("14.0.0")}
+	inst := &Instance{db: db, version: semver.MustParse("14.0.0")}
 
 	columns := []string{
 		"datid",
@@ -434,7 +434,7 @@ func TestPGStatDatabaseCollectorTestNilStatReset(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db, version: semver.MustParse("14.0.0")}
+	inst := &Instance{db: db, version: semver.MustParse("14.0.0")}
 
 	columns := []string{
 		"datid",

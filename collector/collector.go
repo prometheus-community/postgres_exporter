@@ -59,7 +59,7 @@ var (
 )
 
 type Collector interface {
-	Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error
+	Update(ctx context.Context, instance *Instance, ch chan<- prometheus.Metric) error
 }
 
 type collectorConfig struct {
@@ -89,11 +89,10 @@ func registerCollector(name string, isDefaultEnabled bool, createFunc func(colle
 
 // PostgresCollector implements the prometheus.Collector interface.
 type PostgresCollector struct {
-	Collectors    map[string]Collector
-	logger        *slog.Logger
-	scrapeTimeout time.Duration
-
-	instance *instance
+	Collectors      map[string]Collector
+	logger          *slog.Logger
+	scrapeTimeout   time.Duration
+	instanceFactory InstanceFactory
 }
 
 type Option func(*PostgresCollector) error
@@ -107,9 +106,10 @@ func WithTimeout(timeout time.Duration) Option {
 }
 
 // NewPostgresCollector creates a new PostgresCollector.
-func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn string, filters []string, options ...Option) (*PostgresCollector, error) {
+func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, factory InstanceFactory, filters []string, options ...Option) (*PostgresCollector, error) {
 	p := &PostgresCollector{
-		logger: logger,
+		logger:          logger,
+		instanceFactory: factory,
 	}
 	// Apply options to customize the collector
 	for _, o := range options {
@@ -154,16 +154,6 @@ func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn st
 
 	p.Collectors = collectors
 
-	if dsn == "" {
-		return nil, errors.New("empty dsn")
-	}
-
-	instance, err := newInstance(dsn)
-	if err != nil {
-		return nil, err
-	}
-	p.instance = instance
-
 	return p, nil
 }
 
@@ -184,16 +174,13 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 		ctx = context.Background()
 	}
 
-	// copy the instance so that concurrent scrapes have independent instances
-	inst := p.instance.copy()
-
-	// Set up the database connection for the collector.
-	err := inst.setup()
-	defer inst.Close()
+	// Use the factory to get an instance
+	inst, err := p.instanceFactory()
 	if err != nil {
-		p.logger.Error("Error opening connection to database", "err", err)
+		p.logger.Error("Error creating instance", "err", err)
 		return
 	}
+	defer inst.Close() // Always safe - closeDB flag determines if connection is actually closed
 
 	wg := sync.WaitGroup{}
 	wg.Add(len(p.Collectors))
@@ -206,11 +193,7 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 	wg.Wait()
 }
 
-func (p *PostgresCollector) Close() error {
-	return p.instance.Close()
-}
-
-func execute(ctx context.Context, name string, c Collector, instance *instance, ch chan<- prometheus.Metric, logger *slog.Logger) {
+func execute(ctx context.Context, name string, c Collector, instance *Instance, ch chan<- prometheus.Metric, logger *slog.Logger) {
 	begin := time.Now()
 	err := c.Update(ctx, instance, ch)
 	duration := time.Since(begin)

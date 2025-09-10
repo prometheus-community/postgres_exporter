@@ -173,7 +173,7 @@ const (
 	LIMIT 100;`
 )
 
-func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+func (c PGStatStatementsCollector) Update(ctx context.Context, instance *Instance, ch chan<- prometheus.Metric) error {
 	var queryTemplate string
 	switch {
 	case instance.version.GE(semver.MustParse("17.0.0")):

@@ -30,7 +30,7 @@ func TestPGStatUserTablesCollector(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db}
+	inst := &Instance{db: db}
 
 	lastVacuumTime, err := time.Parse("2006-01-02Z", "2023-06-02Z")
 	if err != nil {
@@ -152,7 +152,7 @@ func TestPGStatUserTablesCollectorNullValues(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db}
+	inst := &Instance{db: db}
 
 	columns := []string{
 		"datname",

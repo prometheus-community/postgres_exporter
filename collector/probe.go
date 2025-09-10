@@ -26,7 +26,7 @@ type ProbeCollector struct {
 	registry   *prometheus.Registry
 	collectors map[string]Collector
 	logger     *slog.Logger
-	instance   *instance
+	instance   *Instance
 }
 
 func NewProbeCollector(logger *slog.Logger, excludeDatabases []string, registry *prometheus.Registry, dsn config.DSN) (*ProbeCollector, error) {
@@ -57,7 +57,7 @@ func NewProbeCollector(logger *slog.Logger, excludeDatabases []string, registry 
 		}
 	}
 
-	instance, err := newInstance(dsn.GetConnectionString())
+	instance, err := NewInstance(dsn.GetConnectionString())
 	if err != nil {
 		return nil, err
 	}

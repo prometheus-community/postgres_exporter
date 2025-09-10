@@ -91,7 +91,7 @@ var (
 
 // Update implements Collector
 // It is called by the Prometheus registry when collecting metrics.
-func (c BuffercacheSummaryCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+func (c BuffercacheSummaryCollector) Update(ctx context.Context, instance *Instance, ch chan<- prometheus.Metric) error {
 	// pg_buffercache_summary is only in v16, and we don't need support for earlier currently.
 	if !instance.version.GE(semver.MustParse("16.0.0")) {
 		return nil

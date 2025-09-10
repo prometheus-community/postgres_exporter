@@ -30,7 +30,7 @@ func TestBuffercacheSummaryCollector(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db, version: semver.MustParse("16.0.0")}
+	inst := &Instance{db: db, version: semver.MustParse("16.0.0")}
 
 	columns := []string{
 		"buffers_used",

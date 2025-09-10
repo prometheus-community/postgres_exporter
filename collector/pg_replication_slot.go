@@ -108,7 +108,7 @@ var (
 	FROM pg_replication_slots;`
 )
 
-func (PGReplicationSlotCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+func (PGReplicationSlotCollector) Update(ctx context.Context, instance *Instance, ch chan<- prometheus.Metric) error {
 	query := pgReplicationSlotQuery
 	abovePG13 := instance.version.GTE(semver.MustParse("13.0.0"))
 	if abovePG13 {

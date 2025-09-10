@@ -21,14 +21,15 @@ import (
 	"github.com/blang/semver/v4"
 )
 
-type instance struct {
+type Instance struct {
 	dsn     string
 	db      *sql.DB
 	version semver.Version
+	closeDB bool // whether we should close the connection on Close()
 }
 
-func newInstance(dsn string) (*instance, error) {
-	i := &instance{
+func NewInstance(dsn string) (*Instance, error) {
+	i := &Instance{
 		dsn: dsn,
 	}
 
@@ -44,13 +45,13 @@ func newInstance(dsn string) (*instance, error) {
 }
 
 // copy returns a copy of the instance.
-func (i *instance) copy() *instance {
-	return &instance{
+func (i *Instance) copy() *Instance {
+	return &Instance{
 		dsn: i.dsn,
 	}
 }
 
-func (i *instance) setup() error {
+func (i *Instance) setup() error {
 	db, err := sql.Open("postgres", i.dsn)
 	if err != nil {
 		return err
@@ -58,6 +59,7 @@ func (i *instance) setup() error {
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 	i.db = db
+	i.closeDB = true // we created this connection, so we should close it
 
 	version, err := queryVersion(i.db)
 	if err != nil {
@@ -68,12 +70,28 @@ func (i *instance) setup() error {
 	return nil
 }
 
-func (i *instance) getDB() *sql.DB {
+// SetupWithConnection sets up the instance with an existing database connection.
+func (i *Instance) SetupWithConnection(db *sql.DB) error {
+	i.db = db
+	i.closeDB = false // we're borrowing this connection, don't close it
+
+	version, err := queryVersion(i.db)
+	if err != nil {
+		return fmt.Errorf("error querying postgresql version: %w", err)
+	}
+	i.version = version
+	return nil
+}
+
+func (i *Instance) getDB() *sql.DB {
 	return i.db
 }
 
-func (i *instance) Close() error {
-	return i.db.Close()
+func (i *Instance) Close() error {
+	if i.closeDB {
+		return i.db.Close()
+	}
+	return nil
 }
 
 // Regex used to get the "short-version" from the postgres version field.
@@ -103,4 +121,20 @@ func queryVersion(db *sql.DB) (semver.Version, error) {
 		return semver.ParseTolerant(submatches[1])
 	}
 	return semver.Version{}, fmt.Errorf("could not parse version from %q", version)
+}
+
+// InstanceFactory creates instances for collectors to use
+type InstanceFactory func() (*Instance, error)
+
+// InstanceFactoryFromTemplate creates a factory that copies from a template instance
+// and creates a new database connection for each call
+func InstanceFactoryFromTemplate(template *Instance) InstanceFactory {
+	return func() (*Instance, error) {
+		inst := template.copy()
+		err := inst.setup() // Creates new connection, sets closeDB=true
+		if err != nil {
+			return nil, err
+		}
+		return inst, nil
+	}
 }

@@ -29,7 +29,7 @@ func TestPGLocksCollector(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db}
+	inst := &Instance{db: db}
 
 	rows := sqlmock.NewRows([]string{"datname", "mode", "count"}).
 		AddRow("test", "exclusivelock", 42)

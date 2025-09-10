@@ -15,9 +15,11 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus-community/postgres_exporter/collector"
@@ -31,6 +33,59 @@ import (
 	"github.com/prometheus/exporter-toolkit/web"
 	"github.com/prometheus/exporter-toolkit/web/kingpinflag"
 )
+
+func registerPostgresCollector(dsn string, exporter *Exporter, logger *slog.Logger, excludedDatabases []string, scrapeTimeout time.Duration, concurrentScrape bool) {
+	if dsn == "" {
+		return
+	}
+
+	var factory collector.InstanceFactory
+
+	if concurrentScrape {
+		// Original behavior: dedicated instance for collector, creates new connection per scrape
+		template, err := collector.NewInstance(dsn)
+		if err != nil {
+			logger.Warn("Failed to create template instance", "err", err.Error())
+			return
+		}
+		factory = collector.InstanceFactoryFromTemplate(template)
+	} else {
+		// New optimized behavior: share connection from server with resilience
+		factory = func() (*collector.Instance, error) {
+			server, err := exporter.servers.GetServer(dsn)
+			if err != nil {
+				return nil, err
+			}
+
+			inst, err := collector.NewInstance(dsn)
+			if err != nil {
+				return nil, err
+			}
+
+			err = inst.SetupWithConnection(server.db)
+			if err != nil {
+				return nil, err
+			}
+
+			return inst, nil
+		}
+	}
+
+	// Create collector with factory
+	pe, err := collector.NewPostgresCollector(
+		logger,
+		excludedDatabases,
+		factory,
+		[]string{},
+		collector.WithTimeout(scrapeTimeout),
+	)
+	if err != nil {
+		logger.Warn("Failed to create PostgresCollector", "err", err.Error())
+		return
+	}
+
+	prometheus.MustRegister(pe)
+}
 
 var (
 	c = config.Handler{
@@ -50,6 +105,7 @@ var (
 	includeDatabases       = kingpin.Flag("include-databases", "A list of databases to include when autoDiscoverDatabases is enabled (DEPRECATED)").Default("").Envar("PG_EXPORTER_INCLUDE_DATABASES").String()
 	metricPrefix           = kingpin.Flag("metric-prefix", "A metric prefix can be used to have non-default (not \"pg\") prefixes for each of the metrics").Default("pg").Envar("PG_EXPORTER_METRIC_PREFIX").String()
 	scrapeTimeout          = kingpin.Flag("scrape-timeout", "Maximum time for a scrape to complete before timing out (0 = no timeout)").Default("0").Envar("PG_EXPORTER_SCRAPE_TIMEOUT").Duration()
+	concurrentScrape       = kingpin.Flag("concurrent-scrape", "Use dedicated instance for collector allowing concurrent scrapes (default: true for backward compatibility)").Default("true").Envar("PG_EXPORTER_CONCURRENT_SCRAPE").Bool()
 	logger                 = promslog.NewNopLogger()
 )
 
@@ -133,18 +189,7 @@ func main() {
 		dsn = dsns[0]
 	}
 
-	pe, err := collector.NewPostgresCollector(
-		logger,
-		excludedDatabases,
-		dsn,
-		[]string{},
-		collector.WithTimeout(*scrapeTimeout),
-	)
-	if err != nil {
-		logger.Warn("Failed to create PostgresCollector", "err", err.Error())
-	} else {
-		prometheus.MustRegister(pe)
-	}
+	registerPostgresCollector(dsn, exporter, logger, excludedDatabases, *scrapeTimeout, *concurrentScrape)
 
 	http.Handle(*metricsPath, promhttp.Handler())
 

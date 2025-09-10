@@ -29,7 +29,7 @@ func TestPgWALCollector(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db}
+	inst := &Instance{db: db}
 
 	columns := []string{"segments", "size"}
 	rows := sqlmock.NewRows(columns).

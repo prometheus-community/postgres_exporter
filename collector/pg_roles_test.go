@@ -29,7 +29,7 @@ func TestPGRolesCollector(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db}
+	inst := &Instance{db: db}
 
 	mock.ExpectQuery(sanitizeQuery(pgRolesConnectionLimitsQuery)).WillReturnRows(sqlmock.NewRows([]string{"rolname", "rolconnlimit"}).
 		AddRow("postgres", 15))

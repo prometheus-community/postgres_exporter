@@ -119,7 +119,7 @@ receive_start_tli,
 	`
 )
 
-func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *Instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
 	hasFlushedLSNRows, err := db.QueryContext(ctx, pgStatWalColumnQuery)
 	if err != nil {

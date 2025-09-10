@@ -30,7 +30,7 @@ func TestPGStatBGWriterCollector(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db}
+	inst := &Instance{db: db}
 
 	columns := []string{
 		"checkpoints_timed",
@@ -96,7 +96,7 @@ func TestPGStatBGWriterCollectorNullValues(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db}
+	inst := &Instance{db: db}
 
 	columns := []string{
 		"checkpoints_timed",
