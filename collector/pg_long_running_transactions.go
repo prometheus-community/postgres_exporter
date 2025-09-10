@@ -56,8 +56,7 @@ var (
 FROM pg_catalog.pg_stat_activity
 WHERE state IS DISTINCT FROM 'idle'
 AND query NOT LIKE 'autovacuum:%'
-AND pg_stat_activity.xact_start IS NOT NULL
-AND pid <> pg_backend_pid();
+AND pg_stat_activity.xact_start IS NOT NULL;
 	`
 )
 

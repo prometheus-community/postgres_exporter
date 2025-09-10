@@ -142,7 +142,6 @@ var queryOverrides = map[string][]OverrideQuery{
 					count(*) AS count,
 					MAX(EXTRACT(EPOCH FROM now() - xact_start))::float AS max_tx_duration
 				FROM pg_stat_activity
-				WHERE pid <> pg_backend_pid()
 				GROUP BY datname,state,usename,application_name,backend_type,wait_event_type,wait_event) AS tmp2
 				ON tmp.state = tmp2.state AND pg_database.datname = tmp2.datname
 			`,
@@ -157,9 +156,7 @@ var queryOverrides = map[string][]OverrideQuery{
 				application_name,
 				COALESCE(count(*),0) AS count,
 				COALESCE(MAX(EXTRACT(EPOCH FROM now() - xact_start))::float,0) AS max_tx_duration
-			FROM pg_stat_activity
-			WHERE procpid <> pg_backend_pid()
-			GROUP BY datname,usename,application_name
+			FROM pg_stat_activity GROUP BY datname,usename,application_name
 			`,
 		},
 	},
