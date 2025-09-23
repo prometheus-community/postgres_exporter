@@ -1,3 +1,23 @@
+## main / (unreleased)
+
+* [CHANGE] ...
+* [FEATURE] ...
+* [ENHANCEMENT] ...
+* [BUGFIX] ...
+
+## 0.18.0 / 2025-09-23
+
+* [FEATURE] Add `stat_progress_vacuum` collector by @ianbibby
+* [FEATURE] Add `buffercache_summary` collector by @sfc-gh-pnuttall
+* [FEATURE] `stat_statements`: export query itself together with `queryId` by @Delorien84
+* [ENHANCEMENT] Update Go version by @SuperQ
+* [ENHANCEMENT] Improve error handling for `Server.Scrape` by @BoweFlex
+* [ENHANCEMENT] `stat_user_tables`: record table-only size bytes in addition to the total size bytes by @Sticksman
+* [ENHANCEMENT] (chore) Fix a typo and use `slices.Contains` by @cristiangreco
+* [ENHANCEMENT] Update mixin to latest changes from `grafana/postgres_exporter` by @cristiangreco, @gaantunes, @v-zhuravlev and @mshahzeb
+* [ENHANCEMENT] Exclude the metrics fetching session's data from pg_stat_activity by @kmoppel
+* [BUGFIX] Ensure database connections are always closed by @cristiangreco and @dehaansa
+
 ## 0.17.1 / 2025-02-26
 
 * [BUGFIX] Fix: Handle incoming labels with invalid UTF-8 #1131
