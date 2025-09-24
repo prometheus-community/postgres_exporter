@@ -10,7 +10,6 @@
 * [FEATURE] Add `stat_progress_vacuum` collector by @ianbibby
 * [FEATURE] Add `buffercache_summary` collector by @sfc-gh-pnuttall
 * [FEATURE] `stat_statements`: export query itself together with `queryId` by @Delorien84
-* [ENHANCEMENT] Update Go version by @SuperQ
 * [ENHANCEMENT] Improve error handling for `Server.Scrape` by @BoweFlex
 * [ENHANCEMENT] `stat_user_tables`: record table-only size bytes in addition to the total size bytes by @Sticksman
 * [ENHANCEMENT] (chore) Fix a typo and use `slices.Contains` by @cristiangreco
