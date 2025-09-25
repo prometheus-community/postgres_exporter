@@ -5,7 +5,7 @@
 * [ENHANCEMENT] ...
 * [BUGFIX] ...
 
-## 0.18.0 / 2025-09-23
+## 0.18.0 / 2025-09-25
 
 * [FEATURE] Add `stat_progress_vacuum` collector by @ianbibby in https://github.com/prometheus-community/postgres_exporter/pull/1141
 * [FEATURE] Add `buffercache_summary` collector by @sfc-gh-pnuttall in https://github.com/prometheus-community/postgres_exporter/pull/1165
