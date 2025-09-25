@@ -108,7 +108,7 @@ var (
 		status,
 		(receive_start_lsn- '0/0') %% (2^52)::bigint as receive_start_lsn,
 		%s
-receive_start_tli,
+		receive_start_tli,
 		received_tli,
 		extract(epoch from last_msg_send_time) as last_msg_send_time,
 		extract(epoch from last_msg_receipt_time) as last_msg_receipt_time,
@@ -147,7 +147,7 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 		var lastMsgSendTime, lastMsgReceiptTime, latestEndTime sql.NullFloat64
 
 		if hasFlushedLSN {
-			if err := rows.Scan(&upstreamHost, &slotName, &status, &receiveStartLsn, &receiveStartTli, &flushedLsn, &receivedTli, &lastMsgSendTime, &lastMsgReceiptTime, &latestEndLsn, &latestEndTime, &upstreamNode); err != nil {
+			if err := rows.Scan(&upstreamHost, &slotName, &status, &receiveStartLsn, &flushedLsn, &receiveStartTli, &receivedTli, &lastMsgSendTime, &lastMsgReceiptTime, &latestEndLsn, &latestEndTime, &upstreamNode); err != nil {
 				return err
 			}
 		} else {
@@ -209,12 +209,6 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 			float64(receiveStartLsn.Int64),
 			labels...)
 
-		ch <- prometheus.MustNewConstMetric(
-			statWalReceiverReceiveStartTli,
-			prometheus.GaugeValue,
-			float64(receiveStartTli.Int64),
-			labels...)
-
 		if hasFlushedLSN {
 			ch <- prometheus.MustNewConstMetric(
 				statWalReceiverFlushedLSN,
@@ -222,6 +216,12 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 				float64(flushedLsn.Int64),
 				labels...)
 		}
+
+		ch <- prometheus.MustNewConstMetric(
+			statWalReceiverReceiveStartTli,
+			prometheus.GaugeValue,
+			float64(receiveStartTli.Int64),
+			labels...)
 
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverReceivedTli,
