@@ -45,6 +45,10 @@ func TestLoadBadConfigs(t *testing.T) {
 			input: "testdata/config-bad-extra-field.yaml",
 			want:  "error parsing config file \"testdata/config-bad-extra-field.yaml\": yaml: unmarshal errors:\n  line 8: field doesNotExist not found in type config.AuthModule",
 		},
+		{
+			input: "testdata/config-bad-timeout-duration.yaml",
+			want:  "error parsing config file \"testdata/config-bad-timeout-duration.yaml\": yaml: unmarshal errors:\n  line 10: cannot unmarshal !!str `not a time` into time.Duration",
+		},
 	}
 
 	for _, test := range tests {

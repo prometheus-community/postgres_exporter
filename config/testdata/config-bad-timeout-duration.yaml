@@ -7,6 +7,4 @@ auth_modules:
     options:
       sslmode: disable
 timeouts:
-  default: 5s
-  collectors:
-    example: 10s
+  default: not a time
