@@ -14,11 +14,12 @@ jobs:
     strategy:
       matrix:
         postgresql-image:
-          - postgres:10
-          - postgres:11
-          - postgres:12
           - postgres:13
           - postgres:14
+          - postgres:15
+          - postgres:16
+          - postgres:17
+          - postgres:18
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
