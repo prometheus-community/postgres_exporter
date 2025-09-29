@@ -5,6 +5,11 @@
 * [ENHANCEMENT] ...
 * [BUGFIX] ...
 
+## 0.18.1 / 2025-09-29
+
+* [BUGFIX] Fix swapped `flushedLsn` and `receiveStartTli` for `wal_receiver` collector by @spantaleev in https://github.com/prometheus-community/postgres_exporter/pull/1198
+* [BUGFIX] Fix superfluous semicolon breaking query in `process_idle` by @sysadmind in https://github.com/prometheus-community/postgres_exporter/pull/1197 and https://github.com/prometheus-community/postgres_exporter/pull/1201
+
 ## 0.18.0 / 2025-09-25
 
 * [FEATURE] Add `stat_progress_vacuum` collector by @ianbibby in https://github.com/prometheus-community/postgres_exporter/pull/1141
