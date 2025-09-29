@@ -1,8 +1,6 @@
 module github.com/prometheus-community/postgres_exporter
 
-go 1.23.0
-
-toolchain go1.24.1
+go 1.24.0
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
