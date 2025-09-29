@@ -56,7 +56,7 @@ func (PGProcessIdleCollector) Update(ctx context.Context, instance *instance, ch
 				COUNT(*) AS process_idle_seconds_count
 				FROM pg_stat_activity
 				WHERE state ~ '^idle'
-				AND pid <> pg_backend_pid();
+				AND pid <> pg_backend_pid()
 				GROUP BY state, application_name
 			),
 			buckets AS (
