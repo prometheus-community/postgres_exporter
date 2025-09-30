@@ -7,7 +7,7 @@
 
 Prometheus exporter for PostgreSQL server metrics.
 
-CI Tested PostgreSQL versions: `11`, `12`, `13`, `14`, `15`, `16`, `17`.
+CI Tested PostgreSQL versions: `13`, `14`, `15`, `16`, `17`.
 
 ## Quick Start
 This package is available for Docker:
