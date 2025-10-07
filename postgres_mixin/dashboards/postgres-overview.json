@@ -115,7 +115,7 @@
             "uid": "$datasource"
           },
           "dsType": "prometheus",
-          "expr": "sum(irate(pg_stat_database_xact_commit{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) + sum(irate(pg_stat_database_xact_rollback{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
+          "expr": "sum(irate(pg_stat_database_xact_commit{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\",database_branch_id=~\"$branch\"}[$__rate_interval])) + sum(irate(pg_stat_database_xact_rollback{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\",database_branch_id=~\"$branch\"}[$__rate_interval]))",
           "format": "time_series",
           "groupBy": [
             {
@@ -258,7 +258,7 @@
             "uid": "$datasource"
           },
           "dsType": "prometheus",
-          "expr": "sum(irate(pg_stat_database_tup_fetched{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
+          "expr": "sum(irate(pg_stat_database_tup_fetched{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\",database_branch_id=~\"$branch\"}[$__rate_interval]))",
           "format": "time_series",
           "groupBy": [
             {
@@ -315,7 +315,7 @@
             "uid": "$datasource"
           },
           "dsType": "prometheus",
-          "expr": "sum(irate(pg_stat_database_tup_returned{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
+          "expr": "sum(irate(pg_stat_database_tup_returned{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\",database_branch_id=~\"$branch\"}[$__rate_interval]))",
           "format": "time_series",
           "groupBy": [
             {
@@ -372,7 +372,7 @@
             "uid": "$datasource"
           },
           "dsType": "prometheus",
-          "expr": "sum(irate(pg_stat_database_tup_inserted{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
+          "expr": "sum(irate(pg_stat_database_tup_inserted{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\",database_branch_id=~\"$branch\"}[$__rate_interval]))",
           "format": "time_series",
           "groupBy": [
             {
@@ -429,7 +429,7 @@
             "uid": "$datasource"
           },
           "dsType": "prometheus",
-          "expr": "sum(irate(pg_stat_database_tup_updated{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
+          "expr": "sum(irate(pg_stat_database_tup_updated{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\",database_branch_id=~\"$branch\"}[$__rate_interval]))",
           "format": "time_series",
           "groupBy": [
             {
@@ -486,7 +486,7 @@
             "uid": "$datasource"
           },
           "dsType": "prometheus",
-          "expr": "sum(irate(pg_stat_database_tup_deleted{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
+          "expr": "sum(irate(pg_stat_database_tup_deleted{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\",database_branch_id=~\"$branch\"}[$__rate_interval]))",
           "format": "time_series",
           "groupBy": [
             {
@@ -631,7 +631,7 @@
             "uid": "$datasource"
           },
           "dsType": "prometheus",
-          "expr": "irate(pg_stat_bgwriter_buffers_alloc_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
+          "expr": "irate(pg_stat_bgwriter_buffers_alloc_total{job=~\"$job\",instance=~\"$instance\",database_branch_id=~\"$branch\"}[$__rate_interval])",
           "format": "time_series",
           "groupBy": [
             {
@@ -686,7 +686,7 @@
             "uid": "$datasource"
           },
           "dsType": "prometheus",
-          "expr": "irate(pg_stat_bgwriter_buffers_backend_fsync_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
+          "expr": "irate(pg_stat_bgwriter_buffers_backend_fsync_total{job=~\"$job\",instance=~\"$instance\",database_branch_id=~\"$branch\"}[$__rate_interval])",
           "format": "time_series",
           "groupBy": [
             {
@@ -741,7 +741,7 @@
             "uid": "$datasource"
           },
           "dsType": "prometheus",
-          "expr": "irate(pg_stat_bgwriter_buffers_backend_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
+          "expr": "irate(pg_stat_bgwriter_buffers_backend_total{job=~\"$job\",instance=~\"$instance\",database_branch_id=~\"$branch\"}[$__rate_interval])",
           "format": "time_series",
           "groupBy": [
             {
@@ -796,7 +796,7 @@
             "uid": "$datasource"
           },
           "dsType": "prometheus",
-          "expr": "irate(pg_stat_bgwriter_buffers_clean_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
+          "expr": "irate(pg_stat_bgwriter_buffers_clean_total{job=~\"$job\",instance=~\"$instance\",database_branch_id=~\"$branch\"}[$__rate_interval])",
           "format": "time_series",
           "groupBy": [
             {
@@ -851,7 +851,7 @@
             "uid": "$datasource"
           },
           "dsType": "prometheus",
-          "expr": "irate(pg_stat_bgwriter_buffers_checkpoint_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])",
+          "expr": "irate(pg_stat_bgwriter_buffers_checkpoint_total{job=~\"$job\",instance=~\"$instance\",database_branch_id=~\"$branch\"}[$__rate_interval])",
           "format": "time_series",
           "groupBy": [
             {
@@ -1007,7 +1007,7 @@
             "uid": "$datasource"
           },
           "dsType": "prometheus",
-          "expr": "sum(pg_stat_database_deadlocks{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"})",
+          "expr": "sum(pg_stat_database_deadlocks{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\",database_branch_id=~\"$branch\"})",
           "format": "time_series",
           "groupBy": [
             {
@@ -1064,7 +1064,7 @@
           },
           "dsType": "prometheus",
           "editorMode": "code",
-          "expr": "sum(pg_stat_database_conflicts{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"})",
+          "expr": "sum(pg_stat_database_conflicts{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\",database_branch_id=~\"$branch\"})",
           "format": "time_series",
           "groupBy": [
             {
@@ -1203,7 +1203,7 @@
           "datasource": {
             "uid": "$datasource"
           },
-          "expr": "round(sum by (datname) (rate(pg_stat_database_blks_hit{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) / (sum by (datname)(rate(pg_stat_database_blks_hit{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) + sum by (datname)(rate(pg_stat_database_blks_read{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])))*100,0.001)",
+          "expr": "round(sum by (datname) (rate(pg_stat_database_blks_hit{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\",database_branch_id=~\"$branch\"}[$__rate_interval])) / (sum by (datname)(rate(pg_stat_database_blks_hit{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\",database_branch_id=~\"$branch\"}[$__rate_interval])) + sum by (datname)(rate(pg_stat_database_blks_read{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\",database_branch_id=~\"$branch\"}[$__rate_interval])))*100,0.001)",
           "format": "time_series",
           "legendFormat": "{{datname}} - cache hit rate",
           "refId": "A",
@@ -1296,7 +1296,7 @@
           "datasource": {
             "uid": "$datasource"
           },
-          "expr": "pg_stat_database_numbackends{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\"}",
+          "expr": "pg_stat_database_numbackends{datname=~\"$db\",job=~\"$job\",instance=~\"$instance\",database_branch_id=~\"$branch\"}",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{datname}} - {{__name__}}",
@@ -1400,10 +1400,44 @@
       },
       {
         "allValue": ".+",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
         "datasource": {
           "uid": "$datasource"
         },
-        "definition": "label_values(pg_stat_database_tup_fetched{job=~\"$job\",instance=~\"$instance\",datname!~\"template.*|postgres\"},datname)",
+        "definition": "label_values(pg_up{job=~\"$job\"},database_branch_id)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Branch ID",
+        "multi": true,
+        "name": "branch",
+        "options": [],
+        "query": {
+          "query": "label_values(pg_up{job=~\"$job\"},database_branch_id)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": ".+",
+        "datasource": {
+          "uid": "$datasource"
+        },
+        "definition": "label_values(pg_stat_database_tup_fetched{job=~\"$job\",instance=~\"$instance\",database_branch_id=~\"$branch\",datname!~\"template.*|postgres\"},datname)",
         "hide": 0,
         "includeAll": true,
         "label": "Database",
@@ -1411,7 +1445,7 @@
         "name": "db",
         "options": [],
         "query": {
-          "query": "label_values(pg_stat_database_tup_fetched{job=~\"$job\",instance=~\"$instance\",datname!~\"template.*|postgres\"},datname)",
+          "query": "label_values(pg_stat_database_tup_fetched{job=~\"$job\",instance=~\"$instance\",database_branch_id=~\"$branch\",datname!~\"template.*|postgres\"},datname)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
