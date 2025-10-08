@@ -24,11 +24,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const statStatementsSubsystem = "stat_statements"
+const (
+	statStatementsSubsystem = "stat_statements"
+	defaultStatementLimit   = "100"
+)
 
 var (
 	includeQueryFlag    *bool = nil
 	statementLengthFlag *uint = nil
+	statementLimitFlag  *uint = nil
 )
 
 func init() {
@@ -47,12 +51,18 @@ func init() {
 		"Maximum length of the statement text.").
 		Default("120").
 		Uint()
+	statementLimitFlag = kingpin.Flag(
+		fmt.Sprint(collectorFlagPrefix, statStatementsSubsystem, ".limit"),
+		"Maximum number of statements to return.").
+		Default(defaultStatementLimit).
+		Uint()
 }
 
 type PGStatStatementsCollector struct {
 	log                   *slog.Logger
 	includeQueryStatement bool
 	statementLength       uint
+	statementLimit        uint
 }
 
 func NewPGStatStatementsCollector(config collectorConfig) (Collector, error) {
@@ -60,6 +70,7 @@ func NewPGStatStatementsCollector(config collectorConfig) (Collector, error) {
 		log:                   config.logger,
 		includeQueryStatement: *includeQueryFlag,
 		statementLength:       *statementLengthFlag,
+		statementLimit:        *statementLimitFlag,
 	}, nil
 }
 
@@ -126,9 +137,9 @@ const (
 			FROM pg_stat_statements
 		)
 	ORDER BY seconds_total DESC
-	LIMIT 100;`
+	LIMIT %s;`
 
-	pgStatStatementsNewQuery = `SELECT
+	pgStatStatementsQuery_PG13 = `SELECT
 		pg_get_userbyid(userid) as user,
 		pg_database.datname,
 		pg_stat_statements.queryid,
@@ -148,7 +159,7 @@ const (
 			FROM pg_stat_statements
 		)
 	ORDER BY seconds_total DESC
-	LIMIT 100;`
+	LIMIT %s;`
 
 	pgStatStatementsQuery_PG17 = `SELECT
 		pg_get_userbyid(userid) as user,
@@ -170,7 +181,7 @@ const (
 			FROM pg_stat_statements
 		)
 	ORDER BY seconds_total DESC
-	LIMIT 100;`
+	LIMIT %s;`
 )
 
 func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
@@ -179,20 +190,24 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 	case instance.version.GE(semver.MustParse("17.0.0")):
 		queryTemplate = pgStatStatementsQuery_PG17
 	case instance.version.GE(semver.MustParse("13.0.0")):
-		queryTemplate = pgStatStatementsNewQuery
+		queryTemplate = pgStatStatementsQuery_PG13
 	default:
 		queryTemplate = pgStatStatementsQuery
 	}
-	var querySelect = ""
+	querySelect := ""
 	if c.includeQueryStatement {
 		querySelect = fmt.Sprintf(pgStatStatementQuerySelect, c.statementLength)
 	}
-	query := fmt.Sprintf(queryTemplate, querySelect)
+	statementLimit := defaultStatementLimit
+	if c.statementLimit > 0 {
+		statementLimit = fmt.Sprintf("%d", c.statementLimit)
+	}
+	query := fmt.Sprintf(queryTemplate, querySelect, statementLimit)
 
 	db := instance.getDB()
 	rows, err := db.QueryContext(ctx, query)
 
-	var presentQueryIds = make(map[string]struct{})
+	presentQueryIds := make(map[string]struct{})
 
 	if err != nil {
 		return err
