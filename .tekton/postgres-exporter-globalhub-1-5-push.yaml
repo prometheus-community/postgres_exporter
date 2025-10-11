@@ -1,0 +1,71 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/stolostron/postgres_exporter?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    build.appstudio.openshift.io/build-nudge-files: "konflux-patch.sh"
+    pipelinesascode.tekton.dev/cancel-in-progress: "false"
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "release-2.14"
+  creationTimestamp: null
+  labels:
+    appstudio.openshift.io/application: release-globalhub-1-5
+    appstudio.openshift.io/component: postgres-exporter-globalhub-1-5
+    pipelines.appstudio.openshift.io/type: build
+  name: postgres-exporter-globalhub-1-5-on-push
+  namespace: acm-multicluster-glo-tenant
+spec:
+  params:
+  - name: git-url
+    value: '{{source_url}}'
+  - name: revision
+    value: '{{revision}}'
+  - name: output-image
+    value: quay.io/redhat-user-workloads/acm-multicluster-glo-tenant/postgres-exporter-globalhub-1-5:{{revision}}
+  - name: build-platforms
+    value:
+    - linux/x86_64
+    - linux/ppc64le
+    - linux/s390x
+    - linux/arm64
+  - name: dockerfile
+    value: Containerfile.konflux
+  - name: path-context
+    value: .
+  - name: build-source-image
+    value: "true"
+  - name: hermetic
+    value: "true"
+  - name: prefetch-input
+    value: '[ {"type": "gomod", "path": "."}, {"type": "gomod", "path": "./promu"} ]'
+  - name: send-slack-notification
+    value: "true"
+  - name: konflux-application-name
+    value: "release-globalhub-1-6"
+  - name: slack-webhook-url-secret-name
+    # See details: https://konflux.pages.redhat.com/docs/users/patterns/slack-notifications.html
+    value: "slack-notify-webhook"
+  - name: slack-webhook-url-secret-key
+    value: "slack-webhook-url"
+  - name: slack-member-id
+    # Will mention the user in the slack message when the pipeline run failed; this is not required.
+    # Please make sure replace the value with component owner's slack member id.
+    value: "S09JCE3DF9N" 
+  pipelineRef:
+    resolver: git
+    params:
+      - name: url
+        value: "https://github.com/stolostron/konflux-build-catalog.git"
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: pipelines/common.yaml
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-postgres-exporter-globalhub-1-5
+  workspaces:
+  - name: git-auth
+    secret:
+      secretName: '{{ git_auth_secret }}'
+status: {}
