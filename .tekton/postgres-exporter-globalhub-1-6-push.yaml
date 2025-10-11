@@ -41,6 +41,19 @@ spec:
     value: "true"
   - name: prefetch-input
     value: '[ {"type": "gomod", "path": "."}, {"type": "gomod", "path": "./promu"} ]'
+  - name: send-slack-notification
+    value: "true"
+  - name: konflux-application-name
+    value: "release-globalhub-1-6"
+  - name: slack-webhook-url-secret-name
+    # See details: https://konflux.pages.redhat.com/docs/users/patterns/slack-notifications.html
+    value: "slack-notify-webhook"
+  - name: slack-webhook-url-secret-key
+    value: "slack-webhook-url"
+  - name: slack-member-id
+    # Will mention the user in the slack message when the pipeline run failed; this is not required.
+    # Please make sure replace the value with component owner's slack member id.
+    value: "S09JCE3DF9N" 
   pipelineRef:
     resolver: git
     params:
