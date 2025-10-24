@@ -27,9 +27,10 @@ type ProbeCollector struct {
 	collectors map[string]Collector
 	logger     *slog.Logger
 	instance   *instance
+	timeouts   config.Timeouts
 }
 
-func NewProbeCollector(logger *slog.Logger, excludeDatabases []string, registry *prometheus.Registry, dsn config.DSN) (*ProbeCollector, error) {
+func NewProbeCollector(logger *slog.Logger, excludeDatabases []string, registry *prometheus.Registry, dsn config.DSN, timeouts config.Timeouts) (*ProbeCollector, error) {
 	collectors := make(map[string]Collector)
 	initiatedCollectorsMtx.Lock()
 	defer initiatedCollectorsMtx.Unlock()
@@ -57,6 +58,12 @@ func NewProbeCollector(logger *slog.Logger, excludeDatabases []string, registry 
 		}
 	}
 
+	for name := range timeouts.Collectors {
+		if _, ok := collectors[name]; !ok {
+			logger.Warn("timeout set for non-enabled collector", "collector", name)
+		}
+	}
+
 	instance, err := newInstance(dsn.GetConnectionString())
 	if err != nil {
 		return nil, err
@@ -67,6 +74,7 @@ func NewProbeCollector(logger *slog.Logger, excludeDatabases []string, registry 
 		collectors: collectors,
 		logger:     logger,
 		instance:   instance,
+		timeouts:   timeouts,
 	}, nil
 }
 
@@ -86,8 +94,10 @@ func (pc *ProbeCollector) Collect(ch chan<- prometheus.Metric) {
 	wg.Add(len(pc.collectors))
 	for name, c := range pc.collectors {
 		go func(name string, c Collector) {
-			execute(context.TODO(), name, c, pc.instance, ch, pc.logger)
-			wg.Done()
+			ctx, cancel := pc.timeouts.Context(context.TODO(), name)
+			defer cancel()
+			defer wg.Done()
+			execute(ctx, name, c, pc.instance, ch, pc.logger)
 		}(name, c)
 	}
 	wg.Wait()
