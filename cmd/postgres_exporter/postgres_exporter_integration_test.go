@@ -15,7 +15,6 @@
 // a lot of additional work to keep the external docker environment they require
 // working.
 //go:build integration
-// +build integration
 
 package main
 
