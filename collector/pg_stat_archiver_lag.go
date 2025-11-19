@@ -46,7 +46,7 @@ var (
 	statArchiverLagQuery = `
     SELECT
       last_archived_wal,
-      pg_current_wal_lsn() AS current_lsn
+      CASE WHEN pg_is_in_recovery() THEN NULL ELSE pg_current_wal_lsn() END AS current_lsn
     FROM pg_stat_archiver
     WHERE last_archived_wal IS NOT NULL
       AND last_archived_wal != ''
