@@ -92,7 +92,8 @@ type PostgresCollector struct {
 	Collectors map[string]Collector
 	logger     *slog.Logger
 
-	instance *instance
+	instance          *instance
+	CollectionTimeout time.Duration
 }
 
 type Option func(*PostgresCollector) error
@@ -158,6 +159,17 @@ func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn st
 	return p, nil
 }
 
+func CollectionTimeout(s string) Option {
+	return func(e *PostgresCollector) error {
+		duration, err := time.ParseDuration(s)
+		if err != nil {
+			return err
+		}
+		e.CollectionTimeout = duration
+		return nil
+	}
+}
+
 // Describe implements the prometheus.Collector interface.
 func (p PostgresCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- scrapeDurationDesc
@@ -166,8 +178,8 @@ func (p PostgresCollector) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements the prometheus.Collector interface.
 func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
-	ctx := context.TODO()
-
+	ctx, cancel := context.WithTimeout(context.Background(), p.CollectionTimeout)
+	defer cancel()
 	// copy the instance so that concurrent scrapes have independent instances
 	inst := p.instance.copy()
 
