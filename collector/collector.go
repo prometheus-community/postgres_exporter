@@ -178,8 +178,6 @@ func (p PostgresCollector) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements the prometheus.Collector interface.
 func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
-	ctx, cancel := context.WithTimeout(context.Background(), p.CollectionTimeout)
-	defer cancel()
 	// copy the instance so that concurrent scrapes have independent instances
 	inst := p.instance.copy()
 
@@ -190,6 +188,12 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 		p.logger.Error("Error opening connection to database", "err", err)
 		return
 	}
+	p.collectFromConnection(inst, ch)
+}
+
+func (p PostgresCollector) collectFromConnection(inst *instance, ch chan<- prometheus.Metric) {
+	ctx, cancel := context.WithTimeout(context.Background(), p.CollectionTimeout)
+	defer cancel()
 
 	wg := sync.WaitGroup{}
 	wg.Add(len(p.Collectors))
