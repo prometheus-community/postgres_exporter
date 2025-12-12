@@ -159,7 +159,7 @@ func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn st
 	return p, nil
 }
 
-func CollectionTimeout(s string) Option {
+func WithCollectionTimeout(s string) Option {
 	return func(e *PostgresCollector) error {
 		duration, err := time.ParseDuration(s)
 		if err != nil {

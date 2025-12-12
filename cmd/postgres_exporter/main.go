@@ -138,7 +138,7 @@ func main() {
 		excludedDatabases,
 		dsn,
 		[]string{},
-		collector.CollectionTimeout(*collectionTimeout))
+		collector.WithCollectionTimeout(*collectionTimeout))
 	if err != nil {
 		logger.Warn("Failed to create PostgresCollector", "err", err.Error())
 	} else {
