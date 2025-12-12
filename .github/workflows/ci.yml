@@ -1,0 +1,53 @@
+---
+name: CI
+on:
+  pull_request:
+  push:
+
+jobs:
+  test_go:
+    name: Go tests
+    runs-on: ubuntu-latest
+    container:
+      # Whenever the Go version is updated here, .promu.yml
+      # should also be updated.
+      image: quay.io/prometheus/golang-builder:1.25-base
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: prometheus/promci@443c7fc2397e946bc9f5029e313a9c3441b9b86d # v0.4.7
+      - uses: ./.github/promci/actions/setup_environment
+      - run: make test
+      - run: make GO_ONLY=1 SKIP_GOLANGCI_LINT=1
+  integration_tests:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Define Postgres versions to test against.
+        postgres_version: [13.22]
+        # postgres_version: [13.22, 14.19, 15.14, 16.10, 17.6]
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres_version }}
+        env:
+          POSTGRES_DB: circle_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test
+        # options: >-
+        #   --health-cmd="pg_isready -U postgres -d circle_test"
+        #   --health-interval=10s
+        #   --health-timeout=5s
+        #   --health-retries=5
+    container:
+      # Whenever the Go version is updated here, .promu.yml
+      # should also be updated.
+      image: quay.io/prometheus/golang-builder:1.25-base
+    env:
+      DATA_SOURCE_NAME: 'postgresql://postgres:test@postgres:5432/circle_test?sslmode=disable'
+      GOOPTS: '-v -tags integration'
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: prometheus/promci@443c7fc2397e946bc9f5029e313a9c3441b9b86d # v0.4.7
+      - uses: ./.github/promci/actions/setup_environment
+      - run: make build
+      - run: make test
