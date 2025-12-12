@@ -261,6 +261,7 @@ The following environment variables configure the exporter:
   It avoids connections stacking when the database answers too slowly
   (for instance if the database creates/drop a huge table and locks the tables)
   and will avoid exhausting the pool of connections of the database.
+  Value of `0` or less than `1ms` is considered invalid and will report an error.
 
 * `PG_EXPORTER_WEB_TELEMETRY_PATH`
   Path under which to expose metrics. Default is `/metrics`.

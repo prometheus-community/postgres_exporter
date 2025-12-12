@@ -165,6 +165,9 @@ func WithCollectionTimeout(s string) Option {
 		if err != nil {
 			return err
 		}
+		if duration < 1*time.Millisecond {
+			return errors.New("timeout must be greater than 1ms")
+		}
 		e.CollectionTimeout = duration
 		return nil
 	}
@@ -192,6 +195,7 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (p PostgresCollector) collectFromConnection(inst *instance, ch chan<- prometheus.Metric) {
+	// Eventually, connect this to the http scraping context
 	ctx, cancel := context.WithTimeout(context.Background(), p.CollectionTimeout)
 	defer cancel()
 
