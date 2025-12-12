@@ -24,8 +24,12 @@ jobs:
     strategy:
       matrix:
         # Define Postgres versions to test against.
-        postgres_version: [13.22]
-        # postgres_version: [13.22, 14.19, 15.14, 16.10, 17.6]
+        postgres_version:
+          - 13.22
+          - 14.19
+          - 15.14
+          - 16.10
+          - 17.6
     services:
       postgres:
         image: postgres:${{ matrix.postgres_version }}
@@ -51,3 +55,92 @@ jobs:
       - uses: ./.github/promci/actions/setup_environment
       - run: make build
       - run: make test
+
+
+  build:
+    name: Build Prometheus for common architectures
+    runs-on: ubuntu-latest
+    if: |
+      !(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+      &&
+      !(github.event_name == 'pull_request' && startsWith(github.event.pull_request.base.ref, 'release-'))
+      &&
+      !(github.event_name == 'push' && github.event.ref == 'refs/heads/main')
+      &&
+      !(github.event_name == 'push' && github.event.ref == 'refs/heads/master')
+    strategy:
+      matrix:
+        thread: [ 0, 1, 2 ]
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: prometheus/promci@443c7fc2397e946bc9f5029e313a9c3441b9b86d # v0.4.7
+      - uses: ./.github/promci/actions/build
+        with:
+          promu_opts: "-p linux/amd64 -p windows/amd64 -p linux/arm64 -p darwin/amd64 -p darwin/arm64 -p linux/386"
+          parallelism: 3
+          thread: ${{ matrix.thread }}
+
+  build_all:
+    name: Build Prometheus for all architectures
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+      ||
+      (github.event_name == 'pull_request' && startsWith(github.event.pull_request.base.ref, 'release-'))
+      ||
+      (github.event_name == 'push' && github.event.ref == 'refs/heads/main')
+      ||
+      (github.event_name == 'push' && github.event.ref == 'refs/heads/master')
+    strategy:
+      matrix:
+        thread: [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 ]
+
+    # Whenever the Go version is updated here, .promu.yml
+    # should also be updated.
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: prometheus/promci@443c7fc2397e946bc9f5029e313a9c3441b9b86d # v0.4.7
+      - uses: ./.github/promci/actions/build
+        with:
+          parallelism: 12
+          thread: ${{ matrix.thread }}
+
+  publish_main:
+    # https://github.com/prometheus/promci/blob/52c7012f5f0070d7281b8db4a119e21341d43c91/actions/publish_main/action.yml
+    name: Publish main branch artifacts
+    runs-on: ubuntu-latest
+    needs: [test_go, build_all]
+    if: |
+      (github.event_name == 'push' && github.event.ref == 'refs/heads/main')
+      ||
+      (github.event_name == 'push' && github.event.ref == 'refs/heads/master')
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: prometheus/promci@443c7fc2397e946bc9f5029e313a9c3441b9b86d # v0.4.7
+      - uses: ./.github/promci/actions/publish_main
+        with:
+          docker_hub_organization: prometheuscommunity
+          docker_hub_login: ${{ secrets.docker_hub_login }}
+          docker_hub_password: ${{ secrets.docker_hub_password }}
+          quay_io_organization: prometheuscommunity
+          quay_io_login: ${{ secrets.quay_io_login }}
+          quay_io_password: ${{ secrets.quay_io_password }}
+
+  publish_release:
+    name: Publish release artefacts
+    runs-on: ubuntu-latest
+    needs: [test_go, build_all]
+    if: |
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: prometheus/promci@443c7fc2397e946bc9f5029e313a9c3441b9b86d # v0.4.7
+      - uses: ./.github/promci/actions/publish_release
+        with:
+          docker_hub_organization: prometheuscommunity
+          docker_hub_login: ${{ secrets.docker_hub_login }}
+          docker_hub_password: ${{ secrets.docker_hub_password }}
+          quay_io_organization: prometheuscommunity
+          quay_io_login: ${{ secrets.quay_io_login }}
+          quay_io_password: ${{ secrets.quay_io_password }}
+          github_token: ${{ secrets.PROMBOT_GITHUB_TOKEN }}
