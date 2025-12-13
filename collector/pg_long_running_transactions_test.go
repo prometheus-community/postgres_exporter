@@ -61,3 +61,44 @@ func TestPGLongRunningTransactionsCollector(t *testing.T) {
 		t.Errorf("there were unfulfilled exceptions: %s", err)
 	}
 }
+
+func TestPGLongRunningTransactionsCollectorNull(t *testing.T) {
+	// Test when no long running transactions are present
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Error opening a stub db connection: %s", err)
+	}
+	defer db.Close()
+	inst := &instance{db: db}
+	columns := []string{
+		"transactions",
+		"age_in_seconds",
+	}
+	rows := sqlmock.NewRows(columns).
+		AddRow(0, nil)
+
+	mock.ExpectQuery(sanitizeQuery(longRunningTransactionsQuery)).WillReturnRows(rows)
+
+	ch := make(chan prometheus.Metric)
+	go func() {
+		defer close(ch)
+		c := PGLongRunningTransactionsCollector{}
+
+		if err := c.Update(context.Background(), inst, ch); err != nil {
+			t.Errorf("Error calling PGLongRunningTransactionsCollector.Update: %s", err)
+		}
+	}()
+	expected := []MetricResult{
+		{labels: labelMap{}, value: 0, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{}, value: 0, metricType: dto.MetricType_GAUGE},
+	}
+	convey.Convey("Metrics comparison", t, func() {
+		for _, expect := range expected {
+			m := readMetric(<-ch)
+			convey.So(expect, convey.ShouldResemble, m)
+		}
+	})
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled exceptions: %s", err)
+	}
+}
