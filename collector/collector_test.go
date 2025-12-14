@@ -124,6 +124,11 @@ func TestWithConnectionTimeout(t *testing.T) {
 		t.Errorf("elapsed time was %v, should be bigger than timeout=%v", elapsed, timeoutForQuery)
 	}
 
+	// Ensure we took more than timeout, but not too much
+	if elapsed >= timeoutForQuery+500*time.Millisecond {
+		t.Errorf("elapsed time was %v, should not be much bigger than timeout=%v", elapsed, timeoutForQuery)
+	}
+
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled exceptions: %s", err)
 	}
