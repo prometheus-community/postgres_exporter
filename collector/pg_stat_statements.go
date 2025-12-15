@@ -18,6 +18,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/blang/semver/v4"
@@ -30,9 +31,11 @@ const (
 )
 
 var (
-	includeQueryFlag    *bool = nil
-	statementLengthFlag *uint = nil
-	statementLimitFlag  *uint = nil
+	includeQueryFlag      *bool   = nil
+	statementLengthFlag   *uint   = nil
+	statementLimitFlag    *uint   = nil
+	excludedDatabasesFlag *string = nil
+	excludedUsersFlag     *string = nil
 )
 
 func init() {
@@ -56,6 +59,16 @@ func init() {
 		"Maximum number of statements to return.").
 		Default(defaultStatementLimit).
 		Uint()
+	excludedDatabasesFlag = kingpin.Flag(
+		fmt.Sprint(collectorFlagPrefix, statStatementsSubsystem, ".exclude_databases"),
+		"Comma-separated list of database names to exclude. (default: none)").
+		Default("").
+		String()
+	excludedUsersFlag = kingpin.Flag(
+		fmt.Sprint(collectorFlagPrefix, statStatementsSubsystem, ".exclude_users"),
+		"Comma-separated list of user names to exclude. (default: none)").
+		Default("").
+		String()
 }
 
 type PGStatStatementsCollector struct {
@@ -63,14 +76,36 @@ type PGStatStatementsCollector struct {
 	includeQueryStatement bool
 	statementLength       uint
 	statementLimit        uint
+	excludedDatabases     []string
+	excludedUsers         []string
 }
 
 func NewPGStatStatementsCollector(config collectorConfig) (Collector, error) {
+	var excludedDatabases []string
+	if *excludedDatabasesFlag != "" {
+		for db := range strings.SplitSeq(*excludedDatabasesFlag, ",") {
+			if trimmed := strings.TrimSpace(db); trimmed != "" {
+				excludedDatabases = append(excludedDatabases, trimmed)
+			}
+		}
+	}
+
+	var excludedUsers []string
+	if *excludedUsersFlag != "" {
+		for user := range strings.SplitSeq(*excludedUsersFlag, ",") {
+			if trimmed := strings.TrimSpace(user); trimmed != "" {
+				excludedUsers = append(excludedUsers, trimmed)
+			}
+		}
+	}
+
 	return &PGStatStatementsCollector{
 		log:                   config.logger,
 		includeQueryStatement: *includeQueryFlag,
 		statementLength:       *statementLengthFlag,
 		statementLimit:        *statementLimitFlag,
+		excludedDatabases:     excludedDatabases,
+		excludedUsers:         excludedUsers,
 	}, nil
 }
 
@@ -115,7 +150,9 @@ var (
 )
 
 const (
-	pgStatStatementQuerySelect = `LEFT(pg_stat_statements.query, %d) as query,`
+	pgStatStatementQuerySelect      = `LEFT(pg_stat_statements.query, %d) as query,`
+	pgStatStatementExcludeDatabases = `AND pg_database.datname NOT IN (%s) `
+	pgStatStatementExcludeUsers     = `AND pg_get_userbyid(userid) NOT IN (%s) `
 
 	pgStatStatementsQuery = `SELECT
 		pg_get_userbyid(userid) as user,
@@ -136,6 +173,7 @@ const (
 			WITHIN GROUP (ORDER BY total_time)
 			FROM pg_stat_statements
 		)
+		%s
 	ORDER BY seconds_total DESC
 	LIMIT %s;`
 
@@ -158,6 +196,7 @@ const (
 			WITHIN GROUP (ORDER BY total_exec_time)
 			FROM pg_stat_statements
 		)
+		%s
 	ORDER BY seconds_total DESC
 	LIMIT %s;`
 
@@ -180,6 +219,7 @@ const (
 			WITHIN GROUP (ORDER BY total_exec_time)
 			FROM pg_stat_statements
 		)
+		%s
 	ORDER BY seconds_total DESC
 	LIMIT %s;`
 )
@@ -198,11 +238,13 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 	if c.includeQueryStatement {
 		querySelect = fmt.Sprintf(pgStatStatementQuerySelect, c.statementLength)
 	}
+	databaseFilter := c.buildExcludedDatabasesClause()
+	userFilter := c.buildExcludedUsersClause()
 	statementLimit := defaultStatementLimit
 	if c.statementLimit > 0 {
 		statementLimit = fmt.Sprintf("%d", c.statementLimit)
 	}
-	query := fmt.Sprintf(queryTemplate, querySelect, statementLimit)
+	query := fmt.Sprintf(queryTemplate, querySelect, databaseFilter+userFilter, statementLimit)
 
 	db := instance.getDB()
 	rows, err := db.QueryContext(ctx, query)
@@ -318,4 +360,29 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 		return err
 	}
 	return nil
+}
+
+func (c PGStatStatementsCollector) buildExcludedDatabasesClause() string {
+	if len(c.excludedDatabases) == 0 {
+		return ""
+	}
+
+	databases := make([]string, 0, len(c.excludedDatabases))
+	for _, db := range c.excludedDatabases {
+		databases = append(databases, fmt.Sprintf("'%s'", strings.ReplaceAll(db, "'", "''")))
+	}
+
+	return fmt.Sprintf(pgStatStatementExcludeDatabases, strings.Join(databases, ", "))
+}
+
+func (c PGStatStatementsCollector) buildExcludedUsersClause() string {
+	if len(c.excludedUsers) == 0 {
+		return ""
+	}
+
+	users := make([]string, 0, len(c.excludedUsers))
+	for _, user := range c.excludedUsers {
+		users = append(users, fmt.Sprintf("'%s'", strings.ReplaceAll(user, "'", "''")))
+	}
+	return fmt.Sprintf(pgStatStatementExcludeUsers, strings.Join(users, ", "))
 }
