@@ -31,9 +31,9 @@ func TestPgWALCollector(t *testing.T) {
 
 	inst := &instance{db: db}
 
-	columns := []string{"segments", "size"}
+	columns := []string{"segments", "size", "lsn_location_bytes"}
 	rows := sqlmock.NewRows(columns).
-		AddRow(47, 788529152)
+		AddRow(47, 788529152, 123456789)
 	mock.ExpectQuery(sanitizeQuery(pgWALQuery)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -49,6 +49,7 @@ func TestPgWALCollector(t *testing.T) {
 	expected := []MetricResult{
 		{labels: labelMap{}, value: 47, metricType: dto.MetricType_GAUGE},
 		{labels: labelMap{}, value: 788529152, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{}, value: 123456789, metricType: dto.MetricType_GAUGE},
 	}
 
 	convey.Convey("Metrics comparison", t, func() {
