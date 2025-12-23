@@ -92,7 +92,8 @@ type PostgresCollector struct {
 	Collectors map[string]Collector
 	logger     *slog.Logger
 
-	instance *instance
+	instance          *instance
+	CollectionTimeout time.Duration
 }
 
 type Option func(*PostgresCollector) error
@@ -158,6 +159,20 @@ func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn st
 	return p, nil
 }
 
+func WithCollectionTimeout(s string) Option {
+	return func(e *PostgresCollector) error {
+		duration, err := time.ParseDuration(s)
+		if err != nil {
+			return err
+		}
+		if duration < 1*time.Millisecond {
+			return errors.New("timeout must be greater than 1ms")
+		}
+		e.CollectionTimeout = duration
+		return nil
+	}
+}
+
 // Describe implements the prometheus.Collector interface.
 func (p PostgresCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- scrapeDurationDesc
@@ -166,8 +181,6 @@ func (p PostgresCollector) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements the prometheus.Collector interface.
 func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
-	ctx := context.TODO()
-
 	// copy the instance so that concurrent scrapes have independent instances
 	inst := p.instance.copy()
 
@@ -178,6 +191,13 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 		p.logger.Error("Error opening connection to database", "err", err)
 		return
 	}
+	p.collectFromConnection(inst, ch)
+}
+
+func (p PostgresCollector) collectFromConnection(inst *instance, ch chan<- prometheus.Metric) {
+	// Eventually, connect this to the http scraping context
+	ctx, cancel := context.WithTimeout(context.Background(), p.CollectionTimeout)
+	defer cancel()
 
 	wg := sync.WaitGroup{}
 	wg.Add(len(p.Collectors))

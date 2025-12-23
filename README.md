@@ -258,6 +258,14 @@ The following environment variables configure the exporter:
 * `DATA_SOURCE_PASS_FILE`
   The same as above but reads the password from a file.
 
+* `PG_EXPORTER_COLLECTION_TIMEOUT`
+  Timeout duration to use when collecting the statistics, default to `1m`.
+  When the timeout is reached, the database connection will be dropped.
+  It avoids connections stacking when the database answers too slowly
+  (for instance if the database creates/drop a huge table and locks the tables)
+  and will avoid exhausting the pool of connections of the database.
+  Value of `0` or less than `1ms` is considered invalid and will report an error.
+
 * `PG_EXPORTER_WEB_TELEMETRY_PATH`
   Path under which to expose metrics. Default is `/metrics`.
 
