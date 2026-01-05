@@ -173,7 +173,7 @@ const (
 			WITHIN GROUP (ORDER BY total_time)
 			FROM pg_stat_statements
 		)
-		%s
+		%s %s
 	ORDER BY seconds_total DESC
 	LIMIT %s;`
 
@@ -196,7 +196,7 @@ const (
 			WITHIN GROUP (ORDER BY total_exec_time)
 			FROM pg_stat_statements
 		)
-		%s
+		%s %s
 	ORDER BY seconds_total DESC
 	LIMIT %s;`
 
@@ -219,7 +219,7 @@ const (
 			WITHIN GROUP (ORDER BY total_exec_time)
 			FROM pg_stat_statements
 		)
-		%s
+		%s %s
 	ORDER BY seconds_total DESC
 	LIMIT %s;`
 )
@@ -238,13 +238,13 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 	if c.includeQueryStatement {
 		querySelect = fmt.Sprintf(pgStatStatementQuerySelect, c.statementLength)
 	}
-	databaseFilter := c.buildExcludedDatabasesClause()
-	userFilter := c.buildExcludedUsersClause()
+	databaseFilter := c.buildExclusionClause(c.excludedDatabases, pgStatStatementExcludeDatabases)
+	userFilter := c.buildExclusionClause(c.excludedUsers, pgStatStatementExcludeUsers)
 	statementLimit := defaultStatementLimit
 	if c.statementLimit > 0 {
 		statementLimit = fmt.Sprintf("%d", c.statementLimit)
 	}
-	query := fmt.Sprintf(queryTemplate, querySelect, databaseFilter+userFilter, statementLimit)
+	query := fmt.Sprintf(queryTemplate, querySelect, databaseFilter, userFilter, statementLimit)
 
 	db := instance.getDB()
 	rows, err := db.QueryContext(ctx, query)
@@ -362,27 +362,15 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 	return nil
 }
 
-func (c PGStatStatementsCollector) buildExcludedDatabasesClause() string {
-	if len(c.excludedDatabases) == 0 {
+func (c PGStatStatementsCollector) buildExclusionClause(identifiers []string, clauseTemplate string) string {
+	if len(identifiers) == 0 {
 		return ""
 	}
 
-	databases := make([]string, 0, len(c.excludedDatabases))
-	for _, db := range c.excludedDatabases {
-		databases = append(databases, fmt.Sprintf("'%s'", strings.ReplaceAll(db, "'", "''")))
+	escaped := make([]string, 0, len(identifiers))
+	for _, identifier := range identifiers {
+		escaped = append(escaped, fmt.Sprintf("'%s'", strings.ReplaceAll(identifier, "'", "''")))
 	}
 
-	return fmt.Sprintf(pgStatStatementExcludeDatabases, strings.Join(databases, ", "))
-}
-
-func (c PGStatStatementsCollector) buildExcludedUsersClause() string {
-	if len(c.excludedUsers) == 0 {
-		return ""
-	}
-
-	users := make([]string, 0, len(c.excludedUsers))
-	for _, user := range c.excludedUsers {
-		users = append(users, fmt.Sprintf("'%s'", strings.ReplaceAll(user, "'", "''")))
-	}
-	return fmt.Sprintf(pgStatStatementExcludeUsers, strings.Join(users, ", "))
+	return fmt.Sprintf(clauseTemplate, strings.Join(escaped, ", "))
 }
