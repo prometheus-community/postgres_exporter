@@ -30,6 +30,7 @@ jobs:
           - 15.14
           - 16.10
           - 17.6
+          - 18.1
     services:
       postgres:
         image: postgres:${{ matrix.postgres_version }}
