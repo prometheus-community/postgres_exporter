@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"math"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -202,9 +203,23 @@ func loggableDSN(dsn string) string {
 	if err != nil {
 		return "could not parse DATA_SOURCE_NAME"
 	}
+
+	// If the DSN is not a URL it is expected to be in the `key1=value1 key2=value2` format
+	if pDSN.Scheme == "" {
+		re := regexp.MustCompile(`(\s?password=([^"\s]+|"[^"]+"))`)
+		stripped := re.ReplaceAllString(dsn, " password=PASSWORD_REMOVED")
+		return strings.TrimSpace(stripped)
+	}
+
 	// Blank user info if not nil
 	if pDSN.User != nil {
 		pDSN.User = url.UserPassword(pDSN.User.Username(), "PASSWORD_REMOVED")
+	}
+
+	// If the password is contained in a URL parameter, we should remove it there
+	if q, err := url.ParseQuery(pDSN.RawQuery); err == nil && q.Has("password") {
+		q.Set("password", "PASSWORD_REMOVED")
+		pDSN.RawQuery = q.Encode()
 	}
 
 	return pDSN.String()
