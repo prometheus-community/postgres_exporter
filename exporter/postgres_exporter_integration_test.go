@@ -16,7 +16,7 @@
 // working.
 //go:build integration
 
-package main
+package exporter
 
 import (
 	"fmt"

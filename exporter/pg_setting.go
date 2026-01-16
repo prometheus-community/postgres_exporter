@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package exporter
 
 import (
 	"fmt"
@@ -31,7 +31,7 @@ var (
 
 // Query the pg_settings view containing runtime variables
 func querySettings(ch chan<- prometheus.Metric, server *Server) error {
-	logger.Debug("Querying pg_setting view", "server", server)
+	server.logger.Debug("Querying pg_setting view", "server", server)
 
 	// pg_settings docs: https://www.postgresql.org/docs/current/static/view-pg-settings.html
 	//

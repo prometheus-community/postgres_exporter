@@ -1,4 +1,4 @@
-// Copyright 2021 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -23,6 +23,7 @@ import (
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus-community/postgres_exporter/collector"
 	"github.com/prometheus-community/postgres_exporter/config"
+	"github.com/prometheus-community/postgres_exporter/exporter"
 	"github.com/prometheus/client_golang/prometheus"
 	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -54,20 +55,8 @@ var (
 	logger                 = promslog.NewNopLogger()
 )
 
-// Metric name parts.
-const (
-	// Namespace for all metrics.
-	namespace = "pg"
-	// Subsystems.
-	exporter = "exporter"
-	// The name of the exporter.
-	exporterName = "postgres_exporter"
-	// Metric label used for static string data thats handy to send to Prometheus
-	// e.g. version
-	staticLabelName = "static"
-	// Metric label used for server identification.
-	serverLabelName = "server"
-)
+// The name of the exporter.
+const exporterName = "postgres_exporter"
 
 func main() {
 	kingpin.Version(version.Print(exporterName))
@@ -78,7 +67,7 @@ func main() {
 	logger = promslog.New(promslogConfig)
 
 	if *onlyDumpMaps {
-		dumpMaps()
+		exporter.DumpMaps()
 		return
 	}
 
@@ -87,7 +76,7 @@ func main() {
 		logger.Warn("Error loading config", "err", err)
 	}
 
-	dsns, err := getDataSources()
+	dsns, err := exporter.GetDataSources()
 	if err != nil {
 		logger.Error("Failed reading data sources", "err", err.Error())
 		os.Exit(1)
@@ -108,19 +97,21 @@ func main() {
 		logger.Warn("Constant labels on all metrics is DEPRECATED")
 	}
 
-	opts := []ExporterOpt{
-		DisableDefaultMetrics(*disableDefaultMetrics),
-		DisableSettingsMetrics(*disableSettingsMetrics),
-		AutoDiscoverDatabases(*autoDiscoverDatabases),
-		WithUserQueriesPath(*queriesPath),
-		WithConstantLabels(*constantLabelsList),
-		ExcludeDatabases(excludedDatabases),
-		IncludeDatabases(*includeDatabases),
+	opts := []exporter.ExporterOpt{
+		exporter.DisableDefaultMetrics(*disableDefaultMetrics),
+		exporter.DisableSettingsMetrics(*disableSettingsMetrics),
+		exporter.AutoDiscoverDatabases(*autoDiscoverDatabases),
+		exporter.WithUserQueriesPath(*queriesPath),
+		exporter.WithConstantLabels(*constantLabelsList),
+		exporter.ExcludeDatabases(excludedDatabases),
+		exporter.IncludeDatabases(*includeDatabases),
+		exporter.WithMetricPrefix(*metricPrefix),
+		exporter.WithLogger(logger),
 	}
 
-	exporter := NewExporter(dsns, opts...)
+	exporter := exporter.NewExporter(dsns, opts...)
 	defer func() {
-		exporter.servers.Close()
+		exporter.CloseServers()
 	}()
 
 	prometheus.MustRegister(versioncollector.NewCollector(exporterName))
