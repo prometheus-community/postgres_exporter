@@ -99,7 +99,7 @@ var queryOverrides = map[string][]OverrideQuery{
 			semver.MustParseRange(">=9.4.0"),
 			`
 			SELECT *,
-				extract(epoch from now() - last_archived_time) AS last_archive_age
+				COALESCE(extract(epoch from now() - last_archived_time), -1) AS last_archive_age
 			FROM pg_stat_archiver
 			`,
 		},
