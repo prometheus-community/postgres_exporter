@@ -42,9 +42,7 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 	var err error
 
 	if !found {
-		// I've no idea how to avoid this properly at the moment, but this is
-		// an admin tool so you're not injecting SQL right?
-		rows, err = server.db.Query(fmt.Sprintf("SELECT * FROM %s;", namespace)) // nolint: gas
+		rows, err = server.db.Query(fmt.Sprintf("SELECT * FROM %s;", pq.QuoteIdentifier(namespace))) // nolint: gas
 	} else {
 		rows, err = server.db.Query(query)
 	}
