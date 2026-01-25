@@ -45,43 +45,52 @@ var (
 			"count",
 		),
 		"Number of locks",
-		[]string{"datname", "mode"}, nil,
+		[]string{"datname", "mode", "granted"}, nil,
 	)
 
 	pgLocksQuery = `
-		SELECT 
+		SELECT
 		  pg_database.datname as datname,
-		  tmp.mode as mode,
-		  COALESCE(count, 0) as count 
-		FROM 
+		  tmp_mode.mode as mode,
+		  tmp_granted.granted as granted,
+		  COALESCE(count, 0) as count
+		FROM
 		  (
-		    VALUES 
-		      ('accesssharelock'), 
-		      ('rowsharelock'), 
-		      ('rowexclusivelock'), 
-		      ('shareupdateexclusivelock'), 
-		      ('sharelock'), 
-		      ('sharerowexclusivelock'), 
-		      ('exclusivelock'), 
-		      ('accessexclusivelock'), 
+		    VALUES
+		      ('accesssharelock'),
+		      ('rowsharelock'),
+		      ('rowexclusivelock'),
+		      ('shareupdateexclusivelock'),
+		      ('sharelock'),
+		      ('sharerowexclusivelock'),
+		      ('exclusivelock'),
+		      ('accessexclusivelock'),
 		      ('sireadlock')
-		  ) AS tmp(mode)
-		  CROSS JOIN pg_database 
+		  ) AS tmp_mode(mode)
+		  CROSS JOIN (
+		    VALUES
+		      ('true'),
+		      ('false')
+		  ) AS tmp_granted(granted)
+		  CROSS JOIN pg_database
 		  LEFT JOIN (
-		    SELECT 
-		      database, 
-		      lower(mode) AS mode, 
-		      count(*) AS count 
-		    FROM 
-		      pg_locks 
-		    WHERE 
-		      database IS NOT NULL 
-		    GROUP BY 
-		      database, 
-		      lower(mode)
-		  ) AS tmp2 ON tmp.mode = tmp2.mode 
-		  and pg_database.oid = tmp2.database 
-		ORDER BY 
+		    SELECT
+		      database,
+		      lower(mode) AS mode,
+		      granted::text AS granted,
+		      count(*) AS count
+		    FROM
+		      pg_locks
+		    WHERE
+		      database IS NOT NULL
+		    GROUP BY
+		      database,
+		      lower(mode),
+		      granted
+		  ) AS tmp2 ON tmp_mode.mode = tmp2.mode
+		  AND tmp_granted.granted = tmp2.granted
+		  AND pg_database.oid = tmp2.database
+		ORDER BY
 		  1
 	`
 )
@@ -99,15 +108,15 @@ func (c PGLocksCollector) Update(ctx context.Context, instance *instance, ch cha
 	}
 	defer rows.Close()
 
-	var datname, mode sql.NullString
+	var datname, mode, granted sql.NullString
 	var count sql.NullInt64
 
 	for rows.Next() {
-		if err := rows.Scan(&datname, &mode, &count); err != nil {
+		if err := rows.Scan(&datname, &mode, &granted, &count); err != nil {
 			return err
 		}
 
-		if !datname.Valid || !mode.Valid {
+		if !datname.Valid || !mode.Valid || !granted.Valid {
 			continue
 		}
 
@@ -119,7 +128,7 @@ func (c PGLocksCollector) Update(ctx context.Context, instance *instance, ch cha
 		ch <- prometheus.MustNewConstMetric(
 			pgLocksDesc,
 			prometheus.GaugeValue, countMetric,
-			datname.String, mode.String,
+			datname.String, mode.String, granted.String,
 		)
 	}
 	if err := rows.Err(); err != nil {
