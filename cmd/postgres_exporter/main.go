@@ -106,10 +106,9 @@ func main() {
 		exporter.ExcludeDatabases(excludedDatabases),
 		exporter.IncludeDatabases(*includeDatabases),
 		exporter.WithMetricPrefix(*metricPrefix),
-		exporter.WithLogger(logger),
 	}
 
-	exporter := exporter.NewExporter(dsns, opts...)
+	exporter := exporter.NewExporter(dsns, logger, opts...)
 	defer func() {
 		exporter.CloseServers()
 	}()

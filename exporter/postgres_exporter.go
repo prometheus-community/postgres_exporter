@@ -27,7 +27,6 @@ import (
 
 	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/promslog"
 )
 
 // Metric name parts.
@@ -499,13 +498,6 @@ func WithConstantLabels(s string) ExporterOpt {
 	}
 }
 
-// WithLogger configures logger.
-func WithLogger(logger *slog.Logger) ExporterOpt {
-	return func(e *Exporter) {
-		e.logger = logger
-	}
-}
-
 // WithMetricPrefix configures metric prefix.
 func WithMetricPrefix(prefix string) ExporterOpt {
 	return func(e *Exporter) {
@@ -540,11 +532,11 @@ func parseConstLabels(s string, logger *slog.Logger) prometheus.Labels {
 }
 
 // NewExporter returns a new PostgreSQL exporter for the provided DSN.
-func NewExporter(dsn []string, opts ...ExporterOpt) *Exporter {
+func NewExporter(dsn []string, logger *slog.Logger, opts ...ExporterOpt) *Exporter {
 	e := &Exporter{
 		dsn:               dsn,
 		builtinMetricMaps: builtinMetricMaps,
-		logger:            promslog.NewNopLogger(),
+		logger:            logger,
 	}
 
 	for _, opt := range opts {

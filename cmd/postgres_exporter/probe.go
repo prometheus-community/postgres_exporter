@@ -73,12 +73,11 @@ func handleProbe(logger *slog.Logger, excludeDatabases []string) http.HandlerFun
 			exporter.WithConstantLabels(*constantLabelsList),
 			exporter.ExcludeDatabases(excludeDatabases),
 			exporter.IncludeDatabases(*includeDatabases),
-			exporter.WithLogger(logger),
 			exporter.WithMetricPrefix(*metricPrefix),
 		}
 
 		dsns := []string{dsn.GetConnectionString()}
-		exporter := exporter.NewExporter(dsns, opts...)
+		exporter := exporter.NewExporter(dsns, logger, opts...)
 		defer func() {
 			exporter.CloseServers()
 		}()
