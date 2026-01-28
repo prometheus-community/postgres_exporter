@@ -13,7 +13,7 @@
 
 //go:build !integration
 
-package main
+package exporter
 
 import (
 	"math"
@@ -24,6 +24,7 @@ import (
 
 	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/promslog"
 	. "gopkg.in/check.v1"
 )
 
@@ -36,7 +37,6 @@ type FunctionalSuite struct {
 var _ = Suite(&FunctionalSuite{})
 
 func (s *FunctionalSuite) SetUpSuite(c *C) {
-
 }
 
 func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
@@ -53,7 +53,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 
 	{
 		// No metrics should be eliminated
-		resultMap := makeDescMap(semver.MustParse("0.0.1"), prometheus.Labels{}, testMetricMap)
+		resultMap := makeDescMap(semver.MustParse("0.0.1"), prometheus.Labels{}, testMetricMap, promslog.NewNopLogger(), "pg")
 		c.Check(
 			resultMap["test_namespace"].columnMappings["metric_which_stays"].discard,
 			Equals,
@@ -74,7 +74,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 		testMetricMap["test_namespace"].columnMappings["metric_which_discards"] = discardableMetric
 
 		// Discard metric should be discarded
-		resultMap := makeDescMap(semver.MustParse("0.0.1"), prometheus.Labels{}, testMetricMap)
+		resultMap := makeDescMap(semver.MustParse("0.0.1"), prometheus.Labels{}, testMetricMap, promslog.NewNopLogger(), "pg")
 		c.Check(
 			resultMap["test_namespace"].columnMappings["metric_which_stays"].discard,
 			Equals,
@@ -95,7 +95,7 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 		testMetricMap["test_namespace"].columnMappings["metric_which_discards"] = discardableMetric
 
 		// Discard metric should be discarded
-		resultMap := makeDescMap(semver.MustParse("0.0.2"), prometheus.Labels{}, testMetricMap)
+		resultMap := makeDescMap(semver.MustParse("0.0.2"), prometheus.Labels{}, testMetricMap, promslog.NewNopLogger(), "pg")
 		c.Check(
 			resultMap["test_namespace"].columnMappings["metric_which_stays"].discard,
 			Equals,
@@ -125,7 +125,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
 
 	var expected = "postgresql://custom_username$&+,%2F%3A;=%3F%40:custom_password$&+,%2F%3A;=%3F%40@localhost:5432/?sslmode=disable"
 
-	dsn, err := getDataSources()
+	dsn, err := GetDataSources()
 	if err != nil {
 		c.Errorf("Unexpected error reading datasources")
 	}
@@ -145,7 +145,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDns(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_NAME")
 
-	dsn, err := getDataSources()
+	dsn, err := GetDataSources()
 	if err != nil {
 		c.Errorf("Unexpected error reading datasources")
 	}
@@ -173,7 +173,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDnsAndSecrets(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_PASS")
 
-	dsn, err := getDataSources()
+	dsn, err := GetDataSources()
 	if err != nil {
 		c.Errorf("Unexpected error reading datasources")
 	}
@@ -289,7 +289,7 @@ func (s *FunctionalSuite) TestParseConstLabels(c *C) {
 	}
 
 	for _, cs := range cases {
-		labels := parseConstLabels(cs.s)
+		labels := parseConstLabels(cs.s, promslog.NewNopLogger())
 		if !reflect.DeepEqual(labels, cs.labels) {
 			c.Fatalf("labels not equal (%v -> %v)", labels, cs.labels)
 		}
@@ -319,7 +319,6 @@ func (checker *isNaNChecker) Check(params []interface{}, names []string) (result
 
 // test boolean metric type gets converted to float
 func (s *FunctionalSuite) TestBooleanConversionToValueAndString(c *C) {
-
 	type TestCase struct {
 		input          interface{}
 		expectedString string
@@ -388,7 +387,7 @@ func (s *FunctionalSuite) TestBooleanConversionToValueAndString(c *C) {
 	}
 
 	for _, cs := range cases {
-		value, ok := dbToFloat64(cs.input)
+		value, ok := dbToFloat64(cs.input, promslog.NewNopLogger())
 		if math.IsNaN(cs.expectedValue) {
 			c.Assert(value, IsNaN)
 		} else {
@@ -396,7 +395,7 @@ func (s *FunctionalSuite) TestBooleanConversionToValueAndString(c *C) {
 		}
 		c.Assert(ok, Equals, cs.expectedOK)
 
-		count, ok := dbToUint64(cs.input)
+		count, ok := dbToUint64(cs.input, promslog.NewNopLogger())
 		c.Assert(count, Equals, cs.expectedCount)
 		c.Assert(ok, Equals, cs.expectedOK)
 
@@ -409,7 +408,7 @@ func (s *FunctionalSuite) TestBooleanConversionToValueAndString(c *C) {
 func (s *FunctionalSuite) TestParseUserQueries(c *C) {
 	userQueriesData, err := os.ReadFile("./tests/user_queries_ok.yaml")
 	if err == nil {
-		metricMaps, newQueryOverrides, err := parseUserQueries(userQueriesData)
+		metricMaps, newQueryOverrides, err := parseUserQueries(userQueriesData, promslog.NewNopLogger())
 		c.Assert(err, Equals, nil)
 		c.Assert(metricMaps, NotNil)
 		c.Assert(newQueryOverrides, NotNil)

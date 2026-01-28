@@ -16,7 +16,7 @@
 // working.
 //go:build integration
 
-package main
+package exporter
 
 import (
 	"fmt"
@@ -26,6 +26,7 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/promslog"
 	. "gopkg.in/check.v1"
 )
 
@@ -42,7 +43,7 @@ func (s *IntegrationSuite) SetUpSuite(c *C) {
 	dsn := os.Getenv("DATA_SOURCE_NAME")
 	c.Assert(dsn, Not(Equals), "")
 
-	exporter := NewExporter(strings.Split(dsn, ","))
+	exporter := NewExporter(strings.Split(dsn, ","), promslog.NewNopLogger())
 	c.Assert(exporter, NotNil)
 	// Assign the exporter to the suite
 	s.e = exporter
@@ -99,12 +100,12 @@ func (s *IntegrationSuite) TestInvalidDsnDoesntCrash(c *C) {
 	}()
 
 	// Send a bad DSN
-	exporter := NewExporter([]string{"invalid dsn"})
+	exporter := NewExporter([]string{"invalid dsn"}, promslog.NewNopLogger())
 	c.Assert(exporter, NotNil)
 	exporter.scrape(ch)
 
 	// Send a DSN to a non-listening port.
-	exporter = NewExporter([]string{"postgresql://nothing:nothing@127.0.0.1:1/nothing"})
+	exporter = NewExporter([]string{"postgresql://nothing:nothing@127.0.0.1:1/nothing"}, promslog.NewNopLogger())
 	c.Assert(exporter, NotNil)
 	exporter.scrape(ch)
 }
@@ -122,7 +123,7 @@ func (s *IntegrationSuite) TestUnknownMetricParsingDoesntCrash(c *C) {
 	dsn := os.Getenv("DATA_SOURCE_NAME")
 	c.Assert(dsn, Not(Equals), "")
 
-	exporter := NewExporter(strings.Split(dsn, ","))
+	exporter := NewExporter(strings.Split(dsn, ","), promslog.NewNopLogger())
 	c.Assert(exporter, NotNil)
 
 	// Convert the default maps into a list of empty maps.
@@ -155,6 +156,7 @@ func (s *IntegrationSuite) TestExtendQueriesDoesntCrash(c *C) {
 
 	exporter := NewExporter(
 		strings.Split(dsn, ","),
+		promslog.NewNopLogger(),
 		WithUserQueriesPath("../user_queries_test.yaml"),
 	)
 	c.Assert(exporter, NotNil)
@@ -168,6 +170,7 @@ func (s *IntegrationSuite) TestAutoDiscoverDatabases(c *C) {
 
 	exporter := NewExporter(
 		strings.Split(dsn, ","),
+		promslog.NewNopLogger(),
 	)
 	c.Assert(exporter, NotNil)
 

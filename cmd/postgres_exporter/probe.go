@@ -20,6 +20,7 @@ import (
 
 	"github.com/prometheus-community/postgres_exporter/collector"
 	"github.com/prometheus-community/postgres_exporter/config"
+	"github.com/prometheus-community/postgres_exporter/exporter"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -64,20 +65,21 @@ func handleProbe(logger *slog.Logger, excludeDatabases []string) http.HandlerFun
 
 		registry := prometheus.NewRegistry()
 
-		opts := []ExporterOpt{
-			DisableDefaultMetrics(*disableDefaultMetrics),
-			DisableSettingsMetrics(*disableSettingsMetrics),
-			AutoDiscoverDatabases(*autoDiscoverDatabases),
-			WithUserQueriesPath(*queriesPath),
-			WithConstantLabels(*constantLabelsList),
-			ExcludeDatabases(excludeDatabases),
-			IncludeDatabases(*includeDatabases),
+		opts := []exporter.ExporterOpt{
+			exporter.DisableDefaultMetrics(*disableDefaultMetrics),
+			exporter.DisableSettingsMetrics(*disableSettingsMetrics),
+			exporter.AutoDiscoverDatabases(*autoDiscoverDatabases),
+			exporter.WithUserQueriesPath(*queriesPath),
+			exporter.WithConstantLabels(*constantLabelsList),
+			exporter.ExcludeDatabases(excludeDatabases),
+			exporter.IncludeDatabases(*includeDatabases),
+			exporter.WithMetricPrefix(*metricPrefix),
 		}
 
 		dsns := []string{dsn.GetConnectionString()}
-		exporter := NewExporter(dsns, opts...)
+		exporter := exporter.NewExporter(dsns, logger, opts...)
 		defer func() {
-			exporter.servers.Close()
+			exporter.CloseServers()
 		}()
 		registry.MustRegister(exporter)
 

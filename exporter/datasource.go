@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package exporter
 
 import (
 	"fmt"
@@ -39,19 +39,19 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			var err error
 			dsnURI, err = url.Parse(dsn)
 			if err != nil {
-				logger.Error("Unable to parse DSN as URI", "dsn", loggableDSN(dsn), "err", err)
+				e.logger.Error("Unable to parse DSN as URI", "dsn", loggableDSN(dsn), "err", err)
 				continue
 			}
 		} else if connstringRe.MatchString(dsn) {
 			dsnConnstring = dsn
 		} else {
-			logger.Error("Unable to parse DSN as either URI or connstring", "dsn", loggableDSN(dsn))
+			e.logger.Error("Unable to parse DSN as either URI or connstring", "dsn", loggableDSN(dsn))
 			continue
 		}
 
 		server, err := e.servers.GetServer(dsn)
 		if err != nil {
-			logger.Error("Error opening connection to database", "dsn", loggableDSN(dsn), "err", err)
+			e.logger.Error("Error opening connection to database", "dsn", loggableDSN(dsn), "err", err)
 			continue
 		}
 		dsns[dsn] = struct{}{}
@@ -61,7 +61,7 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 
 		databaseNames, err := queryDatabases(server)
 		if err != nil {
-			logger.Error("Error querying databases", "dsn", loggableDSN(dsn), "err", err)
+			e.logger.Error("Error querying databases", "dsn", loggableDSN(dsn), "err", err)
 			continue
 		}
 		for _, databaseName := range databaseNames {
@@ -109,7 +109,7 @@ func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 
 	// Check if map versions need to be updated
 	if err := e.checkMapVersions(ch, server); err != nil {
-		logger.Warn("Proceeding with outdated query maps, as the Postgres version could not be determined", "err", err)
+		e.logger.Warn("Proceeding with outdated query maps, as the Postgres version could not be determined", "err", err)
 	}
 
 	return server.Scrape(ch, e.disableSettingsMetrics)
@@ -119,7 +119,7 @@ func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 // DATA_SOURCE_NAME always wins so we do not break older versions
 // reading secrets from files wins over secrets in environment variables
 // DATA_SOURCE_NAME > DATA_SOURCE_{USER|PASS}_FILE > DATA_SOURCE_{USER|PASS}
-func getDataSources() ([]string, error) {
+func GetDataSources() ([]string, error) {
 	var dsn = os.Getenv("DATA_SOURCE_NAME")
 	if len(dsn) != 0 {
 		return strings.Split(dsn, ","), nil
