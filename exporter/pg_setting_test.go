@@ -216,6 +216,22 @@ var fixtures = []fixture{
 			err:  `unknown unit for runtime variable: "nonexistent"`,
 		},
 	},
+	{
+		p: pgSetting{
+			name:      "max_messages",
+			setting:   "-1:172",
+			unit:      "s",
+			shortDesc: "Foo foo foo",
+			vartype:   "integer",
+		},
+		n: normalised{
+			val:  172,
+			unit: "seconds",
+			err:  "",
+		},
+		d: `Desc{fqName: "pg_settings_seconds_fixture_metric_seconds", help: "Server Parameter: seconds_fixture_metric [Units converted to seconds.]", constLabels: {}, variableLabels: {}}`,
+		v: 172,
+	},
 }
 
 func (s *PgSettingSuite) TestNormaliseUnit(c *C) {

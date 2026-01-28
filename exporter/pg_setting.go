@@ -103,6 +103,9 @@ func (s *pgSetting) metric(labels prometheus.Labels) prometheus.Metric {
 // This is mostly because of a irregularity regarding AWS RDS Aurora
 // https://github.com/prometheus-community/postgres_exporter/issues/619
 func (s *pgSetting) sanitizeValue() {
+	if s.vartype == "integer" || s.vartype == "real" {
+		s.setting = strings.TrimPrefix(s.setting, "-1:")
+	}
 	for _, unit := range settingUnits {
 		if strings.HasSuffix(s.setting, unit) {
 			endPos := len(s.setting) - len(unit) - 1
