@@ -97,7 +97,7 @@ func (s *pgSetting) metric(labels prometheus.Labels) (prometheus.Metric, error) 
 		}
 	default:
 		// Panic because we got a type we didn't ask for
-		return nil, fmt.Errorf("Unsupported vartype %q", s.vartype)
+		return nil, fmt.Errorf("pgsetting: unsupported vartype %q", s.vartype)
 	}
 
 	desc := newDesc(subsystem, name, shortDesc, labels)
