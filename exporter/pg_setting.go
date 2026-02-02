@@ -96,7 +96,6 @@ func (s *pgSetting) metric(labels prometheus.Labels) (prometheus.Metric, error) 
 			shortDesc = fmt.Sprintf("%s [Units converted to %s.]", shortDesc, unit)
 		}
 	default:
-		// Panic because we got a type we didn't ask for
 		return nil, fmt.Errorf("pgsetting: unsupported vartype %q", s.vartype)
 	}
 
