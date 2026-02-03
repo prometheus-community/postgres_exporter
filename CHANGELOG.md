@@ -5,6 +5,17 @@
 * [ENHANCEMENT] ...
 * [BUGFIX] ...
 
+## 0.19.0 / 2026-02-03
+
+* [CHANGE] Reorganize code to remove the main package by @cristiangreco in https://github.com/prometheus-community/postgres_exporter/pull/1238
+* [FEATURE] Allow setting `limit` in `pg_stat_statements` collector by @cristiangreco in https://github.com/prometheus-community/postgres_exporter/pull/1205
+* [FEATURE] Allow excluding databases or users names in `stat_statements` collector by @cristiangreco in https://github.com/prometheus-community/postgres_exporter/pull/1232
+* [ENHANCEMENT] Enable pprof endpoints for profiling by @SuperQ in https://github.com/prometheus-community/postgres_exporter/pull/1212
+* [ENHANCEMENT] Document `stat_checkpointer` collector option by @fabiorueda in https://github.com/prometheus-community/postgres_exporter/pull/1226
+* [ENHANCEMENT] Ensure collection of stats succeed in a maximum duration to avoid exhausting PG connections by @pierresouchay in https://github.com/prometheus-community/postgres_exporter/pull/1229
+* [BUGFIX] Fix NULL handling on `long_running_transactions` collector by @sysadmind in https://github.com/prometheus-community/postgres_exporter/pull/1230
+* [BUGFIX] Do not crash on bad `pg_settings` value by @sysadmind in https://github.com/prometheus-community/postgres_exporter/pull/1252
+
 ## 0.18.1 / 2025-09-29
 
 * [BUGFIX] Fix swapped `flushedLsn` and `receiveStartTli` for `wal_receiver` collector by @spantaleev in https://github.com/prometheus-community/postgres_exporter/pull/1198
