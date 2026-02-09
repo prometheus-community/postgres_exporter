@@ -251,6 +251,8 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 
 	presentQueryIds := make(map[string]struct{})
 
+	seen := make(map[string]bool) // to track duplicates by (user, datname, queryid)
+
 	if err != nil {
 		return err
 	}
@@ -281,6 +283,14 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 		if queryid.Valid {
 			queryidLabel = queryid.String
 		}
+
+		key := fmt.Sprintf("%s|%s|%s", userLabel, datnameLabel, queryidLabel)
+		if seen[key] {
+			// Log a warning and skip this duplicate
+			c.log.Warn(fmt.Sprintf("Duplicate found for (user=%s, datname=%s, queryid=%s). Using the first occurrence only.", userLabel, datnameLabel, queryidLabel))
+			continue
+		}
+		seen[key] = true
 
 		callsTotalMetric := 0.0
 		if callsTotal.Valid {
