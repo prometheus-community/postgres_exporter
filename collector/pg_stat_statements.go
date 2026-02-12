@@ -286,8 +286,7 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 
 		key := fmt.Sprintf("%s|%s|%s", userLabel, datnameLabel, queryidLabel)
 		if seen[key] {
-			// Log a warning and skip this duplicate
-			c.log.Warn(fmt.Sprintf("Duplicate found for (user=%s, datname=%s, queryid=%s). Using the first occurrence only.", userLabel, datnameLabel, queryidLabel))
+			c.log.Warn("Duplicate found", "user", userLabel, "datname", datnameLabel, "queryid", queryidLabel))
 			continue
 		}
 		seen[key] = true
