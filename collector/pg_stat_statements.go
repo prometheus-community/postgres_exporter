@@ -224,6 +224,12 @@ const (
 	LIMIT %s;`
 )
 
+type Key struct {
+	UserLabel    string
+	DatnameLabel string
+	QueryidLabel string
+}
+
 func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	var queryTemplate string
 	switch {
@@ -250,6 +256,8 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 	rows, err := db.QueryContext(ctx, query)
 
 	presentQueryIds := make(map[string]struct{})
+
+	seen := make(map[Key]bool) // to track duplicates by (user, datname, queryid)
 
 	if err != nil {
 		return err
@@ -281,6 +289,17 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 		if queryid.Valid {
 			queryidLabel = queryid.String
 		}
+
+		key := Key{
+			UserLabel:    userLabel,
+			DatnameLabel: datnameLabel,
+			QueryidLabel: queryidLabel,
+		}
+		if seen[key] {
+			c.log.Warn("Duplicate found", "user", userLabel, "datname", datnameLabel, "queryid", queryidLabel)
+			continue
+		}
+		seen[key] = true
 
 		callsTotalMetric := 0.0
 		if callsTotal.Valid {
