@@ -95,11 +95,14 @@ var (
 		nil,
 	)
 
-	// This is the view definition of pg_stat_progress_vacuum, albeit without the conversion
-	// of "phase" to a human-readable string. We will prefer the numeric representation.
+	// Based on the view definition of pg_stat_progress_vacuum, without the conversion
+	// of "phase" to a human-readable string. We prefer the numeric representation.
+	// We use a LEFT JOIN on pg_class to resolve the relation name. For cross-database
+	// vacuums the OID cannot be resolved via pg_class (which is per-database), so we
+	// fall back to the raw relid OID cast to text to ensure uniqueness.
 	statProgressVacuumQuery = `SELECT
 		d.datname,
-		s.relid::regclass::text AS relname,
+		COALESCE(c.relname, s.relid::text) AS relname,
 		s.param1 AS phase,
 		s.param2 AS heap_blks_total,
 		s.param3 AS heap_blks_scanned,
@@ -111,7 +114,9 @@ var (
 		pg_stat_get_progress_info('VACUUM'::text)
 		s(pid, datid, relid, param1, param2, param3, param4, param5, param6, param7, param8, param9, param10, param11, param12, param13, param14, param15, param16, param17, param18, param19, param20)
 	LEFT JOIN
-		pg_database d ON s.datid = d.oid`
+		pg_database d ON s.datid = d.oid
+	LEFT JOIN
+		pg_class c ON s.relid = c.oid`
 )
 
 func (c *PGStatProgressVacuumCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
