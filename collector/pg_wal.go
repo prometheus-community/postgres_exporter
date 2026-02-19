@@ -55,7 +55,7 @@ var (
 	pgWALQuery = `
 		SELECT
 			COUNT(*) AS segments,
-			SUM(size) AS size
+			COALESCE(SUM(size), 0) AS size
 		FROM pg_ls_waldir()
 		WHERE name ~ '^[0-9A-F]{24}$'`
 )
