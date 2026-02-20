@@ -73,7 +73,7 @@ func TestPgWALCollectorZeroSegments(t *testing.T) {
 
 	columns := []string{"segments", "size"}
 	rows := sqlmock.NewRows(columns).
-		AddRow(0, 0)
+		AddRow(0, nil)
 	mock.ExpectQuery(sanitizeQuery(pgWALQuery)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -87,7 +87,6 @@ func TestPgWALCollectorZeroSegments(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
-		{labels: labelMap{}, value: 0, metricType: dto.MetricType_GAUGE},
 		{labels: labelMap{}, value: 0, metricType: dto.MetricType_GAUGE},
 	}
 

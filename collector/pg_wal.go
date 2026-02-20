@@ -15,6 +15,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -55,7 +56,7 @@ var (
 	pgWALQuery = `
 		SELECT
 			COUNT(*) AS segments,
-			COALESCE(SUM(size), 0) AS size
+			SUM(size) AS size
 		FROM pg_ls_waldir()
 		WHERE name ~ '^[0-9A-F]{24}$'`
 )
@@ -67,7 +68,7 @@ func (c PGWALCollector) Update(ctx context.Context, instance *instance, ch chan<
 	)
 
 	var segments uint64
-	var size uint64
+	var size sql.NullInt64
 	err := row.Scan(&segments, &size)
 	if err != nil {
 		return err
@@ -76,9 +77,11 @@ func (c PGWALCollector) Update(ctx context.Context, instance *instance, ch chan<
 		pgWALSegments,
 		prometheus.GaugeValue, float64(segments),
 	)
-	ch <- prometheus.MustNewConstMetric(
-		pgWALSize,
-		prometheus.GaugeValue, float64(size),
-	)
+	if size.Valid {
+		ch <- prometheus.MustNewConstMetric(
+			pgWALSize,
+			prometheus.GaugeValue, float64(size.Int64),
+		)
+	}
 	return nil
 }
