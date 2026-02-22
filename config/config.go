@@ -14,10 +14,12 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -40,6 +42,8 @@ var (
 
 type Config struct {
 	AuthModules map[string]AuthModule `yaml:"auth_modules"`
+
+	Timeouts Timeouts `yaml:"timeouts"`
 }
 
 type AuthModule struct {
@@ -52,6 +56,11 @@ type AuthModule struct {
 type UserPass struct {
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
+}
+
+type Timeouts struct {
+	Default    time.Duration            `yaml:"default"`
+	Collectors map[string]time.Duration `yaml:"collectors"`
 }
 
 type Handler struct {
@@ -117,4 +126,15 @@ func (m AuthModule) ConfigureTarget(target string) (DSN, error) {
 	}
 
 	return dsn, nil
+}
+
+func (t Timeouts) Context(parent context.Context, collector string) (context.Context, context.CancelFunc) {
+	timeout, ok := t.Collectors[collector]
+	if !ok {
+		timeout = t.Default
+	}
+	if timeout == 0 {
+		return context.WithCancel(parent)
+	}
+	return context.WithTimeout(parent, timeout)
 }

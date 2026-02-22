@@ -90,6 +90,16 @@ auth_modules:
       sslmode: disable
 ```
 
+### timeouts
+This section allows configuring a default and per-collector timeouts to help metrics get scraped even if a query runs or blocks longer than your configured Prometheus scrape timeout. If a timeout is unset or set to 0 (or `0s`, `0m`, etc.) the timeout is disabled.
+
+```yaml
+timeouts:
+  default: 2s
+  collectors:
+    stat_user_tables: 5s
+```
+
 ## Building and running
 
     git clone https://github.com/prometheus-community/postgres_exporter.git
