@@ -187,14 +187,14 @@ const (
 		pg_stat_statements.rows as rows_total,
 		pg_stat_statements.blk_read_time / 1000.0 as block_read_seconds_total,
 		pg_stat_statements.blk_write_time / 1000.0 as block_write_seconds_total
-		FROM pg_stat_statements
+		FROM pg_stat_statements(%t)
 	JOIN pg_database
 		ON pg_database.oid = pg_stat_statements.dbid
 	WHERE
 		total_exec_time > (
 		SELECT percentile_cont(0.1)
 			WITHIN GROUP (ORDER BY total_exec_time)
-			FROM pg_stat_statements
+			FROM pg_stat_statements(false)
 		)
 		%s %s
 	ORDER BY seconds_total DESC
@@ -210,14 +210,14 @@ const (
 		pg_stat_statements.rows as rows_total,
 		pg_stat_statements.shared_blk_read_time / 1000.0 as block_read_seconds_total,
 		pg_stat_statements.shared_blk_write_time / 1000.0 as block_write_seconds_total
-		FROM pg_stat_statements
+		FROM pg_stat_statements(%t)
 	JOIN pg_database
 		ON pg_database.oid = pg_stat_statements.dbid
 	WHERE
 		total_exec_time > (
 		SELECT percentile_cont(0.1)
 			WITHIN GROUP (ORDER BY total_exec_time)
-			FROM pg_stat_statements
+			FROM pg_stat_statements(false)
 		)
 		%s %s
 	ORDER BY seconds_total DESC
@@ -225,15 +225,6 @@ const (
 )
 
 func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
-	var queryTemplate string
-	switch {
-	case instance.version.GE(semver.MustParse("17.0.0")):
-		queryTemplate = pgStatStatementsQuery_PG17
-	case instance.version.GE(semver.MustParse("13.0.0")):
-		queryTemplate = pgStatStatementsQuery_PG13
-	default:
-		queryTemplate = pgStatStatementsQuery
-	}
 	querySelect := ""
 	if c.includeQueryStatement {
 		querySelect = fmt.Sprintf(pgStatStatementQuerySelect, c.statementLength)
@@ -244,7 +235,16 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 	if c.statementLimit > 0 {
 		statementLimit = fmt.Sprintf("%d", c.statementLimit)
 	}
-	query := fmt.Sprintf(queryTemplate, querySelect, databaseFilter, userFilter, statementLimit)
+
+	var query string
+	switch {
+	case instance.version.GE(semver.MustParse("17.0.0")):
+		query = fmt.Sprintf(pgStatStatementsQuery_PG17, querySelect, c.includeQueryStatement, databaseFilter, userFilter, statementLimit)
+	case instance.version.GE(semver.MustParse("13.0.0")):
+		query = fmt.Sprintf(pgStatStatementsQuery_PG13, querySelect, c.includeQueryStatement, databaseFilter, userFilter, statementLimit)
+	default:
+		query = fmt.Sprintf(pgStatStatementsQuery, querySelect, databaseFilter, userFilter, statementLimit)
+	}
 
 	db := instance.getDB()
 	rows, err := db.QueryContext(ctx, query)
