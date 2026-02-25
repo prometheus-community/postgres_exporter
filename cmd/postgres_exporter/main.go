@@ -158,6 +158,13 @@ func main() {
 	}
 
 	http.HandleFunc("/probe", handleProbe(logger, excludedDatabases))
+	http.HandleFunc("/-/reload", func(w http.ResponseWriter, r *http.Request) {
+		if err := c.ReloadConfig(*configFile, logger); err != nil {
+			level.Warn(logger).Log("msg", "Error reloading config", "file", *configFile, "error", err)
+			return
+		}
+		_, _ = w.Write([]byte(`ok`))
+	})
 
 	srv := &http.Server{}
 	if err := web.ListenAndServe(srv, webConfig, logger); err != nil {
