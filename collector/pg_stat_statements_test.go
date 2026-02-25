@@ -167,7 +167,7 @@ func TestPGStatStatementsCollectorNull(t *testing.T) {
 	columns := []string{"user", "datname", "queryid", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
 		AddRow(nil, nil, nil, nil, nil, nil, nil, nil)
-	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, "", "", "", defaultStatementLimit))).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, "", false, "", "", defaultStatementLimit))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -210,7 +210,7 @@ func TestPGStatStatementsCollectorNullWithStatement(t *testing.T) {
 	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 200) as query", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
 		AddRow(nil, nil, nil, nil, nil, nil, nil, nil, nil)
-	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, fmt.Sprintf(pgStatStatementQuerySelect, 200), "", "", defaultStatementLimit))).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, fmt.Sprintf(pgStatStatementQuerySelect, 200), true, "", "", defaultStatementLimit))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -254,7 +254,7 @@ func TestPGStatStatementsCollectorNullWithStatementAndLimit(t *testing.T) {
 	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 200) as query", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
 		AddRow(nil, nil, nil, nil, nil, nil, nil, nil, nil)
-	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, fmt.Sprintf(pgStatStatementQuerySelect, 200), "", "", "10"))).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, fmt.Sprintf(pgStatStatementQuerySelect, 200), true, "", "", "10"))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -298,7 +298,7 @@ func TestPGStatStatementsCollector_PG13(t *testing.T) {
 	columns := []string{"user", "datname", "queryid", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
 		AddRow("postgres", "postgres", 1500, 5, 0.4, 100, 0.1, 0.2)
-	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, "", "", "", defaultStatementLimit))).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, "", false, "", "", defaultStatementLimit))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -341,7 +341,7 @@ func TestPGStatStatementsCollector_PG13_WithStatement(t *testing.T) {
 	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 300) as query", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
 		AddRow("postgres", "postgres", 1500, "select 1 from foo", 5, 0.4, 100, 0.1, 0.2)
-	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, fmt.Sprintf(pgStatStatementQuerySelect, 300), "", "", defaultStatementLimit))).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, fmt.Sprintf(pgStatStatementQuerySelect, 300), true, "", "", defaultStatementLimit))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -385,7 +385,7 @@ func TestPGStatStatementsCollector_PG13_WithStatementAndLimit(t *testing.T) {
 	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 300) as query", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
 		AddRow("postgres", "postgres", 1500, "select 1 from foo", 5, 0.4, 100, 0.1, 0.2)
-	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, fmt.Sprintf(pgStatStatementQuerySelect, 300), "", "", "10"))).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, fmt.Sprintf(pgStatStatementQuerySelect, 300), true, "", "", "10"))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -429,7 +429,7 @@ func TestPGStatStatementsCollector_PG17(t *testing.T) {
 	columns := []string{"user", "datname", "queryid", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
 		AddRow("postgres", "postgres", 1500, 5, 0.4, 100, 0.1, 0.2)
-	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG17, "", "", "", defaultStatementLimit))).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG17, "", false, "", "", defaultStatementLimit))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -472,7 +472,7 @@ func TestPGStatStatementsCollector_PG17_WithStatement(t *testing.T) {
 	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 300) as query", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
 		AddRow("postgres", "postgres", 1500, "select 1 from foo", 5, 0.4, 100, 0.1, 0.2)
-	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG17, fmt.Sprintf(pgStatStatementQuerySelect, 300), "", "", defaultStatementLimit))).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG17, fmt.Sprintf(pgStatStatementQuerySelect, 300), true, "", "", defaultStatementLimit))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -516,7 +516,7 @@ func TestPGStatStatementsCollector_PG17_WithStatementAndLimit(t *testing.T) {
 	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 300) as query", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
 		AddRow("postgres", "postgres", 1500, "select 1 from foo", 5, 0.4, 100, 0.1, 0.2)
-	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG17, fmt.Sprintf(pgStatStatementQuerySelect, 300), "", "", "10"))).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG17, fmt.Sprintf(pgStatStatementQuerySelect, 300), true, "", "", "10"))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -613,7 +613,7 @@ func TestPGStatStatementsCollectorWithExcludedDatabasesSQLEscaping(t *testing.T)
 		AddRow("postgres", "postgres", 1500, 5, 0.4, 100, 0.1, 0.2)
 
 	expectedFilter := " AND pg_database.datname NOT IN ('test''db')"
-	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, "", expectedFilter, "", defaultStatementLimit))).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, "", false, expectedFilter, "", defaultStatementLimit))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -708,7 +708,7 @@ func TestPGStatStatementsCollectorWithExcludedUsersSQLEscaping(t *testing.T) {
 		AddRow("postgres", "postgres", 1500, 5, 0.4, 100, 0.1, 0.2)
 
 	expectedFilter := " AND pg_get_userbyid(userid) NOT IN ('test''user')"
-	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, "", "", expectedFilter, defaultStatementLimit))).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, "", false, "", expectedFilter, defaultStatementLimit))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -758,7 +758,7 @@ func TestPGStatStatementsCollectorWithExcludedDatabasesAndUsers(t *testing.T) {
 
 	expectedDbFilter := " AND pg_database.datname NOT IN ('rdsadmin', 'cloudsqladmin')"
 	expectedUserFilter := " AND pg_get_userbyid(userid) NOT IN ('monitoring', 'readonly')"
-	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG17, "", expectedDbFilter, expectedUserFilter, defaultStatementLimit))).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG17, "", false, expectedDbFilter, expectedUserFilter, defaultStatementLimit))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
