@@ -133,3 +133,77 @@ func TestPGStatProgressVacuumCollectorNullValues(t *testing.T) {
 		t.Errorf("There were unfulfilled exceptions: %+v", err)
 	}
 }
+
+func TestPGStatProgressVacuumCollectorCrossDatabase(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Error opening a stub db connection: %s", err)
+	}
+	defer db.Close()
+
+	inst := &instance{db: db}
+
+	columns := []string{
+		"datname", "relname", "phase", "heap_blks_total", "heap_blks_scanned",
+		"heap_blks_vacuumed", "index_vacuum_count", "max_dead_tuples", "num_dead_tuples",
+	}
+
+	// Simulate two concurrent vacuums on the same database with OID-based relnames
+	// (cross-database scenario where pg_class cannot resolve the relation name).
+	rows := sqlmock.NewRows(columns).
+		AddRow("mydb", "16385", 1, 5000, 200, 100, 0, 1000, 50).
+		AddRow("mydb", "16390", 3, 8000, 600, 400, 1, 2000, 300)
+
+	mock.ExpectQuery(sanitizeQuery(statProgressVacuumQuery)).WillReturnRows(rows)
+
+	ch := make(chan prometheus.Metric)
+	go func() {
+		defer close(ch)
+		c := PGStatProgressVacuumCollector{}
+
+		if err := c.Update(context.Background(), inst, ch); err != nil {
+			t.Errorf("Error calling PGStatProgressVacuumCollector.Update; %+v", err)
+		}
+	}()
+
+	expected := []MetricResult{
+		// First vacuum (relid 16385, phase 1 = scanning heap)
+		{labels: labelMap{"datname": "mydb", "relname": "16385", "phase": "initializing"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "mydb", "relname": "16385", "phase": "scanning heap"}, metricType: dto.MetricType_GAUGE, value: 1},
+		{labels: labelMap{"datname": "mydb", "relname": "16385", "phase": "vacuuming indexes"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "mydb", "relname": "16385", "phase": "vacuuming heap"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "mydb", "relname": "16385", "phase": "cleaning up indexes"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "mydb", "relname": "16385", "phase": "truncating heap"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "mydb", "relname": "16385", "phase": "performing final cleanup"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "mydb", "relname": "16385"}, metricType: dto.MetricType_GAUGE, value: 5000},
+		{labels: labelMap{"datname": "mydb", "relname": "16385"}, metricType: dto.MetricType_GAUGE, value: 200},
+		{labels: labelMap{"datname": "mydb", "relname": "16385"}, metricType: dto.MetricType_GAUGE, value: 100},
+		{labels: labelMap{"datname": "mydb", "relname": "16385"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "mydb", "relname": "16385"}, metricType: dto.MetricType_GAUGE, value: 1000},
+		{labels: labelMap{"datname": "mydb", "relname": "16385"}, metricType: dto.MetricType_GAUGE, value: 50},
+		// Second vacuum (relid 16390, phase 3 = vacuuming heap)
+		{labels: labelMap{"datname": "mydb", "relname": "16390", "phase": "initializing"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "mydb", "relname": "16390", "phase": "scanning heap"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "mydb", "relname": "16390", "phase": "vacuuming indexes"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "mydb", "relname": "16390", "phase": "vacuuming heap"}, metricType: dto.MetricType_GAUGE, value: 1},
+		{labels: labelMap{"datname": "mydb", "relname": "16390", "phase": "cleaning up indexes"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "mydb", "relname": "16390", "phase": "truncating heap"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "mydb", "relname": "16390", "phase": "performing final cleanup"}, metricType: dto.MetricType_GAUGE, value: 0},
+		{labels: labelMap{"datname": "mydb", "relname": "16390"}, metricType: dto.MetricType_GAUGE, value: 8000},
+		{labels: labelMap{"datname": "mydb", "relname": "16390"}, metricType: dto.MetricType_GAUGE, value: 600},
+		{labels: labelMap{"datname": "mydb", "relname": "16390"}, metricType: dto.MetricType_GAUGE, value: 400},
+		{labels: labelMap{"datname": "mydb", "relname": "16390"}, metricType: dto.MetricType_GAUGE, value: 1},
+		{labels: labelMap{"datname": "mydb", "relname": "16390"}, metricType: dto.MetricType_GAUGE, value: 2000},
+		{labels: labelMap{"datname": "mydb", "relname": "16390"}, metricType: dto.MetricType_GAUGE, value: 300},
+	}
+
+	convey.Convey("Metrics comparison", t, func() {
+		for _, expect := range expected {
+			m := readMetric(<-ch)
+			convey.So(m, convey.ShouldResemble, expect)
+		}
+	})
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("There were unfulfilled exceptions: %+v", err)
+	}
+}
