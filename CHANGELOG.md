@@ -5,6 +5,13 @@
 * [ENHANCEMENT] ...
 * [BUGFIX] ...
 
+## 0.19.1 / 2026-02-25
+
+* [CHANGE] Filter and warn about duplicates in pg_stat_statements (#998) by @Nudin in https://github.com/prometheus-community/postgres_exporter/pull/1259
+* [ENHANCEMENT] perf/reliability: Optimize pg_stat_statements queries that uses too many temp files by @eugercek in https://github.com/prometheus-community/postgres_exporter/pull/1267
+* [BUGFIX] fix: ignore setting `google_dataplex.max_messages` by @cristiangreco in https://github.com/prometheus-community/postgres_exporter/pull/1261
+* [BUGFIX] wal: Fix collector NULL SUM(size) by @dannotripp in https://github.com/prometheus-community/postgres_exporter/pull/1265
+
 ## 0.19.0 / 2026-02-03
 
 * [CHANGE] Reorganize code to remove the main package by @cristiangreco in https://github.com/prometheus-community/postgres_exporter/pull/1238
