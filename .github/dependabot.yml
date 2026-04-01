@@ -4,3 +4,11 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    # Exclude configs synced from upstream prometheus/prometheus.
+    exclude-paths:
+      - .github/workflows/container_description.yml
+      - .github/workflows/golangci-lint.yml
