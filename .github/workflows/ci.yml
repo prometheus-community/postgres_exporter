@@ -18,7 +18,7 @@ jobs:
       # should also be updated.
       image: quay.io/prometheus/golang-builder:1.26-base
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: prometheus/promci-setup@5af30ba8c199a91d6c04ebdc3c48e630e355f62d # v0.1.0
       - run: make test
       - run: make GO_ONLY=1 SKIP_GOLANGCI_LINT=1
@@ -55,7 +55,7 @@ jobs:
       DATA_SOURCE_NAME: 'postgresql://postgres:test@postgres:5432/circle_test?sslmode=disable'
       GOOPTS: '-v -tags integration'
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: prometheus/promci-setup@5af30ba8c199a91d6c04ebdc3c48e630e355f62d # v0.1.0
       - run: make build
       - run: make test
@@ -76,7 +76,7 @@ jobs:
       matrix:
         thread: [ 0, 1, 2 ]
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: prometheus/promci/build@769ee18070cd21cfc2a24fa912349fd3e48dee58 # v0.6.0
         with:
           promu_opts: "-p linux/amd64 -p windows/amd64 -p linux/arm64 -p darwin/amd64 -p darwin/arm64 -p linux/386"
@@ -101,7 +101,7 @@ jobs:
     # Whenever the Go version is updated here, .promu.yml
     # should also be updated.
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: prometheus/promci/build@769ee18070cd21cfc2a24fa912349fd3e48dee58 # v0.6.0
         with:
           parallelism: 12
@@ -116,7 +116,7 @@ jobs:
       ||
       (github.event_name == 'push' && github.event.ref == 'refs/heads/master')
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: prometheus/promci/publish_main@769ee18070cd21cfc2a24fa912349fd3e48dee58 # v0.6.0
         with:
           docker_hub_organization: prometheuscommunity
@@ -133,7 +133,7 @@ jobs:
     if: |
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: prometheus/promci/publish_release@769ee18070cd21cfc2a24fa912349fd3e48dee58 # v0.6.0
         with:
           docker_hub_organization: prometheuscommunity
