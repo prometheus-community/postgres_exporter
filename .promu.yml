@@ -1,5 +1,5 @@
 go:
-    # This must match .circle/config.yml.
+    # This must match .github/workflows/ci.yml.
     version: 1.26
 repository:
     path: github.com/prometheus-community/postgres_exporter
