@@ -1,9 +1,10 @@
-[![Build Status](https://circleci.com/gh/prometheus-community/postgres_exporter.svg?style=svg)](https://circleci.com/gh/prometheus-community/postgres_exporter)
+# PostgreSQL Server Exporter
+
+[![Build Status](https://github.com/prometheus-community/postgres_exporter/actions/workflows/ci.yml/badge.svg)](https://github.com/prometheus-community/postgres_exporter/actions/workflows/ci.yml)
 [![Coverage Status](https://coveralls.io/repos/github/prometheus-community/postgres_exporter/badge.svg?branch=master)](https://coveralls.io/github/prometheus-community/postgres_exporter?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/prometheus-community/postgres_exporter)](https://goreportcard.com/report/github.com/prometheus-community/postgres_exporter)
 [![Docker Pulls](https://img.shields.io/docker/pulls/prometheuscommunity/postgres-exporter.svg)](https://hub.docker.com/r/prometheuscommunity/postgres-exporter/tags)
 
-# PostgreSQL Server Exporter
 
 Prometheus exporter for PostgreSQL server metrics.
 
