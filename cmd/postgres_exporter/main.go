@@ -35,7 +35,7 @@ import (
 )
 
 var (
-	c = newConfigHandler()
+	c = newAuthConfigHandler()
 
 	configFile             = kingpin.Flag("config.file", "Postgres exporter configuration file.").Default("postgres_exporter.yml").String()
 	webConfig              = kingpinflag.AddFlags(kingpin.CommandLine, ":9187")
@@ -56,8 +56,8 @@ var (
 // The name of the exporter.
 const exporterName = "postgres_exporter"
 
-func newConfigHandler() *config.Handler {
-	handler, err := config.NewHandler(prometheus.DefaultRegisterer)
+func newAuthConfigHandler() *config.AuthConfigHandler {
+	handler, err := config.NewAuthConfigHandler(prometheus.DefaultRegisterer)
 	if err != nil {
 		panic(err)
 	}
@@ -77,7 +77,7 @@ func main() {
 		return
 	}
 
-	if err := c.ReloadConfig(*configFile, logger); err != nil {
+	if err := c.ReloadAuthConfig(*configFile, logger); err != nil {
 		// This is not fatal, but it means that auth must be provided for every dsn.
 		logger.Warn("Error loading config", "err", err)
 	}
