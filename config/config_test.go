@@ -14,23 +14,64 @@
 package config
 
 import (
+	"strings"
 	"testing"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
+func TestLoadConfigFile(t *testing.T) {
+	config, err := LoadConfig("testdata/config-good.yaml")
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if len(config.AuthModules) == 0 {
+		t.Fatal("LoadConfig() loaded no auth modules")
+	}
+}
+
+func TestDecodeConfig(t *testing.T) {
+	config, err := DecodeConfig(strings.NewReader(`
+auth_modules:
+  module:
+    type: userpass
+    userpass:
+      username: user
+      password: pass
+`))
+	if err != nil {
+		t.Fatalf("DecodeConfig() error = %v", err)
+	}
+	if got, want := config.AuthModules["module"].UserPass.Username, "user"; got != want {
+		t.Fatalf("username = %q, want %q", got, want)
+	}
+}
+
 func TestLoadConfig(t *testing.T) {
-	ch := &Handler{
-		Config: &Config{},
+	ch, err := NewHandler(prometheus.NewRegistry())
+	if err != nil {
+		t.Fatalf("NewHandler() error = %v", err)
 	}
 
-	err := ch.ReloadConfig("testdata/config-good.yaml", nil)
-	if err != nil {
+	if err := ch.ReloadConfig("testdata/config-good.yaml", nil); err != nil {
 		t.Errorf("error loading config: %s", err)
 	}
 }
 
+func TestNewHandlerRequiresRegisterer(t *testing.T) {
+	handler, err := NewHandler(nil)
+	if err == nil {
+		t.Fatal("NewHandler() error = nil, want error")
+	}
+	if handler != nil {
+		t.Fatalf("NewHandler() handler = %v, want nil", handler)
+	}
+}
+
 func TestLoadBadConfigs(t *testing.T) {
-	ch := &Handler{
-		Config: &Config{},
+	ch, err := NewHandler(prometheus.NewRegistry())
+	if err != nil {
+		t.Fatalf("NewHandler() error = %v", err)
 	}
 
 	tests := []struct {
