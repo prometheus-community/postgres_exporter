@@ -28,7 +28,7 @@ import (
 func handleProbe(logger *slog.Logger, excludeDatabases []string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		conf := c.GetConfig()
+		conf := c.GetAuthConfig()
 		params := r.URL.Query()
 		target := params.Get("target")
 		if target == "" {

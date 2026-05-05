@@ -25,7 +25,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type Config struct {
+type AuthConfig struct {
 	AuthModules map[string]AuthModule `yaml:"auth_modules"`
 }
 
@@ -41,20 +41,20 @@ type UserPass struct {
 	Password string `yaml:"password"`
 }
 
-type Handler struct {
+type AuthConfigHandler struct {
 	sync.RWMutex
-	Config *Config
+	AuthConfig *AuthConfig
 
 	configReloadSuccess prometheus.Gauge
 	configReloadSeconds prometheus.Gauge
 }
 
-func NewHandler(registerer prometheus.Registerer) (*Handler, error) {
+func NewAuthConfigHandler(registerer prometheus.Registerer) (*AuthConfigHandler, error) {
 	if registerer == nil {
 		return nil, errors.New("registerer is required")
 	}
-	h := &Handler{
-		Config: &Config{},
+	h := &AuthConfigHandler{
+		AuthConfig: &AuthConfig{},
 		configReloadSuccess: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: "postgres_exporter",
 			Name:      "config_last_reload_successful",
@@ -71,28 +71,28 @@ func NewHandler(registerer prometheus.Registerer) (*Handler, error) {
 	return h, nil
 }
 
-func (ch *Handler) GetConfig() *Config {
+func (ch *AuthConfigHandler) GetAuthConfig() *AuthConfig {
 	ch.RLock()
 	defer ch.RUnlock()
-	return ch.Config
+	return ch.AuthConfig
 }
 
-func (ch *Handler) ReloadConfig(f string, logger *slog.Logger) error {
+func (ch *AuthConfigHandler) ReloadAuthConfig(f string, logger *slog.Logger) error {
 	var err error
 	defer func() {
 		ch.observeReload(err)
 	}()
 
-	config, err := LoadConfig(f)
+	config, err := LoadAuthConfig(f)
 	if err != nil {
 		return err
 	}
 
-	ch.SetConfig(config)
+	ch.SetAuthConfig(config)
 	return nil
 }
 
-func (ch *Handler) observeReload(err error) {
+func (ch *AuthConfigHandler) observeReload(err error) {
 	if ch.configReloadSuccess == nil {
 		return
 	}
@@ -106,22 +106,22 @@ func (ch *Handler) observeReload(err error) {
 	}
 }
 
-func LoadConfig(f string) (*Config, error) {
+func LoadAuthConfig(f string) (*AuthConfig, error) {
 	yamlReader, err := os.Open(f)
 	if err != nil {
 		return nil, fmt.Errorf("error opening config file %q: %s", f, err)
 	}
 	defer yamlReader.Close()
 
-	config, err := DecodeConfig(yamlReader)
+	config, err := DecodeAuthConfig(yamlReader)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing config file %q: %s", f, err)
 	}
 	return config, nil
 }
 
-func DecodeConfig(r io.Reader) (*Config, error) {
-	config := &Config{}
+func DecodeAuthConfig(r io.Reader) (*AuthConfig, error) {
+	config := &AuthConfig{}
 	decoder := yaml.NewDecoder(r)
 	decoder.KnownFields(true)
 
@@ -131,9 +131,9 @@ func DecodeConfig(r io.Reader) (*Config, error) {
 	return config, nil
 }
 
-func (ch *Handler) SetConfig(config *Config) {
+func (ch *AuthConfigHandler) SetAuthConfig(config *AuthConfig) {
 	ch.Lock()
-	ch.Config = config
+	ch.AuthConfig = config
 	ch.Unlock()
 }
 
