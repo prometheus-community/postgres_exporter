@@ -34,24 +34,67 @@ import (
 	"github.com/prometheus/exporter-toolkit/web/kingpinflag"
 )
 
-var (
-	c = newAuthConfigHandler()
+type legacyFlags struct {
+	AutoDiscoverDatabases bool
+	UserQueriesPath       string
+	ConstantLabels        string
+	ExcludeDatabases      string
+	IncludeDatabases      string
+}
 
-	configFile             = kingpin.Flag("config.file", "Postgres exporter configuration file.").Default("postgres_exporter.yml").String()
-	webConfig              = kingpinflag.AddFlags(kingpin.CommandLine, ":9187")
-	metricsPath            = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").Envar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
-	disableDefaultMetrics  = kingpin.Flag("disable-default-metrics", "Do not include default metrics.").Default("false").Envar("PG_EXPORTER_DISABLE_DEFAULT_METRICS").Bool()
-	disableSettingsMetrics = kingpin.Flag("disable-settings-metrics", "Do not include pg_settings metrics.").Default("false").Envar("PG_EXPORTER_DISABLE_SETTINGS_METRICS").Bool()
-	autoDiscoverDatabases  = kingpin.Flag("auto-discover-databases", "Whether to discover the databases on a server dynamically. (DEPRECATED)").Default("false").Envar("PG_EXPORTER_AUTO_DISCOVER_DATABASES").Bool()
-	queriesPath            = kingpin.Flag("extend.query-path", "Path to custom queries to run. (DEPRECATED)").Default("").Envar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
-	onlyDumpMaps           = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
-	constantLabelsList     = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,). (DEPRECATED)").Default("").Envar("PG_EXPORTER_CONSTANT_LABELS").String()
-	excludeDatabases       = kingpin.Flag("exclude-databases", "A list of databases to remove when autoDiscoverDatabases is enabled (DEPRECATED)").Default("").Envar("PG_EXPORTER_EXCLUDE_DATABASES").String()
-	includeDatabases       = kingpin.Flag("include-databases", "A list of databases to include when autoDiscoverDatabases is enabled (DEPRECATED)").Default("").Envar("PG_EXPORTER_INCLUDE_DATABASES").String()
-	metricPrefix           = kingpin.Flag("metric-prefix", "A metric prefix can be used to have non-default (not \"pg\") prefixes for each of the metrics").Default("pg").Envar("PG_EXPORTER_METRIC_PREFIX").String()
-	collectionTimeout      = kingpin.Flag("collection-timeout", "Timeout for collecting the statistics when the database is slow").Default("1m").Envar("PG_EXPORTER_COLLECTION_TIMEOUT").String()
-	logger                 = promslog.NewNopLogger()
+var (
+	c                  = newAuthConfigHandler()
+	cfg                = config.NewConfigWithDefaults()
+	legacyMetricsFlags = legacyFlags{}
+
+	webConfig    = kingpinflag.AddFlags(kingpin.CommandLine, ":9187")
+	metricsPath  = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").Envar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
+	onlyDumpMaps = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
+	logger       = promslog.NewNopLogger()
 )
+
+func init() {
+	kingpin.Flag("config.file", "Postgres exporter configuration file.").
+		Default(cfg.AuthConfigFile).
+		StringVar(&cfg.AuthConfigFile)
+	kingpin.Flag("disable-default-metrics", "Do not include default metrics.").
+		Default("false").
+		Envar("PG_EXPORTER_DISABLE_DEFAULT_METRICS").
+		BoolVar(&cfg.DisableDefaultMetrics)
+	kingpin.Flag("disable-settings-metrics", "Do not include pg_settings metrics.").
+		Default("false").
+		Envar("PG_EXPORTER_DISABLE_SETTINGS_METRICS").
+		BoolVar(&cfg.DisableSettingsMetrics)
+	kingpin.Flag("metric-prefix", "A metric prefix can be used to have non-default (not \"pg\") prefixes for each of the metrics").
+		Default(cfg.MetricPrefix).
+		Envar("PG_EXPORTER_METRIC_PREFIX").
+		StringVar(&cfg.MetricPrefix)
+	kingpin.Flag("collection-timeout", "Timeout for collecting the statistics when the database is slow").
+		Default(cfg.CollectionTimeout.String()).
+		Envar("PG_EXPORTER_COLLECTION_TIMEOUT").
+		DurationVar(&cfg.CollectionTimeout)
+
+	kingpin.Flag("auto-discover-databases", "Whether to discover the databases on a server dynamically. (DEPRECATED)").
+		Default("false").
+		Envar("PG_EXPORTER_AUTO_DISCOVER_DATABASES").
+		BoolVar(&legacyMetricsFlags.AutoDiscoverDatabases)
+	kingpin.Flag("extend.query-path", "Path to custom queries to run. (DEPRECATED)").
+		Default("").
+		Envar("PG_EXPORTER_EXTEND_QUERY_PATH").
+		StringVar(&legacyMetricsFlags.UserQueriesPath)
+	kingpin.Flag("constantLabels", "A list of label=value separated by comma(,). (DEPRECATED)").
+		Default("").
+		Envar("PG_EXPORTER_CONSTANT_LABELS").
+		StringVar(&legacyMetricsFlags.ConstantLabels)
+	kingpin.Flag("exclude-databases", "A list of databases to remove when autoDiscoverDatabases is enabled (DEPRECATED)").
+		Default("").
+		Envar("PG_EXPORTER_EXCLUDE_DATABASES").
+		StringVar(&legacyMetricsFlags.ExcludeDatabases)
+	kingpin.Flag("include-databases", "A list of databases to include when autoDiscoverDatabases is enabled (DEPRECATED)").
+		Default("").
+		Envar("PG_EXPORTER_INCLUDE_DATABASES").
+		StringVar(&legacyMetricsFlags.IncludeDatabases)
+}
 
 // The name of the exporter.
 const exporterName = "postgres_exporter"
@@ -77,7 +120,7 @@ func main() {
 		return
 	}
 
-	if err := c.ReloadAuthConfig(*configFile, logger); err != nil {
+	if err := c.ReloadAuthConfig(cfg.AuthConfigFile, logger); err != nil {
 		// This is not fatal, but it means that auth must be provided for every dsn.
 		logger.Warn("Error loading config", "err", err)
 	}
@@ -87,31 +130,32 @@ func main() {
 		logger.Error("Failed reading data sources", "err", err.Error())
 		os.Exit(1)
 	}
+	cfg.DataSourceNames = dsns
 
-	excludedDatabases := strings.Split(*excludeDatabases, ",")
+	excludedDatabases := strings.Split(legacyMetricsFlags.ExcludeDatabases, ",")
 	logger.Info("Excluded databases", "databases", fmt.Sprintf("%v", excludedDatabases))
 
-	if *queriesPath != "" {
-		logger.Warn("The extended queries.yaml config is DEPRECATED", "file", *queriesPath)
+	if legacyMetricsFlags.UserQueriesPath != "" {
+		logger.Warn("The extended queries.yaml config is DEPRECATED", "file", legacyMetricsFlags.UserQueriesPath)
 	}
 
-	if *autoDiscoverDatabases || *excludeDatabases != "" || *includeDatabases != "" {
+	if legacyMetricsFlags.AutoDiscoverDatabases || legacyMetricsFlags.ExcludeDatabases != "" || legacyMetricsFlags.IncludeDatabases != "" {
 		logger.Warn("Scraping additional databases via auto discovery is DEPRECATED")
 	}
 
-	if *constantLabelsList != "" {
+	if legacyMetricsFlags.ConstantLabels != "" {
 		logger.Warn("Constant labels on all metrics is DEPRECATED")
 	}
 
 	opts := []exporter.ExporterOpt{
-		exporter.DisableDefaultMetrics(*disableDefaultMetrics),
-		exporter.DisableSettingsMetrics(*disableSettingsMetrics),
-		exporter.AutoDiscoverDatabases(*autoDiscoverDatabases),
-		exporter.WithUserQueriesPath(*queriesPath),
-		exporter.WithConstantLabels(*constantLabelsList),
+		exporter.DisableDefaultMetrics(cfg.DisableDefaultMetrics),
+		exporter.DisableSettingsMetrics(cfg.DisableSettingsMetrics),
+		exporter.AutoDiscoverDatabases(legacyMetricsFlags.AutoDiscoverDatabases),
+		exporter.WithUserQueriesPath(legacyMetricsFlags.UserQueriesPath),
+		exporter.WithConstantLabels(legacyMetricsFlags.ConstantLabels),
 		exporter.ExcludeDatabases(excludedDatabases),
-		exporter.IncludeDatabases(*includeDatabases),
-		exporter.WithMetricPrefix(*metricPrefix),
+		exporter.IncludeDatabases(legacyMetricsFlags.IncludeDatabases),
+		exporter.WithMetricPrefix(cfg.MetricPrefix),
 	}
 
 	exporter := exporter.NewExporter(dsns, logger, opts...)
@@ -134,7 +178,7 @@ func main() {
 		excludedDatabases,
 		dsn,
 		[]string{},
-		collector.WithCollectionTimeout(*collectionTimeout))
+		collector.WithCollectionTimeout(cfg.CollectionTimeout.String()))
 	if err != nil {
 		logger.Warn("Failed to create PostgresCollector", "err", err.Error())
 	} else {
