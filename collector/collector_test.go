@@ -133,3 +133,48 @@ func TestWithConnectionTimeout(t *testing.T) {
 		t.Errorf("there were unfulfilled exceptions: %s", err)
 	}
 }
+
+func TestNewPostgresCollectorUsesExplicitCollectorStates(t *testing.T) {
+	t.Parallel()
+
+	states := make(map[string]bool)
+	for _, collectorConfig := range Collectors() {
+		states[collectorConfig.Name] = false
+	}
+	states[rolesSubsystem] = true
+
+	logger := promslog.NewNopLogger()
+	c, err := NewPostgresCollector(
+		logger,
+		nil,
+		"postgresql://local",
+		nil,
+		WithCollectorStates(states),
+	)
+	if err != nil {
+		t.Fatalf("NewPostgresCollector() error = %v", err)
+	}
+
+	if got, want := len(c.Collectors), 1; got != want {
+		t.Fatalf("len(Collectors) = %d, want %d", got, want)
+	}
+	if _, ok := c.Collectors[rolesSubsystem]; !ok {
+		t.Fatalf("Collectors[%q] missing", rolesSubsystem)
+	}
+}
+
+func TestWithCollectorStatesRejectsUnknownCollector(t *testing.T) {
+	t.Parallel()
+
+	logger := promslog.NewNopLogger()
+	_, err := NewPostgresCollector(
+		logger,
+		nil,
+		"postgresql://local",
+		nil,
+		WithCollectorStates(map[string]bool{"missing": true}),
+	)
+	if err == nil {
+		t.Fatal("NewPostgresCollector() error = nil, want error")
+	}
+}

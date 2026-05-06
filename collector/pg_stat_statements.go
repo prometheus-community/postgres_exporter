@@ -20,55 +20,22 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
-	statStatementsSubsystem = "stat_statements"
-	defaultStatementLimit   = "100"
-)
-
-var (
-	includeQueryFlag      *bool   = nil
-	statementLengthFlag   *uint   = nil
-	statementLimitFlag    *uint   = nil
-	excludedDatabasesFlag *string = nil
-	excludedUsersFlag     *string = nil
+	StatStatementsCollectorName           = "stat_statements"
+	DefaultStatStatementsQueryLength uint = 120
+	DefaultStatStatementsLimit       uint = 100
+	defaultStatementLimit                 = "100"
 )
 
 func init() {
 	// WARNING:
 	//   Disabled by default because this set of metrics can be quite expensive on a busy server
 	//   Every unique query will cause a new timeseries to be created
-	registerCollector(statStatementsSubsystem, defaultDisabled, NewPGStatStatementsCollector)
-
-	includeQueryFlag = kingpin.Flag(
-		fmt.Sprint(collectorFlagPrefix, statStatementsSubsystem, ".include_query"),
-		"Enable selecting statement query together with queryId. (default: disabled)").
-		Default(fmt.Sprintf("%v", defaultDisabled)).
-		Bool()
-	statementLengthFlag = kingpin.Flag(
-		fmt.Sprint(collectorFlagPrefix, statStatementsSubsystem, ".query_length"),
-		"Maximum length of the statement text.").
-		Default("120").
-		Uint()
-	statementLimitFlag = kingpin.Flag(
-		fmt.Sprint(collectorFlagPrefix, statStatementsSubsystem, ".limit"),
-		"Maximum number of statements to return.").
-		Default(defaultStatementLimit).
-		Uint()
-	excludedDatabasesFlag = kingpin.Flag(
-		fmt.Sprint(collectorFlagPrefix, statStatementsSubsystem, ".exclude_databases"),
-		"Comma-separated list of database names to exclude. (default: none)").
-		Default("").
-		String()
-	excludedUsersFlag = kingpin.Flag(
-		fmt.Sprint(collectorFlagPrefix, statStatementsSubsystem, ".exclude_users"),
-		"Comma-separated list of user names to exclude. (default: none)").
-		Default("").
-		String()
+	registerCollector(StatStatementsCollectorName, defaultDisabled, NewPGStatStatementsCollector)
 }
 
 type PGStatStatementsCollector struct {
@@ -81,68 +48,50 @@ type PGStatStatementsCollector struct {
 }
 
 func NewPGStatStatementsCollector(config collectorConfig) (Collector, error) {
-	var excludedDatabases []string
-	if *excludedDatabasesFlag != "" {
-		for db := range strings.SplitSeq(*excludedDatabasesFlag, ",") {
-			if trimmed := strings.TrimSpace(db); trimmed != "" {
-				excludedDatabases = append(excludedDatabases, trimmed)
-			}
-		}
-	}
-
-	var excludedUsers []string
-	if *excludedUsersFlag != "" {
-		for user := range strings.SplitSeq(*excludedUsersFlag, ",") {
-			if trimmed := strings.TrimSpace(user); trimmed != "" {
-				excludedUsers = append(excludedUsers, trimmed)
-			}
-		}
-	}
-
 	return &PGStatStatementsCollector{
 		log:                   config.logger,
-		includeQueryStatement: *includeQueryFlag,
-		statementLength:       *statementLengthFlag,
-		statementLimit:        *statementLimitFlag,
-		excludedDatabases:     excludedDatabases,
-		excludedUsers:         excludedUsers,
+		includeQueryStatement: config.statStatementsConfig.includeQueryStatement,
+		statementLength:       config.statStatementsConfig.statementLength,
+		statementLimit:        config.statStatementsConfig.statementLimit,
+		excludedDatabases:     config.statStatementsConfig.excludedDatabases,
+		excludedUsers:         config.statStatementsConfig.excludedUsers,
 	}, nil
 }
 
 var (
 	statStatementsCallsTotal = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statStatementsSubsystem, "calls_total"),
+		prometheus.BuildFQName(namespace, StatStatementsCollectorName, "calls_total"),
 		"Number of times executed",
 		[]string{"user", "datname", "queryid"},
 		prometheus.Labels{},
 	)
 	statStatementsSecondsTotal = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statStatementsSubsystem, "seconds_total"),
+		prometheus.BuildFQName(namespace, StatStatementsCollectorName, "seconds_total"),
 		"Total time spent in the statement, in seconds",
 		[]string{"user", "datname", "queryid"},
 		prometheus.Labels{},
 	)
 	statStatementsRowsTotal = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statStatementsSubsystem, "rows_total"),
+		prometheus.BuildFQName(namespace, StatStatementsCollectorName, "rows_total"),
 		"Total number of rows retrieved or affected by the statement",
 		[]string{"user", "datname", "queryid"},
 		prometheus.Labels{},
 	)
 	statStatementsBlockReadSecondsTotal = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statStatementsSubsystem, "block_read_seconds_total"),
+		prometheus.BuildFQName(namespace, StatStatementsCollectorName, "block_read_seconds_total"),
 		"Total time the statement spent reading blocks, in seconds",
 		[]string{"user", "datname", "queryid"},
 		prometheus.Labels{},
 	)
 	statStatementsBlockWriteSecondsTotal = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statStatementsSubsystem, "block_write_seconds_total"),
+		prometheus.BuildFQName(namespace, StatStatementsCollectorName, "block_write_seconds_total"),
 		"Total time the statement spent writing blocks, in seconds",
 		[]string{"user", "datname", "queryid"},
 		prometheus.Labels{},
 	)
 
 	statStatementsQuery = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statStatementsSubsystem, "query_id"),
+		prometheus.BuildFQName(namespace, StatStatementsCollectorName, "query_id"),
 		"SQL Query to queryid mapping",
 		[]string{"queryid", "query"},
 		prometheus.Labels{},
@@ -231,7 +180,7 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 	}
 	databaseFilter := c.buildExclusionClause(c.excludedDatabases, pgStatStatementExcludeDatabases)
 	userFilter := c.buildExclusionClause(c.excludedUsers, pgStatStatementExcludeUsers)
-	statementLimit := defaultStatementLimit
+	statementLimit := fmt.Sprintf("%d", DefaultStatStatementsLimit)
 	if c.statementLimit > 0 {
 		statementLimit = fmt.Sprintf("%d", c.statementLimit)
 	}

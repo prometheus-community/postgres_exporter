@@ -66,14 +66,14 @@ func handleProbe(logger *slog.Logger, excludeDatabases []string) http.HandlerFun
 		registry := prometheus.NewRegistry()
 
 		opts := []exporter.ExporterOpt{
-			exporter.DisableDefaultMetrics(*disableDefaultMetrics),
-			exporter.DisableSettingsMetrics(*disableSettingsMetrics),
-			exporter.AutoDiscoverDatabases(*autoDiscoverDatabases),
-			exporter.WithUserQueriesPath(*queriesPath),
-			exporter.WithConstantLabels(*constantLabelsList),
+			exporter.DisableDefaultMetrics(cfg.DisableDefaultMetrics),
+			exporter.DisableSettingsMetrics(cfg.DisableSettingsMetrics),
+			exporter.AutoDiscoverDatabases(legacyMetricsFlags.AutoDiscoverDatabases),
+			exporter.WithUserQueriesPath(legacyMetricsFlags.UserQueriesPath),
+			exporter.WithConstantLabels(legacyMetricsFlags.ConstantLabels),
 			exporter.ExcludeDatabases(excludeDatabases),
-			exporter.IncludeDatabases(*includeDatabases),
-			exporter.WithMetricPrefix(*metricPrefix),
+			exporter.IncludeDatabases(legacyMetricsFlags.IncludeDatabases),
+			exporter.WithMetricPrefix(cfg.MetricPrefix),
 		}
 
 		dsns := []string{dsn.GetConnectionString()}
@@ -84,7 +84,19 @@ func handleProbe(logger *slog.Logger, excludeDatabases []string) http.HandlerFun
 		registry.MustRegister(exporter)
 
 		// Run the probe
-		pc, err := collector.NewProbeCollector(tl, excludeDatabases, registry, dsn)
+		pc, err := collector.NewProbeCollector(
+			tl,
+			excludeDatabases,
+			registry,
+			dsn.GetConnectionString(),
+			collector.WithCollectorStates(cfg.CollectorStates()),
+			collector.WithStatStatementsConfig(
+				cfg.StatStatements.IncludeQuery,
+				cfg.StatStatements.QueryLength,
+				cfg.StatStatements.Limit,
+				cfg.StatStatements.ExcludeDatabases,
+				cfg.StatStatements.ExcludeUsers,
+			))
 		if err != nil {
 			logger.Error("Error creating probe collector", "err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)

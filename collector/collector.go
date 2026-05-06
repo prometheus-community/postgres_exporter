@@ -19,26 +19,24 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sort"
 	"sync"
 	"time"
 
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
-	factories              = make(map[string]func(collectorConfig) (Collector, error))
-	initiatedCollectorsMtx = sync.Mutex{}
-	initiatedCollectors    = make(map[string]Collector)
-	collectorState         = make(map[string]*bool)
-	forcedCollectors       = map[string]bool{} // collectors which have been explicitly enabled or disabled
+	factories          = make(map[string]func(collectorConfig) (Collector, error))
+	collectorMetadata  = make(map[string]CollectorMetadata)
+	collectorConfigMtx = sync.Mutex{}
 )
 
 const (
 	// Namespace for all metrics.
 	namespace = "pg"
 
-	collectorFlagPrefix = "collector."
+	CollectorFlagPrefix = "collector."
 	defaultEnabled      = true
 	defaultDisabled     = false
 )
@@ -62,29 +60,66 @@ type Collector interface {
 	Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error
 }
 
+type CollectorMetadata struct {
+	Name           string
+	DefaultEnabled bool
+}
+
 type collectorConfig struct {
-	logger           *slog.Logger
-	excludeDatabases []string
+	logger               *slog.Logger
+	excludeDatabases     []string
+	statStatementsConfig statStatementsConfig
+}
+
+type collectorOptions struct {
+	collectionTimeout    time.Duration
+	collectorStates      map[string]bool
+	statStatementsConfig statStatementsConfig
+}
+
+type statStatementsConfig struct {
+	includeQueryStatement bool
+	statementLength       uint
+	statementLimit        uint
+	excludedDatabases     []string
+	excludedUsers         []string
 }
 
 func registerCollector(name string, isDefaultEnabled bool, createFunc func(collectorConfig) (Collector, error)) {
-	var helpDefaultState string
-	if isDefaultEnabled {
-		helpDefaultState = "enabled"
-	} else {
-		helpDefaultState = "disabled"
-	}
-
-	// Create flag for this collector
-	flagName := collectorFlagPrefix + name
-	flagHelp := fmt.Sprintf("Enable the %s collector (default: %s).", name, helpDefaultState)
-	defaultValue := fmt.Sprintf("%v", isDefaultEnabled)
-
-	flag := kingpin.Flag(flagName, flagHelp).Default(defaultValue).Action(collectorFlagAction(name)).Bool()
-	collectorState[name] = flag
-
-	// Register the create function for this collector
+	collectorConfigMtx.Lock()
+	defer collectorConfigMtx.Unlock()
+	collectorMetadata[name] = CollectorMetadata{Name: name, DefaultEnabled: isDefaultEnabled}
 	factories[name] = createFunc
+}
+
+func Collectors() []CollectorMetadata {
+	collectorConfigMtx.Lock()
+	defer collectorConfigMtx.Unlock()
+	collectors := make([]CollectorMetadata, 0, len(collectorMetadata))
+	for _, metadata := range collectorMetadata {
+		collectors = append(collectors, metadata)
+	}
+	sort.Slice(collectors, func(i, j int) bool {
+		return collectors[i].Name < collectors[j].Name
+	})
+	return collectors
+}
+
+func defaultCollectorStates() map[string]bool {
+	states := make(map[string]bool, len(collectorMetadata))
+	for name, metadata := range collectorMetadata {
+		states[name] = metadata.DefaultEnabled
+	}
+	return states
+}
+
+func newDefaultCollectorOptions() collectorOptions {
+	return collectorOptions{
+		statStatementsConfig: statStatementsConfig{
+			statementLength: DefaultStatStatementsQueryLength,
+			statementLimit:  DefaultStatStatementsLimit,
+		},
+	}
 }
 
 // PostgresCollector implements the prometheus.Collector interface.
@@ -96,52 +131,25 @@ type PostgresCollector struct {
 	CollectionTimeout time.Duration
 }
 
-type Option func(*PostgresCollector) error
+type Option func(*collectorOptions) error
 
 // NewPostgresCollector creates a new PostgresCollector.
 func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn string, filters []string, options ...Option) (*PostgresCollector, error) {
 	p := &PostgresCollector{
 		logger: logger,
 	}
-	// Apply options to customize the collector
+	collectorOptions := newDefaultCollectorOptions()
 	for _, o := range options {
-		err := o(p)
+		err := o(&collectorOptions)
 		if err != nil {
 			return nil, err
 		}
 	}
+	p.CollectionTimeout = collectorOptions.collectionTimeout
 
-	f := make(map[string]bool)
-	for _, filter := range filters {
-		enabled, exist := collectorState[filter]
-		if !exist {
-			return nil, fmt.Errorf("missing collector: %s", filter)
-		}
-		if !*enabled {
-			return nil, fmt.Errorf("disabled collector: %s", filter)
-		}
-		f[filter] = true
-	}
-	collectors := make(map[string]Collector)
-	initiatedCollectorsMtx.Lock()
-	defer initiatedCollectorsMtx.Unlock()
-	for key, enabled := range collectorState {
-		if !*enabled || (len(f) > 0 && !f[key]) {
-			continue
-		}
-		if collector, ok := initiatedCollectors[key]; ok {
-			collectors[key] = collector
-		} else {
-			collector, err := factories[key](collectorConfig{
-				logger:           logger.With("collector", key),
-				excludeDatabases: excludeDatabases,
-			})
-			if err != nil {
-				return nil, err
-			}
-			collectors[key] = collector
-			initiatedCollectors[key] = collector
-		}
+	collectors, err := newCollectors(logger, excludeDatabases, filters, collectorOptions)
+	if err != nil {
+		return nil, err
 	}
 
 	p.Collectors = collectors
@@ -160,7 +168,7 @@ func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn st
 }
 
 func WithCollectionTimeout(s string) Option {
-	return func(e *PostgresCollector) error {
+	return func(o *collectorOptions) error {
 		duration, err := time.ParseDuration(s)
 		if err != nil {
 			return err
@@ -168,9 +176,77 @@ func WithCollectionTimeout(s string) Option {
 		if duration < 1*time.Millisecond {
 			return errors.New("timeout must be greater than 1ms")
 		}
-		e.CollectionTimeout = duration
+		o.collectionTimeout = duration
 		return nil
 	}
+}
+
+func WithCollectorStates(states map[string]bool) Option {
+	return func(o *collectorOptions) error {
+		collectorConfigMtx.Lock()
+		defer collectorConfigMtx.Unlock()
+
+		o.collectorStates = make(map[string]bool, len(states))
+		for name, enabled := range states {
+			if _, ok := factories[name]; !ok {
+				return fmt.Errorf("missing collector: %s", name)
+			}
+			o.collectorStates[name] = enabled
+		}
+		return nil
+	}
+}
+
+func WithStatStatementsConfig(includeQuery bool, queryLength uint, limit uint, excludedDatabases []string, excludedUsers []string) Option {
+	return func(o *collectorOptions) error {
+		o.statStatementsConfig = statStatementsConfig{
+			includeQueryStatement: includeQuery,
+			statementLength:       queryLength,
+			statementLimit:        limit,
+			excludedDatabases:     append([]string(nil), excludedDatabases...),
+			excludedUsers:         append([]string(nil), excludedUsers...),
+		}
+		return nil
+	}
+}
+
+func newCollectors(logger *slog.Logger, excludeDatabases []string, filters []string, options collectorOptions) (map[string]Collector, error) {
+	collectorConfigMtx.Lock()
+	defer collectorConfigMtx.Unlock()
+
+	states := defaultCollectorStates()
+	for name, enabled := range options.collectorStates {
+		states[name] = enabled
+	}
+
+	filtered := make(map[string]bool)
+	for _, filter := range filters {
+		enabled, exist := states[filter]
+		if !exist {
+			return nil, fmt.Errorf("missing collector: %s", filter)
+		}
+		if !enabled {
+			return nil, fmt.Errorf("disabled collector: %s", filter)
+		}
+		filtered[filter] = true
+	}
+
+	collectors := make(map[string]Collector)
+	for key, enabled := range states {
+		if !enabled || (len(filtered) > 0 && !filtered[key]) {
+			continue
+		}
+		collector, err := factories[key](collectorConfig{
+			logger:               logger.With("collector", key),
+			excludeDatabases:     excludeDatabases,
+			statStatementsConfig: options.statStatementsConfig,
+		})
+		if err != nil {
+			return nil, err
+		}
+		collectors[key] = collector
+	}
+	return collectors, nil
 }
 
 // Describe implements the prometheus.Collector interface.
@@ -233,18 +309,6 @@ func execute(ctx context.Context, name string, c Collector, instance *instance, 
 	}
 	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), name)
 	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name)
-}
-
-// collectorFlagAction generates a new action function for the given collector
-// to track whether it has been explicitly enabled or disabled from the command line.
-// A new action function is needed for each collector flag because the ParseContext
-// does not contain information about which flag called the action.
-// See: https://github.com/alecthomas/kingpin/issues/294
-func collectorFlagAction(collector string) func(ctx *kingpin.ParseContext) error {
-	return func(ctx *kingpin.ParseContext) error {
-		forcedCollectors[collector] = true
-		return nil
-	}
 }
 
 // ErrNoData indicates the collector found no data to collect, but had no other error.

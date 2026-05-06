@@ -18,7 +18,6 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -29,35 +28,19 @@ type ProbeCollector struct {
 	instance   *instance
 }
 
-func NewProbeCollector(logger *slog.Logger, excludeDatabases []string, registry *prometheus.Registry, dsn config.DSN) (*ProbeCollector, error) {
-	collectors := make(map[string]Collector)
-	initiatedCollectorsMtx.Lock()
-	defer initiatedCollectorsMtx.Unlock()
-	for key, enabled := range collectorState {
-		// TODO: Handle filters
-		// if !*enabled || (len(f) > 0 && !f[key]) {
-		// 	continue
-		// }
-		if !*enabled {
-			continue
-		}
-		if collector, ok := initiatedCollectors[key]; ok {
-			collectors[key] = collector
-		} else {
-			collector, err := factories[key](
-				collectorConfig{
-					logger:           logger.With("collector", key),
-					excludeDatabases: excludeDatabases,
-				})
-			if err != nil {
-				return nil, err
-			}
-			collectors[key] = collector
-			initiatedCollectors[key] = collector
+func NewProbeCollector(logger *slog.Logger, excludeDatabases []string, registry *prometheus.Registry, dsn string, options ...Option) (*ProbeCollector, error) {
+	collectorOptions := newDefaultCollectorOptions()
+	for _, o := range options {
+		if err := o(&collectorOptions); err != nil {
+			return nil, err
 		}
 	}
+	collectors, err := newCollectors(logger, excludeDatabases, nil, collectorOptions)
+	if err != nil {
+		return nil, err
+	}
 
-	instance, err := newInstance(dsn.GetConnectionString())
+	instance, err := newInstance(dsn)
 	if err != nil {
 		return nil, err
 	}
