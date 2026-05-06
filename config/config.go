@@ -15,6 +15,8 @@ package config
 
 import (
 	"time"
+
+	"github.com/prometheus-community/postgres_exporter/collector"
 )
 
 const (
@@ -35,8 +37,23 @@ type Config struct {
 	MetricPrefix   string
 	AuthConfigFile string
 
-	CollectorNames    []string
+	Collectors        []CollectorConfig
+	StatStatements    StatStatementsConfig
 	CollectionTimeout time.Duration
+}
+
+type CollectorConfig struct {
+	Name           string
+	DefaultEnabled bool
+	Enabled        bool
+}
+
+type StatStatementsConfig struct {
+	IncludeQuery     bool
+	QueryLength      uint
+	Limit            uint
+	ExcludeDatabases []string
+	ExcludeUsers     []string
 }
 
 // NewConfigWithDefaults returns a Config initialized with exporter defaults.
@@ -44,6 +61,8 @@ func NewConfigWithDefaults() Config {
 	return Config{
 		MetricPrefix:      DefaultMetricPrefix,
 		AuthConfigFile:    DefaultAuthConfigFile,
+		Collectors:        defaultCollectors(),
+		StatStatements:    defaultStatStatements(),
 		CollectionTimeout: DefaultCollectionTimeout,
 	}
 }
@@ -55,4 +74,32 @@ func (c Config) PrimaryDataSourceName() string {
 		return ""
 	}
 	return c.DataSourceNames[0]
+}
+
+func (c Config) CollectorStates() map[string]bool {
+	states := make(map[string]bool, len(c.Collectors))
+	for _, collectorConfig := range c.Collectors {
+		states[collectorConfig.Name] = collectorConfig.Enabled
+	}
+	return states
+}
+
+func defaultCollectors() []CollectorConfig {
+	collectorMetadata := collector.Collectors()
+	collectors := make([]CollectorConfig, 0, len(collectorMetadata))
+	for _, metadata := range collectorMetadata {
+		collectors = append(collectors, CollectorConfig{
+			Name:           metadata.Name,
+			DefaultEnabled: metadata.DefaultEnabled,
+			Enabled:        metadata.DefaultEnabled,
+		})
+	}
+	return collectors
+}
+
+func defaultStatStatements() StatStatementsConfig {
+	return StatStatementsConfig{
+		QueryLength: collector.DefaultStatStatementsQueryLength,
+		Limit:       collector.DefaultStatStatementsLimit,
+	}
 }

@@ -43,9 +43,11 @@ type legacyFlags struct {
 }
 
 var (
-	c                  = newAuthConfigHandler()
-	cfg                = config.NewConfigWithDefaults()
-	legacyMetricsFlags = legacyFlags{}
+	c                              = newAuthConfigHandler()
+	cfg                            = config.NewConfigWithDefaults()
+	legacyMetricsFlags             = legacyFlags{}
+	statStatementsExcludeDatabases string
+	statStatementsExcludeUsers     string
 
 	webConfig    = kingpinflag.AddFlags(kingpin.CommandLine, ":9187")
 	metricsPath  = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").Envar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
@@ -73,6 +75,8 @@ func init() {
 		Default(cfg.CollectionTimeout.String()).
 		Envar("PG_EXPORTER_COLLECTION_TIMEOUT").
 		DurationVar(&cfg.CollectionTimeout)
+	registerCollectorFlags()
+	registerStatStatementsFlags()
 
 	kingpin.Flag("auto-discover-databases", "Whether to discover the databases on a server dynamically. (DEPRECATED)").
 		Default("false").
@@ -96,6 +100,40 @@ func init() {
 		StringVar(&legacyMetricsFlags.IncludeDatabases)
 }
 
+func registerCollectorFlags() {
+	for i := range cfg.Collectors {
+		helpDefaultState := "disabled"
+		if cfg.Collectors[i].DefaultEnabled {
+			helpDefaultState = "enabled"
+		}
+		kingpin.Flag(
+			collector.CollectorFlagPrefix+cfg.Collectors[i].Name,
+			fmt.Sprintf("Enable the %s collector (default: %s).", cfg.Collectors[i].Name, helpDefaultState),
+		).
+			Default(fmt.Sprintf("%v", cfg.Collectors[i].DefaultEnabled)).
+			BoolVar(&cfg.Collectors[i].Enabled)
+	}
+}
+
+func registerStatStatementsFlags() {
+	flagPrefix := collector.CollectorFlagPrefix + collector.StatStatementsCollectorName
+	kingpin.Flag(flagPrefix+".include_query", "Enable selecting statement query together with queryId. (default: disabled)").
+		Default("false").
+		BoolVar(&cfg.StatStatements.IncludeQuery)
+	kingpin.Flag(flagPrefix+".query_length", "Maximum length of the statement text.").
+		Default(fmt.Sprintf("%d", cfg.StatStatements.QueryLength)).
+		UintVar(&cfg.StatStatements.QueryLength)
+	kingpin.Flag(flagPrefix+".limit", "Maximum number of statements to return.").
+		Default(fmt.Sprintf("%d", cfg.StatStatements.Limit)).
+		UintVar(&cfg.StatStatements.Limit)
+	kingpin.Flag(flagPrefix+".exclude_databases", "Comma-separated list of database names to exclude. (default: none)").
+		Default("").
+		StringVar(&statStatementsExcludeDatabases)
+	kingpin.Flag(flagPrefix+".exclude_users", "Comma-separated list of user names to exclude. (default: none)").
+		Default("").
+		StringVar(&statStatementsExcludeUsers)
+}
+
 // The name of the exporter.
 const exporterName = "postgres_exporter"
 
@@ -114,6 +152,8 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 	logger = promslog.New(promslogConfig)
+	cfg.StatStatements.ExcludeDatabases = parseCommaSeparatedList(statStatementsExcludeDatabases)
+	cfg.StatStatements.ExcludeUsers = parseCommaSeparatedList(statStatementsExcludeUsers)
 
 	if *onlyDumpMaps {
 		exporter.DumpMaps()
@@ -178,7 +218,15 @@ func main() {
 		excludedDatabases,
 		dsn,
 		[]string{},
-		collector.WithCollectionTimeout(cfg.CollectionTimeout.String()))
+		collector.WithCollectionTimeout(cfg.CollectionTimeout.String()),
+		collector.WithCollectorStates(cfg.CollectorStates()),
+		collector.WithStatStatementsConfig(
+			cfg.StatStatements.IncludeQuery,
+			cfg.StatStatements.QueryLength,
+			cfg.StatStatements.Limit,
+			cfg.StatStatements.ExcludeDatabases,
+			cfg.StatStatements.ExcludeUsers,
+		))
 	if err != nil {
 		logger.Warn("Failed to create PostgresCollector", "err", err.Error())
 	} else {
@@ -214,4 +262,18 @@ func main() {
 		logger.Error("Error running HTTP server", "err", err)
 		os.Exit(1)
 	}
+}
+
+func parseCommaSeparatedList(value string) []string {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	parts := strings.Split(value, ",")
+	values := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if trimmed := strings.TrimSpace(part); trimmed != "" {
+			values = append(values, trimmed)
+		}
+	}
+	return values
 }

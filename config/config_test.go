@@ -16,6 +16,8 @@ package config
 import (
 	"testing"
 	"time"
+
+	"github.com/prometheus-community/postgres_exporter/collector"
 )
 
 func TestNewConfigWithDefaults(t *testing.T) {
@@ -31,6 +33,56 @@ func TestNewConfigWithDefaults(t *testing.T) {
 	}
 	if got, want := cfg.AuthConfigFile, DefaultAuthConfigFile; got != want {
 		t.Fatalf("AuthConfigFile = %q, want %q", got, want)
+	}
+	if len(cfg.Collectors) == 0 {
+		t.Fatal("Collectors is empty, want collector defaults")
+	}
+	if got, want := cfg.StatStatements.QueryLength, collector.DefaultStatStatementsQueryLength; got != want {
+		t.Fatalf("StatStatements.QueryLength = %d, want %d", got, want)
+	}
+	if got, want := cfg.StatStatements.Limit, collector.DefaultStatStatementsLimit; got != want {
+		t.Fatalf("StatStatements.Limit = %d, want %d", got, want)
+	}
+}
+
+func TestNewConfigWithDefaultsInitializesCollectorDefaults(t *testing.T) {
+	t.Parallel()
+
+	cfg := NewConfigWithDefaults()
+
+	var foundStatStatements bool
+	for _, collectorConfig := range cfg.Collectors {
+		if collectorConfig.Enabled != collectorConfig.DefaultEnabled {
+			t.Fatalf("collector %q Enabled = %v, want default %v", collectorConfig.Name, collectorConfig.Enabled, collectorConfig.DefaultEnabled)
+		}
+		if collectorConfig.Name == collector.StatStatementsCollectorName {
+			foundStatStatements = true
+			if collectorConfig.DefaultEnabled {
+				t.Fatal("stat_statements default = enabled, want disabled")
+			}
+		}
+	}
+	if !foundStatStatements {
+		t.Fatal("stat_statements collector not found in defaults")
+	}
+}
+
+func TestCollectorStates(t *testing.T) {
+	t.Parallel()
+
+	cfg := Config{
+		Collectors: []CollectorConfig{
+			{Name: "enabled", Enabled: true},
+			{Name: "disabled", Enabled: false},
+		},
+	}
+
+	states := cfg.CollectorStates()
+	if !states["enabled"] {
+		t.Fatal("enabled collector state = false, want true")
+	}
+	if states["disabled"] {
+		t.Fatal("disabled collector state = true, want false")
 	}
 }
 
