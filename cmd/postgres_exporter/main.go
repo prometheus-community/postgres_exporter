@@ -24,6 +24,7 @@ import (
 	"github.com/prometheus-community/postgres_exporter/collector"
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus-community/postgres_exporter/exporter"
+	"github.com/prometheus-community/postgres_exporter/postgresmetrics"
 	"github.com/prometheus/client_golang/prometheus"
 	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -207,30 +208,14 @@ func main() {
 
 	prometheus.MustRegister(exporter)
 
-	// TODO(@sysadmind): Remove this with multi-target support. We are removing multiple DSN support
-	dsn := ""
-	if len(dsns) > 0 {
-		dsn = dsns[0]
-	}
-
-	pe, err := collector.NewPostgresCollector(
-		logger,
-		excludedDatabases,
-		dsn,
-		[]string{},
-		collector.WithCollectionTimeout(cfg.CollectionTimeout.String()),
-		collector.WithCollectorStates(cfg.CollectorStates()),
-		collector.WithStatStatementsConfig(
-			cfg.StatStatements.IncludeQuery,
-			cfg.StatStatements.QueryLength,
-			cfg.StatStatements.Limit,
-			cfg.StatStatements.ExcludeDatabases,
-			cfg.StatStatements.ExcludeUsers,
-		))
+	registration, err := postgresmetrics.New(cfg, logger)
 	if err != nil {
-		logger.Warn("Failed to create PostgresCollector", "err", err.Error())
+		logger.Warn("Failed to create Postgres collectors", "err", err.Error())
 	} else {
-		prometheus.MustRegister(pe)
+		defer registration.Close()
+		if err := registration.Register(prometheus.DefaultRegisterer); err != nil {
+			logger.Warn("Failed to register Postgres collectors", "err", err.Error())
+		}
 	}
 
 	http.Handle(*metricsPath, promhttp.Handler())

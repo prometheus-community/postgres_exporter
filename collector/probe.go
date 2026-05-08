@@ -22,13 +22,12 @@ import (
 )
 
 type ProbeCollector struct {
-	registry   *prometheus.Registry
 	collectors map[string]Collector
 	logger     *slog.Logger
 	instance   *instance
 }
 
-func NewProbeCollector(logger *slog.Logger, excludeDatabases []string, registry *prometheus.Registry, dsn string, options ...Option) (*ProbeCollector, error) {
+func NewProbeCollector(logger *slog.Logger, excludeDatabases []string, dsn string, options ...Option) (*ProbeCollector, error) {
 	collectorOptions := newDefaultCollectorOptions()
 	for _, o := range options {
 		if err := o(&collectorOptions); err != nil {
@@ -46,7 +45,6 @@ func NewProbeCollector(logger *slog.Logger, excludeDatabases []string, registry 
 	}
 
 	return &ProbeCollector{
-		registry:   registry,
 		collectors: collectors,
 		logger:     logger,
 		instance:   instance,

@@ -173,6 +173,12 @@ func WithCollectionTimeout(s string) Option {
 		if err != nil {
 			return err
 		}
+		return WithCollectionTimeoutDuration(duration)(o)
+	}
+}
+
+func WithCollectionTimeoutDuration(duration time.Duration) Option {
+	return func(o *collectorOptions) error {
 		if duration < 1*time.Millisecond {
 			return errors.New("timeout must be greater than 1ms")
 		}

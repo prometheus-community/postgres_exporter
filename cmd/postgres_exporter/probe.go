@@ -18,16 +18,15 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/prometheus-community/postgres_exporter/collector"
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus-community/postgres_exporter/exporter"
+	"github.com/prometheus-community/postgres_exporter/postgresmetrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func handleProbe(logger *slog.Logger, excludeDatabases []string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
 		conf := c.GetAuthConfig()
 		params := r.URL.Query()
 		target := params.Get("target")
@@ -84,35 +83,18 @@ func handleProbe(logger *slog.Logger, excludeDatabases []string) http.HandlerFun
 		registry.MustRegister(exporter)
 
 		// Run the probe
-		pc, err := collector.NewProbeCollector(
-			tl,
-			excludeDatabases,
-			registry,
-			dsn.GetConnectionString(),
-			collector.WithCollectorStates(cfg.CollectorStates()),
-			collector.WithStatStatementsConfig(
-				cfg.StatStatements.IncludeQuery,
-				cfg.StatStatements.QueryLength,
-				cfg.StatStatements.Limit,
-				cfg.StatStatements.ExcludeDatabases,
-				cfg.StatStatements.ExcludeUsers,
-			))
+		registration, err := postgresmetrics.NewProbe(cfg, tl, dsn.GetConnectionString())
 		if err != nil {
-			logger.Error("Error creating probe collector", "err", err)
+			logger.Error("Error creating probe collectors", "err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		// Cleanup underlying connections to prevent connection leaks
-		defer pc.Close()
-
-		// TODO(@sysadmind): Remove the registry.MustRegister() call below and instead handle the collection here. That will allow
-		// for the passing of context, handling of timeouts, and more control over the collection.
-		// The current NewProbeCollector() implementation relies on the MustNewConstMetric() call to create the metrics which is not
-		// ideal to use without the registry.MustRegister() call.
-		_ = ctx
-
-		registry.MustRegister(pc)
+		defer registration.Close()
+		if err := registration.Register(registry); err != nil {
+			logger.Error("Error registering probe collectors", "err", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		// TODO check success, etc
 		h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})

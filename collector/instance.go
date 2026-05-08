@@ -73,7 +73,12 @@ func (i *instance) getDB() *sql.DB {
 }
 
 func (i *instance) Close() error {
-	return i.db.Close()
+	if i == nil || i.db == nil {
+		return nil
+	}
+	err := i.db.Close()
+	i.db = nil
+	return err
 }
 
 // Regex used to get the "short-version" from the postgres version field.
