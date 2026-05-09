@@ -14,9 +14,11 @@ package collector
 
 import (
 	"context"
+	"math"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/smartystreets/goconvey/convey"
@@ -60,5 +62,46 @@ func TestPgReplicationCollector(t *testing.T) {
 	})
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled exceptions: %s", err)
+	}
+}
+
+func TestPgReplicationCollectorAurora(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Error opening a stub db connection: %s", err)
+	}
+	defer db.Close()
+
+	inst := &instance{db: db}
+
+	auroraErr := &pq.Error{
+		Code:    "0A000",
+		Message: "pg_last_xact_replay_timestamp() is currently not supported for Aurora",
+	}
+	mock.ExpectQuery(sanitizeQuery(pgReplicationQuery)).WillReturnError(auroraErr)
+	mock.ExpectQuery(sanitizeQuery(pgReplicationIsReplicaQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"is_replica"}).AddRow(1))
+
+	ch := make(chan prometheus.Metric, 3)
+	c := PGReplicationCollector{}
+	if err := c.Update(context.Background(), inst, ch); err != nil {
+		t.Fatalf("Unexpected error from Update on Aurora: %s", err)
+	}
+	close(ch)
+
+	metrics := make([]MetricResult, 0, 3)
+	for m := range ch {
+		metrics = append(metrics, readMetric(m))
+	}
+
+	convey.Convey("Aurora fallback metrics", t, func() {
+		convey.So(len(metrics), convey.ShouldEqual, 3)
+		convey.So(math.IsNaN(metrics[0].value), convey.ShouldBeTrue) // lag
+		convey.So(metrics[1].value, convey.ShouldEqual, 1)            // is_replica
+		convey.So(math.IsNaN(metrics[2].value), convey.ShouldBeTrue) // last_replay
+	})
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
 }

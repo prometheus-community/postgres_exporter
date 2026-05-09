@@ -15,6 +15,8 @@ package collector
 
 import (
 	"context"
+	"database/sql"
+	"math"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -72,24 +74,48 @@ var (
 		ELSE 0
 	END as is_replica,
 	GREATEST (0, EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp()))) as last_replay`
+
+	// pgReplicationIsReplicaQuery is a fallback used when the full query fails
+	// on Aurora PostgreSQL, which does not support pg_last_xact_replay_timestamp().
+	pgReplicationIsReplicaQuery = `SELECT CASE WHEN pg_is_in_recovery() THEN 1 ELSE 0 END as is_replica`
 )
 
 func (c *PGReplicationCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
-	row := db.QueryRowContext(ctx,
-		pgReplicationQuery,
-	)
+	row := db.QueryRowContext(ctx, pgReplicationQuery)
 
-	var lag float64
+	var lag sql.NullFloat64
 	var isReplica int64
-	var replayAge float64
+	var replayAge sql.NullFloat64
 	err := row.Scan(&lag, &isReplica, &replayAge)
 	if err != nil {
-		return err
+		if !isAuroraUnsupportedFunction(err) {
+			return err
+		}
+		// Aurora PostgreSQL does not support pg_last_xact_replay_timestamp().
+		// Fall back to a simpler query that still reports is_replica, and
+		// emit NaN for the time-based metrics to signal they are unavailable.
+		lag = sql.NullFloat64{}
+		replayAge = sql.NullFloat64{}
+
+		row2 := db.QueryRowContext(ctx, pgReplicationIsReplicaQuery)
+		if err2 := row2.Scan(&isReplica); err2 != nil {
+			return err2
+		}
 	}
+
+	lagValue := math.NaN()
+	if lag.Valid {
+		lagValue = lag.Float64
+	}
+	replayAgeValue := math.NaN()
+	if replayAge.Valid {
+		replayAgeValue = replayAge.Float64
+	}
+
 	ch <- prometheus.MustNewConstMetric(
 		pgReplicationLag,
-		prometheus.GaugeValue, lag,
+		prometheus.GaugeValue, lagValue,
 	)
 	ch <- prometheus.MustNewConstMetric(
 		pgReplicationIsReplica,
@@ -97,7 +123,7 @@ func (c *PGReplicationCollector) Update(ctx context.Context, instance *instance,
 	)
 	ch <- prometheus.MustNewConstMetric(
 		pgReplicationLastReplay,
-		prometheus.GaugeValue, replayAge,
+		prometheus.GaugeValue, replayAgeValue,
 	)
 	return nil
 }
