@@ -61,6 +61,9 @@ var (
 )
 
 func (c AuroraReplicaStatusCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	if !instance.isAurora {
+		return ErrNoData
+	}
 	rows, err := instance.getDB().QueryContext(ctx, auroraReplicaStatusQuery)
 	if err != nil {
 		return err

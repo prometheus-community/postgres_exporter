@@ -187,6 +187,43 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `[no-]collector.xlog_location`
   Enable the `xlog_location` collector (default: disabled).
 
+#### Amazon Aurora PostgreSQL collectors
+
+These collectors expose metrics that only exist on Amazon Aurora PostgreSQL.
+They are all disabled by default and detect Aurora automatically — when
+enabled on a non-Aurora server they silently emit no data (no log noise).
+
+* `[no-]collector.aurora_replica_status`
+  Replica lag, replay latency, pending read IOs from `aurora_replica_status()`. (default: disabled)
+
+* `[no-]collector.aurora_global_db_status`
+  Per-region durability lag and RPO lag from `aurora_global_db_status()`. (default: disabled)
+
+* `[no-]collector.aurora_global_db_instance_status`
+  Per-instance visibility lag from `aurora_global_db_instance_status()`. (default: disabled)
+
+* `[no-]collector.aurora_stat_database`
+  Aurora-specific per-database I/O counters (storage / optimized reads cache / local) from `aurora_stat_database()`. (default: disabled)
+
+* `[no-]collector.aurora_stat_bgwriter`
+  Aurora Optimized Reads cache writes from `aurora_stat_bgwriter()`. (default: disabled)
+
+* `[no-]collector.aurora_stat_commit_latency`
+  Cumulative per-database commit latency from `aurora_stat_get_db_commit_latency()`. (default: disabled)
+
+* `[no-]collector.aurora_stat_dml_activity`
+  Per-database SELECT/INSERT/UPDATE/DELETE counts and latency from `aurora_stat_dml_activity()`. (default: disabled)
+
+* `[no-]collector.aurora_stat_optimized_reads_cache`
+  Aurora Optimized Reads cache total/used size from `aurora_stat_optimized_reads_cache()`. (default: disabled)
+
+* `[no-]collector.aurora_stat_logical_wal_cache`
+  Per-replication-slot WAL cache hits/misses from `aurora_stat_logical_wal_cache()`. (default: disabled)
+
+Note: on Aurora the standard `replication` and `wal` collectors degrade
+gracefully — they still emit `pg_replication_is_replica` (and NaN for the
+time-based / WAL-directory metrics that Aurora does not support).
+
 * `config.file`
   Set the config file path. Default is `postgres_exporter.yml`
 

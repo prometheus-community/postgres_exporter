@@ -22,9 +22,10 @@ import (
 )
 
 type instance struct {
-	dsn     string
-	db      *sql.DB
-	version semver.Version
+	dsn      string
+	db       *sql.DB
+	version  semver.Version
+	isAurora bool
 }
 
 func newInstance(dsn string) (*instance, error) {
@@ -65,7 +66,18 @@ func (i *instance) setup() error {
 	} else {
 		i.version = version
 	}
+
+	i.isAurora = detectAurora(i.db)
 	return nil
+}
+
+// detectAurora reports whether the connected server is Amazon Aurora
+// PostgreSQL. It calls aurora_version(), an Aurora-only built-in: any
+// error means we are not on Aurora. The check is best-effort and
+// silently returns false on failure.
+func detectAurora(db *sql.DB) bool {
+	var v string
+	return db.QueryRow("SELECT aurora_version()").Scan(&v) == nil
 }
 
 func (i *instance) getDB() *sql.DB {

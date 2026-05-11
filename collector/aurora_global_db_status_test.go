@@ -29,7 +29,7 @@ func TestAuroraGlobalDBStatusCollector(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db}
+	inst := &instance{db: db, isAurora: true}
 
 	columns := []string{
 		"aws_region",
@@ -65,6 +65,27 @@ func TestAuroraGlobalDBStatusCollector(t *testing.T) {
 	})
 }
 
+func TestAuroraGlobalDBStatusCollectorNotAurora(t *testing.T) {
+	db, _, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Error opening a stub db connection: %s", err)
+	}
+	defer db.Close()
+
+	inst := &instance{db: db, isAurora: false}
+
+	ch := make(chan prometheus.Metric)
+	go func() {
+		defer close(ch)
+		c := AuroraGlobalDBStatusCollector{}
+		if err := c.Update(context.Background(), inst, ch); err != ErrNoData {
+			t.Errorf("Expected ErrNoData on non-Aurora, got: %v", err)
+		}
+	}()
+	for range ch {
+	}
+}
+
 func TestAuroraGlobalDBStatusCollectorNoData(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
@@ -72,7 +93,7 @@ func TestAuroraGlobalDBStatusCollectorNoData(t *testing.T) {
 	}
 	defer db.Close()
 
-	inst := &instance{db: db}
+	inst := &instance{db: db, isAurora: true}
 
 	columns := []string{
 		"aws_region",

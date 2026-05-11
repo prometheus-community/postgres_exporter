@@ -55,6 +55,9 @@ var (
 )
 
 func (c AuroraGlobalDBStatusCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	if !instance.isAurora {
+		return ErrNoData
+	}
 	rows, err := instance.getDB().QueryContext(ctx, auroraGlobalDBStatusQuery)
 	if err != nil {
 		return err

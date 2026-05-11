@@ -22,7 +22,7 @@ import (
 	"github.com/smartystreets/goconvey/convey"
 )
 
-func TestAuroraReplicaStatusCollector(t *testing.T) {
+func TestAuroraStatDMLActivityCollector(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("Error opening a stub db connection: %s", err)
@@ -31,92 +31,56 @@ func TestAuroraReplicaStatusCollector(t *testing.T) {
 
 	inst := &instance{db: db, isAurora: true}
 
-	columns := []string{
-		"server_id",
-		"replica_lag_in_msec",
-		"cur_replay_latency_in_usec",
-		"pending_read_ios",
+	cols := []string{
+		"datid", "datname",
+		"select_count", "select_latency_microsecs",
+		"insert_count", "insert_latency_microsecs",
+		"update_count", "update_latency_microsecs",
+		"delete_count", "delete_latency_microsecs",
 	}
-	rows := sqlmock.NewRows(columns).
-		AddRow("writer-instance", nil, nil, 0).
-		AddRow("reader-instance-1", 15.5, 200.0, 3)
-
-	mock.ExpectQuery(sanitizeQuery(auroraReplicaStatusQuery)).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(auroraStatDMLActivityQuery)).
+		WillReturnRows(sqlmock.NewRows(cols).
+			AddRow("14007", "postgres", 178961, 66716329, 171065, 28876649, 519538, 1454579206167, 1, 53027).
+			AddRow("16384", "rdsadmin", 2346623, 1211703821, 4297518, 817184554, 0, 0, 0, 0))
 
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
-		c := AuroraReplicaStatusCollector{}
+		c := AuroraStatDMLActivityCollector{excludeDatabases: []string{"rdsadmin"}}
 		if err := c.Update(context.Background(), inst, ch); err != nil {
 			t.Errorf("Error calling Update: %s", err)
 		}
 	}()
 
-	// writer: 1 metric (pending_read_ios), reader: 3 metrics → 4 total
-	expected := 4
 	got := 0
 	for range ch {
 		got++
 	}
-
-	convey.Convey("Metrics count", t, func() {
-		convey.So(got, convey.ShouldEqual, expected)
+	convey.Convey("2 metrics × 4 operations × 1 db = 8", t, func() {
+		convey.So(got, convey.ShouldEqual, 8)
 		if err := mock.ExpectationsWereMet(); err != nil {
 			t.Errorf("Unfulfilled expectations: %s", err)
 		}
 	})
 }
 
-func TestAuroraReplicaStatusCollectorNotAurora(t *testing.T) {
+func TestAuroraStatDMLActivityCollectorNotAurora(t *testing.T) {
 	db, _, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("Error opening a stub db connection: %s", err)
 	}
 	defer db.Close()
 
-	// isAurora=false → collector must skip immediately and not even attempt the query.
 	inst := &instance{db: db, isAurora: false}
 
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
-		c := AuroraReplicaStatusCollector{}
+		c := AuroraStatDMLActivityCollector{}
 		if err := c.Update(context.Background(), inst, ch); err != ErrNoData {
-			t.Errorf("Expected ErrNoData on non-Aurora, got: %v", err)
-		}
-	}()
-	for range ch {
-	}
-}
-
-func TestAuroraReplicaStatusCollectorNoData(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("Error opening a stub db connection: %s", err)
-	}
-	defer db.Close()
-
-	inst := &instance{db: db, isAurora: true}
-
-	columns := []string{
-		"server_id",
-		"replica_lag_in_msec",
-		"cur_replay_latency_in_usec",
-		"pending_read_ios",
-	}
-	rows := sqlmock.NewRows(columns)
-	mock.ExpectQuery(sanitizeQuery(auroraReplicaStatusQuery)).WillReturnRows(rows)
-
-	ch := make(chan prometheus.Metric)
-	go func() {
-		defer close(ch)
-		c := AuroraReplicaStatusCollector{}
-		err := c.Update(context.Background(), inst, ch)
-		if err != ErrNoData {
 			t.Errorf("Expected ErrNoData, got: %v", err)
 		}
 	}()
-
 	for range ch {
 	}
 }
