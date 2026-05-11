@@ -25,7 +25,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func handleProbe(logger *slog.Logger, excludeDatabases []string) http.HandlerFunc {
+func handleProbe(logger *slog.Logger, excludeDatabases []string, auroraEnabled bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		conf := c.GetConfig()
@@ -84,7 +84,7 @@ func handleProbe(logger *slog.Logger, excludeDatabases []string) http.HandlerFun
 		registry.MustRegister(exporter)
 
 		// Run the probe
-		pc, err := collector.NewProbeCollector(tl, excludeDatabases, registry, dsn)
+		pc, err := collector.NewProbeCollector(tl, excludeDatabases, registry, dsn, collector.WithProbeAuroraEnabled(auroraEnabled))
 		if err != nil {
 			logger.Error("Error creating probe collector", "err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)

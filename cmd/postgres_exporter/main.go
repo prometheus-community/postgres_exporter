@@ -166,7 +166,7 @@ func main() {
 		http.Handle("/", landingPage)
 	}
 
-	http.HandleFunc("/probe", handleProbe(logger, excludedDatabases))
+	http.HandleFunc("/probe", handleProbe(logger, excludedDatabases, *auroraEnabled))
 
 	srv := &http.Server{}
 	if err := web.ListenAndServe(srv, webConfig, logger); err != nil {
