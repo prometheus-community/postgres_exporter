@@ -17,9 +17,18 @@ import (
 	"database/sql"
 	"fmt"
 	"regexp"
+	"sync"
 
 	"github.com/blang/semver/v4"
 )
+
+// auroraProbe caches the result of detectAurora() so the aurora_version()
+// query runs at most once per process. The parent instance and every copy
+// produced by copy() share the same pointer.
+type auroraProbe struct {
+	once     sync.Once
+	isAurora bool
+}
 
 type instance struct {
 	dsn     string
@@ -32,11 +41,13 @@ type instance struct {
 	// free of any Aurora-related overhead.
 	auroraSupportEnabled bool
 	isAurora             bool
+	auroraProbe          *auroraProbe
 }
 
 func newInstance(dsn string) (*instance, error) {
 	i := &instance{
-		dsn: dsn,
+		dsn:         dsn,
+		auroraProbe: &auroraProbe{},
 	}
 
 	// "Create" a database handle to verify the DSN provided is valid.
@@ -55,6 +66,7 @@ func (i *instance) copy() *instance {
 	return &instance{
 		dsn:                  i.dsn,
 		auroraSupportEnabled: i.auroraSupportEnabled,
+		auroraProbe:          i.auroraProbe,
 	}
 }
 
@@ -74,8 +86,11 @@ func (i *instance) setup() error {
 		i.version = version
 	}
 
-	if i.auroraSupportEnabled {
-		i.isAurora = detectAurora(i.db)
+	if i.auroraSupportEnabled && i.auroraProbe != nil {
+		i.auroraProbe.once.Do(func() {
+			i.auroraProbe.isAurora = detectAurora(i.db)
+		})
+		i.isAurora = i.auroraProbe.isAurora
 	}
 	return nil
 }
@@ -94,6 +109,12 @@ func (i *instance) getDB() *sql.DB {
 }
 
 func (i *instance) Close() error {
+	if i.db == nil {
+		// setup() was never called (or failed before sql.Open); nothing to
+		// close. This guard lets callers defer Close() right after
+		// construction without worrying about ordering.
+		return nil
+	}
 	return i.db.Close()
 }
 
