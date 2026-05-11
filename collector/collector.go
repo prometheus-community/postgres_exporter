@@ -96,6 +96,7 @@ type PostgresCollector struct {
 
 	instance          *instance
 	CollectionTimeout time.Duration
+	auroraEnabled     bool
 }
 
 type Option func(*PostgresCollector) error
@@ -156,9 +157,38 @@ func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn st
 	if err != nil {
 		return nil, err
 	}
+	instance.auroraSupportEnabled = p.auroraEnabled
 	p.instance = instance
 
 	return p, nil
+}
+
+// WithAuroraEnabled tells PostgresCollector that Aurora support is enabled
+// globally. Without this, instance.setup() skips the aurora_version() probe
+// and all aurora_* collectors silently emit no data.
+func WithAuroraEnabled(enabled bool) Option {
+	return func(e *PostgresCollector) error {
+		e.auroraEnabled = enabled
+		return nil
+	}
+}
+
+// EnableAuroraCollectors flips the default state of every aurora_* collector
+// to enabled. Per-collector flags (--collector.aurora_X or --no-collector.X)
+// that the user passed explicitly still win because forcedCollectors records
+// those during flag parsing.
+//
+// Call this once, after kingpin.Parse() and before NewPostgresCollector.
+func EnableAuroraCollectors() {
+	for name, state := range collectorState {
+		if !strings.HasPrefix(name, "aurora_") {
+			continue
+		}
+		if forcedCollectors[name] {
+			continue
+		}
+		*state = true
+	}
 }
 
 func WithCollectionTimeout(s string) Option {

@@ -22,10 +22,16 @@ import (
 )
 
 type instance struct {
-	dsn      string
-	db       *sql.DB
-	version  semver.Version
-	isAurora bool
+	dsn     string
+	db      *sql.DB
+	version semver.Version
+
+	// auroraSupportEnabled mirrors the --aurora.enabled flag. When false,
+	// setup() skips the Aurora probe entirely, isAurora stays false, and
+	// every aurora_* collector is a no-op. This keeps non-Aurora setups
+	// free of any Aurora-related overhead.
+	auroraSupportEnabled bool
+	isAurora             bool
 }
 
 func newInstance(dsn string) (*instance, error) {
@@ -47,7 +53,8 @@ func newInstance(dsn string) (*instance, error) {
 // copy returns a copy of the instance.
 func (i *instance) copy() *instance {
 	return &instance{
-		dsn: i.dsn,
+		dsn:                  i.dsn,
+		auroraSupportEnabled: i.auroraSupportEnabled,
 	}
 }
 
@@ -67,7 +74,9 @@ func (i *instance) setup() error {
 		i.version = version
 	}
 
-	i.isAurora = detectAurora(i.db)
+	if i.auroraSupportEnabled {
+		i.isAurora = detectAurora(i.db)
+	}
 	return nil
 }
 
