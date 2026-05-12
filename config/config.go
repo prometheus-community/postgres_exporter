@@ -77,16 +77,18 @@ func (ch *Handler) ReloadConfig(f string, logger *slog.Logger) error {
 		}
 	}()
 
-	yamlReader, err := os.Open(f)
-	if err != nil {
-		return fmt.Errorf("error opening config file %q: %s", f, err)
-	}
-	defer yamlReader.Close()
-	decoder := yaml.NewDecoder(yamlReader)
-	decoder.KnownFields(true)
+	if f != "" {
+		yamlReader, err := os.Open(f)
+		if err != nil {
+			return fmt.Errorf("error opening config file %q: %s", f, err)
+		}
+		defer yamlReader.Close()
+		decoder := yaml.NewDecoder(yamlReader)
+		decoder.KnownFields(true)
 
-	if err = decoder.Decode(config); err != nil {
-		return fmt.Errorf("error parsing config file %q: %s", f, err)
+		if err = decoder.Decode(config); err != nil {
+			return fmt.Errorf("error parsing config file %q: %s", f, err)
+		}
 	}
 
 	ch.Lock()
