@@ -46,24 +46,6 @@ type OverrideQuery struct {
 // Overriding queries for namespaces above.
 // TODO: validate this is a closed set in tests, and there are no overlaps
 var queryOverrides = map[string][]OverrideQuery{
-	"pg_replication_slots": {
-		{
-			semver.MustParseRange(">=9.4.0 <10.0.0"),
-			`
-			SELECT slot_name, database, active,
-				(case pg_is_in_recovery() when 't' then pg_xlog_location_diff(pg_last_xlog_receive_location(), restart_lsn) else pg_xlog_location_diff(pg_current_xlog_location(), restart_lsn) end) as pg_xlog_location_diff
-			FROM pg_replication_slots
-			`,
-		},
-		{
-			semver.MustParseRange(">=10.0.0"),
-			`
-			SELECT slot_name, database, active,
-				(case pg_is_in_recovery() when 't' then pg_wal_lsn_diff(pg_last_wal_receive_lsn(), restart_lsn) else pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) end) as pg_wal_lsn_diff
-			FROM pg_replication_slots
-			`,
-		},
-	},
 }
 
 // Convert the query override file to the version-specific query override file

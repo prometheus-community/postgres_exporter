@@ -189,16 +189,6 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		true,
 		0,
 	},
-	"pg_replication_slots": {
-		map[string]ColumnMapping{
-			"slot_name":       {LABEL, "Name of the replication slot", nil, nil},
-			"database":        {LABEL, "Name of the database", nil, nil},
-			"active":          {GAUGE, "Flag indicating if the slot is active", nil, nil},
-			"pg_wal_lsn_diff": {GAUGE, "Replication lag in bytes", nil, nil},
-		},
-		true,
-		0,
-	},
 }
 
 // Turn the MetricMap column mapping into a prometheus descriptor mapping.
