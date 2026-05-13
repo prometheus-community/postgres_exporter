@@ -569,13 +569,6 @@ func (e *Exporter) CloseServers() {
 	e.servers.Close()
 }
 
-func newDesc(subsystem, name, help string, labels prometheus.Labels) *prometheus.Desc {
-	return prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, subsystem, name),
-		help, nil, labels,
-	)
-}
-
 func checkPostgresVersion(db *sql.DB, server string, logger *slog.Logger) (semver.Version, string, error) {
 	logger.Debug("Querying PostgreSQL version", "server", server)
 	versionRow := db.QueryRow("SELECT version();")

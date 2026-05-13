@@ -137,7 +137,7 @@ func (s *pgSetting) normaliseUnit() (val float64, unit string, err error) {
 
 	val, err = strconv.ParseFloat(s.setting, 64)
 	if err != nil {
-		return val, unit, fmt.Errorf("Error converting setting %q value %q to float: %s", s.name, s.setting, err)
+		return val, unit, fmt.Errorf("error converting setting %q value %q to float: %s", s.name, s.setting, err)
 	}
 
 	// Units defined in: https://www.postgresql.org/docs/current/static/config-setting.html
