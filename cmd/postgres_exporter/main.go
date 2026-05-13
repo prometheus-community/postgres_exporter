@@ -35,9 +35,7 @@ import (
 )
 
 var (
-	c = config.Handler{
-		Config: &config.Config{},
-	}
+	c = newConfigHandler()
 
 	configFile             = kingpin.Flag("config.file", "Postgres exporter configuration file.").Default("postgres_exporter.yml").String()
 	webConfig              = kingpinflag.AddFlags(kingpin.CommandLine, ":9187")
@@ -57,6 +55,14 @@ var (
 
 // The name of the exporter.
 const exporterName = "postgres_exporter"
+
+func newConfigHandler() *config.Handler {
+	handler, err := config.NewHandler(prometheus.DefaultRegisterer)
+	if err != nil {
+		panic(err)
+	}
+	return handler
+}
 
 func main() {
 	kingpin.Version(version.Print(exporterName))
