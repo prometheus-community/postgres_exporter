@@ -49,6 +49,8 @@ To use the multi-target functionality, send an http request to the endpoint `/pr
 
 To avoid putting sensitive information like username and password in the URL, preconfigured auth modules are supported via the [auth_modules](#auth_modules) section of the config file. auth_modules for DSNs can be used with the `/probe` endpoint by specifying the `?auth_module=foo` http parameter.
 
+For additional hardening, `/probe` targets can be restricted with `--probe-target-allowlist` (or `PG_EXPORTER_PROBE_TARGET_ALLOWLIST`). The allowlist accepts comma-separated `CIDR` and `host:port` entries. By default this setting is empty, which preserves existing behavior and allows all probe targets.
+
 Example Prometheus config:
 ```yaml
 scrape_configs:
@@ -208,6 +210,9 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `disable-settings-metrics`
   Use the flag if you don't want to scrape `pg_settings`.  Default is `false`.
 
+* `probe-target-allowlist`
+  Optional comma-separated allowlist for `/probe` target values. Entries support `CIDR` and `host:port`. Default is empty (allow all targets).
+
 * `auto-discover-databases` (DEPRECATED)
   Whether to discover the databases on a server dynamically.  Default is `false`.
 
@@ -283,6 +288,9 @@ The following environment variables configure the exporter:
 
 * `PG_EXPORTER_DISABLE_SETTINGS_METRICS`
   Use the flag if you don't want to scrape `pg_settings`. Value can be `true` or `false`. Default is `false`.
+
+* `PG_EXPORTER_PROBE_TARGET_ALLOWLIST`
+  Optional comma-separated allowlist for `/probe` target values. Entries support `CIDR` and `host:port`. Default is empty (allow all targets).
 
 * `PG_EXPORTER_AUTO_DISCOVER_DATABASES` (DEPRECATED)
   Whether to discover the databases on a server dynamically. Value can be `true` or `false`. Default is `false`.

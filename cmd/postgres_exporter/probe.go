@@ -25,7 +25,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func handleProbe(logger *slog.Logger, excludeDatabases []string) http.HandlerFunc {
+func handleProbe(logger *slog.Logger, excludeDatabases []string, allowlist *targetAllowlist) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		conf := c.GetConfig()
@@ -58,6 +58,31 @@ func handleProbe(logger *slog.Logger, excludeDatabases []string) http.HandlerFun
 			http.Error(w, fmt.Sprintf("could not configure dsn for target: %v", err), http.StatusBadRequest)
 			return
 		}
+		connectionString := dsn.GetConnectionString()
+		targetHost, targetPort, err := targetEndpointFromDSN(connectionString)
+		if err != nil {
+			logger.Error("failed to parse target endpoint", "err", err)
+			http.Error(w, "target is invalid", http.StatusBadRequest)
+			return
+		}
+		connectHost, allowed := allowlist.resolveConnectionHost(ctx, targetHost, targetPort)
+		if !allowed {
+			logger.Warn("probe target denied by allowlist", "target", target, "host", targetHost, "port", targetPort)
+			http.Error(w, "target is not allowed", http.StatusForbidden)
+			return
+		}
+		connectionString, err = rewriteDSNHost(connectionString, connectHost, targetPort)
+		if err != nil {
+			logger.Error("failed to rewrite target endpoint", "err", err)
+			http.Error(w, "target is invalid", http.StatusBadRequest)
+			return
+		}
+		dsn, err = authModule.ConfigureTarget(connectionString)
+		if err != nil {
+			logger.Error("failed to reconfigure target", "err", err)
+			http.Error(w, "target is invalid", http.StatusBadRequest)
+			return
+		}
 
 		// TODO(@sysadmind): Timeout
 
@@ -76,7 +101,7 @@ func handleProbe(logger *slog.Logger, excludeDatabases []string) http.HandlerFun
 			exporter.WithMetricPrefix(*metricPrefix),
 		}
 
-		dsns := []string{dsn.GetConnectionString()}
+		dsns := []string{connectionString}
 		exporter := exporter.NewExporter(dsns, logger, opts...)
 		defer func() {
 			exporter.CloseServers()

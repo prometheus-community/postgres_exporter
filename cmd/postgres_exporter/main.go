@@ -52,6 +52,7 @@ var (
 	includeDatabases       = kingpin.Flag("include-databases", "A list of databases to include when autoDiscoverDatabases is enabled (DEPRECATED)").Default("").Envar("PG_EXPORTER_INCLUDE_DATABASES").String()
 	metricPrefix           = kingpin.Flag("metric-prefix", "A metric prefix can be used to have non-default (not \"pg\") prefixes for each of the metrics").Default("pg").Envar("PG_EXPORTER_METRIC_PREFIX").String()
 	collectionTimeout      = kingpin.Flag("collection-timeout", "Timeout for collecting the statistics when the database is slow").Default("1m").Envar("PG_EXPORTER_COLLECTION_TIMEOUT").String()
+	probeTargetAllowlist   = kingpin.Flag("probe-target-allowlist", "Optional comma-separated allowlist for /probe target. Entries support CIDR and host:port. Empty means allow all targets.").Default("").Envar("PG_EXPORTER_PROBE_TARGET_ALLOWLIST").String()
 	logger                 = promslog.NewNopLogger()
 )
 
@@ -95,6 +96,12 @@ func main() {
 
 	if *constantLabelsList != "" {
 		logger.Warn("Constant labels on all metrics is DEPRECATED")
+	}
+
+	targetAllowlist, err := newTargetAllowlist(*probeTargetAllowlist)
+	if err != nil {
+		logger.Error("Invalid /probe target allowlist", "err", err)
+		os.Exit(1)
 	}
 
 	opts := []exporter.ExporterOpt{
@@ -157,7 +164,7 @@ func main() {
 		http.Handle("/", landingPage)
 	}
 
-	http.HandleFunc("/probe", handleProbe(logger, excludedDatabases))
+	http.HandleFunc("/probe", handleProbe(logger, excludedDatabases, targetAllowlist))
 
 	srv := &http.Server{}
 	if err := web.ListenAndServe(srv, webConfig, logger); err != nil {
