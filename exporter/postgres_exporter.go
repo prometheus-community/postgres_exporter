@@ -245,20 +245,6 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 		true,
 		0,
 	},
-	"pg_stat_archiver": {
-		map[string]ColumnMapping{
-			"archived_count":     {COUNTER, "Number of WAL files that have been successfully archived", nil, nil},
-			"last_archived_wal":  {DISCARD, "Name of the last WAL file successfully archived", nil, nil},
-			"last_archived_time": {DISCARD, "Time of the last successful archive operation", nil, nil},
-			"failed_count":       {COUNTER, "Number of failed attempts for archiving WAL files", nil, nil},
-			"last_failed_wal":    {DISCARD, "Name of the WAL file of the last failed archival operation", nil, nil},
-			"last_failed_time":   {DISCARD, "Time of the last failed archival operation", nil, nil},
-			"stats_reset":        {DISCARD, "Time at which these statistics were last reset", nil, nil},
-			"last_archive_age":   {GAUGE, "Time in seconds since last WAL segment was successfully archived", nil, nil},
-		},
-		true,
-		0,
-	},
 	"pg_stat_activity": {
 		map[string]ColumnMapping{
 			"datname":          {LABEL, "Name of this database", nil, nil},
