@@ -14,6 +14,7 @@ package collector
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -134,7 +135,17 @@ func TestPGStatProgressVacuumCollectorNullValues(t *testing.T) {
 	}
 }
 
-func TestPGStatProgressVacuumCollectorCrossDatabase(t *testing.T) {
+// TestPGStatProgressVacuumQueryCrossDatabaseFallback verifies that the query uses
+// current_database() to gate schema-qualified name resolution, ensuring cross-database
+// vacuums fall back to raw OID text. The actual SQL logic cannot be exercised in unit
+// tests without a real Postgres connection.
+func TestPGStatProgressVacuumQueryCrossDatabaseFallback(t *testing.T) {
+	if !strings.Contains(statProgressVacuumQuery, "current_database()") {
+		t.Error("statProgressVacuumQuery must use current_database() to avoid resolving cross-database OIDs via pg_class")
+	}
+}
+
+func TestPGStatProgressVacuumCollectorOIDRelname(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("Error opening a stub db connection: %s", err)
@@ -148,8 +159,8 @@ func TestPGStatProgressVacuumCollectorCrossDatabase(t *testing.T) {
 		"heap_blks_vacuumed", "index_vacuum_count", "max_dead_tuples", "num_dead_tuples",
 	}
 
-	// Simulate two concurrent vacuums on the same database with OID-based relnames
-	// (cross-database scenario where pg_class cannot resolve the relation name).
+	// Two concurrent vacuums returning OID-based relnames (as the query produces for
+	// cross-database vacuums). Validates that the collector emits unique label sets.
 	rows := sqlmock.NewRows(columns).
 		AddRow("mydb", "16385", 1, 5000, 200, 100, 0, 1000, 50).
 		AddRow("mydb", "16390", 3, 8000, 600, 400, 1, 2000, 300)
