@@ -136,6 +136,9 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `[no-]collector.replication_slot`
   Enable the `replication_slot` collector (default: enabled).
 
+* `[no-]collector.settings`
+  Enable the `settings` collector (default: enabled).
+
 * `[no-]collector.stat_activity`
   Enable the `stat_activity` collector (default: enabled).
 
@@ -212,9 +215,6 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `disable-default-metrics`
   Use only metrics supplied from `queries.yaml` via `--extend.query-path`.  Default is `false`.
 
-* `disable-settings-metrics`
-  Use the flag if you don't want to scrape `pg_settings`.  Default is `false`.
-
 * `auto-discover-databases` (DEPRECATED)
   Whether to discover the databases on a server dynamically.  Default is `false`.
 
@@ -287,9 +287,6 @@ The following environment variables configure the exporter:
 
 * `PG_EXPORTER_DISABLE_DEFAULT_METRICS`
   Use only metrics supplied from `queries.yaml`. Value can be `true` or `false`. Default is `false`.
-
-* `PG_EXPORTER_DISABLE_SETTINGS_METRICS`
-  Use the flag if you don't want to scrape `pg_settings`. Value can be `true` or `false`. Default is `false`.
 
 * `PG_EXPORTER_AUTO_DISCOVER_DATABASES` (DEPRECATED)
   Whether to discover the databases on a server dynamically. Value can be `true` or `false`. Default is `false`.

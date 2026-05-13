@@ -120,18 +120,11 @@ func (s *Server) String() string {
 }
 
 // Scrape loads metrics.
-func (s *Server) Scrape(ch chan<- prometheus.Metric, disableSettingsMetrics bool) error {
+func (s *Server) Scrape(ch chan<- prometheus.Metric) error {
 	s.mappingMtx.RLock()
 	defer s.mappingMtx.RUnlock()
 
 	var err error
-
-	if !disableSettingsMetrics && s.master {
-		if err = querySettings(ch, s); err != nil {
-			err = fmt.Errorf("error retrieving settings: %s", err)
-			return err
-		}
-	}
 
 	errMap := queryNamespaceMappings(ch, s)
 	if len(errMap) == 0 {

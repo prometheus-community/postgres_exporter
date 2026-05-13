@@ -394,7 +394,7 @@ type Exporter struct {
 	// only, since it just points to the global.
 	builtinMetricMaps map[string]intermediateMetricMap
 
-	disableDefaultMetrics, disableSettingsMetrics, autoDiscoverDatabases bool
+	disableDefaultMetrics, autoDiscoverDatabases bool
 
 	excludeDatabases []string
 	includeDatabases []string
@@ -422,13 +422,6 @@ type ExporterOpt func(*Exporter)
 func DisableDefaultMetrics(b bool) ExporterOpt {
 	return func(e *Exporter) {
 		e.disableDefaultMetrics = b
-	}
-}
-
-// DisableSettingsMetrics configures pg_settings export.
-func DisableSettingsMetrics(b bool) ExporterOpt {
-	return func(e *Exporter) {
-		e.disableSettingsMetrics = b
 	}
 }
 
