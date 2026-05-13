@@ -94,65 +94,6 @@ var queryOverrides = map[string][]OverrideQuery{
 			`,
 		},
 	},
-
-	"pg_stat_activity": {
-		// This query only works
-		{
-			semver.MustParseRange(">=9.2.0"),
-			`
-			SELECT
-				pg_database.datname,
-				tmp.state,
-				tmp2.usename,
-				tmp2.application_name,
-				tmp2.backend_type,
-				tmp2.wait_event_type,
-				tmp2.wait_event,
-				COALESCE(count,0) as count,
-				COALESCE(max_tx_duration,0) as max_tx_duration
-			FROM
-				(
-				  VALUES ('active'),
-				  		 ('idle'),
-				  		 ('idle in transaction'),
-				  		 ('idle in transaction (aborted)'),
-				  		 ('fastpath function call'),
-				  		 ('disabled')
-				) AS tmp(state) CROSS JOIN pg_database
-			LEFT JOIN
-			(
-				SELECT
-					datname,
-					state,
-					usename,
-					application_name,
-					backend_type,
-					wait_event_type,
-					wait_event,
-					count(*) AS count,
-					MAX(EXTRACT(EPOCH FROM now() - xact_start))::float AS max_tx_duration
-				FROM pg_stat_activity
-				WHERE pid <> pg_backend_pid()
-				GROUP BY datname,state,usename,application_name,backend_type,wait_event_type,wait_event) AS tmp2
-				ON tmp.state = tmp2.state AND pg_database.datname = tmp2.datname
-			`,
-		},
-		{
-			semver.MustParseRange("<9.2.0"),
-			`
-			SELECT
-				datname,
-				'unknown' AS state,
-				usename,
-				application_name,
-				COALESCE(count(*),0) AS count,
-				COALESCE(MAX(EXTRACT(EPOCH FROM now() - xact_start))::float,0) AS max_tx_duration
-			FROM pg_stat_activity
-			WHERE procpid <> pg_backend_pid()
-			GROUP BY datname,usename,application_name
-			`,
-		},
-	},
 }
 
 // Convert the query override file to the version-specific query override file
