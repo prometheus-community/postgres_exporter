@@ -96,12 +96,14 @@ func updateReplicationSlots(ctx context.Context, instance *instance, ch chan<- p
 		}
 		labels := replicationSlotsLabelValues(slotName, database)
 		emitReplicationSlotsActive(ch, active, labels)
-		ch <- prometheus.MustNewConstMetric(
-			replicationSlotsWalLSNDiffDesc,
-			prometheus.GaugeValue,
-			nullFloat64Value(walLSNDiff),
-			labels...,
-		)
+		if walLSNDiff.Valid {
+			ch <- prometheus.MustNewConstMetric(
+				replicationSlotsWalLSNDiffDesc,
+				prometheus.GaugeValue,
+				walLSNDiff.Float64,
+				labels...,
+			)
+		}
 	}
 
 	return rows.Err()
@@ -124,20 +126,26 @@ func updateReplicationSlotsBefore10(ctx context.Context, instance *instance, ch 
 		}
 		labels := replicationSlotsLabelValues(slotName, database)
 		emitReplicationSlotsActive(ch, active, labels)
-		ch <- prometheus.MustNewConstMetric(
-			replicationSlotsXlogLocationDiffDesc,
-			prometheus.UntypedValue,
-			nullFloat64Value(xlogLocationDiff),
-			labels...,
-		)
+		if xlogLocationDiff.Valid {
+			ch <- prometheus.MustNewConstMetric(
+				replicationSlotsXlogLocationDiffDesc,
+				prometheus.UntypedValue,
+				xlogLocationDiff.Float64,
+				labels...,
+			)
+		}
 	}
 
 	return rows.Err()
 }
 
 func emitReplicationSlotsActive(ch chan<- prometheus.Metric, active sql.NullBool, labels []string) {
+	if !active.Valid {
+		return
+	}
+
 	activeValue := 0.0
-	if active.Valid && active.Bool {
+	if active.Bool {
 		activeValue = 1.0
 	}
 	ch <- prometheus.MustNewConstMetric(
@@ -157,11 +165,4 @@ func nullStringValue(s sql.NullString) string {
 		return s.String
 	}
 	return ""
-}
-
-func nullFloat64Value(f sql.NullFloat64) float64 {
-	if f.Valid {
-		return f.Float64
-	}
-	return 0
 }
