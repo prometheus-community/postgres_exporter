@@ -139,6 +139,9 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `[no-]collector.stat_activity_autovacuum`
   Enable the `stat_activity_autovacuum` collector (default: disabled).
 
+* `[no-]collector.stat_archiver`
+  Enable the `stat_archiver` collector (default: enabled).
+
 * `[no-]collector.stat_bgwriter`
   Enable the `stat_bgwriter` collector (default: enabled).
 

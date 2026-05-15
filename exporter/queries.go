@@ -95,17 +95,6 @@ var queryOverrides = map[string][]OverrideQuery{
 		},
 	},
 
-	"pg_stat_archiver": {
-		{
-			semver.MustParseRange(">=9.4.0"),
-			`
-			SELECT *,
-				extract(epoch from now() - last_archived_time) AS last_archive_age
-			FROM pg_stat_archiver
-			`,
-		},
-	},
-
 	"pg_stat_activity": {
 		// This query only works
 		{
