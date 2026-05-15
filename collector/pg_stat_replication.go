@@ -104,18 +104,22 @@ func updateStatReplication(ctx context.Context, instance *instance, ch chan<- pr
 		}
 		labels := statReplicationLabelValues(applicationName, clientAddr, state, slotName)
 
-		ch <- prometheus.MustNewConstMetric(
-			statReplicationCurrentWalLSNBytesDesc,
-			prometheus.GaugeValue,
-			float64Value(currentWalLSNBytes),
-			labels...,
-		)
-		ch <- prometheus.MustNewConstMetric(
-			statReplicationWalLSNDiffDesc,
-			prometheus.GaugeValue,
-			float64Value(walLSNDiff),
-			labels...,
-		)
+		if currentWalLSNBytes.Valid {
+			ch <- prometheus.MustNewConstMetric(
+				statReplicationCurrentWalLSNBytesDesc,
+				prometheus.GaugeValue,
+				currentWalLSNBytes.Float64,
+				labels...,
+			)
+		}
+		if walLSNDiff.Valid {
+			ch <- prometheus.MustNewConstMetric(
+				statReplicationWalLSNDiffDesc,
+				prometheus.GaugeValue,
+				walLSNDiff.Float64,
+				labels...,
+			)
+		}
 	}
 
 	return rows.Err()
@@ -136,12 +140,14 @@ func updateStatReplicationBefore10(ctx context.Context, instance *instance, ch c
 			return err
 		}
 
-		ch <- prometheus.MustNewConstMetric(
-			statReplicationXlogLocationDiffDesc,
-			prometheus.GaugeValue,
-			float64Value(xlogLocationDiff),
-			statReplicationLabelValues(applicationName, clientAddr, state, slotName)...,
-		)
+		if xlogLocationDiff.Valid {
+			ch <- prometheus.MustNewConstMetric(
+				statReplicationXlogLocationDiffDesc,
+				prometheus.GaugeValue,
+				xlogLocationDiff.Float64,
+				statReplicationLabelValues(applicationName, clientAddr, state, slotName)...,
+			)
+		}
 	}
 
 	return rows.Err()
@@ -161,11 +167,4 @@ func nullStringValue(s sql.NullString) string {
 		return s.String
 	}
 	return ""
-}
-
-func float64Value(f sql.NullFloat64) float64 {
-	if f.Valid {
-		return f.Float64
-	}
-	return 0
 }
