@@ -151,27 +151,23 @@ func (PGStatActivityCollector) Update(ctx context.Context, instance *instance, c
 			stringValue(waitEvent),
 		}
 
-		countMetric := 0.0
 		if count.Valid {
-			countMetric = count.Float64
+			ch <- prometheus.MustNewConstMetric(
+				statActivityCountDesc,
+				prometheus.GaugeValue,
+				count.Float64,
+				labels...,
+			)
 		}
-		ch <- prometheus.MustNewConstMetric(
-			statActivityCountDesc,
-			prometheus.GaugeValue,
-			countMetric,
-			labels...,
-		)
 
-		maxTxDurationMetric := 0.0
 		if maxTxDuration.Valid {
-			maxTxDurationMetric = maxTxDuration.Float64
+			ch <- prometheus.MustNewConstMetric(
+				statActivityMaxTxDurationDesc,
+				prometheus.GaugeValue,
+				maxTxDuration.Float64,
+				labels...,
+			)
 		}
-		ch <- prometheus.MustNewConstMetric(
-			statActivityMaxTxDurationDesc,
-			prometheus.GaugeValue,
-			maxTxDurationMetric,
-			labels...,
-		)
 	}
 
 	return rows.Err()

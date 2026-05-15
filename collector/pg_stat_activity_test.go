@@ -110,25 +110,9 @@ func TestPGStatActivityCollectorNullValues(t *testing.T) {
 		}
 	}()
 
-	expectedLabels := labelMap{
-		"datname":          "",
-		"state":            "",
-		"usename":          "",
-		"application_name": "",
-		"backend_type":     "",
-		"wait_event_type":  "",
-		"wait_event":       "",
+	if metric, ok := <-ch; ok {
+		t.Fatalf("unexpected metric emitted for NULL stat_activity value: %s", metric.Desc())
 	}
-	expected := []MetricResult{
-		{labels: expectedLabels, value: 0, metricType: dto.MetricType_GAUGE},
-		{labels: expectedLabels, value: 0, metricType: dto.MetricType_GAUGE},
-	}
-	convey.Convey("Metrics comparison", t, func() {
-		for _, expect := range expected {
-			m := readMetric(<-ch)
-			convey.So(expect, convey.ShouldResemble, m)
-		}
-	})
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled exceptions: %s", err)
 	}
