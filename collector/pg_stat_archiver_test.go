@@ -84,17 +84,9 @@ func TestPGStatArchiverCollectorNullValues(t *testing.T) {
 		}
 	}()
 
-	expected := []MetricResult{
-		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
-		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
-		{labels: labelMap{}, metricType: dto.MetricType_GAUGE, value: 0},
+	if metric, ok := <-ch; ok {
+		t.Fatalf("unexpected metric emitted for NULL stat_archiver value: %s", metric.Desc())
 	}
-	convey.Convey("Metrics comparison", t, func() {
-		for _, expect := range expected {
-			m := readMetric(<-ch)
-			convey.So(expect, convey.ShouldResemble, m)
-		}
-	})
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled exceptions: %s", err)
 	}

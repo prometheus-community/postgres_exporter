@@ -75,35 +75,29 @@ func (PGStatArchiverCollector) Update(ctx context.Context, instance *instance, c
 		return err
 	}
 
-	archivedCountMetric := 0.0
 	if archivedCount.Valid {
-		archivedCountMetric = float64(archivedCount.Int64)
+		ch <- prometheus.MustNewConstMetric(
+			statArchiverArchivedCountDesc,
+			prometheus.CounterValue,
+			float64(archivedCount.Int64),
+		)
 	}
-	ch <- prometheus.MustNewConstMetric(
-		statArchiverArchivedCountDesc,
-		prometheus.CounterValue,
-		archivedCountMetric,
-	)
 
-	failedCountMetric := 0.0
 	if failedCount.Valid {
-		failedCountMetric = float64(failedCount.Int64)
+		ch <- prometheus.MustNewConstMetric(
+			statArchiverFailedCountDesc,
+			prometheus.CounterValue,
+			float64(failedCount.Int64),
+		)
 	}
-	ch <- prometheus.MustNewConstMetric(
-		statArchiverFailedCountDesc,
-		prometheus.CounterValue,
-		failedCountMetric,
-	)
 
-	lastArchiveAgeMetric := 0.0
 	if lastArchiveAge.Valid {
-		lastArchiveAgeMetric = lastArchiveAge.Float64
+		ch <- prometheus.MustNewConstMetric(
+			statArchiverLastArchiveAgeDesc,
+			prometheus.GaugeValue,
+			lastArchiveAge.Float64,
+		)
 	}
-	ch <- prometheus.MustNewConstMetric(
-		statArchiverLastArchiveAgeDesc,
-		prometheus.GaugeValue,
-		lastArchiveAgeMetric,
-	)
 
 	return nil
 }
