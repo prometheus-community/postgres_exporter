@@ -37,44 +37,10 @@ func newProbeTestDSN(t *testing.T) config.DSN {
 	return dsn
 }
 
-// TestNewProbeCollectorPropagatesAuroraEnabled is the regression test for
-// the multi-target /probe bug. Before WithProbeAuroraEnabled existed,
-// NewProbeCollector built an instance with auroraSupportEnabled=false
-// regardless of the global --aurora.enabled flag, so detectAurora() never
-// ran and every aurora_* collector silently returned ErrNoData.
-func TestNewProbeCollectorPropagatesAuroraEnabled(t *testing.T) {
-	logger := promslog.NewNopLogger()
-
-	for _, c := range []struct {
-		name    string
-		enabled bool
-	}{
-		{"flag off", false},
-		{"flag on", true},
-	} {
-		t.Run(c.name, func(t *testing.T) {
-			registry := prometheus.NewRegistry()
-			pc, err := NewProbeCollector(logger, nil, registry, newProbeTestDSN(t),
-				WithProbeAuroraEnabled(c.enabled))
-			if err != nil {
-				t.Fatalf("NewProbeCollector: %v", err)
-			}
-			t.Cleanup(func() { _ = pc.Close() })
-
-			if pc.instance == nil {
-				t.Fatal("ProbeCollector.instance must not be nil")
-			}
-			if got := pc.instance.auroraSupportEnabled; got != c.enabled {
-				t.Errorf("instance.auroraSupportEnabled = %v, want %v", got, c.enabled)
-			}
-		})
-	}
-}
-
-// TestNewProbeCollectorDefaultsToDisabled pins the default: without the
-// option the propagated flag stays false, preserving zero-overhead
-// behavior on non-Aurora deployments that do not pass --aurora.enabled.
-func TestNewProbeCollectorDefaultsToDisabled(t *testing.T) {
+// TestNewProbeCollectorAllocatesAuroraProbe verifies that the per-request
+// instance gets a non-nil auroraProbe so detectAurora() can run on the
+// first scrape (and exactly once for the lifetime of this ProbeCollector).
+func TestNewProbeCollectorAllocatesAuroraProbe(t *testing.T) {
 	logger := promslog.NewNopLogger()
 	registry := prometheus.NewRegistry()
 
@@ -84,8 +50,11 @@ func TestNewProbeCollectorDefaultsToDisabled(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = pc.Close() })
 
-	if pc.instance.auroraSupportEnabled {
-		t.Error("auroraSupportEnabled must default to false without the option")
+	if pc.instance == nil {
+		t.Fatal("ProbeCollector.instance must not be nil")
+	}
+	if pc.instance.auroraProbe == nil {
+		t.Error("instance.auroraProbe must be allocated for the probe path")
 	}
 }
 

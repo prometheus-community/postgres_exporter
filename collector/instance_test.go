@@ -41,7 +41,6 @@ func TestInstanceCopySharesAuroraProbe(t *testing.T) {
 	if err != nil {
 		t.Fatalf("newInstance: %v", err)
 	}
-	i.auroraSupportEnabled = true
 
 	c1 := i.copy()
 	c2 := i.copy()
@@ -50,9 +49,6 @@ func TestInstanceCopySharesAuroraProbe(t *testing.T) {
 	for name, c := range map[string]*instance{"c1": c1, "c2": c2, "c3": c3} {
 		if c.auroraProbe != i.auroraProbe {
 			t.Errorf("%s.auroraProbe pointer must equal parent's", name)
-		}
-		if !c.auroraSupportEnabled {
-			t.Errorf("%s.auroraSupportEnabled must be propagated", name)
 		}
 	}
 }
@@ -127,16 +123,15 @@ type fakeErr struct{ msg string }
 
 func (e *fakeErr) Error() string { return e.msg }
 
-// TestInstanceCopyPreservesDSN verifies that copy() carries over the DSN
-// alongside the Aurora support state — both fields are required for the
-// fresh per-scrape instance to reconnect to the right server.
+// TestInstanceCopyPreservesDSN verifies that copy() carries over the DSN —
+// it is required for the fresh per-scrape instance to reconnect to the
+// right server.
 func TestInstanceCopyPreservesDSN(t *testing.T) {
 	const dsn = "postgres://user:pass@example.invalid:5432/db?sslmode=disable"
 	i, err := newInstance(dsn)
 	if err != nil {
 		t.Fatalf("newInstance: %v", err)
 	}
-	i.auroraSupportEnabled = true
 
 	c := i.copy()
 	if c.dsn != dsn {
@@ -260,57 +255,10 @@ func TestQueryVersionFirstQueryFails(t *testing.T) {
 	}
 }
 
-// TestSetupSkipsAuroraDetectionWhenDisabled is a regression test for the
-// performance gate: when --aurora.enabled is off, setup() must not issue
-// the aurora_version() probe at all. We expose this by configuring sqlmock
-// to fail loudly if it sees that query.
-//
-// We do not exercise the full sql.Open() path here (sqlmock is not the
-// "postgres" driver). Instead we drive the orchestration directly by
-// reusing the package-private helpers, which lets us assert behavior
-// without registering a custom driver.
-func TestSetupSkipsAuroraDetectionWhenDisabled(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("sqlmock.New: %v", err)
-	}
-	defer db.Close()
-
-	mock.ExpectQuery(`SELECT version\(\);`).
-		WillReturnRows(sqlmock.NewRows([]string{"version"}).
-			AddRow("PostgreSQL 16.4 on aarch64-unknown-linux-gnu"))
-	// No expectation for SELECT aurora_version() — if it fires, sqlmock fails.
-
-	i := &instance{
-		db:                   db,
-		auroraSupportEnabled: false,
-		auroraProbe:          &auroraProbe{},
-	}
-	v, err := queryVersion(i.db)
-	if err != nil {
-		t.Fatalf("queryVersion: %v", err)
-	}
-	i.version = v
-
-	if i.auroraSupportEnabled && i.auroraProbe != nil {
-		i.auroraProbe.once.Do(func() {
-			i.auroraProbe.isAurora = detectAurora(i.db)
-		})
-		i.isAurora = i.auroraProbe.isAurora
-	}
-
-	if i.isAurora {
-		t.Error("isAurora must stay false when auroraSupportEnabled=false")
-	}
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("unfulfilled expectations (aurora_version should not be queried): %s", err)
-	}
-}
-
-// TestSetupRunsAuroraDetectionWhenEnabled covers the complementary path:
-// when --aurora.enabled is on, setup() probes aurora_version() once and
-// caches the result on the shared auroraProbe.
-func TestSetupRunsAuroraDetectionWhenEnabled(t *testing.T) {
+// TestSetupRunsAuroraDetection verifies that setup() probes aurora_version()
+// once and caches the result on the shared auroraProbe. Detection is always
+// on; aurora_* collectors gate on instance.isAurora at Update() time.
+func TestSetupRunsAuroraDetection(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("sqlmock.New: %v", err)
@@ -324,9 +272,8 @@ func TestSetupRunsAuroraDetectionWhenEnabled(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"aurora_version"}).AddRow("15.4"))
 
 	i := &instance{
-		db:                   db,
-		auroraSupportEnabled: true,
-		auroraProbe:          &auroraProbe{},
+		db:          db,
+		auroraProbe: &auroraProbe{},
 	}
 	v, err := queryVersion(i.db)
 	if err != nil {
@@ -334,7 +281,7 @@ func TestSetupRunsAuroraDetectionWhenEnabled(t *testing.T) {
 	}
 	i.version = v
 
-	if i.auroraSupportEnabled && i.auroraProbe != nil {
+	if i.auroraProbe != nil {
 		i.auroraProbe.once.Do(func() {
 			i.auroraProbe.isAurora = detectAurora(i.db)
 		})

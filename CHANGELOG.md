@@ -1,7 +1,7 @@
 ## main / (unreleased)
 
 * [CHANGE] ...
-* [FEATURE] Add Amazon Aurora PostgreSQL support: new `--aurora.enabled` flag with auto-detection and 9 new `aurora_*` collectors, all disabled by default.
+* [FEATURE] Add Amazon Aurora PostgreSQL support: auto-detection via `aurora_version()` and 9 new `aurora_*` collectors, all disabled by default.
 * [ENHANCEMENT] `replication` and `wal` collectors degrade gracefully on Amazon Aurora PostgreSQL instead of failing the scrape (closes #1273).
 * [BUGFIX] ...
 

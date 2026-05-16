@@ -35,13 +35,12 @@ type instance struct {
 	db      *sql.DB
 	version semver.Version
 
-	// auroraSupportEnabled mirrors the --aurora.enabled flag. When false,
-	// setup() skips the Aurora probe entirely, isAurora stays false, and
-	// every aurora_* collector is a no-op. This keeps non-Aurora setups
-	// free of any Aurora-related overhead.
-	auroraSupportEnabled bool
-	isAurora             bool
-	auroraProbe          *auroraProbe
+	// isAurora is set by setup() via the shared auroraProbe (one-shot
+	// SELECT aurora_version() per process). Aurora-specific collectors
+	// gate on this field; on non-Aurora servers they short-circuit to
+	// ErrNoData.
+	isAurora    bool
+	auroraProbe *auroraProbe
 }
 
 func newInstance(dsn string) (*instance, error) {
@@ -64,9 +63,8 @@ func newInstance(dsn string) (*instance, error) {
 // copy returns a copy of the instance.
 func (i *instance) copy() *instance {
 	return &instance{
-		dsn:                  i.dsn,
-		auroraSupportEnabled: i.auroraSupportEnabled,
-		auroraProbe:          i.auroraProbe,
+		dsn:         i.dsn,
+		auroraProbe: i.auroraProbe,
 	}
 }
 
@@ -86,7 +84,7 @@ func (i *instance) setup() error {
 		i.version = version
 	}
 
-	if i.auroraSupportEnabled && i.auroraProbe != nil {
+	if i.auroraProbe != nil {
 		i.auroraProbe.once.Do(func() {
 			i.auroraProbe.isAurora = detectAurora(i.db)
 		})

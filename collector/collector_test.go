@@ -165,25 +165,6 @@ func TestInt32(t *testing.T) {
 	}
 }
 
-// TestWithAuroraEnabled checks the Option setter we added so future
-// refactors do not silently drop the field assignment. The Option is the
-// only way for cmd/postgres_exporter to flip the in-process flag.
-func TestWithAuroraEnabled(t *testing.T) {
-	p := &PostgresCollector{}
-	if err := WithAuroraEnabled(true)(p); err != nil {
-		t.Fatalf("Option returned error: %v", err)
-	}
-	if !p.auroraEnabled {
-		t.Error("WithAuroraEnabled(true) must flip auroraEnabled on the collector")
-	}
-	if err := WithAuroraEnabled(false)(p); err != nil {
-		t.Fatalf("Option returned error: %v", err)
-	}
-	if p.auroraEnabled {
-		t.Error("WithAuroraEnabled(false) must reset auroraEnabled on the collector")
-	}
-}
-
 // TestExecuteSuccessfulCollectorEmitsSuccessOne and the companion
 // "failed" / "no data" tests verify the execute() wrapper records the
 // right pg_scrape_collector_success value depending on what the
@@ -247,62 +228,6 @@ type updateFn func(ctx context.Context, inst *instance, ch chan<- prometheus.Met
 
 func (f updateFn) Update(ctx context.Context, inst *instance, ch chan<- prometheus.Metric) error {
 	return f(ctx, inst, ch)
-}
-
-// TestEnableAuroraCollectors verifies that EnableAuroraCollectors flips the
-// aurora_* collector defaults to enabled, leaves non-aurora collectors alone,
-// and respects user-forced flags (--no-collector.aurora_X).
-func TestEnableAuroraCollectors(t *testing.T) {
-	// Snapshot current state to restore at the end so we don't poison
-	// other tests in the package.
-	snapshot := make(map[string]bool, len(collectorState))
-	for k, v := range collectorState {
-		snapshot[k] = *v
-	}
-	originalForced := forcedCollectors
-	forcedCollectors = map[string]bool{
-		// Simulate the user passing --no-collector.aurora_stat_bgwriter:
-		// the explicit flag must win even when Aurora support is on.
-		"aurora_stat_bgwriter": true,
-	}
-	t.Cleanup(func() {
-		for k, v := range snapshot {
-			*collectorState[k] = v
-		}
-		forcedCollectors = originalForced
-	})
-
-	// Reset all aurora_* to disabled to start clean.
-	for name, state := range collectorState {
-		if strings.HasPrefix(name, "aurora_") {
-			*state = false
-		}
-	}
-	// And pin a known non-aurora collector to disabled so we can prove
-	// EnableAuroraCollectors does not touch it.
-	if state, ok := collectorState["wal"]; ok {
-		*state = false
-	}
-
-	EnableAuroraCollectors()
-
-	for name, state := range collectorState {
-		got := *state
-		switch {
-		case name == "aurora_stat_bgwriter":
-			if got {
-				t.Errorf("forced collector %q must stay disabled, got enabled", name)
-			}
-		case strings.HasPrefix(name, "aurora_"):
-			if !got {
-				t.Errorf("aurora collector %q should be enabled, got disabled", name)
-			}
-		case name == "wal":
-			if got {
-				t.Errorf("non-aurora collector %q must not be touched", name)
-			}
-		}
-	}
 }
 
 func TestIsAuroraUnsupportedFunction(t *testing.T) {

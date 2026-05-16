@@ -52,7 +52,6 @@ var (
 	includeDatabases       = kingpin.Flag("include-databases", "A list of databases to include when autoDiscoverDatabases is enabled (DEPRECATED)").Default("").Envar("PG_EXPORTER_INCLUDE_DATABASES").String()
 	metricPrefix           = kingpin.Flag("metric-prefix", "A metric prefix can be used to have non-default (not \"pg\") prefixes for each of the metrics").Default("pg").Envar("PG_EXPORTER_METRIC_PREFIX").String()
 	collectionTimeout      = kingpin.Flag("collection-timeout", "Timeout for collecting the statistics when the database is slow").Default("1m").Envar("PG_EXPORTER_COLLECTION_TIMEOUT").String()
-	auroraEnabled          = kingpin.Flag("aurora.enabled", "Enable Amazon Aurora PostgreSQL support. When set, the exporter detects Aurora on each instance and turns Aurora-specific collectors on by default. Has no effect on non-Aurora instances.").Default("false").Envar("PG_EXPORTER_AURORA_ENABLED").Bool()
 	logger                 = promslog.NewNopLogger()
 )
 
@@ -124,20 +123,12 @@ func main() {
 		dsn = dsns[0]
 	}
 
-	// When Aurora support is requested, flip the default state of all
-	// aurora_* collectors to enabled before instantiating PostgresCollector.
-	// Per-collector --collector.aurora_X flags from the user still win.
-	if *auroraEnabled {
-		collector.EnableAuroraCollectors()
-	}
-
 	pe, err := collector.NewPostgresCollector(
 		logger,
 		excludedDatabases,
 		dsn,
 		[]string{},
-		collector.WithCollectionTimeout(*collectionTimeout),
-		collector.WithAuroraEnabled(*auroraEnabled))
+		collector.WithCollectionTimeout(*collectionTimeout))
 	if err != nil {
 		logger.Warn("Failed to create PostgresCollector", "err", err.Error())
 	} else {
@@ -166,7 +157,7 @@ func main() {
 		http.Handle("/", landingPage)
 	}
 
-	http.HandleFunc("/probe", handleProbe(logger, excludedDatabases, *auroraEnabled))
+	http.HandleFunc("/probe", handleProbe(logger, excludedDatabases))
 
 	srv := &http.Server{}
 	if err := web.ListenAndServe(srv, webConfig, logger); err != nil {

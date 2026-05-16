@@ -29,20 +29,7 @@ type ProbeCollector struct {
 	instance   *instance
 }
 
-// ProbeOption configures a ProbeCollector.
-type ProbeOption func(*ProbeCollector)
-
-// WithProbeAuroraEnabled mirrors WithAuroraEnabled for the multi-target
-// (/probe) code path: it propagates the global --aurora.enabled flag down
-// to the per-request instance so detectAurora() runs and aurora_* collectors
-// actually emit metrics instead of silently returning ErrNoData.
-func WithProbeAuroraEnabled(enabled bool) ProbeOption {
-	return func(pc *ProbeCollector) {
-		pc.instance.auroraSupportEnabled = enabled
-	}
-}
-
-func NewProbeCollector(logger *slog.Logger, excludeDatabases []string, registry *prometheus.Registry, dsn config.DSN, opts ...ProbeOption) (*ProbeCollector, error) {
+func NewProbeCollector(logger *slog.Logger, excludeDatabases []string, registry *prometheus.Registry, dsn config.DSN) (*ProbeCollector, error) {
 	collectors := make(map[string]Collector)
 	initiatedCollectorsMtx.Lock()
 	defer initiatedCollectorsMtx.Unlock()
@@ -75,16 +62,12 @@ func NewProbeCollector(logger *slog.Logger, excludeDatabases []string, registry 
 		return nil, err
 	}
 
-	pc := &ProbeCollector{
+	return &ProbeCollector{
 		registry:   registry,
 		collectors: collectors,
 		logger:     logger,
 		instance:   instance,
-	}
-	for _, o := range opts {
-		o(pc)
-	}
-	return pc, nil
+	}, nil
 }
 
 func (pc *ProbeCollector) Describe(ch chan<- *prometheus.Desc) {
