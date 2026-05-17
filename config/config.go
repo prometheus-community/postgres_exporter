@@ -14,28 +14,15 @@
 package config
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"gopkg.in/yaml.v3"
-)
-
-var (
-	configReloadSuccess = promauto.NewGauge(prometheus.GaugeOpts{
-		Namespace: "postgres_exporter",
-		Name:      "config_last_reload_successful",
-		Help:      "Postgres exporter config loaded successfully.",
-	})
-
-	configReloadSeconds = promauto.NewGauge(prometheus.GaugeOpts{
-		Namespace: "postgres_exporter",
-		Name:      "config_last_reload_success_timestamp_seconds",
-		Help:      "Timestamp of the last successful configuration reload.",
-	})
 )
 
 type Config struct {
@@ -57,6 +44,31 @@ type UserPass struct {
 type Handler struct {
 	sync.RWMutex
 	Config *Config
+
+	configReloadSuccess prometheus.Gauge
+	configReloadSeconds prometheus.Gauge
+}
+
+func NewHandler(registerer prometheus.Registerer) (*Handler, error) {
+	if registerer == nil {
+		return nil, errors.New("registerer is required")
+	}
+	h := &Handler{
+		Config: &Config{},
+		configReloadSuccess: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "postgres_exporter",
+			Name:      "config_last_reload_successful",
+			Help:      "Postgres exporter config loaded successfully.",
+		}),
+		configReloadSeconds: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "postgres_exporter",
+			Name:      "config_last_reload_success_timestamp_seconds",
+			Help:      "Timestamp of the last successful configuration reload.",
+		}),
+	}
+	registerer.MustRegister(h.configReloadSuccess, h.configReloadSeconds)
+
+	return h, nil
 }
 
 func (ch *Handler) GetConfig() *Config {
@@ -66,33 +78,63 @@ func (ch *Handler) GetConfig() *Config {
 }
 
 func (ch *Handler) ReloadConfig(f string, logger *slog.Logger) error {
-	config := &Config{}
 	var err error
 	defer func() {
-		if err != nil {
-			configReloadSuccess.Set(0)
-		} else {
-			configReloadSuccess.Set(1)
-			configReloadSeconds.SetToCurrentTime()
-		}
+		ch.observeReload(err)
 	}()
 
+	config, err := LoadConfig(f)
+	if err != nil {
+		return err
+	}
+
+	ch.SetConfig(config)
+	return nil
+}
+
+func (ch *Handler) observeReload(err error) {
+	if ch.configReloadSuccess == nil {
+		return
+	}
+	if err != nil {
+		ch.configReloadSuccess.Set(0)
+		return
+	}
+	ch.configReloadSuccess.Set(1)
+	if ch.configReloadSeconds != nil {
+		ch.configReloadSeconds.SetToCurrentTime()
+	}
+}
+
+func LoadConfig(f string) (*Config, error) {
 	yamlReader, err := os.Open(f)
 	if err != nil {
-		return fmt.Errorf("error opening config file %q: %s", f, err)
+		return nil, fmt.Errorf("error opening config file %q: %s", f, err)
 	}
 	defer yamlReader.Close()
-	decoder := yaml.NewDecoder(yamlReader)
+
+	config, err := DecodeConfig(yamlReader)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing config file %q: %s", f, err)
+	}
+	return config, nil
+}
+
+func DecodeConfig(r io.Reader) (*Config, error) {
+	config := &Config{}
+	decoder := yaml.NewDecoder(r)
 	decoder.KnownFields(true)
 
-	if err = decoder.Decode(config); err != nil {
-		return fmt.Errorf("error parsing config file %q: %s", f, err)
+	if err := decoder.Decode(config); err != nil {
+		return nil, err
 	}
+	return config, nil
+}
 
+func (ch *Handler) SetConfig(config *Config) {
 	ch.Lock()
 	ch.Config = config
 	ch.Unlock()
-	return nil
 }
 
 func (m AuthModule) ConfigureTarget(target string) (DSN, error) {
