@@ -19,12 +19,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -254,20 +252,6 @@ var ErrNoData = errors.New("collector returned no data")
 
 func IsNoDataError(err error) bool {
 	return err == ErrNoData
-}
-
-// isAuroraUnsupportedFunction reports whether the error is Aurora PostgreSQL
-// rejecting a query because it calls a function unsupported on Aurora (for
-// example pg_last_xact_replay_timestamp or pg_ls_waldir). Aurora surfaces
-// these as Postgres error class "0A" (feature_not_supported) with a message
-// that contains "Aurora". Used by collectors to fall back gracefully instead
-// of failing the whole scrape.
-func isAuroraUnsupportedFunction(err error) bool {
-	var pqErr *pq.Error
-	if errors.As(err, &pqErr) {
-		return pqErr.Code.Class() == "0A" && strings.Contains(pqErr.Message, "Aurora")
-	}
-	return false
 }
 
 func Int32(m sql.NullInt32) float64 {

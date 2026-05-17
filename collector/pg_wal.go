@@ -16,7 +16,6 @@ package collector
 import (
 	"context"
 	"database/sql"
-	"math"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -64,34 +63,20 @@ var (
 
 func (c PGWALCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
-	row := db.QueryRowContext(ctx, pgWALQuery)
+	row := db.QueryRowContext(ctx,
+		pgWALQuery,
+	)
 
-	var segments sql.NullInt64
+	var segments uint64
 	var size sql.NullInt64
 	err := row.Scan(&segments, &size)
 	if err != nil {
-		if !isAuroraUnsupportedFunction(err) {
-			return err
-		}
-		// Aurora PostgreSQL does not support pg_ls_waldir(). Emit NaN for
-		// both metrics to signal they are unavailable on this server.
-		ch <- prometheus.MustNewConstMetric(
-			pgWALSegments,
-			prometheus.GaugeValue, math.NaN(),
-		)
-		ch <- prometheus.MustNewConstMetric(
-			pgWALSize,
-			prometheus.GaugeValue, math.NaN(),
-		)
-		return nil
+		return err
 	}
-
-	if segments.Valid {
-		ch <- prometheus.MustNewConstMetric(
-			pgWALSegments,
-			prometheus.GaugeValue, float64(segments.Int64),
-		)
-	}
+	ch <- prometheus.MustNewConstMetric(
+		pgWALSegments,
+		prometheus.GaugeValue, float64(segments),
+	)
 	if size.Valid {
 		ch <- prometheus.MustNewConstMetric(
 			pgWALSize,

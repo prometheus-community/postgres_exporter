@@ -14,11 +14,9 @@ package collector
 
 import (
 	"context"
-	"math"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/smartystreets/goconvey/convey"
@@ -97,43 +95,6 @@ func TestPgWALCollectorZeroSegments(t *testing.T) {
 			m := readMetric(<-ch)
 			convey.So(expect, convey.ShouldResemble, m)
 		}
-	})
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled exceptions: %s", err)
-	}
-}
-
-func TestPgWALCollectorAurora(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("Error opening a stub db connection: %s", err)
-	}
-	defer db.Close()
-
-	inst := &instance{db: db}
-
-	auroraErr := &pq.Error{
-		Code:    "0A000",
-		Message: "pg_ls_waldir() is currently not supported for Aurora",
-	}
-	mock.ExpectQuery(sanitizeQuery(pgWALQuery)).WillReturnError(auroraErr)
-
-	ch := make(chan prometheus.Metric, 2)
-	c := PGWALCollector{}
-	if err := c.Update(context.Background(), inst, ch); err != nil {
-		t.Fatalf("Unexpected error from Update on Aurora: %s", err)
-	}
-	close(ch)
-
-	metrics := make([]MetricResult, 0, 2)
-	for m := range ch {
-		metrics = append(metrics, readMetric(m))
-	}
-
-	convey.Convey("Aurora fallback emits NaN", t, func() {
-		convey.So(len(metrics), convey.ShouldEqual, 2)
-		convey.So(math.IsNaN(metrics[0].value), convey.ShouldBeTrue)
-		convey.So(math.IsNaN(metrics[1].value), convey.ShouldBeTrue)
 	})
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled exceptions: %s", err)

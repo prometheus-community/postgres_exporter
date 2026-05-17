@@ -15,13 +15,11 @@ package collector
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/promslog"
@@ -230,38 +228,3 @@ func (f updateFn) Update(ctx context.Context, inst *instance, ch chan<- promethe
 	return f(ctx, inst, ch)
 }
 
-func TestIsAuroraUnsupportedFunction(t *testing.T) {
-	cases := []struct {
-		name string
-		err  error
-		want bool
-	}{
-		// Should match — real Aurora errors:
-		{
-			name: "aurora pg_last_xact_replay_timestamp",
-			err:  &pq.Error{Code: "0A000", Message: "pg_last_xact_replay_timestamp() is currently not supported for Aurora"},
-			want: true,
-		},
-		{
-			name: "aurora pg_ls_waldir",
-			err:  &pq.Error{Code: "0A000", Message: "pg_ls_waldir() is currently not supported for Aurora"},
-			want: true,
-		},
-		// Should NOT match:
-		{name: "nil error", err: nil, want: false},
-		{name: "plain error (not pq)", err: errors.New("connection refused"), want: false},
-		{name: "permission denied (42501)", err: &pq.Error{Code: "42501", Message: "permission denied for function pg_ls_waldir"}, want: false},
-		{name: "undefined function (42883)", err: &pq.Error{Code: "42883", Message: "function aurora_replica_status() does not exist"}, want: false},
-		{name: "syntax error (42601)", err: &pq.Error{Code: "42601", Message: "syntax error near 'Aurora'"}, want: false},
-		{name: "feature_not_supported but not Aurora", err: &pq.Error{Code: "0A000", Message: "this feature is not yet implemented"}, want: false},
-		{name: "connection failure (08006)", err: &pq.Error{Code: "08006", Message: "connection failure on Aurora cluster"}, want: false},
-		{name: "internal error (XX000)", err: &pq.Error{Code: "XX000", Message: "internal Aurora storage error"}, want: false},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			if got := isAuroraUnsupportedFunction(c.err); got != c.want {
-				t.Errorf("isAuroraUnsupportedFunction(%v) = %v, want %v", c.err, got, c.want)
-			}
-		})
-	}
-}

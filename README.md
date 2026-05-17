@@ -229,10 +229,6 @@ enabled on a non-Aurora server they silently emit no data (no log noise).
 * `[no-]collector.aurora_stat_logical_wal_cache`
   Per-replication-slot WAL cache hits/misses from `aurora_stat_logical_wal_cache()`. (default: disabled)
 
-Note: on Aurora the standard `replication` and `wal` collectors degrade
-gracefully — they still emit `pg_replication_is_replica` (and NaN for the
-time-based / WAL-directory metrics that Aurora does not support).
-
 * `config.file`
   Set the config file path. Default is `postgres_exporter.yml`
 
