@@ -56,6 +56,7 @@ The per-table and per-index collectors scale with your schema — one set of ser
 | `wal` | enabled | Number of WAL segment files and their total size on disk, via `pg_ls_waldir()`. |
 | `stat_wal_receiver` | disabled | Seen from a standby: the WAL receiver's LSNs, timeline, upstream node, and last message send/receipt times. Enable this on replicas for a view of the receiving side. From `pg_stat_wal_receiver`. |
 | `xlog_location` | disabled | Current WAL write position (or replay position on a replica) as a byte offset. Superseded by `stat_replication`; retained for old setups and pre-10 servers. |
+| `aurora_replica_status` | disabled | **Amazon Aurora PostgreSQL only.** For each instance in the cluster: replica lag behind the writer, replay latency, and pending page reads. On non-Aurora servers it reports nothing. From `aurora_replica_status()`. |
 
 ### Checkpoints, buffers, and I/O
 
