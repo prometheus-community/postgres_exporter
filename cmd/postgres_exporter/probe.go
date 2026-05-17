@@ -67,7 +67,6 @@ func handleProbe(logger *slog.Logger, excludeDatabases []string) http.HandlerFun
 
 		opts := []exporter.ExporterOpt{
 			exporter.DisableDefaultMetrics(*disableDefaultMetrics),
-			exporter.DisableSettingsMetrics(*disableSettingsMetrics),
 			exporter.AutoDiscoverDatabases(*autoDiscoverDatabases),
 			exporter.WithUserQueriesPath(*queriesPath),
 			exporter.WithConstantLabels(*constantLabelsList),

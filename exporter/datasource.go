@@ -112,7 +112,7 @@ func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 		e.logger.Warn("Proceeding with outdated query maps, as the Postgres version could not be determined", "err", err)
 	}
 
-	return server.Scrape(ch, e.disableSettingsMetrics)
+	return server.Scrape(ch)
 }
 
 // try to get the DataSource

@@ -348,7 +348,7 @@ type Exporter struct {
 	// only, since it just points to the global.
 	builtinMetricMaps map[string]intermediateMetricMap
 
-	disableDefaultMetrics, disableSettingsMetrics, autoDiscoverDatabases bool
+	disableDefaultMetrics, autoDiscoverDatabases bool
 
 	excludeDatabases []string
 	includeDatabases []string
@@ -376,13 +376,6 @@ type ExporterOpt func(*Exporter)
 func DisableDefaultMetrics(b bool) ExporterOpt {
 	return func(e *Exporter) {
 		e.disableDefaultMetrics = b
-	}
-}
-
-// DisableSettingsMetrics configures pg_settings export.
-func DisableSettingsMetrics(b bool) ExporterOpt {
-	return func(e *Exporter) {
-		e.disableSettingsMetrics = b
 	}
 }
 
@@ -528,13 +521,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 func (e *Exporter) CloseServers() {
 	e.servers.Close()
-}
-
-func newDesc(subsystem, name, help string, labels prometheus.Labels) *prometheus.Desc {
-	return prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, subsystem, name),
-		help, nil, labels,
-	)
 }
 
 func checkPostgresVersion(db *sql.DB, server string, logger *slog.Logger) (semver.Version, string, error) {

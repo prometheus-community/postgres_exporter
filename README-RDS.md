@@ -22,9 +22,9 @@ Running postgres-exporter in a container like so:
       -e DATA_SOURCE_NAME="postgresql://${PGUSER}:${PGPASS}@${PGHOST}:5432/${DBNAME}?sslmode=disable" \
       -e PG_EXPORTER_EXCLUDE_DATABASES=rdsadmin \
       -e PG_EXPORTER_DISABLE_DEFAULT_METRICS=true \
-      -e PG_EXPORTER_DISABLE_SETTINGS_METRICS=true \
       -e PG_EXPORTER_EXTEND_QUERY_PATH='/var/lib/postgresql/queries.yaml' \
-      quay.io/prometheuscommunity/postgres-exporter
+      quay.io/prometheuscommunity/postgres-exporter \
+      --no-collector.settings
   ```
 
 ### Expected changes to RDS:
