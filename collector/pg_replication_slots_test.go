@@ -36,6 +36,9 @@ func TestPGReplicationSlotsCollector(t *testing.T) {
 	rows := sqlmock.NewRows([]string{"slot_name", "database", "active", "pg_wal_lsn_diff"}).
 		AddRow("slot_a", "postgres", true, 64.0)
 	mock.ExpectQuery(sanitizeQuery(replicationSlotsQuery)).WillReturnRows(rows)
+	slotRows := sqlmock.NewRows([]string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active", "safe_wal_size", "wal_status"}).
+		AddRow("slot_a", "physical", 5, 3, true, 323906992, "reserved")
+	mock.ExpectQuery(sanitizeQuery(replicationSlotsSlotNewQuery)).WillReturnRows(slotRows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -47,9 +50,15 @@ func TestPGReplicationSlotsCollector(t *testing.T) {
 	}()
 
 	expectedLabels := labelMap{"slot_name": "slot_a", "database": "postgres"}
+	expectedSlotLabels := labelMap{"slot_name": "slot_a", "slot_type": "physical"}
 	expected := []MetricResult{
 		{labels: expectedLabels, value: 1, metricType: dto.MetricType_GAUGE},
 		{labels: expectedLabels, value: 64, metricType: dto.MetricType_GAUGE},
+		{labels: expectedSlotLabels, value: 5, metricType: dto.MetricType_GAUGE},
+		{labels: expectedSlotLabels, value: 3, metricType: dto.MetricType_GAUGE},
+		{labels: expectedSlotLabels, value: 1, metricType: dto.MetricType_GAUGE},
+		{labels: expectedSlotLabels, value: 323906992, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "slot_a", "slot_type": "physical", "wal_status": "reserved"}, value: 1, metricType: dto.MetricType_GAUGE},
 	}
 	convey.Convey("Metrics comparison", t, func() {
 		for _, expect := range expected {
@@ -100,6 +109,89 @@ func TestPGReplicationSlotsCollectorBefore10(t *testing.T) {
 	}
 }
 
+func TestPGReplicationSlotsCollectorSlotInactive(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Error opening a stub db connection: %s", err)
+	}
+	defer db.Close()
+
+	inst := &instance{db: db, version: semver.MustParse("13.3.7")}
+
+	rows := sqlmock.NewRows([]string{"slot_name", "database", "active", "pg_wal_lsn_diff"})
+	mock.ExpectQuery(sanitizeQuery(replicationSlotsQuery)).WillReturnRows(rows)
+	slotRows := sqlmock.NewRows([]string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active", "safe_wal_size", "wal_status"}).
+		AddRow("test_slot", "physical", 6, 12, false, -4000, "extended")
+	mock.ExpectQuery(sanitizeQuery(replicationSlotsSlotNewQuery)).WillReturnRows(slotRows)
+
+	ch := make(chan prometheus.Metric)
+	go func() {
+		defer close(ch)
+		c := PGReplicationSlotsCollector{}
+		if err := c.Update(context.Background(), inst, ch); err != nil {
+			t.Errorf("Error calling PGReplicationSlotsCollector.Update: %s", err)
+		}
+	}()
+
+	expected := []MetricResult{
+		{labels: labelMap{"slot_name": "test_slot", "slot_type": "physical"}, value: 6, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "test_slot", "slot_type": "physical"}, value: 0, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "test_slot", "slot_type": "physical"}, value: -4000, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "test_slot", "slot_type": "physical", "wal_status": "extended"}, value: 1, metricType: dto.MetricType_GAUGE},
+	}
+
+	convey.Convey("Metrics comparison", t, func() {
+		for _, expect := range expected {
+			m := readMetric(<-ch)
+			convey.So(expect, convey.ShouldResemble, m)
+		}
+	})
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled exceptions: %s", err)
+	}
+}
+
+func TestPGReplicationSlotsCollectorSlotBefore13(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Error opening a stub db connection: %s", err)
+	}
+	defer db.Close()
+
+	inst := &instance{db: db, version: semver.MustParse("12.0.0")}
+
+	rows := sqlmock.NewRows([]string{"slot_name", "database", "active", "pg_wal_lsn_diff"})
+	mock.ExpectQuery(sanitizeQuery(replicationSlotsQuery)).WillReturnRows(rows)
+	slotRows := sqlmock.NewRows([]string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active"}).
+		AddRow("test_slot", "logical", 10, 8, true)
+	mock.ExpectQuery(sanitizeQuery(replicationSlotsSlotQuery)).WillReturnRows(slotRows)
+
+	ch := make(chan prometheus.Metric)
+	go func() {
+		defer close(ch)
+		c := PGReplicationSlotsCollector{}
+		if err := c.Update(context.Background(), inst, ch); err != nil {
+			t.Errorf("Error calling PGReplicationSlotsCollector.Update: %s", err)
+		}
+	}()
+
+	expected := []MetricResult{
+		{labels: labelMap{"slot_name": "test_slot", "slot_type": "logical"}, value: 10, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "test_slot", "slot_type": "logical"}, value: 8, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"slot_name": "test_slot", "slot_type": "logical"}, value: 1, metricType: dto.MetricType_GAUGE},
+	}
+
+	convey.Convey("Metrics comparison", t, func() {
+		for _, expect := range expected {
+			m := readMetric(<-ch)
+			convey.So(expect, convey.ShouldResemble, m)
+		}
+	})
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled exceptions: %s", err)
+	}
+}
+
 func TestPGReplicationSlotsCollectorNullValues(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
@@ -112,6 +204,9 @@ func TestPGReplicationSlotsCollectorNullValues(t *testing.T) {
 	rows := sqlmock.NewRows([]string{"slot_name", "database", "active", "pg_wal_lsn_diff"}).
 		AddRow(nil, nil, nil, nil)
 	mock.ExpectQuery(sanitizeQuery(replicationSlotsQuery)).WillReturnRows(rows)
+	slotRows := sqlmock.NewRows([]string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active", "safe_wal_size", "wal_status"}).
+		AddRow(nil, nil, nil, nil, nil, nil, nil)
+	mock.ExpectQuery(sanitizeQuery(replicationSlotsSlotNewQuery)).WillReturnRows(slotRows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
