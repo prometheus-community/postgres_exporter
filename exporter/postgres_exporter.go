@@ -158,15 +158,7 @@ func (e *ErrorConnectToServer) Error() string {
 // TODO: revisit this with the semver system
 func DumpMaps() {
 	// TODO: make this function part of the exporter
-	for name, cmap := range builtinMetricMaps {
-		query, ok := queryOverrides[name]
-		if !ok {
-			fmt.Println(name)
-		} else {
-			for _, queryOverride := range query {
-				fmt.Println(name, queryOverride.versionRange, queryOverride.query)
-			}
-		}
+	for _, cmap := range builtinMetricMaps {
 
 		for column, details := range cmap.columnMappings {
 			fmt.Printf("  %-40s %v\n", column, details)
@@ -548,7 +540,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 		// Get Default Metrics only for master database
 		if !e.disableDefaultMetrics && server.master {
 			server.metricMap = makeDescMap(semanticVersion, server.labels, e.builtinMetricMaps, server.logger, e.metricPrefix)
-			server.queryOverrides = makeQueryOverrideMap(semanticVersion, queryOverrides, server.logger)
+			server.queryOverrides = make(map[string]string)
 		} else {
 			server.metricMap = make(map[string]MetricMapNamespace)
 			server.queryOverrides = make(map[string]string)
