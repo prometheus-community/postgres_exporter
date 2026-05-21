@@ -110,6 +110,18 @@ func NewPGStatStatementsCollector(config collectorConfig) (Collector, error) {
 }
 
 var (
+	statStatementsPlansTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, statStatementsSubsystem, "plans_total"),
+		"Number of times planned",
+		[]string{"user", "datname", "queryid"},
+		prometheus.Labels{},
+	)
+	statStatementsPlansSecondsTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, statStatementsSubsystem, "plans_seconds_total"),
+		"Total time spent in planning the statement, in seconds",
+		[]string{"user", "datname", "queryid"},
+		prometheus.Labels{},
+	)
 	statStatementsCallsTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statStatementsSubsystem, "calls_total"),
 		"Number of times executed",
@@ -159,6 +171,8 @@ const (
 		pg_database.datname,
 		pg_stat_statements.queryid,
 		%s
+		0 as plans_total,
+		0 as plans_seconds_total,
 		pg_stat_statements.calls as calls_total,
 		pg_stat_statements.total_time / 1000.0 as seconds_total,
 		pg_stat_statements.rows as rows_total,
@@ -182,6 +196,8 @@ const (
 		pg_database.datname,
 		pg_stat_statements.queryid,
 		%s
+		pg_stat_statements.plans as plans_total,
+		pg_stat_statements.total_plan_time / 1000.0 as plans_seconds_total,
 		pg_stat_statements.calls as calls_total,
 		pg_stat_statements.total_exec_time / 1000.0 as seconds_total,
 		pg_stat_statements.rows as rows_total,
@@ -205,6 +221,8 @@ const (
 		pg_database.datname,
 		pg_stat_statements.queryid,
 		%s
+		pg_stat_statements.plans as plans_total,
+		pg_stat_statements.total_plan_time / 1000.0 as plans_seconds_total,
 		pg_stat_statements.calls as calls_total,
 		pg_stat_statements.total_exec_time / 1000.0 as seconds_total,
 		pg_stat_statements.rows as rows_total,
@@ -259,13 +277,13 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 	defer rows.Close()
 	for rows.Next() {
 		var user, datname, queryid, statement sql.NullString
-		var callsTotal, rowsTotal sql.NullInt64
-		var secondsTotal, blockReadSecondsTotal, blockWriteSecondsTotal sql.NullFloat64
+		var plansTotal, callsTotal, rowsTotal sql.NullInt64
+		var plansSecondsTotal, secondsTotal, blockReadSecondsTotal, blockWriteSecondsTotal sql.NullFloat64
 		var columns []any
 		if c.includeQueryStatement {
-			columns = []any{&user, &datname, &queryid, &statement, &callsTotal, &secondsTotal, &rowsTotal, &blockReadSecondsTotal, &blockWriteSecondsTotal}
+			columns = []any{&user, &datname, &queryid, &statement, &plansTotal, &plansSecondsTotal, &callsTotal, &secondsTotal, &rowsTotal, &blockReadSecondsTotal, &blockWriteSecondsTotal}
 		} else {
-			columns = []any{&user, &datname, &queryid, &callsTotal, &secondsTotal, &rowsTotal, &blockReadSecondsTotal, &blockWriteSecondsTotal}
+			columns = []any{&user, &datname, &queryid, &plansTotal, &plansSecondsTotal, &callsTotal, &secondsTotal, &rowsTotal, &blockReadSecondsTotal, &blockWriteSecondsTotal}
 		}
 		if err := rows.Scan(columns...); err != nil {
 			return err
@@ -291,6 +309,28 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 			continue
 		}
 		seen[key] = struct{}{}
+
+		plansTotalMetric := 0.0
+		if plansTotal.Valid {
+			plansTotalMetric = float64(plansTotal.Int64)
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statStatementsPlansTotal,
+			prometheus.CounterValue,
+			plansTotalMetric,
+			userLabel, datnameLabel, queryidLabel,
+		)
+
+		plansSecondsTotalMetric := 0.0
+		if plansSecondsTotal.Valid {
+			plansSecondsTotalMetric = plansSecondsTotal.Float64
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statStatementsPlansSecondsTotal,
+			prometheus.CounterValue,
+			plansSecondsTotalMetric,
+			userLabel, datnameLabel, queryidLabel,
+		)
 
 		callsTotalMetric := 0.0
 		if callsTotal.Valid {
