@@ -347,7 +347,7 @@ rich self-documenting metrics for the exporter.
 
 This feature is deprecated in favor of built-in collector functions. For generic SQL database monitoring see the [sql_exporter](https://github.com/burningalchemist/sql_exporter).
 
-The -extend.query-path command-line argument specifies a YAML file containing additional queries to run.
+The `--extend.query-path` command-line argument specifies a YAML file containing additional queries to run.
 Some examples are provided in [queries.yaml](queries.yaml).
 
 ### Disabling default metrics
@@ -361,10 +361,10 @@ To scrape metrics from all databases on a database server, the database DSN's ca
 `--auto-discover-databases` flag. When true, `SELECT datname FROM pg_database WHERE datallowconn = true AND datistemplate = false and datname != current_database()` is run for all configured DSN's. From the
 result a new set of DSN's is created for which the metrics are scraped.
 
-In addition, the option `--exclude-databases` adds the possibily to filter the result from the auto discovery to discard databases you do not need.
+In addition, the option `--exclude-databases` adds the possibility to filter the result from the auto discovery to discard databases you do not need.
 
-If you want to include only subset of databases, you can use option `--include-databases`. Exporter still makes request to
-`pg_database` table, but do scrape from only if database is in include list.
+If you want to include only a subset of databases, you can use the option `--include-databases`. The exporter still makes a request to the
+`pg_database` table, but only scrapes from databases that are in the include list.
 
 ### Running as non-superuser
 
