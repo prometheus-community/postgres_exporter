@@ -19,6 +19,8 @@ jobs:
       image: quay.io/prometheus/golang-builder:1.26-base
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
       - uses: prometheus/promci-setup@5af30ba8c199a91d6c04ebdc3c48e630e355f62d # v0.1.0
       - run: make GO_ONLY=1 SKIP_GOLANGCI_LINT=1
 
@@ -29,8 +31,7 @@ jobs:
       matrix:
         thread: [ 0, 1, 2, 3]
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: prometheus/promci/build@9c86752f3395e08c57719af549cc455d8e2c2514 # v0.7.0
+      - uses: prometheus/promci/build@d9d4f5688814f0b77bf003d07fb8c00507390634 # v0.8.2
         with:
           parallelism: 4
           thread: ${{ matrix.thread }}
@@ -38,17 +39,19 @@ jobs:
   publish_main:
     name: Publish main branch artifacts
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
     needs: [test_go, build]
     if: |
       (github.event_name == 'push' && github.event.ref == 'refs/heads/main')
       ||
       (github.event_name == 'push' && github.event.ref == 'refs/heads/master')
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: prometheus/promci/publish_main@9c86752f3395e08c57719af549cc455d8e2c2514 # v0.7.0
+      - uses: prometheus/promci/publish_main@d9d4f5688814f0b77bf003d07fb8c00507390634 # v0.8.2
         with:
           docker_hub_organization: prometheuscommunity
           docker_hub_password: ${{ secrets.docker_hub_password }}
+          ghcr_io_password: ${{ github.token }}
           quay_io_organization: prometheuscommunity
           quay_io_password: ${{ secrets.quay_io_password }}
 
@@ -57,15 +60,16 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      packages: write
     needs: [test_go, build]
     if: |
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: prometheus/promci/publish_release@9c86752f3395e08c57719af549cc455d8e2c2514 # v0.7.0
+      - uses: prometheus/promci/publish_release@d9d4f5688814f0b77bf003d07fb8c00507390634 # v0.8.2
         with:
           docker_hub_organization: prometheuscommunity
           docker_hub_password: ${{ secrets.docker_hub_password }}
+          ghcr_io_password: ${{ github.token }}
           quay_io_organization: prometheuscommunity
           quay_io_password: ${{ secrets.quay_io_password }}
           github_token: ${{ github.token }}
