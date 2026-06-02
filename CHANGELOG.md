@@ -1,5 +1,30 @@
 ## main / (unreleased)
 
+BREAKING CHANGES:
+
+The `replication_slot` collector has been renamed to `replication_slots`.
+Users explicitly enabling or disabling this collector must update their flags from
+`--collector.replication_slot` / `--no-collector.replication_slot` to
+`--collector.replication_slots` / `--no-collector.replication_slots`.
+
+The metrics previously exposed by the `replication_slot` collector have also been
+renamed to use the `pg_replication_slots_` prefix. Update alerts, recording
+rules, and dashboards that reference these metrics:
+
+* `pg_replication_slot_slot_current_wal_lsn` -> `pg_replication_slots_slot_current_wal_lsn`
+* `pg_replication_slot_slot_confirmed_flush_lsn` -> `pg_replication_slots_slot_confirmed_flush_lsn`
+* `pg_replication_slot_slot_is_active` -> `pg_replication_slots_slot_is_active`
+* `pg_replication_slot_safe_wal_size_bytes` -> `pg_replication_slots_safe_wal_size_bytes`
+* `pg_replication_slot_wal_status` -> `pg_replication_slots_wal_status`
+
+Some metrics previously emitted through the legacy default metric map are now
+emitted by the standalone `replication_slots` collector. This affects
+`pg_replication_slots_active`, `pg_replication_slots_pg_wal_lsn_diff`, and
+`pg_replication_slots_pg_xlog_location_diff`. These metrics no longer honor
+`--metric-prefix`, no longer include deprecated `constantLabels`, and are no
+longer disabled by `--disable-default-metrics`. To stop collecting them, disable
+the `replication_slots` collector explicitly with `--no-collector.replication_slots`.
+
 * [CHANGE] ...
 * [FEATURE] ...
 * [ENHANCEMENT] ...
