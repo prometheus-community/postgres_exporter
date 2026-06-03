@@ -158,15 +158,7 @@ func (e *ErrorConnectToServer) Error() string {
 // TODO: revisit this with the semver system
 func DumpMaps() {
 	// TODO: make this function part of the exporter
-	for name, cmap := range builtinMetricMaps {
-		query, ok := queryOverrides[name]
-		if !ok {
-			fmt.Println(name)
-		} else {
-			for _, queryOverride := range query {
-				fmt.Println(name, queryOverride.versionRange, queryOverride.query)
-			}
-		}
+	for _, cmap := range builtinMetricMaps {
 
 		for column, details := range cmap.columnMappings {
 			fmt.Printf("  %-40s %v\n", column, details)
@@ -185,16 +177,6 @@ var builtinMetricMaps = map[string]intermediateMetricMap{
 			"confl_snapshot":   {COUNTER, "Number of queries in this database that have been canceled due to old snapshots", nil, nil},
 			"confl_bufferpin":  {COUNTER, "Number of queries in this database that have been canceled due to pinned buffers", nil, nil},
 			"confl_deadlock":   {COUNTER, "Number of queries in this database that have been canceled due to deadlocks", nil, nil},
-		},
-		true,
-		0,
-	},
-	"pg_replication_slots": {
-		map[string]ColumnMapping{
-			"slot_name":       {LABEL, "Name of the replication slot", nil, nil},
-			"database":        {LABEL, "Name of the database", nil, nil},
-			"active":          {GAUGE, "Flag indicating if the slot is active", nil, nil},
-			"pg_wal_lsn_diff": {GAUGE, "Replication lag in bytes", nil, nil},
 		},
 		true,
 		0,
@@ -558,7 +540,7 @@ func (e *Exporter) checkMapVersions(ch chan<- prometheus.Metric, server *Server)
 		// Get Default Metrics only for master database
 		if !e.disableDefaultMetrics && server.master {
 			server.metricMap = makeDescMap(semanticVersion, server.labels, e.builtinMetricMaps, server.logger, e.metricPrefix)
-			server.queryOverrides = makeQueryOverrideMap(semanticVersion, queryOverrides, server.logger)
+			server.queryOverrides = make(map[string]string)
 		} else {
 			server.metricMap = make(map[string]MetricMapNamespace)
 			server.queryOverrides = make(map[string]string)

@@ -34,62 +34,6 @@ type UserQuery struct {
 // UserQueries represents a set of UserQuery objects
 type UserQueries map[string]UserQuery
 
-// OverrideQuery 's are run in-place of simple namespace look ups, and provide
-// advanced functionality. But they have a tendency to postgres version specific.
-// There aren't too many versions, so we simply store customized versions using
-// the semver matching we do for columns.
-type OverrideQuery struct {
-	versionRange semver.Range
-	query        string
-}
-
-// Overriding queries for namespaces above.
-// TODO: validate this is a closed set in tests, and there are no overlaps
-var queryOverrides = map[string][]OverrideQuery{
-	"pg_replication_slots": {
-		{
-			semver.MustParseRange(">=9.4.0 <10.0.0"),
-			`
-			SELECT slot_name, database, active,
-				(case pg_is_in_recovery() when 't' then pg_xlog_location_diff(pg_last_xlog_receive_location(), restart_lsn) else pg_xlog_location_diff(pg_current_xlog_location(), restart_lsn) end) as pg_xlog_location_diff
-			FROM pg_replication_slots
-			`,
-		},
-		{
-			semver.MustParseRange(">=10.0.0"),
-			`
-			SELECT slot_name, database, active,
-				(case pg_is_in_recovery() when 't' then pg_wal_lsn_diff(pg_last_wal_receive_lsn(), restart_lsn) else pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) end) as pg_wal_lsn_diff
-			FROM pg_replication_slots
-			`,
-		},
-	},
-}
-
-// Convert the query override file to the version-specific query override file
-// for the exporter.
-func makeQueryOverrideMap(pgVersion semver.Version, queryOverrides map[string][]OverrideQuery, logger *slog.Logger) map[string]string {
-	resultMap := make(map[string]string)
-	for name, overrideDef := range queryOverrides {
-		// Find a matching semver. We make it an error to have overlapping
-		// ranges at test-time, so only 1 should ever match.
-		matched := false
-		for _, queryDef := range overrideDef {
-			if queryDef.versionRange(pgVersion) {
-				resultMap[name] = queryDef.query
-				matched = true
-				break
-			}
-		}
-		if !matched {
-			logger.Warn("No query matched override, disabling metric space", "name", name)
-			resultMap[name] = ""
-		}
-	}
-
-	return resultMap
-}
-
 func parseUserQueries(content []byte, logger *slog.Logger) (map[string]intermediateMetricMap, map[string]string, error) {
 	var userQueries UserQueries
 
