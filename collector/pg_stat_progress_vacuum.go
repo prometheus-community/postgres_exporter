@@ -95,11 +95,18 @@ var (
 		nil,
 	)
 
-	// This is the view definition of pg_stat_progress_vacuum, albeit without the conversion
-	// of "phase" to a human-readable string. We will prefer the numeric representation.
+	// Based on the view definition of pg_stat_progress_vacuum, without the conversion
+	// of "phase" to a human-readable string. We prefer the numeric representation.
+	// relname is resolved via ::regclass::text (schema-qualified) when the vacuum is
+	// running in the currently connected database. For cross-database vacuums, pg_class
+	// cannot be used (it is per-database and OIDs can collide), so we fall back to the
+	// raw OID as text to guarantee uniqueness across concurrent vacuums.
 	statProgressVacuumQuery = `SELECT
 		d.datname,
-		s.relid::regclass::text AS relname,
+		COALESCE(
+			CASE WHEN d.datname = current_database() THEN s.relid::regclass::text END,
+			s.relid::text
+		) AS relname,
 		s.param1 AS phase,
 		s.param2 AS heap_blks_total,
 		s.param3 AS heap_blks_scanned,
