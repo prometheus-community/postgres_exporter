@@ -52,7 +52,7 @@ var (
 	// Settings intentionally ignored due to invalid format:
 	// - `sync_commit_cancel_wait`, specific to Azure Postgres, see https://github.com/prometheus-community/postgres_exporter/issues/523
 	// - `google_dataplex.max_messages`, specific to Google Cloud SQL, see https://github.com/prometheus-community/postgres_exporter/issues/1240
-	pgSettingsQuery = "SELECT name, setting, COALESCE(unit, ''), short_desc, vartype FROM pg_settings WHERE vartype IN ('bool', 'integer', 'real') AND name NOT IN ('sync_commit_cancel_wait', 'google_dataplex.max_messages');"
+	pgSettingsQuery = "SELECT name, setting, COALESCE(unit, ''), COALESCE(short_desc, ''), vartype FROM pg_settings WHERE vartype IN ('bool', 'integer', 'real') AND name NOT IN ('sync_commit_cancel_wait', 'google_dataplex.max_messages');"
 )
 
 // Update implements Collector and exposes PostgreSQL runtime settings.
