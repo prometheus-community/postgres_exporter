@@ -43,7 +43,7 @@ jobs:
       DATA_SOURCE_NAME: 'postgresql://postgres:test@postgres:5432/circle_test?sslmode=disable'
       GOOPTS: '-v -tags integration'
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
       - uses: prometheus/promci-setup@5af30ba8c199a91d6c04ebdc3c48e630e355f62d # v0.1.0
