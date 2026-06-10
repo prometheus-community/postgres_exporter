@@ -13,6 +13,8 @@
 package collector
 
 import (
+	"context"
+	"database/sql"
 	"strings"
 	"testing"
 	"time"
@@ -133,3 +135,96 @@ func TestWithConnectionTimeout(t *testing.T) {
 		t.Errorf("there were unfulfilled exceptions: %s", err)
 	}
 }
+
+// TestIsNoDataError pins the trivial identity of ErrNoData. The wrapper
+// exists so callers do not depend on the package-private sentinel value
+// directly; if that contract drifts, this test fails immediately.
+func TestIsNoDataError(t *testing.T) {
+	if !IsNoDataError(ErrNoData) {
+		t.Error("IsNoDataError(ErrNoData) must be true")
+	}
+	if IsNoDataError(nil) {
+		t.Error("IsNoDataError(nil) must be false")
+	}
+	if IsNoDataError(errFnDoesNotExist) {
+		t.Error("IsNoDataError must reject unrelated errors")
+	}
+}
+
+// TestInt32 covers the small helper that drops sql.NullInt32 values to
+// float64 with a NaN-style zero default. The two interesting cases are
+// "valid" (returns the value) and "invalid" (returns 0).
+func TestInt32(t *testing.T) {
+	if got := Int32(sql.NullInt32{Int32: 42, Valid: true}); got != 42 {
+		t.Errorf("Int32(valid=42) = %v, want 42", got)
+	}
+	if got := Int32(sql.NullInt32{Valid: false}); got != 0 {
+		t.Errorf("Int32(invalid) = %v, want 0", got)
+	}
+}
+
+// TestExecuteSuccessfulCollectorEmitsSuccessOne and the companion
+// "failed" / "no data" tests verify the execute() wrapper records the
+// right pg_scrape_collector_success value depending on what the
+// Collector.Update returns.
+func TestExecuteSuccessfulCollectorEmitsSuccessOne(t *testing.T) {
+	got := runExecuteAndReadSuccess(t, func(ctx context.Context, inst *instance, ch chan<- prometheus.Metric) error {
+		return nil
+	})
+	if got != 1 {
+		t.Errorf("scrape_collector_success = %v, want 1", got)
+	}
+}
+
+func TestExecuteFailedCollectorEmitsSuccessZero(t *testing.T) {
+	got := runExecuteAndReadSuccess(t, func(ctx context.Context, inst *instance, ch chan<- prometheus.Metric) error {
+		return errFnDoesNotExist
+	})
+	if got != 0 {
+		t.Errorf("scrape_collector_success = %v, want 0", got)
+	}
+}
+
+func TestExecuteNoDataCollectorEmitsSuccessZero(t *testing.T) {
+	got := runExecuteAndReadSuccess(t, func(ctx context.Context, inst *instance, ch chan<- prometheus.Metric) error {
+		return ErrNoData
+	})
+	if got != 0 {
+		t.Errorf("scrape_collector_success = %v, want 0", got)
+	}
+}
+
+// runExecuteAndReadSuccess wraps the Collector under test in a tiny
+// adapter, drains the duration metric, and returns the success metric so
+// the caller can assert against it.
+func runExecuteAndReadSuccess(t *testing.T, update func(ctx context.Context, inst *instance, ch chan<- prometheus.Metric) error) float64 {
+	t.Helper()
+	ch := make(chan prometheus.Metric, 4)
+	c := updateFn(update)
+	execute(context.Background(), "fake", c, &instance{}, ch, promslog.NewNopLogger())
+	close(ch)
+
+	var success float64 = -1
+	for m := range ch {
+		mr := readMetric(m)
+		// Two metrics emitted: duration_seconds and success. We only care
+		// about success here.
+		desc := m.Desc().String()
+		if strings.Contains(desc, "collector_success") {
+			success = mr.value
+		}
+	}
+	if success == -1 {
+		t.Fatal("scrape_collector_success metric was not emitted")
+	}
+	return success
+}
+
+// updateFn lets a test inline its Update implementation without declaring
+// a struct per case.
+type updateFn func(ctx context.Context, inst *instance, ch chan<- prometheus.Metric) error
+
+func (f updateFn) Update(ctx context.Context, inst *instance, ch chan<- prometheus.Metric) error {
+	return f(ctx, inst, ch)
+}
+
