@@ -199,6 +199,15 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `[no-]collector.xlog_location`
   Enable the `xlog_location` collector (default: disabled).
 
+#### Amazon Aurora PostgreSQL collectors
+
+These collectors expose metrics that only exist on Amazon Aurora PostgreSQL.
+They are disabled by default and detect Aurora automatically — on a
+non-Aurora server they silently emit no data.
+
+* `[no-]collector.aurora_replica_status`
+  Replica lag, replay latency, pending read IOs from `aurora_replica_status()`. (default: disabled)
+
 * `config.file`
   Set the config file path. Default is `postgres_exporter.yml`
 

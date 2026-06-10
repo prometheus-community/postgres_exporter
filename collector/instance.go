@@ -17,19 +17,36 @@ import (
 	"database/sql"
 	"fmt"
 	"regexp"
+	"sync"
 
 	"github.com/blang/semver/v4"
 )
+
+// auroraProbe caches the result of detectAurora() so the aurora_version()
+// query runs at most once per process. The parent instance and every copy
+// produced by copy() share the same pointer.
+type auroraProbe struct {
+	once     sync.Once
+	isAurora bool
+}
 
 type instance struct {
 	dsn     string
 	db      *sql.DB
 	version semver.Version
+
+	// isAurora is set by setup() via the shared auroraProbe (one-shot
+	// SELECT aurora_version() per process). Aurora-specific collectors
+	// gate on this field; on non-Aurora servers they short-circuit to
+	// ErrNoData.
+	isAurora    bool
+	auroraProbe *auroraProbe
 }
 
 func newInstance(dsn string) (*instance, error) {
 	i := &instance{
-		dsn: dsn,
+		dsn:         dsn,
+		auroraProbe: &auroraProbe{},
 	}
 
 	// "Create" a database handle to verify the DSN provided is valid.
@@ -46,7 +63,8 @@ func newInstance(dsn string) (*instance, error) {
 // copy returns a copy of the instance.
 func (i *instance) copy() *instance {
 	return &instance{
-		dsn: i.dsn,
+		dsn:         i.dsn,
+		auroraProbe: i.auroraProbe,
 	}
 }
 
@@ -65,7 +83,23 @@ func (i *instance) setup() error {
 	} else {
 		i.version = version
 	}
+
+	if i.auroraProbe != nil {
+		i.auroraProbe.once.Do(func() {
+			i.auroraProbe.isAurora = detectAurora(i.db)
+		})
+		i.isAurora = i.auroraProbe.isAurora
+	}
 	return nil
+}
+
+// detectAurora reports whether the connected server is Amazon Aurora
+// PostgreSQL. It calls aurora_version(), an Aurora-only built-in: any
+// error means we are not on Aurora. The check is best-effort and
+// silently returns false on failure.
+func detectAurora(db *sql.DB) bool {
+	var v string
+	return db.QueryRow("SELECT aurora_version()").Scan(&v) == nil
 }
 
 func (i *instance) getDB() *sql.DB {
@@ -73,6 +107,12 @@ func (i *instance) getDB() *sql.DB {
 }
 
 func (i *instance) Close() error {
+	if i.db == nil {
+		// setup() was never called (or failed before sql.Open); nothing to
+		// close. This guard lets callers defer Close() right after
+		// construction without worrying about ordering.
+		return nil
+	}
 	return i.db.Close()
 }
 
