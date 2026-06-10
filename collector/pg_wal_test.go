@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/smartystreets/goconvey/convey"
@@ -57,6 +58,47 @@ func TestPgWALCollector(t *testing.T) {
 			convey.So(expect, convey.ShouldResemble, m)
 		}
 	})
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled exceptions: %s", err)
+	}
+}
+
+// TestPgWALCollectorAurora verifies the Aurora fallback path: when
+// pg_ls_waldir() returns the Aurora-specific feature_not_supported
+// error, the collector returns nil and emits no metrics (matching the
+// pattern used elsewhere when database values are unavailable, per
+// reviewer feedback on #1274).
+func TestPgWALCollectorAurora(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Error opening a stub db connection: %s", err)
+	}
+	defer db.Close()
+
+	inst := &instance{db: db}
+
+	auroraErr := &pq.Error{
+		Code:    "0A000",
+		Message: "pg_ls_waldir() is currently not supported for Aurora",
+	}
+	mock.ExpectQuery(sanitizeQuery(pgWALQuery)).WillReturnError(auroraErr)
+
+	ch := make(chan prometheus.Metric, 4)
+	c := PGWALCollector{}
+
+	if err := c.Update(context.Background(), inst, ch); err != nil {
+		t.Errorf("PGWALCollector.Update returned %v on Aurora unsupported function; want nil", err)
+	}
+	close(ch)
+
+	count := 0
+	for range ch {
+		count++
+	}
+	if count != 0 {
+		t.Errorf("expected 0 metrics emitted on Aurora unsupported function, got %d", count)
+	}
+
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled exceptions: %s", err)
 	}
