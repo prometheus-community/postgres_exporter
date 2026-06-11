@@ -28,6 +28,7 @@ import (
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus-community/postgres_exporter/exporter"
 	"github.com/prometheus/client_golang/prometheus"
+	prometheuscollectors "github.com/prometheus/client_golang/prometheus/collectors"
 	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/promslog"
@@ -180,7 +181,11 @@ func main() {
 		}
 	}()
 
-	registry.MustRegister(versioncollector.NewCollector(exporterName))
+	registry.MustRegister(
+		prometheuscollectors.NewGoCollector(),
+		prometheuscollectors.NewProcessCollector(prometheuscollectors.ProcessCollectorOpts{}),
+		versioncollector.NewCollector(exporterName),
+	)
 	for _, collector := range pgRuntime.Collectors() {
 		registry.MustRegister(collector)
 	}
