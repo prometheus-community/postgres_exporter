@@ -20,7 +20,6 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -30,45 +29,37 @@ const (
 	defaultStatementLimit   = "100"
 )
 
-var (
-	includeQueryFlag      *bool   = nil
-	statementLengthFlag   *uint   = nil
-	statementLimitFlag    *uint   = nil
-	excludedDatabasesFlag *string = nil
-	excludedUsersFlag     *string = nil
-)
-
 func init() {
 	// WARNING:
 	//   Disabled by default because this set of metrics can be quite expensive on a busy server
 	//   Every unique query will cause a new timeseries to be created
 	registerCollector(statStatementsSubsystem, defaultDisabled, NewPGStatStatementsCollector)
+}
 
-	includeQueryFlag = kingpin.Flag(
-		fmt.Sprint(collectorFlagPrefix, statStatementsSubsystem, ".include_query"),
-		"Enable selecting statement query together with queryId. (default: disabled)").
-		Default(fmt.Sprintf("%v", defaultDisabled)).
-		Bool()
-	statementLengthFlag = kingpin.Flag(
-		fmt.Sprint(collectorFlagPrefix, statStatementsSubsystem, ".query_length"),
-		"Maximum length of the statement text.").
-		Default("120").
-		Uint()
-	statementLimitFlag = kingpin.Flag(
-		fmt.Sprint(collectorFlagPrefix, statStatementsSubsystem, ".limit"),
-		"Maximum number of statements to return.").
-		Default(defaultStatementLimit).
-		Uint()
-	excludedDatabasesFlag = kingpin.Flag(
-		fmt.Sprint(collectorFlagPrefix, statStatementsSubsystem, ".exclude_databases"),
-		"Comma-separated list of database names to exclude. (default: none)").
-		Default("").
-		String()
-	excludedUsersFlag = kingpin.Flag(
-		fmt.Sprint(collectorFlagPrefix, statStatementsSubsystem, ".exclude_users"),
-		"Comma-separated list of user names to exclude. (default: none)").
-		Default("").
-		String()
+type PGStatStatementsConfig struct {
+	IncludeQuery     bool
+	QueryLength      uint
+	Limit            uint
+	ExcludeDatabases []string
+	ExcludeUsers     []string
+}
+
+func DefaultPGStatStatementsConfig() PGStatStatementsConfig {
+	return PGStatStatementsConfig{
+		QueryLength: 120,
+		Limit:       100,
+	}
+}
+
+func (c PGStatStatementsConfig) withDefaults() PGStatStatementsConfig {
+	defaults := DefaultPGStatStatementsConfig()
+	if c.QueryLength == 0 {
+		c.QueryLength = defaults.QueryLength
+	}
+	if c.Limit == 0 {
+		c.Limit = defaults.Limit
+	}
+	return c
 }
 
 type PGStatStatementsCollector struct {
@@ -81,31 +72,15 @@ type PGStatStatementsCollector struct {
 }
 
 func NewPGStatStatementsCollector(config collectorConfig) (Collector, error) {
-	var excludedDatabases []string
-	if *excludedDatabasesFlag != "" {
-		for db := range strings.SplitSeq(*excludedDatabasesFlag, ",") {
-			if trimmed := strings.TrimSpace(db); trimmed != "" {
-				excludedDatabases = append(excludedDatabases, trimmed)
-			}
-		}
-	}
-
-	var excludedUsers []string
-	if *excludedUsersFlag != "" {
-		for user := range strings.SplitSeq(*excludedUsersFlag, ",") {
-			if trimmed := strings.TrimSpace(user); trimmed != "" {
-				excludedUsers = append(excludedUsers, trimmed)
-			}
-		}
-	}
+	statStatementsConfig := config.pgStatStatementsConfig.withDefaults()
 
 	return &PGStatStatementsCollector{
 		log:                   config.logger,
-		includeQueryStatement: *includeQueryFlag,
-		statementLength:       *statementLengthFlag,
-		statementLimit:        *statementLimitFlag,
-		excludedDatabases:     excludedDatabases,
-		excludedUsers:         excludedUsers,
+		includeQueryStatement: statStatementsConfig.IncludeQuery,
+		statementLength:       statStatementsConfig.QueryLength,
+		statementLimit:        statStatementsConfig.Limit,
+		excludedDatabases:     statStatementsConfig.ExcludeDatabases,
+		excludedUsers:         statStatementsConfig.ExcludeUsers,
 	}, nil
 }
 

@@ -133,3 +133,91 @@ func TestWithConnectionTimeout(t *testing.T) {
 		t.Errorf("there were unfulfilled exceptions: %s", err)
 	}
 }
+
+func TestNewPostgresCollectorCreatesIndependentCollectorInstances(t *testing.T) {
+	logger := promslog.NewNopLogger()
+	dsn := "postgresql://local"
+
+	first, err := NewPostgresCollector(logger, []string{"first"}, dsn, []string{})
+	if err != nil {
+		t.Fatalf("NewPostgresCollector() first error = %v", err)
+	}
+	second, err := NewPostgresCollector(logger, []string{"second"}, dsn, []string{})
+	if err != nil {
+		t.Fatalf("NewPostgresCollector() second error = %v", err)
+	}
+
+	firstDatabase, ok := first.Collectors[databaseSubsystem].(*PGDatabaseCollector)
+	if !ok {
+		t.Fatalf("first database collector type = %T, want *PGDatabaseCollector", first.Collectors[databaseSubsystem])
+	}
+	secondDatabase, ok := second.Collectors[databaseSubsystem].(*PGDatabaseCollector)
+	if !ok {
+		t.Fatalf("second database collector type = %T, want *PGDatabaseCollector", second.Collectors[databaseSubsystem])
+	}
+	if firstDatabase == secondDatabase {
+		t.Fatal("database collector instances are shared, want independent instances")
+	}
+	if got, want := firstDatabase.excludedDatabases[0], "first"; got != want {
+		t.Fatalf("first excluded database = %q, want %q", got, want)
+	}
+	if got, want := secondDatabase.excludedDatabases[0], "second"; got != want {
+		t.Fatalf("second excluded database = %q, want %q", got, want)
+	}
+}
+
+func TestNewPostgresCollectorUsesCollectorStateOverrides(t *testing.T) {
+	logger := promslog.NewNopLogger()
+	dsn := "postgresql://local"
+
+	c, err := NewPostgresCollector(
+		logger,
+		nil,
+		dsn,
+		nil,
+		WithCollectorStates(map[string]bool{databaseSubsystem: false}),
+	)
+	if err != nil {
+		t.Fatalf("NewPostgresCollector() error = %v", err)
+	}
+	if _, ok := c.Collectors[databaseSubsystem]; ok {
+		t.Fatal("database collector is enabled, want disabled")
+	}
+}
+
+func TestNewPGStatStatementsCollectorUsesConfig(t *testing.T) {
+	logger := promslog.NewNopLogger()
+
+	collector, err := NewPGStatStatementsCollector(collectorConfig{
+		logger: logger,
+		pgStatStatementsConfig: PGStatStatementsConfig{
+			IncludeQuery:     true,
+			QueryLength:      42,
+			Limit:            7,
+			ExcludeDatabases: []string{"postgres"},
+			ExcludeUsers:     []string{"monitor"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewPGStatStatementsCollector() error = %v", err)
+	}
+	got, ok := collector.(*PGStatStatementsCollector)
+	if !ok {
+		t.Fatalf("collector type = %T, want *PGStatStatementsCollector", collector)
+	}
+	if !got.includeQueryStatement {
+		t.Fatal("includeQueryStatement = false, want true")
+	}
+	if got.statementLength != 42 {
+		t.Fatalf("statementLength = %d, want 42", got.statementLength)
+	}
+	if got.statementLimit != 7 {
+		t.Fatalf("statementLimit = %d, want 7", got.statementLimit)
+	}
+	if got.excludedDatabases[0] != "postgres" {
+		t.Fatalf("excludedDatabases[0] = %q, want postgres", got.excludedDatabases[0])
+	}
+	if got.excludedUsers[0] != "monitor" {
+		t.Fatalf("excludedUsers[0] = %q, want monitor", got.excludedUsers[0])
+	}
+}
