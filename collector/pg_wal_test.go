@@ -72,9 +72,9 @@ func TestPgWALCollectorZeroSegments(t *testing.T) {
 
 	inst := &instance{db: db}
 
-	columns := []string{"segments", "size"}
+	columns := []string{"segments", "size", "lsn_location_bytes"}
 	rows := sqlmock.NewRows(columns).
-		AddRow(0, nil)
+		AddRow(0, nil, 0)
 	mock.ExpectQuery(sanitizeQuery(pgWALQuery)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
