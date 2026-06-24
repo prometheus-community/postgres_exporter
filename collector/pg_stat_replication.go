@@ -55,15 +55,20 @@ var (
 		prometheus.Labels{},
 	)
 
+	// slot_name is not a column of pg_stat_replication; it lives on
+	// pg_replication_slots and is linked via the standby's WAL sender
+	// PID. LEFT JOIN so clients that do not use a named slot still get
+	// a row with an empty slot_name label.
 	statReplicationQuery = `
 			SELECT
 				application_name,
 				client_addr::text,
 				state,
-				slot_name,
+				s.slot_name,
 				(case pg_is_in_recovery() when 't' then pg_wal_lsn_diff(pg_last_wal_receive_lsn(), pg_lsn('0/0'))::float else pg_wal_lsn_diff(pg_current_wal_lsn(), pg_lsn('0/0'))::float end) AS pg_current_wal_lsn_bytes,
 				(case pg_is_in_recovery() when 't' then pg_wal_lsn_diff(pg_last_wal_receive_lsn(), replay_lsn)::float else pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)::float end) AS pg_wal_lsn_diff
 			FROM pg_stat_replication
+			LEFT JOIN pg_replication_slots s ON s.active_pid = pg_stat_replication.pid
 			`
 
 	statReplicationQueryBefore10 = `
@@ -71,9 +76,10 @@ var (
 				application_name,
 				client_addr::text,
 				state,
-				slot_name,
+				s.slot_name,
 				(case pg_is_in_recovery() when 't' then pg_xlog_location_diff(pg_last_xlog_receive_location(), replay_location)::float else pg_xlog_location_diff(pg_current_xlog_location(), replay_location)::float end) AS pg_xlog_location_diff
 			FROM pg_stat_replication
+			LEFT JOIN pg_replication_slots s ON s.active_pid = pg_stat_replication.pid
 			`
 )
 
