@@ -16,7 +16,10 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"strings"
 
+	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -71,6 +74,11 @@ func (c PGWALCollector) Update(ctx context.Context, instance *instance, ch chan<
 	var size sql.NullInt64
 	err := row.Scan(&segments, &size)
 	if err != nil {
+		// Amazon Aurora PostgreSQL does not support pg_ls_waldir(). Skip
+		// emitting WAL metrics on Aurora instead of failing the scrape.
+		if isAuroraUnsupportedFunction(err) {
+			return nil
+		}
 		return err
 	}
 	ch <- prometheus.MustNewConstMetric(
@@ -84,4 +92,17 @@ func (c PGWALCollector) Update(ctx context.Context, instance *instance, ch chan<
 		)
 	}
 	return nil
+}
+
+// isAuroraUnsupportedFunction reports whether the error is Aurora
+// PostgreSQL rejecting a query because it calls a function unsupported
+// on Aurora (here, pg_ls_waldir). Aurora surfaces these as Postgres
+// error class "0A" (feature_not_supported) with a message that
+// contains "Aurora".
+func isAuroraUnsupportedFunction(err error) bool {
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) {
+		return pqErr.Code.Class() == "0A" && strings.Contains(pqErr.Message, "Aurora")
+	}
+	return false
 }
