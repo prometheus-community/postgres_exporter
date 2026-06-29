@@ -1,34 +1,49 @@
 ## main / (unreleased)
 
+## 0.20.0 / 2026-06-29
+
 BREAKING CHANGES:
 
-The `replication_slot` collector has been renamed to `replication_slots`.
-Users explicitly enabling or disabling this collector must update their flags from
-`--collector.replication_slot` / `--no-collector.replication_slot` to
-`--collector.replication_slots` / `--no-collector.replication_slots`.
+### Collector flag changes
 
-The metrics previously exposed by the `replication_slot` collector have also been
+The `replication_slot` collector has been renamed to `replication_slots`.
+Users explicitly enabling or disabling this collector must update their flags:
+* `--collector.replication_slot` -> `--collector.replication_slots`
+* `--no-collector.replication_slot` -> `--no-collector.replication_slots`
+The `--disable-settings-metrics` flag and
+`PG_EXPORTER_DISABLE_SETTINGS_METRICS` environment variable have been removed.
+Use `--no-collector.settings` instead.
+
+### Metric name changes
+
+The metrics previously exposed by the `replication_slot` collector have been
 renamed to use the `pg_replication_slots_` prefix. Update alerts, recording
 rules, and dashboards that reference these metrics:
-
 * `pg_replication_slot_slot_current_wal_lsn` -> `pg_replication_slots_slot_current_wal_lsn`
 * `pg_replication_slot_slot_confirmed_flush_lsn` -> `pg_replication_slots_slot_confirmed_flush_lsn`
 * `pg_replication_slot_slot_is_active` -> `pg_replication_slots_slot_is_active`
 * `pg_replication_slot_safe_wal_size_bytes` -> `pg_replication_slots_safe_wal_size_bytes`
 * `pg_replication_slot_wal_status` -> `pg_replication_slots_wal_status`
 
-Some metrics previously emitted through the legacy default metric map are now
-emitted by the standalone `replication_slots` collector. This affects
-`pg_replication_slots_active`, `pg_replication_slots_pg_wal_lsn_diff`, and
-`pg_replication_slots_pg_xlog_location_diff`. These metrics no longer honor
-`--metric-prefix`, no longer include deprecated `constantLabels`, and are no
-longer disabled by `--disable-default-metrics`. To stop collecting them, disable
-the `replication_slots` collector explicitly with `--no-collector.replication_slots`.
+### Standalone collector behavior
 
-* [CHANGE] ...
-* [FEATURE] ...
-* [ENHANCEMENT] ...
-* [BUGFIX] ...
+The `settings`, `stat_activity`, `stat_archiver`, `stat_replication`, and
+`replication_slots` metrics now come from standalone collectors instead of the
+legacy default metric map.
+These metrics no longer honor `--metric-prefix`, no longer include deprecated
+`constantLabels`, and are no longer disabled by `--disable-default-metrics`.
+To stop collecting them, disable the corresponding collector explicitly with
+its `--no-collector.*` flag.
+
+* [CHANGE] Move `pg_settings` metrics to the standalone `settings` collector by @ArthurSens in https://github.com/prometheus-community/postgres_exporter/pull/1303
+* [CHANGE] Move `stat_archiver` metrics to a standalone collector by @ArthurSens in https://github.com/prometheus-community/postgres_exporter/pull/1304
+* [CHANGE] Move `stat_activity` metrics to a standalone collector by @ArthurSens in https://github.com/prometheus-community/postgres_exporter/pull/1305
+* [CHANGE] Move `stat_replication` metrics to a standalone collector by @ArthurSens in https://github.com/prometheus-community/postgres_exporter/pull/1306
+* [CHANGE] Rename `replication_slot` to `replication_slots` and move replication slot metrics to a standalone collector by @ArthurSens in https://github.com/prometheus-community/postgres_exporter/pull/1307
+* [ENHANCEMENT] Publish container images to GHCR and update PromCI release automation by @roidelapluie in https://github.com/prometheus-community/postgres_exporter/pull/1322
+* [BUGFIX] Fix duplicate `pg_stat_progress_vacuum` metrics for cross-database vacuums by @steinbrueckri in https://github.com/prometheus-community/postgres_exporter/pull/1262
+* [BUGFIX] Fix `pg_settings` collection when `short_desc` is NULL by @jun-gradial in https://github.com/prometheus-community/postgres_exporter/pull/1327
+
 
 ## 0.19.1 / 2026-02-25
 
