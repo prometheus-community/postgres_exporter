@@ -15,6 +15,7 @@ package collector
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sync"
 
@@ -31,30 +32,27 @@ type ProbeCollector struct {
 
 func NewProbeCollector(logger *slog.Logger, excludeDatabases []string, registry *prometheus.Registry, dsn config.DSN) (*ProbeCollector, error) {
 	collectors := make(map[string]Collector)
-	initiatedCollectorsMtx.Lock()
-	defer initiatedCollectorsMtx.Unlock()
-	for key, enabled := range collectorState {
+	for key, enabled := range DefaultCollectorStates() {
 		// TODO: Handle filters
 		// if !*enabled || (len(f) > 0 && !f[key]) {
 		// 	continue
 		// }
-		if !*enabled {
+		if !enabled {
 			continue
 		}
-		if collector, ok := initiatedCollectors[key]; ok {
-			collectors[key] = collector
-		} else {
-			collector, err := factories[key](
-				collectorConfig{
-					logger:           logger.With("collector", key),
-					excludeDatabases: excludeDatabases,
-				})
-			if err != nil {
-				return nil, err
-			}
-			collectors[key] = collector
-			initiatedCollectors[key] = collector
+		factory, ok := factories[key]
+		if !ok {
+			return nil, fmt.Errorf("missing collector factory: %s", key)
 		}
+		collector, err := factory(collectorConfig{
+			logger:                 logger.With("collector", key),
+			excludeDatabases:       excludeDatabases,
+			pgStatStatementsConfig: DefaultPGStatStatementsConfig(),
+		})
+		if err != nil {
+			return nil, err
+		}
+		collectors[key] = collector
 	}
 
 	instance, err := newInstance(dsn.GetConnectionString())
