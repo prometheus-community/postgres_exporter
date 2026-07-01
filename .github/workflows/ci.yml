@@ -67,7 +67,7 @@ jobs:
     if: |
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
     steps:
-      - uses: prometheus/promci/publish_release@d9d4f5688814f0b77bf003d07fb8c00507390634 # v0.8.2
+      - uses: prometheus/promci/publish_release@13941414d409d227afd67544e5d306827db5a1a2 # v0.8.5
         with:
           docker_hub_organization: prometheuscommunity
           docker_hub_password: ${{ secrets.docker_hub_password }}
