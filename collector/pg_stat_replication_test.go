@@ -123,6 +123,55 @@ func TestPGStatReplicationCollectorBefore10(t *testing.T) {
 	}
 }
 
+func TestPGStatReplicationCollectorBefore95(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Error opening a stub db connection: %s", err)
+	}
+	defer db.Close()
+
+	inst := &instance{db: db, version: semver.MustParse("9.4.0")}
+
+	rows := sqlmock.NewRows([]string{
+		"application_name",
+		"client_addr",
+		"state",
+		"pg_xlog_location_diff",
+	}).AddRow("standby", "10.0.0.1", "streaming", 32.0)
+	mock.ExpectQuery(sanitizeQuery(statReplicationQueryBefore95)).WillReturnRows(rows)
+
+	ch := make(chan prometheus.Metric)
+	go func() {
+		defer close(ch)
+		c := PGStatReplicationCollector{}
+		if err := c.Update(context.Background(), inst, ch); err != nil {
+			t.Errorf("Error calling PGStatReplicationCollector.Update: %s", err)
+		}
+	}()
+
+	expected := []MetricResult{
+		{
+			labels: labelMap{
+				"application_name": "standby",
+				"client_addr":      "10.0.0.1",
+				"state":            "streaming",
+				"slot_name":        "",
+			},
+			value:      32,
+			metricType: dto.MetricType_GAUGE,
+		},
+	}
+	convey.Convey("Metrics comparison", t, func() {
+		for _, expect := range expected {
+			m := readMetric(<-ch)
+			convey.So(expect, convey.ShouldResemble, m)
+		}
+	})
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled exceptions: %s", err)
+	}
+}
+
 func TestPGStatReplicationCollectorNullValues(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
