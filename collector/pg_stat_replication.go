@@ -55,15 +55,20 @@ var (
 		prometheus.Labels{},
 	)
 
+	// slot_name is not a column of pg_stat_replication; it lives on
+	// pg_replication_slots and is linked via the standby's WAL sender
+	// PID. LEFT JOIN so clients that do not use a named slot still get
+	// a row with an empty slot_name label.
 	statReplicationQuery = `
 			SELECT
 				application_name,
 				client_addr::text,
 				state,
-				slot_name,
+				s.slot_name,
 				(case pg_is_in_recovery() when 't' then pg_wal_lsn_diff(pg_last_wal_receive_lsn(), pg_lsn('0/0'))::float else pg_wal_lsn_diff(pg_current_wal_lsn(), pg_lsn('0/0'))::float end) AS pg_current_wal_lsn_bytes,
 				(case pg_is_in_recovery() when 't' then pg_wal_lsn_diff(pg_last_wal_receive_lsn(), replay_lsn)::float else pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)::float end) AS pg_wal_lsn_diff
 			FROM pg_stat_replication
+			LEFT JOIN pg_replication_slots s ON s.active_pid = pg_stat_replication.pid
 			`
 
 	statReplicationQueryBefore10 = `
@@ -71,7 +76,20 @@ var (
 				application_name,
 				client_addr::text,
 				state,
-				slot_name,
+				s.slot_name,
+				(case pg_is_in_recovery() when 't' then pg_xlog_location_diff(pg_last_xlog_receive_location(), replay_location)::float else pg_xlog_location_diff(pg_current_xlog_location(), replay_location)::float end) AS pg_xlog_location_diff
+			FROM pg_stat_replication
+			LEFT JOIN pg_replication_slots s ON s.active_pid = pg_stat_replication.pid
+			`
+
+	// pg_replication_slots.active_pid only exists on PostgreSQL 9.5+, so
+	// on older versions slot_name cannot be resolved; the label is left
+	// empty (matching the legacy yaml exporter behavior).
+	statReplicationQueryBefore95 = `
+			SELECT
+				application_name,
+				client_addr::text,
+				state,
 				(case pg_is_in_recovery() when 't' then pg_xlog_location_diff(pg_last_xlog_receive_location(), replay_location)::float else pg_xlog_location_diff(pg_current_xlog_location(), replay_location)::float end) AS pg_xlog_location_diff
 			FROM pg_stat_replication
 			`
@@ -81,8 +99,10 @@ func (PGStatReplicationCollector) Update(ctx context.Context, instance *instance
 	switch {
 	case instance.version.GTE(semver.MustParse("10.0.0")):
 		return updateStatReplication(ctx, instance, ch)
-	case instance.version.GTE(semver.MustParse("9.2.0")):
+	case instance.version.GTE(semver.MustParse("9.5.0")):
 		return updateStatReplicationBefore10(ctx, instance, ch)
+	case instance.version.GTE(semver.MustParse("9.2.0")):
+		return updateStatReplicationBefore95(ctx, instance, ch)
 	default:
 		return nil
 	}
@@ -146,6 +166,34 @@ func updateStatReplicationBefore10(ctx context.Context, instance *instance, ch c
 				prometheus.GaugeValue,
 				xlogLocationDiff.Float64,
 				statReplicationLabelValues(applicationName, clientAddr, state, slotName)...,
+			)
+		}
+	}
+
+	return rows.Err()
+}
+
+func updateStatReplicationBefore95(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	db := instance.getDB()
+	rows, err := db.QueryContext(ctx, statReplicationQueryBefore95)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var applicationName, clientAddr, state sql.NullString
+		var xlogLocationDiff sql.NullFloat64
+		if err := rows.Scan(&applicationName, &clientAddr, &state, &xlogLocationDiff); err != nil {
+			return err
+		}
+
+		if xlogLocationDiff.Valid {
+			ch <- prometheus.MustNewConstMetric(
+				statReplicationXlogLocationDiffDesc,
+				prometheus.GaugeValue,
+				xlogLocationDiff.Float64,
+				statReplicationLabelValues(applicationName, clientAddr, state, sql.NullString{})...,
 			)
 		}
 	}

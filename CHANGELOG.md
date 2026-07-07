@@ -1,5 +1,7 @@
 ## main / (unreleased)
 
+* [BUGFIX] stat_replication: fix "slot_name does not exist" by joining `pg_replication_slots` (closes #1310)
+
 ## 0.20.0 / 2026-06-29
 
 BREAKING CHANGES:
@@ -43,7 +45,6 @@ its `--no-collector.*` flag.
 * [ENHANCEMENT] Publish container images to GHCR and update PromCI release automation by @roidelapluie in https://github.com/prometheus-community/postgres_exporter/pull/1322
 * [BUGFIX] Fix duplicate `pg_stat_progress_vacuum` metrics for cross-database vacuums by @steinbrueckri in https://github.com/prometheus-community/postgres_exporter/pull/1262
 * [BUGFIX] Fix `pg_settings` collection when `short_desc` is NULL by @jun-gradial in https://github.com/prometheus-community/postgres_exporter/pull/1327
-
 
 ## 0.19.1 / 2026-02-25
 
