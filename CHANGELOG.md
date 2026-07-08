@@ -1,6 +1,8 @@
 ## main / (unreleased)
 
-* [BUGFIX] stat_replication: fix "slot_name does not exist" by joining `pg_replication_slots` (closes #1310)
+## 0.20.1 / 2026-07-07
+
+* [BUGFIX] stat_replication: fix "slot_name does not exist" by joining `pg_replication_slots` by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1313
 
 ## 0.20.0 / 2026-06-29
 
