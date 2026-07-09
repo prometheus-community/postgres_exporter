@@ -49,39 +49,39 @@ var (
 	)
 
 	pgLocksQuery = `
-		SELECT 
+		SELECT
 		  pg_database.datname as datname,
 		  tmp.mode as mode,
-		  COALESCE(count, 0) as count 
-		FROM 
+		  COALESCE(count, 0) as count
+		FROM
 		  (
-		    VALUES 
-		      ('accesssharelock'), 
-		      ('rowsharelock'), 
-		      ('rowexclusivelock'), 
-		      ('shareupdateexclusivelock'), 
-		      ('sharelock'), 
-		      ('sharerowexclusivelock'), 
-		      ('exclusivelock'), 
-		      ('accessexclusivelock'), 
+		    VALUES
+		      ('accesssharelock'),
+		      ('rowsharelock'),
+		      ('rowexclusivelock'),
+		      ('shareupdateexclusivelock'),
+		      ('sharelock'),
+		      ('sharerowexclusivelock'),
+		      ('exclusivelock'),
+		      ('accessexclusivelock'),
 		      ('sireadlock')
 		  ) AS tmp(mode)
-		  CROSS JOIN pg_database 
+		  CROSS JOIN pg_database
 		  LEFT JOIN (
-		    SELECT 
-		      database, 
-		      lower(mode) AS mode, 
-		      count(*) AS count 
-		    FROM 
-		      pg_locks 
-		    WHERE 
-		      database IS NOT NULL 
-		    GROUP BY 
-		      database, 
+		    SELECT
+		      database,
+		      lower(mode) AS mode,
+		      count(*) AS count
+		    FROM
+		      pg_locks
+		    WHERE
+		      database IS NOT NULL
+		    GROUP BY
+		      database,
 		      lower(mode)
-		  ) AS tmp2 ON tmp.mode = tmp2.mode 
-		  and pg_database.oid = tmp2.database 
-		ORDER BY 
+		  ) AS tmp2 ON tmp.mode = tmp2.mode
+		  and pg_database.oid = tmp2.database
+		ORDER BY
 		  1
 	`
 )
