@@ -21,8 +21,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/lib/pq"
 )
 
 // convert a string to the corresponding ColumnUsage
@@ -162,10 +160,27 @@ func dbToString(t interface{}) (string, bool) {
 	}
 }
 
-func parseFingerprint(url string) (string, error) {
-	dsn, err := pq.ParseURL(url)
-	if err != nil {
-		dsn = url
+func parseFingerprint(dsn string) (string, error) {
+	// Only postgres:// and postgresql:// are valid DSN URL schemes; anything
+	// else (e.g. a key=value DSN like "host=example port=1234") falls through
+	// to the key=value parser below.
+	if strings.HasPrefix(dsn, "postgres://") || strings.HasPrefix(dsn, "postgresql://") {
+		u, err := url.Parse(dsn)
+		if err != nil {
+			return "", fmt.Errorf("malformed dsn %q", dsn)
+		}
+
+		host := u.Hostname()
+		if host == "" {
+			host = "localhost"
+		}
+
+		port := u.Port()
+		if port == "" {
+			port = "5432"
+		}
+
+		return host + ":" + port, nil
 	}
 
 	pairs := strings.Split(dsn, " ")
@@ -175,7 +190,6 @@ func parseFingerprint(url string) (string, error) {
 		if len(splitted) != 2 {
 			return "", fmt.Errorf("malformed dsn %q", dsn)
 		}
-		// Newer versions of pq.ParseURL quote values so trim them off if they exist
 		key := strings.Trim(splitted[0], "'\"")
 		value := strings.Trim(splitted[1], "'\"")
 		kv[key] = value
