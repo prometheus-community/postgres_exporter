@@ -18,17 +18,16 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/prometheus-community/postgres_exporter/collector"
+	"github.com/prometheus-community/postgres_exporter/collectors"
 	"github.com/prometheus-community/postgres_exporter/config"
-	"github.com/prometheus-community/postgres_exporter/exporter"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func handleProbe(logger *slog.Logger, excludeDatabases []string) http.HandlerFunc {
+func handleProbe(logger *slog.Logger, baseConfig config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		conf := c.GetConfig()
+		conf := c.GetAuthConfig()
 		params := r.URL.Query()
 		target := params.Get("target")
 		if target == "" {
@@ -63,43 +62,33 @@ func handleProbe(logger *slog.Logger, excludeDatabases []string) http.HandlerFun
 
 		tl := logger.With("target", target)
 
-		registry := prometheus.NewRegistry()
-
-		opts := []exporter.ExporterOpt{
-			exporter.DisableDefaultMetrics(*disableDefaultMetrics),
-			exporter.AutoDiscoverDatabases(*autoDiscoverDatabases),
-			exporter.WithUserQueriesPath(*queriesPath),
-			exporter.WithConstantLabels(*constantLabelsList),
-			exporter.ExcludeDatabases(excludeDatabases),
-			exporter.IncludeDatabases(*includeDatabases),
-			exporter.WithMetricPrefix(*metricPrefix),
-		}
-
-		dsns := []string{dsn.GetConnectionString()}
-		exporter := exporter.NewExporter(dsns, logger, opts...)
-		defer func() {
-			exporter.CloseServers()
-		}()
-		registry.MustRegister(exporter)
-
-		// Run the probe
-		pc, err := collector.NewProbeCollector(tl, excludeDatabases, registry, dsn)
-		if err != nil {
-			logger.Error("Error creating probe collector", "err", err)
+		// Copy process-level config before setting the per-request target DSN.
+		probeConfig := baseConfig
+		probeConfig.DataSourceNames = []string{dsn.GetConnectionString()}
+		if err := probeConfig.Validate(); err != nil {
+			logger.Error("invalid probe config", "err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		// Cleanup underlying connections to prevent connection leaks
-		defer pc.Close()
+		runtime, err := collectors.NewRuntime(&probeConfig, tl)
+		if err != nil {
+			logger.Error("error creating probe runtime", "err", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer func() {
+			if err := runtime.Close(); err != nil {
+				logger.Error("error closing probe runtime", "err", err)
+			}
+		}()
 
-		// TODO(@sysadmind): Remove the registry.MustRegister() call below and instead handle the collection here. That will allow
-		// for the passing of context, handling of timeouts, and more control over the collection.
-		// The current NewProbeCollector() implementation relies on the MustNewConstMetric() call to create the metrics which is not
-		// ideal to use without the registry.MustRegister() call.
+		registry := prometheus.NewRegistry()
+		for _, collector := range runtime.Collectors() {
+			registry.MustRegister(collector)
+		}
+
 		_ = ctx
-
-		registry.MustRegister(pc)
 
 		// TODO check success, etc
 		h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
