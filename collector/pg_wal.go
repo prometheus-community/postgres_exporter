@@ -53,10 +53,26 @@ var (
 		[]string{}, nil,
 	)
 
+	pgWALLSNInBytes = prometheus.NewDesc(
+		prometheus.BuildFQName(
+			namespace,
+			walSubsystem,
+			"lsn_location_bytes",
+		),
+		"WAL Log Sequence Number in bytes",
+		[]string{}, nil,
+	)
+
 	pgWALQuery = `
 		SELECT
 			COUNT(*) AS segments,
-			SUM(size) AS size
+			SUM(size) AS size,
+			(SELECT CASE
+			WHEN pg_is_in_recovery() THEN
+				pg_wal_lsn_diff(pg_last_wal_replay_lsn(), '0/0')::int8				
+			ELSE
+				pg_wal_lsn_diff(pg_current_wal_lsn(), '0/0')::int8
+			END) AS lsn_location_bytes
 		FROM pg_ls_waldir()
 		WHERE name ~ '^[0-9A-F]{24}$'`
 )
@@ -69,7 +85,8 @@ func (c PGWALCollector) Update(ctx context.Context, instance *instance, ch chan<
 
 	var segments uint64
 	var size sql.NullInt64
-	err := row.Scan(&segments, &size)
+	var lsnbytes uint64
+	err := row.Scan(&segments, &size, &lsnbytes)
 	if err != nil {
 		return err
 	}
@@ -81,6 +98,10 @@ func (c PGWALCollector) Update(ctx context.Context, instance *instance, ch chan<
 		ch <- prometheus.MustNewConstMetric(
 			pgWALSize,
 			prometheus.GaugeValue, float64(size.Int64),
+		)
+		ch <- prometheus.MustNewConstMetric(
+			pgWALLSNInBytes,
+			prometheus.GaugeValue, float64(lsnbytes),
 		)
 	}
 	return nil
