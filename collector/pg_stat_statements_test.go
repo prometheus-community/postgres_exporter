@@ -33,9 +33,9 @@ func TestPGStatStatementsCollector(t *testing.T) {
 
 	inst := &instance{db: db, version: semver.MustParse("12.0.0")}
 
-	columns := []string{"user", "datname", "queryid", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
+	columns := []string{"user", "datname", "queryid", "plans_total", "plans_seconds_total", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
-		AddRow("postgres", "postgres", 1500, 5, 0.4, 100, 0.1, 0.2)
+		AddRow("postgres", "postgres", 1500, 3, 0.2, 5, 0.4, 100, 0.1, 0.2)
 	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery, "", "", "", defaultStatementLimit))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -49,6 +49,8 @@ func TestPGStatStatementsCollector(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 3},
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.2},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 5},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.4},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 100},
@@ -76,9 +78,9 @@ func TestPGStatStatementsCollectorWithStatement(t *testing.T) {
 
 	inst := &instance{db: db, version: semver.MustParse("12.0.0")}
 
-	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 100) as query", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
+	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 100) as query", "plans_total", "plans_seconds_total", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
-		AddRow("postgres", "postgres", 1500, "select 1 from foo", 5, 0.4, 100, 0.1, 0.2)
+		AddRow("postgres", "postgres", 1500, "select 1 from foo", 3, 0.2, 5, 0.4, 100, 0.1, 0.2)
 	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery, fmt.Sprintf(pgStatStatementQuerySelect, 100), "", "", defaultStatementLimit))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -92,6 +94,8 @@ func TestPGStatStatementsCollectorWithStatement(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 3},
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.2},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 5},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.4},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 100},
@@ -120,9 +124,9 @@ func TestPGStatStatementsCollectorWithStatementAndLimit(t *testing.T) {
 
 	inst := &instance{db: db, version: semver.MustParse("12.0.0")}
 
-	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 100) as query", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
+	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 100) as query", "plans_total", "plans_seconds_total", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
-		AddRow("postgres", "postgres", 1500, "select 1 from foo", 5, 0.4, 100, 0.1, 0.2)
+		AddRow("postgres", "postgres", 1500, "select 1 from foo", 3, 0.2, 5, 0.4, 100, 0.1, 0.2)
 	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery, fmt.Sprintf(pgStatStatementQuerySelect, 100), "", "", "10"))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -136,6 +140,8 @@ func TestPGStatStatementsCollectorWithStatementAndLimit(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 3},
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.2},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 5},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.4},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 100},
@@ -164,9 +170,9 @@ func TestPGStatStatementsCollectorNull(t *testing.T) {
 
 	inst := &instance{db: db, version: semver.MustParse("13.3.7")}
 
-	columns := []string{"user", "datname", "queryid", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
+	columns := []string{"user", "datname", "queryid", "plans_total", "plans_seconds_total", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
-		AddRow(nil, nil, nil, nil, nil, nil, nil, nil)
+		AddRow(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, "", false, "", "", defaultStatementLimit))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -180,6 +186,8 @@ func TestPGStatStatementsCollectorNull(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
+		{labels: labelMap{"user": "unknown", "datname": "unknown", "queryid": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{"user": "unknown", "datname": "unknown", "queryid": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
 		{labels: labelMap{"user": "unknown", "datname": "unknown", "queryid": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
 		{labels: labelMap{"user": "unknown", "datname": "unknown", "queryid": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
 		{labels: labelMap{"user": "unknown", "datname": "unknown", "queryid": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
@@ -207,9 +215,9 @@ func TestPGStatStatementsCollectorNullWithStatement(t *testing.T) {
 
 	inst := &instance{db: db, version: semver.MustParse("13.3.7")}
 
-	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 200) as query", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
+	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 200) as query", "plans_total", "plans_seconds_total", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
-		AddRow(nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		AddRow(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, fmt.Sprintf(pgStatStatementQuerySelect, 200), true, "", "", defaultStatementLimit))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -223,6 +231,8 @@ func TestPGStatStatementsCollectorNullWithStatement(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
+		{labels: labelMap{"user": "unknown", "datname": "unknown", "queryid": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{"user": "unknown", "datname": "unknown", "queryid": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
 		{labels: labelMap{"user": "unknown", "datname": "unknown", "queryid": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
 		{labels: labelMap{"user": "unknown", "datname": "unknown", "queryid": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
 		{labels: labelMap{"user": "unknown", "datname": "unknown", "queryid": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
@@ -251,9 +261,9 @@ func TestPGStatStatementsCollectorNullWithStatementAndLimit(t *testing.T) {
 
 	inst := &instance{db: db, version: semver.MustParse("13.3.7")}
 
-	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 200) as query", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
+	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 200) as query", "plans_total", "plans_seconds_total", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
-		AddRow(nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		AddRow(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, fmt.Sprintf(pgStatStatementQuerySelect, 200), true, "", "", "10"))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -267,6 +277,8 @@ func TestPGStatStatementsCollectorNullWithStatementAndLimit(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
+		{labels: labelMap{"user": "unknown", "datname": "unknown", "queryid": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{"user": "unknown", "datname": "unknown", "queryid": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
 		{labels: labelMap{"user": "unknown", "datname": "unknown", "queryid": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
 		{labels: labelMap{"user": "unknown", "datname": "unknown", "queryid": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
 		{labels: labelMap{"user": "unknown", "datname": "unknown", "queryid": "unknown"}, metricType: dto.MetricType_COUNTER, value: 0},
@@ -295,9 +307,9 @@ func TestPGStatStatementsCollector_PG13(t *testing.T) {
 
 	inst := &instance{db: db, version: semver.MustParse("13.3.7")}
 
-	columns := []string{"user", "datname", "queryid", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
+	columns := []string{"user", "datname", "queryid", "plans_total", "plans_seconds_total", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
-		AddRow("postgres", "postgres", 1500, 5, 0.4, 100, 0.1, 0.2)
+		AddRow("postgres", "postgres", 1500, 3, 0.2, 5, 0.4, 100, 0.1, 0.2)
 	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, "", false, "", "", defaultStatementLimit))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -311,6 +323,8 @@ func TestPGStatStatementsCollector_PG13(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 3},
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.2},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 5},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.4},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 100},
@@ -338,9 +352,9 @@ func TestPGStatStatementsCollector_PG13_WithStatement(t *testing.T) {
 
 	inst := &instance{db: db, version: semver.MustParse("13.3.7")}
 
-	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 300) as query", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
+	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 300) as query", "plans_total", "plans_seconds_total", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
-		AddRow("postgres", "postgres", 1500, "select 1 from foo", 5, 0.4, 100, 0.1, 0.2)
+		AddRow("postgres", "postgres", 1500, "select 1 from foo", 3, 0.2, 5, 0.4, 100, 0.1, 0.2)
 	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, fmt.Sprintf(pgStatStatementQuerySelect, 300), true, "", "", defaultStatementLimit))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -354,6 +368,8 @@ func TestPGStatStatementsCollector_PG13_WithStatement(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 3},
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.2},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 5},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.4},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 100},
@@ -382,9 +398,9 @@ func TestPGStatStatementsCollector_PG13_WithStatementAndLimit(t *testing.T) {
 
 	inst := &instance{db: db, version: semver.MustParse("13.3.7")}
 
-	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 300) as query", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
+	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 300) as query", "plans_total", "plans_seconds_total", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
-		AddRow("postgres", "postgres", 1500, "select 1 from foo", 5, 0.4, 100, 0.1, 0.2)
+		AddRow("postgres", "postgres", 1500, "select 1 from foo", 3, 0.2, 5, 0.4, 100, 0.1, 0.2)
 	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, fmt.Sprintf(pgStatStatementQuerySelect, 300), true, "", "", "10"))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -398,6 +414,8 @@ func TestPGStatStatementsCollector_PG13_WithStatementAndLimit(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 3},
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.2},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 5},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.4},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 100},
@@ -426,9 +444,9 @@ func TestPGStatStatementsCollector_PG17(t *testing.T) {
 
 	inst := &instance{db: db, version: semver.MustParse("17.0.0")}
 
-	columns := []string{"user", "datname", "queryid", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
+	columns := []string{"user", "datname", "queryid", "plans_total", "plans_seconds_total", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
-		AddRow("postgres", "postgres", 1500, 5, 0.4, 100, 0.1, 0.2)
+		AddRow("postgres", "postgres", 1500, 3, 0.2, 5, 0.4, 100, 0.1, 0.2)
 	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG17, "", false, "", "", defaultStatementLimit))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -442,6 +460,8 @@ func TestPGStatStatementsCollector_PG17(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 3},
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.2},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 5},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.4},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 100},
@@ -469,9 +489,9 @@ func TestPGStatStatementsCollector_PG17_WithStatement(t *testing.T) {
 
 	inst := &instance{db: db, version: semver.MustParse("17.0.0")}
 
-	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 300) as query", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
+	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 300) as query", "plans_total", "plans_seconds_total", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
-		AddRow("postgres", "postgres", 1500, "select 1 from foo", 5, 0.4, 100, 0.1, 0.2)
+		AddRow("postgres", "postgres", 1500, "select 1 from foo", 3, 0.2, 5, 0.4, 100, 0.1, 0.2)
 	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG17, fmt.Sprintf(pgStatStatementQuerySelect, 300), true, "", "", defaultStatementLimit))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -485,6 +505,8 @@ func TestPGStatStatementsCollector_PG17_WithStatement(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 3},
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.2},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 5},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.4},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 100},
@@ -513,9 +535,9 @@ func TestPGStatStatementsCollector_PG17_WithStatementAndLimit(t *testing.T) {
 
 	inst := &instance{db: db, version: semver.MustParse("17.0.0")}
 
-	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 300) as query", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
+	columns := []string{"user", "datname", "queryid", "LEFT(pg_stat_statements.query, 300) as query", "plans_total", "plans_seconds_total", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
-		AddRow("postgres", "postgres", 1500, "select 1 from foo", 5, 0.4, 100, 0.1, 0.2)
+		AddRow("postgres", "postgres", 1500, "select 1 from foo", 3, 0.2, 5, 0.4, 100, 0.1, 0.2)
 	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG17, fmt.Sprintf(pgStatStatementQuerySelect, 300), true, "", "", "10"))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -529,6 +551,8 @@ func TestPGStatStatementsCollector_PG17_WithStatementAndLimit(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 3},
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.2},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 5},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.4},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 100},
@@ -559,9 +583,9 @@ func TestPGStatStatementsCollectorWithExcludedDatabases(t *testing.T) {
 
 	excludedDatabases := []string{"rdsadmin", "cloudsqladmin"}
 
-	columns := []string{"user", "datname", "queryid", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
+	columns := []string{"user", "datname", "queryid", "plans_total", "plans_seconds_total", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
-		AddRow("postgres", "postgres", 1500, 5, 0.4, 100, 0.1, 0.2)
+		AddRow("postgres", "postgres", 1500, 3, 0.2, 5, 0.4, 100, 0.1, 0.2)
 
 	// Expected query should include database exclusion filters
 	expectedFilter := " AND pg_database.datname NOT IN ('rdsadmin', 'cloudsqladmin')"
@@ -578,6 +602,8 @@ func TestPGStatStatementsCollectorWithExcludedDatabases(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 3},
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.2},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 5},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.4},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 100},
@@ -608,9 +634,9 @@ func TestPGStatStatementsCollectorWithExcludedDatabasesSQLEscaping(t *testing.T)
 	// exclude a database name with a single quote (SQL injection test)
 	excludedDatabases := []string{"test'db"}
 
-	columns := []string{"user", "datname", "queryid", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
+	columns := []string{"user", "datname", "queryid", "plans_total", "plans_seconds_total", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
-		AddRow("postgres", "postgres", 1500, 5, 0.4, 100, 0.1, 0.2)
+		AddRow("postgres", "postgres", 1500, 3, 0.2, 5, 0.4, 100, 0.1, 0.2)
 
 	expectedFilter := " AND pg_database.datname NOT IN ('test''db')"
 	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, "", false, expectedFilter, "", defaultStatementLimit))).WillReturnRows(rows)
@@ -626,6 +652,8 @@ func TestPGStatStatementsCollectorWithExcludedDatabasesSQLEscaping(t *testing.T)
 	}()
 
 	expected := []MetricResult{
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 3},
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.2},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 5},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.4},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 100},
@@ -655,9 +683,9 @@ func TestPGStatStatementsCollectorWithExcludedUsers(t *testing.T) {
 
 	excludedUsers := []string{"monitoring", "readonly"}
 
-	columns := []string{"user", "datname", "queryid", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
+	columns := []string{"user", "datname", "queryid", "plans_total", "plans_seconds_total", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
-		AddRow("postgres", "postgres", 1500, 5, 0.4, 100, 0.1, 0.2)
+		AddRow("postgres", "postgres", 1500, 3, 0.2, 5, 0.4, 100, 0.1, 0.2)
 
 	expectedFilter := " AND pg_get_userbyid(userid) NOT IN ('monitoring', 'readonly')"
 	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery, "", "", expectedFilter, defaultStatementLimit))).WillReturnRows(rows)
@@ -673,6 +701,8 @@ func TestPGStatStatementsCollectorWithExcludedUsers(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 3},
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.2},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 5},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.4},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 100},
@@ -703,9 +733,9 @@ func TestPGStatStatementsCollectorWithExcludedUsersSQLEscaping(t *testing.T) {
 	// exclude a user name with a single quote (SQL injection test)
 	excludedUsers := []string{"test'user"}
 
-	columns := []string{"user", "datname", "queryid", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
+	columns := []string{"user", "datname", "queryid", "plans_total", "plans_seconds_total", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
-		AddRow("postgres", "postgres", 1500, 5, 0.4, 100, 0.1, 0.2)
+		AddRow("postgres", "postgres", 1500, 3, 0.2, 5, 0.4, 100, 0.1, 0.2)
 
 	expectedFilter := " AND pg_get_userbyid(userid) NOT IN ('test''user')"
 	mock.ExpectQuery(sanitizeQuery(fmt.Sprintf(pgStatStatementsQuery_PG13, "", false, "", expectedFilter, defaultStatementLimit))).WillReturnRows(rows)
@@ -721,6 +751,8 @@ func TestPGStatStatementsCollectorWithExcludedUsersSQLEscaping(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 3},
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.2},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 5},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.4},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 100},
@@ -752,9 +784,9 @@ func TestPGStatStatementsCollectorWithExcludedDatabasesAndUsers(t *testing.T) {
 	excludedDatabases := []string{"rdsadmin", "cloudsqladmin"}
 	excludedUsers := []string{"monitoring", "readonly"}
 
-	columns := []string{"user", "datname", "queryid", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
+	columns := []string{"user", "datname", "queryid", "plans_total", "plans_seconds_total", "calls_total", "seconds_total", "rows_total", "block_read_seconds_total", "block_write_seconds_total"}
 	rows := sqlmock.NewRows(columns).
-		AddRow("postgres", "postgres", 1500, 5, 0.4, 100, 0.1, 0.2)
+		AddRow("postgres", "postgres", 1500, 3, 0.2, 5, 0.4, 100, 0.1, 0.2)
 
 	expectedDbFilter := " AND pg_database.datname NOT IN ('rdsadmin', 'cloudsqladmin')"
 	expectedUserFilter := " AND pg_get_userbyid(userid) NOT IN ('monitoring', 'readonly')"
@@ -771,6 +803,8 @@ func TestPGStatStatementsCollectorWithExcludedDatabasesAndUsers(t *testing.T) {
 	}()
 
 	expected := []MetricResult{
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 3},
+		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.2},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 5},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 0.4},
 		{labels: labelMap{"user": "postgres", "datname": "postgres", "queryid": "1500"}, metricType: dto.MetricType_COUNTER, value: 100},
