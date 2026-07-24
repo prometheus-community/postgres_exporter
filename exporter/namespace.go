@@ -152,7 +152,11 @@ func queryNamespaceMapping(server *Server, namespace string, mapping MetricMapNa
 						labels...,
 					)
 				} else {
-					value, ok := dbToFloat64(columnData[idx], server.logger)
+					conversion := dbToFloat64
+					if server.wrapLargeCounters && metricMapping.vtype == prometheus.CounterValue {
+						conversion = dbToFloat64Counter
+					}
+					value, ok := conversion(columnData[idx], server.logger)
 					if !ok {
 						nonfatalErrors = append(nonfatalErrors, errors.New(fmt.Sprintln("Unexpected error parsing column: ", namespace, columnName, columnData[idx])))
 						continue
