@@ -23,6 +23,8 @@ import (
 	"time"
 )
 
+const float64ExactIntegerLimit uint64 = 1 << 53
+
 // convert a string to the corresponding ColumnUsage
 func stringToColumnUsage(s string) (ColumnUsage, error) {
 	var u ColumnUsage
@@ -92,6 +94,17 @@ func dbToFloat64(t interface{}, logger *slog.Logger) (float64, bool) {
 	default:
 		return math.NaN(), false
 	}
+}
+
+// dbToFloat64Counter converts PostgreSQL counter values while preserving
+// single-unit precision for positive int64 values above float64's exact
+// integer range. Prometheus handles the modulo boundary as a counter reset.
+func dbToFloat64Counter(t interface{}, logger *slog.Logger) (float64, bool) {
+	if v, ok := t.(int64); ok && v >= 0 {
+		return float64(uint64(v) % float64ExactIntegerLimit), true
+	}
+
+	return dbToFloat64(t, logger)
 }
 
 // Convert database.sql types to uint64 for Prometheus consumption. Null types are mapped to 0. string and []byte

@@ -331,6 +331,7 @@ type Exporter struct {
 	builtinMetricMaps map[string]intermediateMetricMap
 
 	disableDefaultMetrics, autoDiscoverDatabases bool
+	wrapLargeCounters                            bool
 
 	excludeDatabases []string
 	includeDatabases []string
@@ -405,6 +406,13 @@ func WithMetricPrefix(prefix string) ExporterOpt {
 	}
 }
 
+// WrapLargeCounters configures wrapping counters at 2^53.
+func WrapLargeCounters(wrap bool) ExporterOpt {
+	return func(e *Exporter) {
+		e.wrapLargeCounters = wrap
+	}
+}
+
 func parseConstLabels(s string, logger *slog.Logger) prometheus.Labels {
 	labels := make(prometheus.Labels)
 
@@ -437,6 +445,7 @@ func NewExporter(dsn []string, logger *slog.Logger, opts ...ExporterOpt) *Export
 		dsn:               dsn,
 		builtinMetricMaps: builtinMetricMaps,
 		logger:            logger,
+		wrapLargeCounters: true,
 	}
 
 	for _, opt := range opts {
@@ -444,7 +453,11 @@ func NewExporter(dsn []string, logger *slog.Logger, opts ...ExporterOpt) *Export
 	}
 
 	e.setupInternalMetrics()
-	e.servers = NewServers(ServerWithLabels(e.constantLabels), ServerWithLogger(e.logger))
+	e.servers = NewServers(
+		ServerWithLabels(e.constantLabels),
+		ServerWithLogger(e.logger),
+		ServerWithWrapLargeCounters(e.wrapLargeCounters),
+	)
 
 	return e
 }
