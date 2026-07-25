@@ -16,6 +16,7 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"strconv"
 
 	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
@@ -34,7 +35,7 @@ func NewPGStatReplicationCollector(collectorConfig) (Collector, error) {
 }
 
 var (
-	statReplicationLabels = []string{"application_name", "client_addr", "state", "slot_name"}
+	statReplicationLabels = []string{"application_name", "client_addr", "state", "slot_name", "pid"}
 
 	statReplicationCurrentWalLSNBytesDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statReplicationSubsystem, "pg_current_wal_lsn_bytes"),
@@ -65,6 +66,7 @@ var (
 				client_addr::text,
 				state,
 				s.slot_name,
+				pg_stat_replication.pid,
 				(case pg_is_in_recovery() when 't' then pg_wal_lsn_diff(pg_last_wal_receive_lsn(), pg_lsn('0/0'))::float else pg_wal_lsn_diff(pg_current_wal_lsn(), pg_lsn('0/0'))::float end) AS pg_current_wal_lsn_bytes,
 				(case pg_is_in_recovery() when 't' then pg_wal_lsn_diff(pg_last_wal_receive_lsn(), replay_lsn)::float else pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)::float end) AS pg_wal_lsn_diff
 			FROM pg_stat_replication
@@ -77,6 +79,7 @@ var (
 				client_addr::text,
 				state,
 				s.slot_name,
+				pg_stat_replication.pid,
 				(case pg_is_in_recovery() when 't' then pg_xlog_location_diff(pg_last_xlog_receive_location(), replay_location)::float else pg_xlog_location_diff(pg_current_xlog_location(), replay_location)::float end) AS pg_xlog_location_diff
 			FROM pg_stat_replication
 			LEFT JOIN pg_replication_slots s ON s.active_pid = pg_stat_replication.pid
@@ -90,6 +93,7 @@ var (
 				application_name,
 				client_addr::text,
 				state,
+				pid,
 				(case pg_is_in_recovery() when 't' then pg_xlog_location_diff(pg_last_xlog_receive_location(), replay_location)::float else pg_xlog_location_diff(pg_current_xlog_location(), replay_location)::float end) AS pg_xlog_location_diff
 			FROM pg_stat_replication
 			`
@@ -118,11 +122,12 @@ func updateStatReplication(ctx context.Context, instance *instance, ch chan<- pr
 
 	for rows.Next() {
 		var applicationName, clientAddr, state, slotName sql.NullString
+		var pid sql.NullInt64
 		var currentWalLSNBytes, walLSNDiff sql.NullFloat64
-		if err := rows.Scan(&applicationName, &clientAddr, &state, &slotName, &currentWalLSNBytes, &walLSNDiff); err != nil {
+		if err := rows.Scan(&applicationName, &clientAddr, &state, &slotName, &pid, &currentWalLSNBytes, &walLSNDiff); err != nil {
 			return err
 		}
-		labels := statReplicationLabelValues(applicationName, clientAddr, state, slotName)
+		labels := statReplicationLabelValues(applicationName, clientAddr, state, slotName, pid)
 
 		if currentWalLSNBytes.Valid {
 			ch <- prometheus.MustNewConstMetric(
@@ -155,8 +160,9 @@ func updateStatReplicationBefore10(ctx context.Context, instance *instance, ch c
 
 	for rows.Next() {
 		var applicationName, clientAddr, state, slotName sql.NullString
+		var pid sql.NullInt64
 		var xlogLocationDiff sql.NullFloat64
-		if err := rows.Scan(&applicationName, &clientAddr, &state, &slotName, &xlogLocationDiff); err != nil {
+		if err := rows.Scan(&applicationName, &clientAddr, &state, &slotName, &pid, &xlogLocationDiff); err != nil {
 			return err
 		}
 
@@ -165,7 +171,7 @@ func updateStatReplicationBefore10(ctx context.Context, instance *instance, ch c
 				statReplicationXlogLocationDiffDesc,
 				prometheus.GaugeValue,
 				xlogLocationDiff.Float64,
-				statReplicationLabelValues(applicationName, clientAddr, state, slotName)...,
+				statReplicationLabelValues(applicationName, clientAddr, state, slotName, pid)...,
 			)
 		}
 	}
@@ -183,8 +189,9 @@ func updateStatReplicationBefore95(ctx context.Context, instance *instance, ch c
 
 	for rows.Next() {
 		var applicationName, clientAddr, state sql.NullString
+		var pid sql.NullInt64
 		var xlogLocationDiff sql.NullFloat64
-		if err := rows.Scan(&applicationName, &clientAddr, &state, &xlogLocationDiff); err != nil {
+		if err := rows.Scan(&applicationName, &clientAddr, &state, &pid, &xlogLocationDiff); err != nil {
 			return err
 		}
 
@@ -193,7 +200,7 @@ func updateStatReplicationBefore95(ctx context.Context, instance *instance, ch c
 				statReplicationXlogLocationDiffDesc,
 				prometheus.GaugeValue,
 				xlogLocationDiff.Float64,
-				statReplicationLabelValues(applicationName, clientAddr, state, sql.NullString{})...,
+				statReplicationLabelValues(applicationName, clientAddr, state, sql.NullString{}, pid)...,
 			)
 		}
 	}
@@ -201,18 +208,26 @@ func updateStatReplicationBefore95(ctx context.Context, instance *instance, ch c
 	return rows.Err()
 }
 
-func statReplicationLabelValues(applicationName, clientAddr, state, slotName sql.NullString) []string {
+func statReplicationLabelValues(applicationName, clientAddr, state, slotName sql.NullString, pid sql.NullInt64) []string {
 	return []string{
 		nullStringValue(applicationName),
 		nullStringValue(clientAddr),
 		nullStringValue(state),
 		nullStringValue(slotName),
+		nullInt64Value(pid),
 	}
 }
 
 func nullStringValue(s sql.NullString) string {
 	if s.Valid {
 		return s.String
+	}
+	return ""
+}
+
+func nullInt64Value(i sql.NullInt64) string {
+	if i.Valid {
+		return strconv.FormatInt(i.Int64, 10)
 	}
 	return ""
 }
