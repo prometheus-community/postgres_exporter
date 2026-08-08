@@ -10,6 +10,8 @@ Prometheus exporter for PostgreSQL server metrics.
 
 CI Tested PostgreSQL versions: `13`, `14`, `15`, `16`, `17`, `18`.
 
+See the [docs/](docs/README.md) directory for user-focused documentation: getting started, Docker images, configuration, database permissions, connecting, and secrets.
+
 ## Quick Start
 This package is available for Docker:
 ```
@@ -41,8 +43,7 @@ Now use the DATA_SOURCE_PASS_FILE with a mounted file containing the password to
 
 The container process runs with uid/gid 65534 (important for file permissions).
 
-## Multi-Target Support (BETA)
-**This Feature is in beta and may require changes in future releases. Feedback is welcome.**
+## Multi-Target Support
 
 This exporter supports the [multi-target pattern](https://prometheus.io/docs/guides/multi-target-exporter/). This allows running a single instance of this exporter for multiple postgres targets. Using the multi-target functionality of this exporter is **optional** and meant for cases where it is impossible to install the exporter as a sidecar, for example SaaS-managed services.
 
@@ -75,7 +76,7 @@ scrape_configs:
 The configuration file controls the behavior of the exporter. It can be set using the `--config.file` command line flag and defaults to `postgres_exporter.yml`.
 
 ### auth_modules
-This section defines preset authentication and connection parameters for use in the [multi-target endpoint](#multi-target-support-beta). `auth_modules` is a map of modules with the key being the identifier which can be used in the `/probe` endpoint.
+This section defines preset authentication and connection parameters for use in the [multi-target endpoint](#multi-target-support). `auth_modules` is a map of modules with the key being the identifier which can be used in the `/probe` endpoint.
 Currently only the `userpass` type is supported.
 
 Example:
