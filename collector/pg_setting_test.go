@@ -103,19 +103,19 @@ func TestPGSettingMetric(t *testing.T) {
 		{
 			name:       "integer seconds",
 			setting:    pgSetting{name: "seconds_fixture_metric", setting: "5", unit: "s", vartype: "integer"},
-			wantDesc:   `Desc{fqName: "pg_settings_seconds_fixture_metric_seconds", help: "Server Parameter: seconds_fixture_metric [Units converted to seconds.]", constLabels: {}, variableLabels: {}}`,
+			wantDesc:   `Desc{fqName: "pg_settings_seconds_fixture_metric_seconds", help: "Server Parameter: seconds_fixture_metric [Units converted to seconds.]", unit: "", constLabels: {}, variableLabels: {}}`,
 			wantMetric: 5,
 		},
 		{
 			name:       "bool on",
 			setting:    pgSetting{name: "bool_on_fixture_metric", setting: "on", vartype: "bool"},
-			wantDesc:   `Desc{fqName: "pg_settings_bool_on_fixture_metric", help: "Server Parameter: bool_on_fixture_metric", constLabels: {}, variableLabels: {}}`,
+			wantDesc:   `Desc{fqName: "pg_settings_bool_on_fixture_metric", help: "Server Parameter: bool_on_fixture_metric", unit: "", constLabels: {}, variableLabels: {}}`,
 			wantMetric: 1,
 		},
 		{
 			name:       "sanitized name",
 			setting:    pgSetting{name: "rds.rds-superuser-reserved-connections", setting: "2", vartype: "integer"},
-			wantDesc:   `Desc{fqName: "pg_settings_rds_rds_superuser_reserved_connections", help: "Server Parameter: rds.rds-superuser-reserved-connections", constLabels: {}, variableLabels: {}}`,
+			wantDesc:   `Desc{fqName: "pg_settings_rds_rds_superuser_reserved_connections", help: "Server Parameter: rds.rds-superuser-reserved-connections", unit: "", constLabels: {}, variableLabels: {}}`,
 			wantMetric: 2,
 		},
 	}
@@ -168,11 +168,11 @@ func TestPGSettingsCollectorUpdate(t *testing.T) {
 		wantValue float64
 	}{
 		{
-			wantDesc:  `Desc{fqName: "pg_settings_shared_buffers_bytes", help: "Server Parameter: shared_buffers [Units converted to bytes.]", constLabels: {}, variableLabels: {}}`,
+			wantDesc:  `Desc{fqName: "pg_settings_shared_buffers_bytes", help: "Server Parameter: shared_buffers [Units converted to bytes.]", unit: "", constLabels: {}, variableLabels: {}}`,
 			wantValue: 1048576,
 		},
 		{
-			wantDesc:  `Desc{fqName: "pg_settings_track_counts", help: "Server Parameter: track_counts", constLabels: {}, variableLabels: {}}`,
+			wantDesc:  `Desc{fqName: "pg_settings_track_counts", help: "Server Parameter: track_counts", unit: "", constLabels: {}, variableLabels: {}}`,
 			wantValue: 1,
 		},
 	}
