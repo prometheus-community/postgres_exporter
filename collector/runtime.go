@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package collectors
+package collector
 
 import (
 	"errors"
@@ -19,7 +19,6 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/prometheus-community/postgres_exporter/collector"
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus-community/postgres_exporter/exporter"
 	"github.com/prometheus/client_golang/prometheus"
@@ -27,7 +26,7 @@ import (
 
 type Runtime struct {
 	exporter          *exporter.Exporter
-	postgresCollector *collector.PostgresCollector
+	postgresCollector *PostgresCollector
 }
 
 func NewRuntime(cfg *config.Config, logger *slog.Logger) (*Runtime, error) {
@@ -50,14 +49,14 @@ func NewRuntime(cfg *config.Config, logger *slog.Logger) (*Runtime, error) {
 		return runtime, nil
 	}
 
-	postgresCollector, err := collector.NewPostgresCollector(
+	postgresCollector, err := NewPostgresCollector(
 		logger,
 		cfg.ExcludeDatabases,
 		cfg.DataSourceNames[0],
 		nil,
-		collector.WithCollectionTimeout(cfg.CollectionTimeout.String()),
-		collector.WithCollectorStates(cfg.Collectors),
-		collector.WithPGStatStatementsConfig(pgStatStatementsConfig(cfg.PGStatStatements)),
+		WithCollectionTimeout(cfg.CollectionTimeout.String()),
+		WithCollectorStates(cfg.Collectors),
+		WithPGStatStatementsConfig(pgStatStatementsConfig(cfg.PGStatStatements)),
 	)
 	if err != nil {
 		runtime.Close()
@@ -99,8 +98,8 @@ func exporterOptions(cfg config.Config) []exporter.ExporterOpt {
 	}
 }
 
-func pgStatStatementsConfig(cfg config.PGStatStatementsConfig) collector.PGStatStatementsConfig {
-	return collector.PGStatStatementsConfig{
+func pgStatStatementsConfig(cfg config.PGStatStatementsConfig) PGStatStatementsConfig {
+	return PGStatStatementsConfig{
 		IncludeQuery:     cfg.IncludeQuery,
 		QueryLength:      cfg.QueryLength,
 		Limit:            cfg.Limit,

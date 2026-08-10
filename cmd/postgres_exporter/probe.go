@@ -18,7 +18,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/prometheus-community/postgres_exporter/collectors"
+	"github.com/prometheus-community/postgres_exporter/collector"
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -71,7 +71,7 @@ func handleProbe(logger *slog.Logger, baseConfig config.Config) http.HandlerFunc
 			return
 		}
 
-		runtime, err := collectors.NewRuntime(&probeConfig, tl)
+		runtime, err := collector.NewRuntime(&probeConfig, tl)
 		if err != nil {
 			logger.Error("error creating probe runtime", "err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)

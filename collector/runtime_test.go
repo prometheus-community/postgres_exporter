@@ -11,19 +11,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package collectors
+package collector
 
 import (
 	"maps"
 	"testing"
 
-	"github.com/prometheus-community/postgres_exporter/collector"
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/common/promslog"
 )
 
 func TestConfigCollectorDefaultsMatchRegisteredCollectors(t *testing.T) {
-	if got, want := config.DefaultCollectorConfig(), collector.DefaultCollectorStates(); !maps.Equal(got, want) {
+	if got, want := config.DefaultCollectorConfig(), DefaultCollectorStates(); !maps.Equal(got, want) {
 		t.Fatalf("DefaultCollectorConfig() = %v, want registered collector defaults %v", got, want)
 	}
 }

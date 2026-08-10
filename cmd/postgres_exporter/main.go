@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/prometheus-community/postgres_exporter/collectors"
+	"github.com/prometheus-community/postgres_exporter/collector"
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus-community/postgres_exporter/exporter"
 	"github.com/prometheus/client_golang/prometheus"
@@ -170,7 +170,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	pgRuntime, err := collectors.NewRuntime(&cfg, logger)
+	pgRuntime, err := collector.NewRuntime(&cfg, logger)
 	if err != nil {
 		logger.Error("Failed to create runtime", "err", err)
 		os.Exit(1)
