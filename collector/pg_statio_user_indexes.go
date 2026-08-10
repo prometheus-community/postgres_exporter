@@ -38,18 +38,19 @@ var (
 	statioUserIndexesIdxBlksRead = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statioUserIndexesSubsystem, "idx_blks_read_total"),
 		"Number of disk blocks read from this index",
-		[]string{"schemaname", "relname", "indexrelname"},
+		[]string{"datname", "schemaname", "relname", "indexrelname"},
 		prometheus.Labels{},
 	)
 	statioUserIndexesIdxBlksHit = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statioUserIndexesSubsystem, "idx_blks_hit_total"),
 		"Number of buffer hits in this index",
-		[]string{"schemaname", "relname", "indexrelname"},
+		[]string{"datname", "schemaname", "relname", "indexrelname"},
 		prometheus.Labels{},
 	)
 
 	statioUserIndexesQuery = `
 	SELECT
+		current_database() AS datname,
 		schemaname,
 		relname,
 		indexrelname,
@@ -69,11 +70,16 @@ func (c *PGStatioUserIndexesCollector) Update(ctx context.Context, instance *ins
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var schemaname, relname, indexrelname sql.NullString
+		var datname, schemaname, relname, indexrelname sql.NullString
 		var idxBlksRead, idxBlksHit sql.NullFloat64
 
-		if err := rows.Scan(&schemaname, &relname, &indexrelname, &idxBlksRead, &idxBlksHit); err != nil {
+		if err := rows.Scan(&datname, &schemaname, &relname, &indexrelname, &idxBlksRead, &idxBlksHit); err != nil {
 			return err
+		}
+
+		datnameLabel := "unknown"
+		if datname.Valid {
+			datnameLabel = datname.String
 		}
 		schemanameLabel := "unknown"
 		if schemaname.Valid {
@@ -87,7 +93,7 @@ func (c *PGStatioUserIndexesCollector) Update(ctx context.Context, instance *ins
 		if indexrelname.Valid {
 			indexrelnameLabel = indexrelname.String
 		}
-		labels := []string{schemanameLabel, relnameLabel, indexrelnameLabel}
+		labels := []string{datnameLabel, schemanameLabel, relnameLabel, indexrelnameLabel}
 
 		idxBlksReadMetric := 0.0
 		if idxBlksRead.Valid {
