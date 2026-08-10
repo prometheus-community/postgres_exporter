@@ -18,7 +18,9 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"os"
+	"slices"
 	"sync"
 	"time"
 
@@ -76,8 +78,29 @@ type Config struct {
 	IncludeDatabases      []string
 	Collectors            map[string]bool
 	PGStatStatements      PGStatStatementsConfig
+}
 
-	validated bool
+// ValidatedConfig is the result of a successful Config.Validate call. It holds
+// a private deep copy of the validated Config, so later mutations of the
+// original cannot invalidate it. Consumers that require validated
+// configuration (e.g. collector.NewRuntime) accept this type instead of
+// Config, making validation impossible to skip.
+type ValidatedConfig struct {
+	inner Config
+	ok    bool
+}
+
+// Valid reports whether this value was produced by a successful
+// Config.Validate call. It only returns false for zero-value ValidatedConfig
+// structs that bypassed validation.
+func (v ValidatedConfig) Valid() bool {
+	return v.ok
+}
+
+// Config returns a deep copy of the validated configuration. Mutating the
+// returned value does not affect the validated state.
+func (v ValidatedConfig) Config() Config {
+	return v.inner.clone()
 }
 
 type PGStatStatementsConfig struct {
@@ -101,41 +124,49 @@ func NewConfigWithDefaults() Config {
 	}
 }
 
-func (c *Config) Validate() error {
-	c.validated = false
-
+// Validate checks the configuration and, on success, returns a
+// ValidatedConfig holding a deep copy of it.
+func (c Config) Validate() (ValidatedConfig, error) {
 	if c.MetricPrefix == "" {
-		return fmt.Errorf("metric prefix must not be empty")
+		return ValidatedConfig{}, fmt.Errorf("metric prefix must not be empty")
 	}
 	if c.CollectionTimeout <= 0 {
-		return fmt.Errorf("collection timeout must be greater than zero")
+		return ValidatedConfig{}, fmt.Errorf("collection timeout must be greater than zero")
 	}
 	for i, dsn := range c.DataSourceNames {
 		if dsn == "" {
-			return fmt.Errorf("data source name at index %d must not be empty", i)
+			return ValidatedConfig{}, fmt.Errorf("data source name at index %d must not be empty", i)
 		}
 	}
 	if c.PGStatStatements.QueryLength == 0 {
-		return fmt.Errorf("pg_stat_statements query length must be greater than zero")
+		return ValidatedConfig{}, fmt.Errorf("pg_stat_statements query length must be greater than zero")
 	}
 	if c.PGStatStatements.Limit == 0 {
-		return fmt.Errorf("pg_stat_statements limit must be greater than zero")
+		return ValidatedConfig{}, fmt.Errorf("pg_stat_statements limit must be greater than zero")
 	}
 	for name := range c.Collectors {
 		if name == "" {
-			return fmt.Errorf("collector name must not be empty")
+			return ValidatedConfig{}, fmt.Errorf("collector name must not be empty")
 		}
 		if _, ok := DefaultCollectorConfig()[name]; !ok {
-			return fmt.Errorf("unknown collector %q", name)
+			return ValidatedConfig{}, fmt.Errorf("unknown collector %q", name)
 		}
 	}
 
-	c.validated = true
-	return nil
+	return ValidatedConfig{inner: c.clone(), ok: true}, nil
 }
 
-func (c Config) Validated() bool {
-	return c.validated
+// clone returns a copy of the Config with all reference-bearing fields
+// (slices and maps) deep-copied, so the copy shares no mutable state with the
+// original.
+func (c Config) clone() Config {
+	c.DataSourceNames = slices.Clone(c.DataSourceNames)
+	c.ExcludeDatabases = slices.Clone(c.ExcludeDatabases)
+	c.IncludeDatabases = slices.Clone(c.IncludeDatabases)
+	c.Collectors = maps.Clone(c.Collectors)
+	c.PGStatStatements.ExcludeDatabases = slices.Clone(c.PGStatStatements.ExcludeDatabases)
+	c.PGStatStatements.ExcludeUsers = slices.Clone(c.PGStatStatements.ExcludeUsers)
+	return c
 }
 
 func DefaultCollectorConfig() map[string]bool {

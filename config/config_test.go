@@ -51,14 +51,65 @@ func TestConfigValidate(t *testing.T) {
 	cfg := NewConfigWithDefaults()
 	cfg.DataSourceNames = []string{"postgresql://localhost:5432/postgres?sslmode=disable"}
 
-	if cfg.Validated() {
-		t.Fatal("Validated() = true before Validate, want false")
-	}
-	if err := cfg.Validate(); err != nil {
+	validated, err := cfg.Validate()
+	if err != nil {
 		t.Fatalf("Validate() error = %v", err)
 	}
-	if !cfg.Validated() {
-		t.Fatal("Validated() = false after Validate, want true")
+	if !validated.Valid() {
+		t.Fatal("Valid() = false after successful Validate, want true")
+	}
+	if got, want := validated.Config().MetricPrefix, cfg.MetricPrefix; got != want {
+		t.Fatalf("Config().MetricPrefix = %q, want %q", got, want)
+	}
+}
+
+func TestValidatedConfigZeroValueIsInvalid(t *testing.T) {
+	var validated ValidatedConfig
+	if validated.Valid() {
+		t.Fatal("Valid() = true for zero-value ValidatedConfig, want false")
+	}
+}
+
+func TestValidatedConfigIsIsolatedFromOriginal(t *testing.T) {
+	cfg := NewConfigWithDefaults()
+	cfg.DataSourceNames = []string{"postgresql://localhost:5432/postgres?sslmode=disable"}
+	cfg.PGStatStatements.ExcludeDatabases = []string{"template0"}
+
+	validated, err := cfg.Validate()
+	if err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+
+	cfg.Collectors[CollectorDatabase] = false
+	cfg.DataSourceNames[0] = "mutated"
+	cfg.PGStatStatements.ExcludeDatabases[0] = "mutated"
+
+	got := validated.Config()
+	if !got.Collectors[CollectorDatabase] {
+		t.Fatalf("Collectors[%q] = false after mutating original, want true", CollectorDatabase)
+	}
+	if want := "postgresql://localhost:5432/postgres?sslmode=disable"; got.DataSourceNames[0] != want {
+		t.Fatalf("DataSourceNames[0] = %q after mutating original, want %q", got.DataSourceNames[0], want)
+	}
+	if want := "template0"; got.PGStatStatements.ExcludeDatabases[0] != want {
+		t.Fatalf("PGStatStatements.ExcludeDatabases[0] = %q after mutating original, want %q", got.PGStatStatements.ExcludeDatabases[0], want)
+	}
+}
+
+func TestValidatedConfigAccessorReturnsCopy(t *testing.T) {
+	cfg := NewConfigWithDefaults()
+
+	validated, err := cfg.Validate()
+	if err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+
+	first := validated.Config()
+	first.Collectors[CollectorDatabase] = false
+
+	second := validated.Config()
+	if !second.Collectors[CollectorDatabase] {
+		t.Fatalf("Collectors[%q] = false after mutating a previous copy, want true", CollectorDatabase)
 	}
 }
 
@@ -118,12 +169,12 @@ func TestConfigValidateFailures(t *testing.T) {
 			cfg.DataSourceNames = []string{"postgresql://localhost:5432/postgres?sslmode=disable"}
 			test.mutate(&cfg)
 
-			err := cfg.Validate()
+			validated, err := cfg.Validate()
 			if err == nil || err.Error() != test.want {
 				t.Fatalf("Validate() error = %v, want %q", err, test.want)
 			}
-			if cfg.Validated() {
-				t.Fatal("Validated() = true after failed Validate, want false")
+			if validated.Valid() {
+				t.Fatal("Valid() = true after failed Validate, want false")
 			}
 		})
 	}
@@ -131,7 +182,7 @@ func TestConfigValidateFailures(t *testing.T) {
 
 func TestConfigValidateAcceptsNoDataSourcesForMultiTargetMode(t *testing.T) {
 	cfg := NewConfigWithDefaults()
-	if err := cfg.Validate(); err != nil {
+	if _, err := cfg.Validate(); err != nil {
 		t.Fatalf("Validate() error = %v", err)
 	}
 }
@@ -139,7 +190,7 @@ func TestConfigValidateAcceptsNoDataSourcesForMultiTargetMode(t *testing.T) {
 func TestConfigValidateAcceptsCustomTimeout(t *testing.T) {
 	cfg := NewConfigWithDefaults()
 	cfg.CollectionTimeout = 30 * time.Second
-	if err := cfg.Validate(); err != nil {
+	if _, err := cfg.Validate(); err != nil {
 		t.Fatalf("Validate() error = %v", err)
 	}
 }

@@ -28,9 +28,7 @@ func TestConfigCollectorDefaultsMatchRegisteredCollectors(t *testing.T) {
 }
 
 func TestNewRuntimeRequiresValidatedConfig(t *testing.T) {
-	cfg := config.NewConfigWithDefaults()
-
-	runtime, err := NewRuntime(cfg, promslog.NewNopLogger())
+	runtime, err := NewRuntime(config.ValidatedConfig{}, promslog.NewNopLogger())
 	if err == nil {
 		t.Fatal("NewRuntime() error = nil, want error")
 	}
@@ -41,11 +39,12 @@ func TestNewRuntimeRequiresValidatedConfig(t *testing.T) {
 
 func TestNewRuntimeCollectorsWithoutDataSource(t *testing.T) {
 	cfg := config.NewConfigWithDefaults()
-	if err := cfg.Validate(); err != nil {
+	validated, err := cfg.Validate()
+	if err != nil {
 		t.Fatalf("Validate() error = %v", err)
 	}
 
-	runtime, err := NewRuntime(cfg, promslog.NewNopLogger())
+	runtime, err := NewRuntime(validated, promslog.NewNopLogger())
 	if err != nil {
 		t.Fatalf("NewRuntime() error = %v", err)
 	}
@@ -59,11 +58,12 @@ func TestNewRuntimeCollectorsWithoutDataSource(t *testing.T) {
 func TestNewRuntimeCollectorsWithDataSource(t *testing.T) {
 	cfg := config.NewConfigWithDefaults()
 	cfg.DataSourceNames = []string{"postgresql://localhost:5432/postgres?sslmode=disable"}
-	if err := cfg.Validate(); err != nil {
+	validated, err := cfg.Validate()
+	if err != nil {
 		t.Fatalf("Validate() error = %v", err)
 	}
 
-	runtime, err := NewRuntime(cfg, promslog.NewNopLogger())
+	runtime, err := NewRuntime(validated, promslog.NewNopLogger())
 	if err != nil {
 		t.Fatalf("NewRuntime() error = %v", err)
 	}

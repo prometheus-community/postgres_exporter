@@ -165,12 +165,13 @@ func main() {
 		logger.Warn("Constant labels on all metrics is DEPRECATED")
 	}
 
-	if err := cfg.Validate(); err != nil {
+	validatedConfig, err := cfg.Validate()
+	if err != nil {
 		logger.Error("Invalid config", "err", err)
 		os.Exit(1)
 	}
 
-	pgRuntime, err := collector.NewRuntime(cfg, logger)
+	pgRuntime, err := collector.NewRuntime(validatedConfig, logger)
 	if err != nil {
 		logger.Error("Failed to create runtime", "err", err)
 		os.Exit(1)

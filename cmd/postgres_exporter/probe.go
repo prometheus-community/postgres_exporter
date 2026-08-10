@@ -65,13 +65,14 @@ func handleProbe(logger *slog.Logger, baseConfig config.Config) http.HandlerFunc
 		// Copy process-level config before setting the per-request target DSN.
 		probeConfig := baseConfig
 		probeConfig.DataSourceNames = []string{dsn.GetConnectionString()}
-		if err := probeConfig.Validate(); err != nil {
+		validatedConfig, err := probeConfig.Validate()
+		if err != nil {
 			logger.Error("invalid probe config", "err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		runtime, err := collector.NewRuntime(probeConfig, tl)
+		runtime, err := collector.NewRuntime(validatedConfig, tl)
 		if err != nil {
 			logger.Error("error creating probe runtime", "err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
