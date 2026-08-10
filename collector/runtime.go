@@ -29,10 +29,7 @@ type Runtime struct {
 	postgresCollector *PostgresCollector
 }
 
-func NewRuntime(cfg *config.Config, logger *slog.Logger) (*Runtime, error) {
-	if cfg == nil {
-		return nil, errors.New("config is required")
-	}
+func NewRuntime(cfg config.Config, logger *slog.Logger) (*Runtime, error) {
 	if !cfg.Validated() {
 		return nil, errors.New("config has not been validated; call cfg.Validate before NewRuntime")
 	}
@@ -40,7 +37,7 @@ func NewRuntime(cfg *config.Config, logger *slog.Logger) (*Runtime, error) {
 		logger = slog.Default()
 	}
 
-	exporterCollector := exporter.NewExporter(cfg.DataSourceNames, logger, exporterOptions(*cfg)...)
+	exporterCollector := exporter.NewExporter(cfg.DataSourceNames, logger, exporterOptions(cfg)...)
 	runtime := &Runtime{
 		exporter: exporterCollector,
 	}

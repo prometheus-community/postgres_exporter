@@ -170,7 +170,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	pgRuntime, err := collector.NewRuntime(&cfg, logger)
+	pgRuntime, err := collector.NewRuntime(cfg, logger)
 	if err != nil {
 		logger.Error("Failed to create runtime", "err", err)
 		os.Exit(1)

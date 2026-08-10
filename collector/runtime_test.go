@@ -30,7 +30,7 @@ func TestConfigCollectorDefaultsMatchRegisteredCollectors(t *testing.T) {
 func TestNewRuntimeRequiresValidatedConfig(t *testing.T) {
 	cfg := config.NewConfigWithDefaults()
 
-	runtime, err := NewRuntime(&cfg, promslog.NewNopLogger())
+	runtime, err := NewRuntime(cfg, promslog.NewNopLogger())
 	if err == nil {
 		t.Fatal("NewRuntime() error = nil, want error")
 	}
@@ -45,7 +45,7 @@ func TestNewRuntimeCollectorsWithoutDataSource(t *testing.T) {
 		t.Fatalf("Validate() error = %v", err)
 	}
 
-	runtime, err := NewRuntime(&cfg, promslog.NewNopLogger())
+	runtime, err := NewRuntime(cfg, promslog.NewNopLogger())
 	if err != nil {
 		t.Fatalf("NewRuntime() error = %v", err)
 	}
@@ -63,7 +63,7 @@ func TestNewRuntimeCollectorsWithDataSource(t *testing.T) {
 		t.Fatalf("Validate() error = %v", err)
 	}
 
-	runtime, err := NewRuntime(&cfg, promslog.NewNopLogger())
+	runtime, err := NewRuntime(cfg, promslog.NewNopLogger())
 	if err != nil {
 		t.Fatalf("NewRuntime() error = %v", err)
 	}

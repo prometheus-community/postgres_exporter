@@ -71,7 +71,7 @@ func handleProbe(logger *slog.Logger, baseConfig config.Config) http.HandlerFunc
 			return
 		}
 
-		runtime, err := collector.NewRuntime(&probeConfig, tl)
+		runtime, err := collector.NewRuntime(probeConfig, tl)
 		if err != nil {
 			logger.Error("error creating probe runtime", "err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
