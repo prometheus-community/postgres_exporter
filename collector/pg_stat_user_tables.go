@@ -223,10 +223,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			relnameLabel = relname.String
 		}
 
-		seqScanMetric := 0.0
-		if seqScan.Valid {
-			seqScanMetric = float64(seqScan.Int64)
-		}
+		seqScanMetric := int64CounterValue(seqScan, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statUserTablesSeqScan,
 			prometheus.CounterValue,
@@ -234,10 +231,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		seqTupReadMetric := 0.0
-		if seqTupRead.Valid {
-			seqTupReadMetric = float64(seqTupRead.Int64)
-		}
+		seqTupReadMetric := int64CounterValue(seqTupRead, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statUserTablesSeqTupRead,
 			prometheus.CounterValue,
@@ -245,10 +239,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		idxScanMetric := 0.0
-		if idxScan.Valid {
-			idxScanMetric = float64(idxScan.Int64)
-		}
+		idxScanMetric := int64CounterValue(idxScan, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statUserTablesIdxScan,
 			prometheus.CounterValue,
@@ -256,10 +247,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		idxTupFetchMetric := 0.0
-		if idxTupFetch.Valid {
-			idxTupFetchMetric = float64(idxTupFetch.Int64)
-		}
+		idxTupFetchMetric := int64CounterValue(idxTupFetch, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statUserTablesIdxTupFetch,
 			prometheus.CounterValue,
@@ -267,10 +255,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		nTupInsMetric := 0.0
-		if nTupIns.Valid {
-			nTupInsMetric = float64(nTupIns.Int64)
-		}
+		nTupInsMetric := int64CounterValue(nTupIns, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statUserTablesNTupIns,
 			prometheus.CounterValue,
@@ -278,10 +263,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		nTupUpdMetric := 0.0
-		if nTupUpd.Valid {
-			nTupUpdMetric = float64(nTupUpd.Int64)
-		}
+		nTupUpdMetric := int64CounterValue(nTupUpd, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statUserTablesNTupUpd,
 			prometheus.CounterValue,
@@ -289,10 +271,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		nTupDelMetric := 0.0
-		if nTupDel.Valid {
-			nTupDelMetric = float64(nTupDel.Int64)
-		}
+		nTupDelMetric := int64CounterValue(nTupDel, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statUserTablesNTupDel,
 			prometheus.CounterValue,
@@ -300,10 +279,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		nTupHotUpdMetric := 0.0
-		if nTupHotUpd.Valid {
-			nTupHotUpdMetric = float64(nTupHotUpd.Int64)
-		}
+		nTupHotUpdMetric := int64CounterValue(nTupHotUpd, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statUserTablesNTupHotUpd,
 			prometheus.CounterValue,
@@ -388,10 +364,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		vacuumCountMetric := 0.0
-		if vacuumCount.Valid {
-			vacuumCountMetric = float64(vacuumCount.Int64)
-		}
+		vacuumCountMetric := int64CounterValue(vacuumCount, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statUserTablesVacuumCount,
 			prometheus.CounterValue,
@@ -399,10 +372,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		autovacuumCountMetric := 0.0
-		if autovacuumCount.Valid {
-			autovacuumCountMetric = float64(autovacuumCount.Int64)
-		}
+		autovacuumCountMetric := int64CounterValue(autovacuumCount, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statUserTablesAutovacuumCount,
 			prometheus.CounterValue,
@@ -410,10 +380,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		analyzeCountMetric := 0.0
-		if analyzeCount.Valid {
-			analyzeCountMetric = float64(analyzeCount.Int64)
-		}
+		analyzeCountMetric := int64CounterValue(analyzeCount, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statUserTablesAnalyzeCount,
 			prometheus.CounterValue,
@@ -421,10 +388,7 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 			datnameLabel, schemanameLabel, relnameLabel,
 		)
 
-		autoanalyzeCountMetric := 0.0
-		if autoanalyzeCount.Valid {
-			autoanalyzeCountMetric = float64(autoanalyzeCount.Int64)
-		}
+		autoanalyzeCountMetric := int64CounterValue(autoanalyzeCount, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statUserTablesAutoanalyzeCount,
 			prometheus.CounterValue,

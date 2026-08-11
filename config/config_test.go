@@ -30,6 +30,9 @@ func TestNewConfigWithDefaults(t *testing.T) {
 	if got, want := cfg.CollectionTimeout, DefaultCollectionTimeout; got != want {
 		t.Fatalf("CollectionTimeout = %v, want %v", got, want)
 	}
+	if !cfg.WrapLargeCounters {
+		t.Fatal("WrapLargeCounters = false, want true")
+	}
 	if cfg.DisableDefaultMetrics {
 		t.Fatal("DisableDefaultMetrics = true, want false")
 	}

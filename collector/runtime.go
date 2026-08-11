@@ -55,6 +55,7 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 		WithCollectionTimeout(cfg.CollectionTimeout.String()),
 		WithCollectorStates(cfg.Collectors),
 		WithPGStatStatementsConfig(cfg.PGStatStatements),
+		WithWrapLargeCounters(cfg.WrapLargeCounters),
 	)
 	if err != nil {
 		runtime.Close()

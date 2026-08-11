@@ -22,14 +22,16 @@ import (
 )
 
 type instance struct {
-	dsn     string
-	db      *sql.DB
-	version semver.Version
+	dsn               string
+	db                *sql.DB
+	version           semver.Version
+	wrapLargeCounters bool
 }
 
 func newInstance(dsn string) (*instance, error) {
 	i := &instance{
-		dsn: dsn,
+		dsn:               dsn,
+		wrapLargeCounters: true,
 	}
 
 	// "Create" a database handle to verify the DSN provided is valid.
@@ -46,7 +48,8 @@ func newInstance(dsn string) (*instance, error) {
 // copy returns a copy of the instance.
 func (i *instance) copy() *instance {
 	return &instance{
-		dsn: i.dsn,
+		dsn:               i.dsn,
+		wrapLargeCounters: i.wrapLargeCounters,
 	}
 }
 

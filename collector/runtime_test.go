@@ -74,3 +74,23 @@ func TestNewRuntimeCollectorsWithDataSource(t *testing.T) {
 		t.Fatalf("len(Collectors()) = %d, want %d", got, want)
 	}
 }
+
+func TestNewRuntimePropagatesWrapLargeCounters(t *testing.T) {
+	cfg := config.NewConfigWithDefaults()
+	cfg.DataSourceNames = []string{"postgresql://localhost:5432/postgres?sslmode=disable"}
+	cfg.WrapLargeCounters = false
+	validated, err := cfg.Validate()
+	if err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+
+	runtime, err := NewRuntime(validated, promslog.NewNopLogger())
+	if err != nil {
+		t.Fatalf("NewRuntime() error = %v", err)
+	}
+	defer runtime.Close()
+
+	if runtime.postgresCollector.instance.wrapLargeCounters {
+		t.Fatal("postgres collector wrapLargeCounters = true, want false")
+	}
+}

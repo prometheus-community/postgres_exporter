@@ -21,9 +21,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
-)
 
-const float64ExactIntegerLimit uint64 = 1 << 53
+	"github.com/prometheus-community/postgres_exporter/internal/metricutil"
+)
 
 // convert a string to the corresponding ColumnUsage
 func stringToColumnUsage(s string) (ColumnUsage, error) {
@@ -100,8 +100,8 @@ func dbToFloat64(t interface{}, logger *slog.Logger) (float64, bool) {
 // single-unit precision for positive int64 values above float64's exact
 // integer range. Prometheus handles the modulo boundary as a counter reset.
 func dbToFloat64Counter(t interface{}, logger *slog.Logger) (float64, bool) {
-	if v, ok := t.(int64); ok && v >= 0 {
-		return float64(uint64(v) % float64ExactIntegerLimit), true
+	if v, ok := t.(int64); ok {
+		return metricutil.Int64CounterValue(v, true), true
 	}
 
 	return dbToFloat64(t, logger)

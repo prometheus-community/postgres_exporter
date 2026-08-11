@@ -204,14 +204,14 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverReceiveStartLsn,
 			prometheus.CounterValue,
-			float64(receiveStartLsn.Int64),
+			int64CounterValue(receiveStartLsn, instance.wrapLargeCounters),
 			labels...)
 
 		if hasFlushedLSN {
 			ch <- prometheus.MustNewConstMetric(
 				statWalReceiverFlushedLSN,
 				prometheus.CounterValue,
-				float64(flushedLsn.Int64),
+				int64CounterValue(flushedLsn, instance.wrapLargeCounters),
 				labels...)
 		}
 
@@ -242,7 +242,7 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 		ch <- prometheus.MustNewConstMetric(
 			statWalReceiverLatestEndLsn,
 			prometheus.CounterValue,
-			float64(latestEndLsn.Int64),
+			int64CounterValue(latestEndLsn, instance.wrapLargeCounters),
 			labels...)
 
 		ch <- prometheus.MustNewConstMetric(
