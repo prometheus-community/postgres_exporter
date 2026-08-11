@@ -24,10 +24,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func handleProbe(logger *slog.Logger, baseConfig config.Config) http.HandlerFunc {
+func handleProbe(logger *slog.Logger, authHandler *config.Handler, baseConfig config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		conf := c.GetAuthConfig()
+		conf := authHandler.GetAuthConfig()
 		params := r.URL.Query()
 		target := params.Get("target")
 		if target == "" {

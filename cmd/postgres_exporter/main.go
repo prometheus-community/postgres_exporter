@@ -39,8 +39,6 @@ import (
 )
 
 var (
-	c *config.Handler
-
 	configFile            = kingpin.Flag("config.file", "Postgres exporter configuration file.").Default("postgres_exporter.yml").String()
 	webConfig             = kingpinflag.AddFlags(kingpin.CommandLine, ":9187")
 	metricsPath           = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").Envar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
@@ -132,14 +130,13 @@ func main() {
 	}
 
 	registry := prometheus.NewRegistry()
-	var err error
-	c, err = config.NewHandler(registry)
+	authHandler, err := config.NewHandler(registry)
 	if err != nil {
 		logger.Error("Failed to create config handler", "err", err)
 		os.Exit(1)
 	}
 
-	if err := c.ReloadAuthConfig(*configFile, logger); err != nil {
+	if err := authHandler.ReloadAuthConfig(*configFile, logger); err != nil {
 		// This is not fatal, but it means that auth must be provided for every dsn.
 		logger.Warn("Error loading config", "err", err)
 	}
@@ -217,7 +214,7 @@ func main() {
 		http.Handle("/", landingPage)
 	}
 
-	http.HandleFunc("/probe", handleProbe(logger, cfg))
+	http.HandleFunc("/probe", handleProbe(logger, authHandler, cfg))
 
 	srv := &http.Server{}
 	if err := web.ListenAndServe(srv, webConfig, logger); err != nil {
