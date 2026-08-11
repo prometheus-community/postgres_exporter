@@ -150,7 +150,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	cfg := buildConfig(dsns)
+	cfg, err := buildConfig(dsns)
+	if err != nil {
+		logger.Error("Failed building config", "err", err)
+		os.Exit(1)
+	}
 	logger.Info("Excluded databases", "databases", fmt.Sprintf("%v", cfg.ExcludeDatabases))
 
 	if cfg.UserQueriesPath != "" {
@@ -222,11 +226,16 @@ func main() {
 	}
 }
 
-func buildConfig(dsns []string) config.Config {
+func buildConfig(dsns []string) (config.Config, error) {
+	parsedCollectionTimeout, err := parseCollectionTimeout(*collectionTimeout)
+	if err != nil {
+		return config.Config{}, err
+	}
+
 	cfg := config.NewConfigWithDefaults()
 	cfg.DataSourceNames = dsns
 	cfg.MetricPrefix = *metricPrefix
-	cfg.CollectionTimeout = mustParseDurationFlag(*collectionTimeout)
+	cfg.CollectionTimeout = parsedCollectionTimeout
 	cfg.DisableDefaultMetrics = *disableDefaultMetrics
 	cfg.AutoDiscoverDatabases = *autoDiscoverDatabases
 	cfg.UserQueriesPath = *queriesPath
@@ -241,7 +250,7 @@ func buildConfig(dsns []string) config.Config {
 		ExcludeDatabases: splitList(*statStatementsFlags.excludeDatabases),
 		ExcludeUsers:     splitList(*statStatementsFlags.excludeUsers),
 	}
-	return cfg
+	return cfg, nil
 }
 
 func (flags collectorFlagSet) states() map[string]bool {
@@ -266,12 +275,10 @@ func splitList(value string) []string {
 	return result
 }
 
-func mustParseDurationFlag(value string) time.Duration {
+func parseCollectionTimeout(value string) (time.Duration, error) {
 	duration, err := time.ParseDuration(value)
 	if err != nil {
-		// Keep Kingpin's current parse-later behavior but fail clearly during
-		// config validation/construction.
-		return 0
+		return 0, fmt.Errorf("invalid collection timeout %q: %w", value, err)
 	}
-	return duration
+	return duration, nil
 }
