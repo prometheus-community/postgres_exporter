@@ -24,10 +24,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const statDatabaseSubsystem = "stat_database"
-
 func init() {
-	registerCollector(statDatabaseSubsystem, defaultEnabled, NewPGStatDatabaseCollector)
+	registerCollector(statDatabaseSubsystem, NewPGStatDatabaseCollector)
 }
 
 type PGStatDatabaseCollector struct {

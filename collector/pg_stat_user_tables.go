@@ -21,10 +21,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const userTableSubsystem = "stat_user_tables"
-
 func init() {
-	registerCollector(userTableSubsystem, defaultEnabled, NewPGStatUserTablesCollector)
+	registerCollector(userTableSubsystem, NewPGStatUserTablesCollector)
 }
 
 type PGStatUserTablesCollector struct {

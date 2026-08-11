@@ -20,10 +20,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const postmasterSubsystem = "postmaster"
-
 func init() {
-	registerCollector(postmasterSubsystem, defaultDisabled, NewPGPostmasterCollector)
+	registerCollector(postmasterSubsystem, NewPGPostmasterCollector)
 }
 
 type PGPostmasterCollector struct {

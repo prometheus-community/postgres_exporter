@@ -22,21 +22,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var (
-	factories         = make(map[string]func(collectorConfig) (Collector, error))
-	collectorDefaults = make(map[string]bool)
-)
+var factories = make(map[string]func(collectorConfig) (Collector, error))
 
-const (
-	// Namespace for all metrics.
-	namespace = "pg"
-
-	defaultEnabled  = true
-	defaultDisabled = false
-)
+// Namespace for all metrics.
+const namespace = "pg"
 
 var (
 	scrapeDurationDesc = prometheus.NewDesc(
@@ -60,20 +53,14 @@ type Collector interface {
 type collectorConfig struct {
 	logger                 *slog.Logger
 	excludeDatabases       []string
-	pgStatStatementsConfig PGStatStatementsConfig
+	pgStatStatementsConfig config.PGStatStatementsConfig
 }
 
-func registerCollector(name string, isDefaultEnabled bool, createFunc func(collectorConfig) (Collector, error)) {
-	factories[name] = createFunc
-	collectorDefaults[name] = isDefaultEnabled
-}
-
-func DefaultCollectorStates() map[string]bool {
-	states := make(map[string]bool, len(collectorDefaults))
-	for name, enabled := range collectorDefaults {
-		states[name] = enabled
+func registerCollector(name string, createFunc func(collectorConfig) (Collector, error)) {
+	if _, ok := config.DefaultCollectorConfig()[name]; !ok {
+		panic(fmt.Sprintf("collector %q is not declared in config.DefaultCollectorConfig", name))
 	}
-	return states
+	factories[name] = createFunc
 }
 
 // PostgresCollector implements the prometheus.Collector interface.
@@ -84,7 +71,7 @@ type PostgresCollector struct {
 	instance          *instance
 	CollectionTimeout time.Duration
 	collectorStates   map[string]bool
-	pgStatStatements  PGStatStatementsConfig
+	pgStatStatements  config.PGStatStatementsConfig
 }
 
 type Option func(*PostgresCollector) error
@@ -93,8 +80,8 @@ type Option func(*PostgresCollector) error
 func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn string, filters []string, options ...Option) (*PostgresCollector, error) {
 	p := &PostgresCollector{
 		logger:            logger,
-		collectorStates:   DefaultCollectorStates(),
-		pgStatStatements:  DefaultPGStatStatementsConfig(),
+		collectorStates:   config.DefaultCollectorConfig(),
+		pgStatStatements:  defaultPGStatStatementsConfig(),
 		CollectionTimeout: time.Minute,
 	}
 	// Apply options to customize the collector
@@ -153,7 +140,7 @@ func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn st
 
 func WithCollectorStates(states map[string]bool) Option {
 	return func(e *PostgresCollector) error {
-		merged := DefaultCollectorStates()
+		merged := config.DefaultCollectorConfig()
 		for name, enabled := range states {
 			if _, ok := factories[name]; !ok {
 				return fmt.Errorf("missing collector: %s", name)
@@ -165,9 +152,9 @@ func WithCollectorStates(states map[string]bool) Option {
 	}
 }
 
-func WithPGStatStatementsConfig(config PGStatStatementsConfig) Option {
+func WithPGStatStatementsConfig(cfg config.PGStatStatementsConfig) Option {
 	return func(e *PostgresCollector) error {
-		e.pgStatStatements = config.withDefaults()
+		e.pgStatStatements = withPGStatStatementsDefaults(cfg)
 		return nil
 	}
 }

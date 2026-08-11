@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/promslog"
@@ -185,12 +186,26 @@ func TestNewPostgresCollectorUsesCollectorStateOverrides(t *testing.T) {
 	}
 }
 
+func TestRegisterCollectorRejectsUnknownConfig(t *testing.T) {
+	const name = "not_in_default_config"
+
+	defer func() {
+		if recover() == nil {
+			t.Fatalf("registerCollector(%q) did not panic", name)
+		}
+	}()
+
+	registerCollector(name, func(collectorConfig) (Collector, error) {
+		return nil, nil
+	})
+}
+
 func TestNewPGStatStatementsCollectorUsesConfig(t *testing.T) {
 	logger := promslog.NewNopLogger()
 
 	collector, err := NewPGStatStatementsCollector(collectorConfig{
 		logger: logger,
-		pgStatStatementsConfig: PGStatStatementsConfig{
+		pgStatStatementsConfig: config.PGStatStatementsConfig{
 			IncludeQuery:     true,
 			QueryLength:      42,
 			Limit:            7,

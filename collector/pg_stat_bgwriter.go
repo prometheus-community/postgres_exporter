@@ -21,10 +21,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const bgWriterSubsystem = "stat_bgwriter"
-
 func init() {
-	registerCollector(bgWriterSubsystem, defaultEnabled, NewPGStatBGWriterCollector)
+	registerCollector(bgWriterSubsystem, NewPGStatBGWriterCollector)
 }
 
 type PGStatBGWriterCollector struct {

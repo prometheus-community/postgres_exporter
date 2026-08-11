@@ -22,14 +22,12 @@ import (
 )
 
 func init() {
-	registerCollector(statWalReceiverSubsystem, defaultDisabled, NewPGStatWalReceiverCollector)
+	registerCollector(statWalReceiverSubsystem, NewPGStatWalReceiverCollector)
 }
 
 type PGStatWalReceiverCollector struct {
 	log *slog.Logger
 }
-
-const statWalReceiverSubsystem = "stat_wal_receiver"
 
 func NewPGStatWalReceiverCollector(config collectorConfig) (Collector, error) {
 	return &PGStatWalReceiverCollector{log: config.logger}, nil

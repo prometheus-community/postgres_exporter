@@ -24,10 +24,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const settingsSubsystem = "settings"
-
 func init() {
-	registerCollector(settingsSubsystem, defaultEnabled, NewPGSettingsCollector)
+	registerCollector(settingsSubsystem, NewPGSettingsCollector)
 }
 
 type PGSettingsCollector struct {

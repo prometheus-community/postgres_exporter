@@ -21,38 +21,29 @@ import (
 	"strings"
 
 	"github.com/blang/semver/v4"
+	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const (
-	statStatementsSubsystem = "stat_statements"
-	defaultStatementLimit   = "100"
-)
+var defaultStatementLimit = fmt.Sprintf("%d", config.DefaultPGStatStatementsLimit)
 
 func init() {
 	// WARNING:
 	//   Disabled by default because this set of metrics can be quite expensive on a busy server
 	//   Every unique query will cause a new timeseries to be created
-	registerCollector(statStatementsSubsystem, defaultDisabled, NewPGStatStatementsCollector)
+	registerCollector(statStatementsSubsystem, NewPGStatStatementsCollector)
 }
 
-type PGStatStatementsConfig struct {
-	IncludeQuery     bool
-	QueryLength      uint
-	Limit            uint
-	ExcludeDatabases []string
-	ExcludeUsers     []string
-}
-
-func DefaultPGStatStatementsConfig() PGStatStatementsConfig {
-	return PGStatStatementsConfig{
-		QueryLength: 120,
-		Limit:       100,
+func defaultPGStatStatementsConfig() config.PGStatStatementsConfig {
+	return config.PGStatStatementsConfig{
+		IncludeQuery: config.DefaultPGStatStatementsIncludeQuery,
+		QueryLength:  config.DefaultPGStatStatementsQueryLength,
+		Limit:        config.DefaultPGStatStatementsLimit,
 	}
 }
 
-func (c PGStatStatementsConfig) withDefaults() PGStatStatementsConfig {
-	defaults := DefaultPGStatStatementsConfig()
+func withPGStatStatementsDefaults(c config.PGStatStatementsConfig) config.PGStatStatementsConfig {
+	defaults := defaultPGStatStatementsConfig()
 	if c.QueryLength == 0 {
 		c.QueryLength = defaults.QueryLength
 	}
@@ -71,11 +62,11 @@ type PGStatStatementsCollector struct {
 	excludedUsers         []string
 }
 
-func NewPGStatStatementsCollector(config collectorConfig) (Collector, error) {
-	statStatementsConfig := config.pgStatStatementsConfig.withDefaults()
+func NewPGStatStatementsCollector(collectorCfg collectorConfig) (Collector, error) {
+	statStatementsConfig := withPGStatStatementsDefaults(collectorCfg.pgStatStatementsConfig)
 
 	return &PGStatStatementsCollector{
-		log:                   config.logger,
+		log:                   collectorCfg.logger,
 		includeQueryStatement: statStatementsConfig.IncludeQuery,
 		statementLength:       statStatementsConfig.QueryLength,
 		statementLimit:        statStatementsConfig.Limit,

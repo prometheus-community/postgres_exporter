@@ -54,7 +54,7 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 		nil,
 		WithCollectionTimeout(cfg.CollectionTimeout.String()),
 		WithCollectorStates(cfg.Collectors),
-		WithPGStatStatementsConfig(pgStatStatementsConfig(cfg.PGStatStatements)),
+		WithPGStatStatementsConfig(cfg.PGStatStatements),
 	)
 	if err != nil {
 		runtime.Close()
@@ -93,15 +93,5 @@ func exporterOptions(cfg config.Config) []exporter.ExporterOpt {
 		exporter.ExcludeDatabases(cfg.ExcludeDatabases),
 		exporter.IncludeDatabases(strings.Join(cfg.IncludeDatabases, ",")),
 		exporter.WithMetricPrefix(cfg.MetricPrefix),
-	}
-}
-
-func pgStatStatementsConfig(cfg config.PGStatStatementsConfig) PGStatStatementsConfig {
-	return PGStatStatementsConfig{
-		IncludeQuery:     cfg.IncludeQuery,
-		QueryLength:      cfg.QueryLength,
-		Limit:            cfg.Limit,
-		ExcludeDatabases: cfg.ExcludeDatabases,
-		ExcludeUsers:     cfg.ExcludeUsers,
 	}
 }

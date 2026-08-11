@@ -21,10 +21,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const statActivitySubsystem = "stat_activity"
-
 func init() {
-	registerCollector(statActivitySubsystem, defaultEnabled, NewPGStatActivityCollector)
+	registerCollector(statActivitySubsystem, NewPGStatActivityCollector)
 }
 
 type PGStatActivityCollector struct{}

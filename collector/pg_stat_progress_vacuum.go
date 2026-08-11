@@ -21,10 +21,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const progressVacuumSubsystem = "stat_progress_vacuum"
-
 func init() {
-	registerCollector(progressVacuumSubsystem, defaultEnabled, NewPGStatProgressVacuumCollector)
+	registerCollector(progressVacuumSubsystem, NewPGStatProgressVacuumCollector)
 }
 
 type PGStatProgressVacuumCollector struct {

@@ -24,14 +24,12 @@ import (
 
 func init() {
 	// Making this default disabled because we have no tests for it
-	registerCollector(processIdleSubsystem, defaultDisabled, NewPGProcessIdleCollector)
+	registerCollector(processIdleSubsystem, NewPGProcessIdleCollector)
 }
 
 type PGProcessIdleCollector struct {
 	log *slog.Logger
 }
-
-const processIdleSubsystem = "process_idle"
 
 func NewPGProcessIdleCollector(config collectorConfig) (Collector, error) {
 	return &PGProcessIdleCollector{log: config.logger}, nil

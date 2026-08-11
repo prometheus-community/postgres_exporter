@@ -21,10 +21,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const locksSubsystem = "locks"
-
 func init() {
-	registerCollector(locksSubsystem, defaultEnabled, NewPGLocksCollector)
+	registerCollector(locksSubsystem, NewPGLocksCollector)
 }
 
 type PGLocksCollector struct {

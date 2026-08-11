@@ -21,10 +21,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const rolesSubsystem = "roles"
-
 func init() {
-	registerCollector(rolesSubsystem, defaultEnabled, NewPGRolesCollector)
+	registerCollector(rolesSubsystem, NewPGRolesCollector)
 }
 
 type PGRolesCollector struct {

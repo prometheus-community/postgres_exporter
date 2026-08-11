@@ -21,10 +21,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const xlogLocationSubsystem = "xlog_location"
-
 func init() {
-	registerCollector(xlogLocationSubsystem, defaultDisabled, NewPGXlogLocationCollector)
+	registerCollector(xlogLocationSubsystem, NewPGXlogLocationCollector)
 }
 
 type PGXlogLocationCollector struct {

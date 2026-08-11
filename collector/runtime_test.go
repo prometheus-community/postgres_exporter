@@ -14,16 +14,17 @@
 package collector
 
 import (
-	"maps"
 	"testing"
 
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/common/promslog"
 )
 
-func TestConfigCollectorDefaultsMatchRegisteredCollectors(t *testing.T) {
-	if got, want := config.DefaultCollectorConfig(), DefaultCollectorStates(); !maps.Equal(got, want) {
-		t.Fatalf("DefaultCollectorConfig() = %v, want registered collector defaults %v", got, want)
+func TestConfigCollectorDefaultsHaveRegisteredFactories(t *testing.T) {
+	for name := range config.DefaultCollectorConfig() {
+		if _, ok := factories[name]; !ok {
+			t.Errorf("collector %q has a configured default but no registered factory", name)
+		}
 	}
 }
 

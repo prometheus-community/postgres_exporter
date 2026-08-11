@@ -21,10 +21,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const statArchiverSubsystem = "stat_archiver"
-
 func init() {
-	registerCollector(statArchiverSubsystem, defaultEnabled, NewPGStatArchiverCollector)
+	registerCollector(statArchiverSubsystem, NewPGStatArchiverCollector)
 }
 
 type PGStatArchiverCollector struct{}

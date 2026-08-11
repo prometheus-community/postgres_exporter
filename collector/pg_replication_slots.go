@@ -21,10 +21,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const replicationSlotsSubsystem = "replication_slots"
-
 func init() {
-	registerCollector(replicationSlotsSubsystem, defaultEnabled, NewPGReplicationSlotsCollector)
+	registerCollector(replicationSlotsSubsystem, NewPGReplicationSlotsCollector)
 }
 
 type PGReplicationSlotsCollector struct{}
