@@ -29,7 +29,22 @@ type ProbeCollector struct {
 	instance   *instance
 }
 
+// ProbeOption configures a ProbeCollector.
+type ProbeOption func(*ProbeCollector)
+
+// WithProbeWrapLargeCounters configures wrapping 64-bit counters at 2^53.
+func WithProbeWrapLargeCounters(wrap bool) ProbeOption {
+	return func(p *ProbeCollector) {
+		p.instance.wrapLargeCounters = wrap
+	}
+}
+
 func NewProbeCollector(logger *slog.Logger, excludeDatabases []string, registry *prometheus.Registry, dsn config.DSN) (*ProbeCollector, error) {
+	return NewProbeCollectorWithOptions(logger, excludeDatabases, registry, dsn)
+}
+
+// NewProbeCollectorWithOptions creates a ProbeCollector with explicit options.
+func NewProbeCollectorWithOptions(logger *slog.Logger, excludeDatabases []string, registry *prometheus.Registry, dsn config.DSN, options ...ProbeOption) (*ProbeCollector, error) {
 	collectors := make(map[string]Collector)
 	initiatedCollectorsMtx.Lock()
 	defer initiatedCollectorsMtx.Unlock()
@@ -62,12 +77,17 @@ func NewProbeCollector(logger *slog.Logger, excludeDatabases []string, registry 
 		return nil, err
 	}
 
-	return &ProbeCollector{
+	pc := &ProbeCollector{
 		registry:   registry,
 		collectors: collectors,
 		logger:     logger,
 		instance:   instance,
-	}, nil
+	}
+	for _, option := range options {
+		option(pc)
+	}
+
+	return pc, nil
 }
 
 func (pc *ProbeCollector) Describe(ch chan<- *prometheus.Desc) {

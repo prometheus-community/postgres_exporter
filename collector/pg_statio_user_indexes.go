@@ -70,7 +70,7 @@ func (c *PGStatioUserIndexesCollector) Update(ctx context.Context, instance *ins
 	defer rows.Close()
 	for rows.Next() {
 		var schemaname, relname, indexrelname sql.NullString
-		var idxBlksRead, idxBlksHit sql.NullFloat64
+		var idxBlksRead, idxBlksHit sql.NullInt64
 
 		if err := rows.Scan(&schemaname, &relname, &indexrelname, &idxBlksRead, &idxBlksHit); err != nil {
 			return err
@@ -89,10 +89,7 @@ func (c *PGStatioUserIndexesCollector) Update(ctx context.Context, instance *ins
 		}
 		labels := []string{schemanameLabel, relnameLabel, indexrelnameLabel}
 
-		idxBlksReadMetric := 0.0
-		if idxBlksRead.Valid {
-			idxBlksReadMetric = idxBlksRead.Float64
-		}
+		idxBlksReadMetric := int64CounterValue(idxBlksRead, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statioUserIndexesIdxBlksRead,
 			prometheus.CounterValue,
@@ -100,10 +97,7 @@ func (c *PGStatioUserIndexesCollector) Update(ctx context.Context, instance *ins
 			labels...,
 		)
 
-		idxBlksHitMetric := 0.0
-		if idxBlksHit.Valid {
-			idxBlksHitMetric = idxBlksHit.Float64
-		}
+		idxBlksHitMetric := int64CounterValue(idxBlksHit, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statioUserIndexesIdxBlksHit,
 			prometheus.CounterValue,

@@ -137,50 +137,35 @@ func (c PGStatCheckpointerCollector) Update(ctx context.Context, instance *insta
 		return err
 	}
 
-	ntMetric := 0.0
-	if nt.Valid {
-		ntMetric = float64(nt.Int64)
-	}
+	ntMetric := int64CounterValue(nt, instance.wrapLargeCounters)
 	ch <- prometheus.MustNewConstMetric(
 		statCheckpointerNumTimedDesc,
 		prometheus.CounterValue,
 		ntMetric,
 	)
 
-	nrMetric := 0.0
-	if nr.Valid {
-		nrMetric = float64(nr.Int64)
-	}
+	nrMetric := int64CounterValue(nr, instance.wrapLargeCounters)
 	ch <- prometheus.MustNewConstMetric(
 		statCheckpointerNumRequestedDesc,
 		prometheus.CounterValue,
 		nrMetric,
 	)
 
-	rptMetric := 0.0
-	if rpt.Valid {
-		rptMetric = float64(rpt.Int64)
-	}
+	rptMetric := int64CounterValue(rpt, instance.wrapLargeCounters)
 	ch <- prometheus.MustNewConstMetric(
 		statCheckpointerRestartpointsTimedDesc,
 		prometheus.CounterValue,
 		rptMetric,
 	)
 
-	rprMetric := 0.0
-	if rpr.Valid {
-		rprMetric = float64(rpr.Int64)
-	}
+	rprMetric := int64CounterValue(rpr, instance.wrapLargeCounters)
 	ch <- prometheus.MustNewConstMetric(
 		statCheckpointerRestartpointsReqDesc,
 		prometheus.CounterValue,
 		rprMetric,
 	)
 
-	rpdMetric := 0.0
-	if rpd.Valid {
-		rpdMetric = float64(rpd.Int64)
-	}
+	rpdMetric := int64CounterValue(rpd, instance.wrapLargeCounters)
 	ch <- prometheus.MustNewConstMetric(
 		statCheckpointerRestartpointsDoneDesc,
 		prometheus.CounterValue,
@@ -207,10 +192,7 @@ func (c PGStatCheckpointerCollector) Update(ctx context.Context, instance *insta
 		stMetric,
 	)
 
-	bwMetric := 0.0
-	if bw.Valid {
-		bwMetric = float64(bw.Int64)
-	}
+	bwMetric := int64CounterValue(bw, instance.wrapLargeCounters)
 	ch <- prometheus.MustNewConstMetric(
 		statCheckpointerBuffersWrittenDesc,
 		prometheus.CounterValue,
