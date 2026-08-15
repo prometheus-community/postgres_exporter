@@ -16,6 +16,7 @@ package collector
 import (
 	"context"
 	"database/sql"
+	toolkit "github.com/prometheus/exporter-toolkit/collector"
 	"log/slog"
 
 	"github.com/blang/semver/v4"
@@ -25,7 +26,12 @@ import (
 const buffercacheSummarySubsystem = "buffercache_summary"
 
 func init() {
-	registerCollector(buffercacheSummarySubsystem, defaultDisabled, NewBuffercacheSummaryCollector)
+	RegisterCollectorWithMetadata(toolkit.Descriptor{
+		Name:           buffercacheSummarySubsystem,
+		Help:           "Shared buffer cache summary",
+		DefaultEnabled: defaultDisabled,
+		Requires:       []string{"the `pg_buffercache` extension", "PostgreSQL 16+"},
+	}, NewBuffercacheSummaryCollector)
 }
 
 // BuffercacheSummaryCollector collects stats from pg_buffercache: https://www.postgresql.org/docs/current/pgbuffercache.html.

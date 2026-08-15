@@ -17,6 +17,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	toolkit "github.com/prometheus/exporter-toolkit/collector"
 	"log/slog"
 	"strings"
 
@@ -42,7 +43,12 @@ func init() {
 	// WARNING:
 	//   Disabled by default because this set of metrics can be quite expensive on a busy server
 	//   Every unique query will cause a new timeseries to be created
-	registerCollector(statStatementsSubsystem, defaultDisabled, NewPGStatStatementsCollector)
+	RegisterCollectorWithMetadata(toolkit.Descriptor{
+		Name:           statStatementsSubsystem,
+		Help:           "Statement execution statistics",
+		DefaultEnabled: defaultDisabled,
+		Requires:       []string{"the `pg_stat_statements` extension"},
+	}, NewPGStatStatementsCollector)
 
 	includeQueryFlag = kingpin.Flag(
 		fmt.Sprint(collectorFlagPrefix, statStatementsSubsystem, ".include_query"),
