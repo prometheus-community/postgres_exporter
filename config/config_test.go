@@ -148,6 +148,13 @@ func TestConfigValidateFailures(t *testing.T) {
 			want: "pg_stat_statements query length must be greater than zero",
 		},
 		{
+			name: "zero pg_stat_statements limit",
+			mutate: func(cfg *Config) {
+				cfg.PGStatStatements.Limit = 0
+			},
+			want: "pg_stat_statements limit must be greater than zero",
+		},
+		{
 			name: "empty collector name",
 			mutate: func(cfg *Config) {
 				cfg.Collectors[""] = true
