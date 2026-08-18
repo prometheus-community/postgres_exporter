@@ -25,21 +25,18 @@ import (
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus-community/postgres_exporter/exporter"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/promslog"
-	"github.com/prometheus/common/promslog/flag"
-	"github.com/prometheus/common/version"
+	"github.com/prometheus/exporter-toolkit/bootstrap"
 	"github.com/prometheus/exporter-toolkit/web"
-	"github.com/prometheus/exporter-toolkit/web/kingpinflag"
 )
 
 var (
 	c = newConfigHandler()
 
 	configFile            = kingpin.Flag("config.file", "Postgres exporter configuration file.").Default("postgres_exporter.yml").String()
-	webConfig             = kingpinflag.AddFlags(kingpin.CommandLine, ":9187")
-	metricsPath           = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").Envar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
 	disableDefaultMetrics = kingpin.Flag("disable-default-metrics", "Do not include default metrics.").Default("false").Envar("PG_EXPORTER_DISABLE_DEFAULT_METRICS").Bool()
 	autoDiscoverDatabases = kingpin.Flag("auto-discover-databases", "Whether to discover the databases on a server dynamically. (DEPRECATED)").Default("false").Envar("PG_EXPORTER_AUTO_DISCOVER_DATABASES").Bool()
 	queriesPath           = kingpin.Flag("extend.query-path", "Path to custom queries to run. (DEPRECATED)").Default("").Envar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
@@ -64,16 +61,41 @@ func newConfigHandler() *config.Handler {
 }
 
 func main() {
-	kingpin.Version(version.Print(exporterName))
-	promslogConfig := &promslog.Config{}
-	flag.AddFlags(kingpin.CommandLine, promslogConfig)
-	kingpin.HelpFlag.Short('h')
-	kingpin.Parse()
-	logger = promslog.New(promslogConfig)
+	runner := bootstrap.New(bootstrap.Config{
+		App:              kingpin.CommandLine,
+		Name:             exporterName,
+		Description:      "Prometheus PostgreSQL server Exporter",
+		DefaultAddress:   ":9187",
+		MetricsPathEnvar: "PG_EXPORTER_WEB_TELEMETRY_PATH",
+		LandingConfig: web.LandingConfig{
+			Name: "Postgres Exporter",
+		},
+		MetricsHandlerFactory: newMetricsHandler,
+	})
+
+	err := runner.Run()
+	if pgExporter != nil {
+		pgExporter.CloseServers()
+	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+// pgExporter is the legacy exporter, kept package level so that its database
+// connections can be closed once the HTTP server stops.
+var pgExporter *exporter.Exporter
+
+// newMetricsHandler wires up the exporter once the toolkit has parsed the
+// command line, and registers the endpoints that are specific to
+// postgres_exporter.
+func newMetricsHandler(b *bootstrap.Bootstrap) (http.Handler, error) {
+	logger = b.Logger
 
 	if *onlyDumpMaps {
 		exporter.DumpMaps()
-		return
+		os.Exit(0)
 	}
 
 	if err := c.ReloadConfig(*configFile, logger); err != nil {
@@ -83,8 +105,7 @@ func main() {
 
 	dsns, err := exporter.GetDataSources()
 	if err != nil {
-		logger.Error("Failed reading data sources", "err", err.Error())
-		os.Exit(1)
+		return nil, fmt.Errorf("failed reading data sources: %w", err)
 	}
 
 	excludedDatabases := strings.Split(*excludeDatabases, ",")
@@ -112,14 +133,10 @@ func main() {
 		exporter.WithMetricPrefix(*metricPrefix),
 	}
 
-	exporter := exporter.NewExporter(dsns, logger, opts...)
-	defer func() {
-		exporter.CloseServers()
-	}()
+	pgExporter = exporter.NewExporter(dsns, logger, opts...)
 
 	prometheus.MustRegister(versioncollector.NewCollector(exporterName))
-
-	prometheus.MustRegister(exporter)
+	prometheus.MustRegister(pgExporter)
 
 	// TODO(@sysadmind): Remove this with multi-target support. We are removing multiple DSN support
 	dsn := ""
@@ -139,33 +156,16 @@ func main() {
 		prometheus.MustRegister(pe)
 	}
 
-	http.Handle(*metricsPath, promhttp.Handler())
-
-	if *metricsPath != "/" && *metricsPath != "" {
-		landingConfig := web.LandingConfig{
-			Name:        "Postgres Exporter",
-			Description: "Prometheus PostgreSQL server Exporter",
-			Version:     version.Info(),
-			Links: []web.LandingLinks{
-				{
-					Address: *metricsPath,
-					Text:    "Metrics",
-				},
-			},
-		}
-		landingPage, err := web.NewLandingPage(landingConfig)
-		if err != nil {
-			logger.Error("error creating landing page", "err", err)
-			os.Exit(1)
-		}
-		http.Handle("/", landingPage)
+	if b.DisableExporterMetrics {
+		prometheus.Unregister(collectors.NewGoCollector())
+		prometheus.Unregister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	}
 
-	http.HandleFunc("/probe", handleProbe(logger, excludedDatabases))
+	b.HandleFunc("/probe", handleProbe(logger, excludedDatabases))
+	// net/http/pprof registers its handlers on the default mux.
+	b.Handle("/debug/pprof/", http.DefaultServeMux)
 
-	srv := &http.Server{}
-	if err := web.ListenAndServe(srv, webConfig, logger); err != nil {
-		logger.Error("Error running HTTP server", "err", err)
-		os.Exit(1)
-	}
+	return promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{
+		MaxRequestsInFlight: b.MaxRequests,
+	}), nil
 }
