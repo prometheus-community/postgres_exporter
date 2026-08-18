@@ -63,13 +63,36 @@ func newConfigHandler() *config.Handler {
 	return handler
 }
 
+var listCollectors = kingpin.Flag(
+	"collector.list",
+	"Print the collector inventory as JSON and exit.",
+).Hidden().Bool()
+
+var listCollectorsMarkdown = kingpin.Flag(
+	"collector.list.markdown",
+	"Print the collector inventory as a Markdown table and exit.",
+).Hidden().Bool()
+
 func main() {
 	kingpin.Version(version.Print(exporterName))
+	collector.AddFlags(kingpin.CommandLine)
 	promslogConfig := &promslog.Config{}
 	flag.AddFlags(kingpin.CommandLine, promslogConfig)
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 	logger = promslog.New(promslogConfig)
+
+	if *listCollectors || *listCollectorsMarkdown {
+		write := collector.WriteCollectorList
+		if *listCollectorsMarkdown {
+			write = collector.WriteCollectorMarkdown
+		}
+		if err := write(os.Stdout); err != nil {
+			logger.Error("failed to list collectors", "err", err)
+			os.Exit(1)
+		}
+		return
+	}
 
 	if *onlyDumpMaps {
 		exporter.DumpMaps()

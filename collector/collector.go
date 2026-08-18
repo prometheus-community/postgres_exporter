@@ -17,21 +17,14 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
+	"io"
 	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
-)
-
-var (
-	factories              = make(map[string]func(collectorConfig) (Collector, error))
-	initiatedCollectorsMtx = sync.Mutex{}
-	initiatedCollectors    = make(map[string]Collector)
-	collectorState         = make(map[string]*bool)
-	forcedCollectors       = map[string]bool{} // collectors which have been explicitly enabled or disabled
+	toolkit "github.com/prometheus/exporter-toolkit/collector"
 )
 
 const (
@@ -43,21 +36,6 @@ const (
 	defaultDisabled     = false
 )
 
-var (
-	scrapeDurationDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "scrape", "collector_duration_seconds"),
-		"postgres_exporter: Duration of a collector scrape.",
-		[]string{"collector"},
-		nil,
-	)
-	scrapeSuccessDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "scrape", "collector_success"),
-		"postgres_exporter: Whether a collector succeeded.",
-		[]string{"collector"},
-		nil,
-	)
-)
-
 type Collector interface {
 	Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error
 }
@@ -67,24 +45,52 @@ type collectorConfig struct {
 	excludeDatabases []string
 }
 
+// registry replaces the factories/collectorState/forcedCollectors maps that
+// were duplicated verbatim from node_exporter.
+var collectorRegistry = toolkit.NewRegistry[Collector, collectorConfig](namespace)
+
+// scrapeReporter emits pg_scrape_collector_duration_seconds and
+// pg_scrape_collector_success.
+var scrapeReporter = toolkit.NewScrapeReporter(namespace, "postgres_exporter")
+
+// registerCollector keeps its original signature so the per-collector files
+// registering from init() do not change.
 func registerCollector(name string, isDefaultEnabled bool, createFunc func(collectorConfig) (Collector, error)) {
-	var helpDefaultState string
-	if isDefaultEnabled {
-		helpDefaultState = "enabled"
-	} else {
-		helpDefaultState = "disabled"
-	}
+	collectorRegistry.Register(toolkit.Descriptor{
+		Name:           name,
+		DefaultEnabled: isDefaultEnabled,
+	}, createFunc)
+}
 
-	// Create flag for this collector
-	flagName := collectorFlagPrefix + name
-	flagHelp := fmt.Sprintf("Enable the %s collector (default: %s).", name, helpDefaultState)
-	defaultValue := fmt.Sprintf("%v", isDefaultEnabled)
+// RegisterCollectorWithMetadata registers a collector along with the operator
+// preconditions it needs, so documentation can be generated from the registry.
+func RegisterCollectorWithMetadata(d toolkit.Descriptor, createFunc func(collectorConfig) (Collector, error)) {
+	collectorRegistry.Register(d, createFunc)
+}
 
-	flag := kingpin.Flag(flagName, flagHelp).Default(defaultValue).Action(collectorFlagAction(name)).Bool()
-	collectorState[name] = flag
+// AddFlags registers the --collector.<name> flags. Call before kingpin.Parse.
+func AddFlags(app *kingpin.Application) {
+	collectorRegistry.AddFlags(app)
+}
 
-	// Register the create function for this collector
-	factories[name] = createFunc
+// DisableDefaultCollectors disables every collector not named explicitly.
+func DisableDefaultCollectors() {
+	collectorRegistry.DisableDefaults()
+}
+
+// WriteCollectorList writes the machine-readable collector inventory.
+func WriteCollectorList(w io.Writer) error {
+	return collectorRegistry.WriteJSON(w)
+}
+
+// WriteCollectorMarkdown writes the docs table for docs/configuration.md.
+func WriteCollectorMarkdown(w io.Writer) error {
+	return collectorRegistry.WriteMarkdown(w)
+}
+
+// EnabledMetrics exposes pg_collector_enabled per collector.
+func EnabledMetrics() prometheus.Collector {
+	return collectorRegistry.EnabledMetrics()
 }
 
 // PostgresCollector implements the prometheus.Collector interface.
@@ -111,37 +117,14 @@ func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn st
 		}
 	}
 
-	f := make(map[string]bool)
-	for _, filter := range filters {
-		enabled, exist := collectorState[filter]
-		if !exist {
-			return nil, fmt.Errorf("missing collector: %s", filter)
+	collectors, err := collectorRegistry.Build(func(name string) collectorConfig {
+		return collectorConfig{
+			logger:           logger.With("collector", name),
+			excludeDatabases: excludeDatabases,
 		}
-		if !*enabled {
-			return nil, fmt.Errorf("disabled collector: %s", filter)
-		}
-		f[filter] = true
-	}
-	collectors := make(map[string]Collector)
-	initiatedCollectorsMtx.Lock()
-	defer initiatedCollectorsMtx.Unlock()
-	for key, enabled := range collectorState {
-		if !*enabled || (len(f) > 0 && !f[key]) {
-			continue
-		}
-		if collector, ok := initiatedCollectors[key]; ok {
-			collectors[key] = collector
-		} else {
-			collector, err := factories[key](collectorConfig{
-				logger:           logger.With("collector", key),
-				excludeDatabases: excludeDatabases,
-			})
-			if err != nil {
-				return nil, err
-			}
-			collectors[key] = collector
-			initiatedCollectors[key] = collector
-		}
+	}, filters...)
+	if err != nil {
+		return nil, err
 	}
 
 	p.Collectors = collectors
@@ -175,8 +158,7 @@ func WithCollectionTimeout(s string) Option {
 
 // Describe implements the prometheus.Collector interface.
 func (p PostgresCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- scrapeDurationDesc
-	ch <- scrapeSuccessDesc
+	scrapeReporter.Describe(ch)
 }
 
 // Collect implements the prometheus.Collector interface.
@@ -218,7 +200,6 @@ func execute(ctx context.Context, name string, c Collector, instance *instance, 
 	begin := time.Now()
 	err := c.Update(ctx, instance, ch)
 	duration := time.Since(begin)
-	var success float64
 
 	if err != nil {
 		if IsNoDataError(err) {
@@ -226,25 +207,10 @@ func execute(ctx context.Context, name string, c Collector, instance *instance, 
 		} else {
 			logger.Error("collector failed", "name", name, "duration_seconds", duration.Seconds(), "err", err)
 		}
-		success = 0
 	} else {
 		logger.Debug("collector succeeded", "name", name, "duration_seconds", duration.Seconds())
-		success = 1
 	}
-	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), name)
-	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name)
-}
-
-// collectorFlagAction generates a new action function for the given collector
-// to track whether it has been explicitly enabled or disabled from the command line.
-// A new action function is needed for each collector flag because the ParseContext
-// does not contain information about which flag called the action.
-// See: https://github.com/alecthomas/kingpin/issues/294
-func collectorFlagAction(collector string) func(ctx *kingpin.ParseContext) error {
-	return func(ctx *kingpin.ParseContext) error {
-		forcedCollectors[collector] = true
-		return nil
-	}
+	scrapeReporter.Report(ch, name, duration, err)
 }
 
 // ErrNoData indicates the collector found no data to collect, but had no other error.

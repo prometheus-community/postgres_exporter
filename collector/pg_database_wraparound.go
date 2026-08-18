@@ -16,6 +16,7 @@ package collector
 import (
 	"context"
 	"database/sql"
+	toolkit "github.com/prometheus/exporter-toolkit/collector"
 	"log/slog"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -24,7 +25,11 @@ import (
 const databaseWraparoundSubsystem = "database_wraparound"
 
 func init() {
-	registerCollector(databaseWraparoundSubsystem, defaultDisabled, NewPGDatabaseWraparoundCollector)
+	RegisterCollectorWithMetadata(toolkit.Descriptor{
+		Name:           databaseWraparoundSubsystem,
+		Help:           "Transaction ID wraparound risk",
+		DefaultEnabled: defaultDisabled,
+	}, NewPGDatabaseWraparoundCollector)
 }
 
 type PGDatabaseWraparoundCollector struct {

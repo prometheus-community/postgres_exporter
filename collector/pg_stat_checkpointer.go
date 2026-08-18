@@ -16,6 +16,7 @@ package collector
 import (
 	"context"
 	"database/sql"
+	toolkit "github.com/prometheus/exporter-toolkit/collector"
 	"log/slog"
 
 	"github.com/blang/semver/v4"
@@ -27,7 +28,12 @@ const statCheckpointerSubsystem = "stat_checkpointer"
 func init() {
 	// WARNING:
 	//   Disabled by default because this set of metrics is only available from Postgres 17
-	registerCollector(statCheckpointerSubsystem, defaultDisabled, NewPGStatCheckpointerCollector)
+	RegisterCollectorWithMetadata(toolkit.Descriptor{
+		Name:           statCheckpointerSubsystem,
+		Help:           "Checkpointer activity",
+		DefaultEnabled: defaultDisabled,
+		Requires:       []string{"PostgreSQL 17+"},
+	}, NewPGStatCheckpointerCollector)
 }
 
 type PGStatCheckpointerCollector struct {

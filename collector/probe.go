@@ -30,31 +30,15 @@ type ProbeCollector struct {
 }
 
 func NewProbeCollector(logger *slog.Logger, excludeDatabases []string, registry *prometheus.Registry, dsn config.DSN) (*ProbeCollector, error) {
-	collectors := make(map[string]Collector)
-	initiatedCollectorsMtx.Lock()
-	defer initiatedCollectorsMtx.Unlock()
-	for key, enabled := range collectorState {
-		// TODO: Handle filters
-		// if !*enabled || (len(f) > 0 && !f[key]) {
-		// 	continue
-		// }
-		if !*enabled {
-			continue
+	// TODO: Handle filters (was already a TODO before the registry existed).
+	collectors, err := collectorRegistry.Build(func(name string) collectorConfig {
+		return collectorConfig{
+			logger:           logger.With("collector", name),
+			excludeDatabases: excludeDatabases,
 		}
-		if collector, ok := initiatedCollectors[key]; ok {
-			collectors[key] = collector
-		} else {
-			collector, err := factories[key](
-				collectorConfig{
-					logger:           logger.With("collector", key),
-					excludeDatabases: excludeDatabases,
-				})
-			if err != nil {
-				return nil, err
-			}
-			collectors[key] = collector
-			initiatedCollectors[key] = collector
-		}
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	instance, err := newInstance(dsn.GetConnectionString())
