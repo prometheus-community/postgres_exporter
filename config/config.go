@@ -125,8 +125,11 @@ func NewConfigWithDefaults() Config {
 }
 
 // Validate checks the configuration and, on success, returns a
-// ValidatedConfig holding a deep copy of it.
+// ValidatedConfig holding a deep copy of it. Validation runs against the copy,
+// so concurrent mutations of the caller's Config cannot affect the outcome.
 func (c Config) Validate() (ValidatedConfig, error) {
+	c = c.clone()
+
 	if c.MetricPrefix == "" {
 		return ValidatedConfig{}, fmt.Errorf("metric prefix must not be empty")
 	}
@@ -138,10 +141,10 @@ func (c Config) Validate() (ValidatedConfig, error) {
 			return ValidatedConfig{}, fmt.Errorf("data source name at index %d must not be empty", i)
 		}
 	}
-	if c.PGStatStatements.QueryLength == 0 {
+	if c.PGStatStatements.QueryLength <= 0 {
 		return ValidatedConfig{}, fmt.Errorf("pg_stat_statements query length must be greater than zero")
 	}
-	if c.PGStatStatements.Limit == 0 {
+	if c.PGStatStatements.Limit <= 0 {
 		return ValidatedConfig{}, fmt.Errorf("pg_stat_statements limit must be greater than zero")
 	}
 	for name := range c.Collectors {
@@ -153,7 +156,7 @@ func (c Config) Validate() (ValidatedConfig, error) {
 		}
 	}
 
-	return ValidatedConfig{inner: c.clone(), ok: true}, nil
+	return ValidatedConfig{inner: c, ok: true}, nil
 }
 
 // clone returns a copy of the Config with all reference-bearing fields
