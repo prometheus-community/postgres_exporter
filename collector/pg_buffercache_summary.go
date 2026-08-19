@@ -22,10 +22,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const buffercacheSummarySubsystem = "buffercache_summary"
-
 func init() {
-	registerCollector(buffercacheSummarySubsystem, defaultDisabled, NewBuffercacheSummaryCollector)
+	registerCollector(buffercacheSummarySubsystem, NewBuffercacheSummaryCollector)
 }
 
 // BuffercacheSummaryCollector collects stats from pg_buffercache: https://www.postgresql.org/docs/current/pgbuffercache.html.

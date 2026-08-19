@@ -22,12 +22,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const statCheckpointerSubsystem = "stat_checkpointer"
-
 func init() {
 	// WARNING:
 	//   Disabled by default because this set of metrics is only available from Postgres 17
-	registerCollector(statCheckpointerSubsystem, defaultDisabled, NewPGStatCheckpointerCollector)
+	registerCollector(statCheckpointerSubsystem, NewPGStatCheckpointerCollector)
 }
 
 type PGStatCheckpointerCollector struct {

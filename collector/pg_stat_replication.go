@@ -22,10 +22,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const statReplicationSubsystem = "stat_replication"
-
 func init() {
-	registerCollector(statReplicationSubsystem, defaultEnabled, NewPGStatReplicationCollector)
+	registerCollector(statReplicationSubsystem, NewPGStatReplicationCollector)
 }
 
 type PGStatReplicationCollector struct{}

@@ -21,14 +21,12 @@ import (
 )
 
 func init() {
-	registerCollector(statioUserIndexesSubsystem, defaultDisabled, NewPGStatioUserIndexesCollector)
+	registerCollector(statioUserIndexesSubsystem, NewPGStatioUserIndexesCollector)
 }
 
 type PGStatioUserIndexesCollector struct {
 	log *slog.Logger
 }
-
-const statioUserIndexesSubsystem = "statio_user_indexes"
 
 func NewPGStatioUserIndexesCollector(config collectorConfig) (Collector, error) {
 	return &PGStatioUserIndexesCollector{log: config.logger}, nil

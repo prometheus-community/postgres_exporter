@@ -20,10 +20,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const statActivityAutovacuumSubsystem = "stat_activity_autovacuum"
-
 func init() {
-	registerCollector(statActivityAutovacuumSubsystem, defaultDisabled, NewPGStatActivityAutovacuumCollector)
+	registerCollector(statActivityAutovacuumSubsystem, NewPGStatActivityAutovacuumCollector)
 }
 
 type PGStatActivityAutovacuumCollector struct {

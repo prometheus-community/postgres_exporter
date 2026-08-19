@@ -18,14 +18,192 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"os"
+	"slices"
 	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	DefaultMetricPrefix      string        = "pg"
+	DefaultCollectionTimeout time.Duration = time.Minute
+
+	DefaultPGStatStatementsIncludeQuery bool = false
+	DefaultPGStatStatementsQueryLength  uint = 120
+	DefaultPGStatStatementsLimit        uint = 100
+)
+
+const (
+	CollectorBuffercacheSummary      = "buffercache_summary"
+	CollectorDatabase                = "database"
+	CollectorDatabaseWraparound      = "database_wraparound"
+	CollectorLocks                   = "locks"
+	CollectorLongRunningTransactions = "long_running_transactions"
+	CollectorPostmaster              = "postmaster"
+	CollectorProcessIdle             = "process_idle"
+	CollectorReplication             = "replication"
+	CollectorReplicationSlots        = "replication_slots"
+	CollectorRoles                   = "roles"
+	CollectorSettings                = "settings"
+	CollectorStatActivity            = "stat_activity"
+	CollectorStatActivityAutovacuum  = "stat_activity_autovacuum"
+	CollectorStatArchiver            = "stat_archiver"
+	CollectorStatBGWriter            = "stat_bgwriter"
+	CollectorStatCheckpointer        = "stat_checkpointer"
+	CollectorStatDatabase            = "stat_database"
+	CollectorStatProgressVacuum      = "stat_progress_vacuum"
+	CollectorStatReplication         = "stat_replication"
+	CollectorStatStatements          = "stat_statements"
+	CollectorStatUserTables          = "stat_user_tables"
+	CollectorStatWalReceiver         = "stat_wal_receiver"
+	CollectorStatioUserIndexes       = "statio_user_indexes"
+	CollectorStatioUserTables        = "statio_user_tables"
+	CollectorWal                     = "wal"
+	CollectorXlogLocation            = "xlog_location"
+)
+
 type Config struct {
+	DataSourceNames       []string
+	MetricPrefix          string
+	CollectionTimeout     time.Duration
+	DisableDefaultMetrics bool
+	AutoDiscoverDatabases bool
+	UserQueriesPath       string
+	ConstantLabels        string
+	ExcludeDatabases      []string
+	IncludeDatabases      []string
+	Collectors            map[string]bool
+	PGStatStatements      PGStatStatementsConfig
+}
+
+// ValidatedConfig is the result of a successful Config.Validate call. It holds
+// a private deep copy of the validated Config, so later mutations of the
+// original cannot invalidate it. Consumers that require validated
+// configuration (e.g. collector.NewRuntime) accept this type instead of
+// Config, making validation impossible to skip.
+type ValidatedConfig struct {
+	inner Config
+	ok    bool
+}
+
+// Valid reports whether this value was produced by a successful
+// Config.Validate call. It only returns false for zero-value ValidatedConfig
+// structs that bypassed validation.
+func (v ValidatedConfig) Valid() bool {
+	return v.ok
+}
+
+// Config returns a deep copy of the validated configuration. Mutating the
+// returned value does not affect the validated state.
+func (v ValidatedConfig) Config() Config {
+	return v.inner.clone()
+}
+
+type PGStatStatementsConfig struct {
+	IncludeQuery     bool
+	QueryLength      uint
+	Limit            uint
+	ExcludeDatabases []string
+	ExcludeUsers     []string
+}
+
+func NewConfigWithDefaults() Config {
+	return Config{
+		MetricPrefix:      DefaultMetricPrefix,
+		CollectionTimeout: DefaultCollectionTimeout,
+		Collectors:        DefaultCollectorConfig(),
+		PGStatStatements: PGStatStatementsConfig{
+			IncludeQuery: DefaultPGStatStatementsIncludeQuery,
+			QueryLength:  DefaultPGStatStatementsQueryLength,
+			Limit:        DefaultPGStatStatementsLimit,
+		},
+	}
+}
+
+// Validate checks the configuration and, on success, returns a
+// ValidatedConfig holding a deep copy of it. Validation runs against the copy,
+// so concurrent mutations of the caller's Config cannot affect the outcome.
+func (c Config) Validate() (ValidatedConfig, error) {
+	c = c.clone()
+
+	if c.MetricPrefix == "" {
+		return ValidatedConfig{}, fmt.Errorf("metric prefix must not be empty")
+	}
+	if c.CollectionTimeout <= 0 {
+		return ValidatedConfig{}, fmt.Errorf("collection timeout must be greater than zero")
+	}
+	for i, dsn := range c.DataSourceNames {
+		if dsn == "" {
+			return ValidatedConfig{}, fmt.Errorf("data source name at index %d must not be empty", i)
+		}
+	}
+	if c.PGStatStatements.QueryLength <= 0 {
+		return ValidatedConfig{}, fmt.Errorf("pg_stat_statements query length must be greater than zero")
+	}
+	if c.PGStatStatements.Limit <= 0 {
+		return ValidatedConfig{}, fmt.Errorf("pg_stat_statements limit must be greater than zero")
+	}
+	for name := range c.Collectors {
+		if name == "" {
+			return ValidatedConfig{}, fmt.Errorf("collector name must not be empty")
+		}
+		if _, ok := DefaultCollectorConfig()[name]; !ok {
+			return ValidatedConfig{}, fmt.Errorf("unknown collector %q", name)
+		}
+	}
+
+	return ValidatedConfig{inner: c, ok: true}, nil
+}
+
+// clone returns a copy of the Config with all reference-bearing fields
+// (slices and maps) deep-copied, so the copy shares no mutable state with the
+// original.
+func (c Config) clone() Config {
+	c.DataSourceNames = slices.Clone(c.DataSourceNames)
+	c.ExcludeDatabases = slices.Clone(c.ExcludeDatabases)
+	c.IncludeDatabases = slices.Clone(c.IncludeDatabases)
+	c.Collectors = maps.Clone(c.Collectors)
+	c.PGStatStatements.ExcludeDatabases = slices.Clone(c.PGStatStatements.ExcludeDatabases)
+	c.PGStatStatements.ExcludeUsers = slices.Clone(c.PGStatStatements.ExcludeUsers)
+	return c
+}
+
+func DefaultCollectorConfig() map[string]bool {
+	return map[string]bool{
+		CollectorBuffercacheSummary:      false,
+		CollectorDatabase:                true,
+		CollectorDatabaseWraparound:      false,
+		CollectorLocks:                   true,
+		CollectorLongRunningTransactions: false,
+		CollectorPostmaster:              false,
+		CollectorProcessIdle:             false,
+		CollectorReplication:             true,
+		CollectorReplicationSlots:        true,
+		CollectorRoles:                   true,
+		CollectorSettings:                true,
+		CollectorStatActivity:            true,
+		CollectorStatActivityAutovacuum:  false,
+		CollectorStatArchiver:            true,
+		CollectorStatBGWriter:            true,
+		CollectorStatCheckpointer:        false,
+		CollectorStatDatabase:            true,
+		CollectorStatProgressVacuum:      true,
+		CollectorStatReplication:         true,
+		CollectorStatStatements:          false,
+		CollectorStatUserTables:          true,
+		CollectorStatWalReceiver:         false,
+		CollectorStatioUserIndexes:       false,
+		CollectorStatioUserTables:        true,
+		CollectorWal:                     true,
+		CollectorXlogLocation:            false,
+	}
+}
+
+type AuthConfig struct {
 	AuthModules map[string]AuthModule `yaml:"auth_modules"`
 }
 
@@ -43,7 +221,7 @@ type UserPass struct {
 
 type Handler struct {
 	sync.RWMutex
-	Config *Config
+	Config *AuthConfig
 
 	configReloadSuccess prometheus.Gauge
 	configReloadSeconds prometheus.Gauge
@@ -54,7 +232,7 @@ func NewHandler(registerer prometheus.Registerer) (*Handler, error) {
 		return nil, errors.New("registerer is required")
 	}
 	h := &Handler{
-		Config: &Config{},
+		Config: &AuthConfig{},
 		configReloadSuccess: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: "postgres_exporter",
 			Name:      "config_last_reload_successful",
@@ -71,24 +249,24 @@ func NewHandler(registerer prometheus.Registerer) (*Handler, error) {
 	return h, nil
 }
 
-func (ch *Handler) GetConfig() *Config {
+func (ch *Handler) GetAuthConfig() *AuthConfig {
 	ch.RLock()
 	defer ch.RUnlock()
 	return ch.Config
 }
 
-func (ch *Handler) ReloadConfig(f string, logger *slog.Logger) error {
+func (ch *Handler) ReloadAuthConfig(f string, logger *slog.Logger) error {
 	var err error
 	defer func() {
 		ch.observeReload(err)
 	}()
 
-	config, err := LoadConfig(f)
+	config, err := LoadAuthConfig(f)
 	if err != nil {
 		return err
 	}
 
-	ch.SetConfig(config)
+	ch.SetAuthConfig(config)
 	return nil
 }
 
@@ -106,22 +284,22 @@ func (ch *Handler) observeReload(err error) {
 	}
 }
 
-func LoadConfig(f string) (*Config, error) {
+func LoadAuthConfig(f string) (*AuthConfig, error) {
 	yamlReader, err := os.Open(f)
 	if err != nil {
 		return nil, fmt.Errorf("error opening config file %q: %s", f, err)
 	}
 	defer yamlReader.Close()
 
-	config, err := DecodeConfig(yamlReader)
+	config, err := DecodeAuthConfig(yamlReader)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing config file %q: %s", f, err)
 	}
 	return config, nil
 }
 
-func DecodeConfig(r io.Reader) (*Config, error) {
-	config := &Config{}
+func DecodeAuthConfig(r io.Reader) (*AuthConfig, error) {
+	config := &AuthConfig{}
 	decoder := yaml.NewDecoder(r)
 	decoder.KnownFields(true)
 
@@ -131,7 +309,7 @@ func DecodeConfig(r io.Reader) (*Config, error) {
 	return config, nil
 }
 
-func (ch *Handler) SetConfig(config *Config) {
+func (ch *Handler) SetAuthConfig(config *AuthConfig) {
 	ch.Lock()
 	ch.Config = config
 	ch.Unlock()

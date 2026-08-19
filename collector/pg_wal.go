@@ -20,10 +20,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const walSubsystem = "wal"
-
 func init() {
-	registerCollector(walSubsystem, defaultEnabled, NewPGWALCollector)
+	registerCollector(walSubsystem, NewPGWALCollector)
 }
 
 type PGWALCollector struct {
