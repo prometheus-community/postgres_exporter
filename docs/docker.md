@@ -11,7 +11,7 @@ All three are the same image; there's no functional difference between them — 
 ## Tags
 
 - `latest` — the most recent release.
-- `vX.Y.Z` — a specific release, e.g. `v0.18.1`. Pin to a specific tag for production deployments so upgrades are intentional.
+- `vX.Y.Z` — a specific release, e.g. `v0.20.1`. Pin to a specific tag for production deployments so upgrades are intentional.
 - `master` — the latest build from the `master` branch, which may be unstable. Use this only for testing or development.
 
 Available tags are listed on the [Docker Hub tags page](https://hub.docker.com/r/prometheuscommunity/postgres-exporter/tags).
@@ -25,13 +25,18 @@ Available tags are listed on the [Docker Hub tags page](https://hub.docker.com/r
 
 ## Running
 
+[Getting Started](getting-started.md) covers the basic invocation. A couple of things that are specific to running in a container:
+
+Because the binary is the `ENTRYPOINT`, flags go straight on the end of the `docker run` line:
+
 ```bash
 docker run \
-  --net=host \
-  -e DATA_SOURCE_URI="localhost:5432/postgres?sslmode=disable" \
+  -p 9187:9187 \
+  -e DATA_SOURCE_URI="my-postgres-host:5432/postgres?sslmode=disable" \
   -e DATA_SOURCE_USER=postgres \
   -e DATA_SOURCE_PASS=password \
-  quay.io/prometheuscommunity/postgres-exporter
+  quay.io/prometheuscommunity/postgres-exporter \
+  --no-collector.stat_bgwriter --log.level=debug
 ```
 
 To mount a secrets file instead of passing a password in an environment variable:

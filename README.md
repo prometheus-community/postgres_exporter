@@ -31,17 +31,7 @@ Test with:
 curl "http://localhost:9187/metrics"
 ```
 
-Example Prometheus config:
-```yaml
-scrape_configs:
-  - job_name: postgres
-    static_configs:
-      - targets: ["127.0.0.1:9187"] # Replace IP with the hostname of the docker container if you're running the container in a separate network
-```
-
-Now use the DATA_SOURCE_PASS_FILE with a mounted file containing the password to prevent having the password in an environment variable.
-
-The container process runs with uid/gid 65534 (important for file permissions).
+See [Getting Started](docs/getting-started.md) for the other ways to install it, how to point Prometheus at it, and how to supply the password without putting it in an environment variable.
 
 ## Multi-Target Support
 
