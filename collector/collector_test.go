@@ -65,6 +65,39 @@ func sanitizeQuery(q string) string {
 	return q
 }
 
+func TestPostgresCollectorWrapLargeCounters(t *testing.T) {
+	tests := []struct {
+		name    string
+		options []Option
+		want    bool
+	}{
+		{name: "enabled by default", want: true},
+		{name: "disabled by option", options: []Option{WithWrapLargeCounters(false)}, want: false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			collector, err := NewPostgresCollector(
+				promslog.NewNopLogger(),
+				nil,
+				"postgresql://local",
+				nil,
+				test.options...,
+			)
+			if err != nil {
+				t.Fatalf("creating collector: %v", err)
+			}
+
+			if got := collector.instance.wrapLargeCounters; got != test.want {
+				t.Fatalf("instance wrapLargeCounters = %t, want %t", got, test.want)
+			}
+			if got := collector.instance.copy().wrapLargeCounters; got != test.want {
+				t.Fatalf("copied instance wrapLargeCounters = %t, want %t", got, test.want)
+			}
+		})
+	}
+}
+
 // We ensure that when the database respond after a long time
 // The collection process still occurs in a predictable manner
 // Will avoid accumulation of queries on a completely frozen DB

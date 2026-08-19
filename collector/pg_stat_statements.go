@@ -292,10 +292,7 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 		}
 		seen[key] = struct{}{}
 
-		callsTotalMetric := 0.0
-		if callsTotal.Valid {
-			callsTotalMetric = float64(callsTotal.Int64)
-		}
+		callsTotalMetric := int64CounterValue(callsTotal, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statStatementsCallsTotal,
 			prometheus.CounterValue,
@@ -314,10 +311,7 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 			userLabel, datnameLabel, queryidLabel,
 		)
 
-		rowsTotalMetric := 0.0
-		if rowsTotal.Valid {
-			rowsTotalMetric = float64(rowsTotal.Int64)
-		}
+		rowsTotalMetric := int64CounterValue(rowsTotal, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statStatementsRowsTotal,
 			prometheus.CounterValue,

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/smartystreets/goconvey/convey"
@@ -147,5 +148,57 @@ func TestPGStatBGWriterCollectorNullValues(t *testing.T) {
 	})
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled exceptions: %s", err)
+	}
+}
+
+func TestPGStatBGWriterCollectorWrapsLargeCounters(t *testing.T) {
+	const largeCounter = int64(1<<53) + 1
+
+	tests := []struct {
+		name  string
+		wrap  bool
+		value float64
+	}{
+		{name: "enabled", wrap: true, value: 1},
+		{name: "disabled", wrap: false, value: float64(largeCounter)},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			if err != nil {
+				t.Fatalf("opening stub database: %s", err)
+			}
+			t.Cleanup(func() { _ = db.Close() })
+
+			inst := &instance{
+				db:                db,
+				version:           semver.MustParse("17.0.0"),
+				wrapLargeCounters: test.wrap,
+			}
+			columns := []string{"buffers_clean", "maxwritten_clean", "buffers_alloc", "stats_reset"}
+			rows := sqlmock.NewRows(columns).AddRow(largeCounter, 0, 0, nil)
+			mock.ExpectQuery(sanitizeQuery(statBGWriterQueryAfter17)).WillReturnRows(rows)
+
+			ch := make(chan prometheus.Metric)
+			go func() {
+				defer close(ch)
+				if err := (PGStatBGWriterCollector{}).Update(context.Background(), inst, ch); err != nil {
+					t.Errorf("updating collector: %s", err)
+				}
+			}()
+
+			metric := readMetric(<-ch)
+			if metric.value != test.value {
+				t.Fatalf("buffers_clean value = %v, want %v", metric.value, test.value)
+			}
+			for range 3 {
+				<-ch
+			}
+
+			if err := mock.ExpectationsWereMet(); err != nil {
+				t.Errorf("unmet database expectations: %v", err)
+			}
+		})
 	}
 }

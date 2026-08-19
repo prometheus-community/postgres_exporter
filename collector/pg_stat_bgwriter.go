@@ -137,28 +137,19 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, c
 			return err
 		}
 
-		bcMetric := 0.0
-		if bc.Valid {
-			bcMetric = float64(bc.Int64)
-		}
+		bcMetric := int64CounterValue(bc, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statBGWriterBuffersCleanDesc,
 			prometheus.CounterValue,
 			bcMetric,
 		)
-		mwcMetric := 0.0
-		if mwc.Valid {
-			mwcMetric = float64(mwc.Int64)
-		}
+		mwcMetric := int64CounterValue(mwc, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statBGWriterMaxwrittenCleanDesc,
 			prometheus.CounterValue,
 			mwcMetric,
 		)
-		baMetric := 0.0
-		if ba.Valid {
-			baMetric = float64(ba.Int64)
-		}
+		baMetric := int64CounterValue(ba, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statBGWriterBuffersAllocDesc,
 			prometheus.CounterValue,
@@ -186,19 +177,13 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, c
 			return err
 		}
 
-		cptMetric := 0.0
-		if cpt.Valid {
-			cptMetric = float64(cpt.Int64)
-		}
+		cptMetric := int64CounterValue(cpt, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statBGWriterCheckpointsTimedDesc,
 			prometheus.CounterValue,
 			cptMetric,
 		)
-		cprMetric := 0.0
-		if cpr.Valid {
-			cprMetric = float64(cpr.Int64)
-		}
+		cprMetric := int64CounterValue(cpr, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statBGWriterCheckpointsReqDesc,
 			prometheus.CounterValue,
@@ -222,55 +207,37 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, c
 			prometheus.CounterValue,
 			cpstMetric,
 		)
-		bcpMetric := 0.0
-		if bcp.Valid {
-			bcpMetric = float64(bcp.Int64)
-		}
+		bcpMetric := int64CounterValue(bcp, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statBGWriterBuffersCheckpointDesc,
 			prometheus.CounterValue,
 			bcpMetric,
 		)
-		bcMetric := 0.0
-		if bc.Valid {
-			bcMetric = float64(bc.Int64)
-		}
+		bcMetric := int64CounterValue(bc, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statBGWriterBuffersCleanDesc,
 			prometheus.CounterValue,
 			bcMetric,
 		)
-		mwcMetric := 0.0
-		if mwc.Valid {
-			mwcMetric = float64(mwc.Int64)
-		}
+		mwcMetric := int64CounterValue(mwc, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statBGWriterMaxwrittenCleanDesc,
 			prometheus.CounterValue,
 			mwcMetric,
 		)
-		bbMetric := 0.0
-		if bb.Valid {
-			bbMetric = float64(bb.Int64)
-		}
+		bbMetric := int64CounterValue(bb, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statBGWriterBuffersBackendDesc,
 			prometheus.CounterValue,
 			bbMetric,
 		)
-		bbfMetric := 0.0
-		if bbf.Valid {
-			bbfMetric = float64(bbf.Int64)
-		}
+		bbfMetric := int64CounterValue(bbf, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statBGWriterBuffersBackendFsyncDesc,
 			prometheus.CounterValue,
 			bbfMetric,
 		)
-		baMetric := 0.0
-		if ba.Valid {
-			baMetric = float64(ba.Int64)
-		}
+		baMetric := int64CounterValue(ba, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
 			statBGWriterBuffersAllocDesc,
 			prometheus.CounterValue,

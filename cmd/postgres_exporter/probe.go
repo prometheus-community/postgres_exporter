@@ -73,6 +73,7 @@ func handleProbe(logger *slog.Logger, excludeDatabases []string) http.HandlerFun
 			exporter.ExcludeDatabases(excludeDatabases),
 			exporter.IncludeDatabases(*includeDatabases),
 			exporter.WithMetricPrefix(*metricPrefix),
+			exporter.WrapLargeCounters(*wrapLargeCounters),
 		}
 
 		dsns := []string{dsn.GetConnectionString()}
@@ -83,7 +84,13 @@ func handleProbe(logger *slog.Logger, excludeDatabases []string) http.HandlerFun
 		registry.MustRegister(exporter)
 
 		// Run the probe
-		pc, err := collector.NewProbeCollector(tl, excludeDatabases, registry, dsn)
+		pc, err := collector.NewProbeCollectorWithOptions(
+			tl,
+			excludeDatabases,
+			registry,
+			dsn,
+			collector.WithProbeWrapLargeCounters(*wrapLargeCounters),
+		)
 		if err != nil {
 			logger.Error("Error creating probe collector", "err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)

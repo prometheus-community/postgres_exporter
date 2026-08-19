@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
+	"github.com/prometheus-community/postgres_exporter/internal/metricutil"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -94,6 +95,7 @@ type PostgresCollector struct {
 
 	instance          *instance
 	CollectionTimeout time.Duration
+	wrapLargeCounters bool
 }
 
 type Option func(*PostgresCollector) error
@@ -101,7 +103,8 @@ type Option func(*PostgresCollector) error
 // NewPostgresCollector creates a new PostgresCollector.
 func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn string, filters []string, options ...Option) (*PostgresCollector, error) {
 	p := &PostgresCollector{
-		logger: logger,
+		logger:            logger,
+		wrapLargeCounters: true,
 	}
 	// Apply options to customize the collector
 	for _, o := range options {
@@ -154,6 +157,7 @@ func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn st
 	if err != nil {
 		return nil, err
 	}
+	instance.wrapLargeCounters = p.wrapLargeCounters
 	p.instance = instance
 
 	return p, nil
@@ -169,6 +173,14 @@ func WithCollectionTimeout(s string) Option {
 			return errors.New("timeout must be greater than 1ms")
 		}
 		e.CollectionTimeout = duration
+		return nil
+	}
+}
+
+// WithWrapLargeCounters configures wrapping 64-bit counters at 2^53.
+func WithWrapLargeCounters(wrap bool) Option {
+	return func(p *PostgresCollector) error {
+		p.wrapLargeCounters = wrap
 		return nil
 	}
 }
@@ -260,4 +272,12 @@ func Int32(m sql.NullInt32) float64 {
 		mM = float64(m.Int32)
 	}
 	return mM
+}
+
+func int64CounterValue(value sql.NullInt64, wrap bool) float64 {
+	if !value.Valid {
+		return 0
+	}
+
+	return metricutil.Int64CounterValue(value.Int64, wrap)
 }
