@@ -212,6 +212,19 @@ func TestLoadAuthConfigFile(t *testing.T) {
 	}
 }
 
+func TestLoadAuthConfigEmptyPath(t *testing.T) {
+	config, err := LoadAuthConfig("")
+	if err != nil {
+		t.Fatalf("LoadAuthConfig() error = %v", err)
+	}
+	if config == nil {
+		t.Fatal("LoadAuthConfig() config = nil, want empty config")
+	}
+	if len(config.AuthModules) != 0 {
+		t.Fatalf("LoadAuthConfig() loaded %d auth modules, want 0", len(config.AuthModules))
+	}
+}
+
 func TestDecodeAuthConfig(t *testing.T) {
 	config, err := DecodeAuthConfig(strings.NewReader(`
 auth_modules:
