@@ -285,6 +285,10 @@ func (ch *Handler) observeReload(err error) {
 }
 
 func LoadAuthConfig(f string) (*AuthConfig, error) {
+	if f == "" {
+		return &AuthConfig{}, nil
+	}
+
 	yamlReader, err := os.Open(f)
 	if err != nil {
 		return nil, fmt.Errorf("error opening config file %q: %s", f, err)
