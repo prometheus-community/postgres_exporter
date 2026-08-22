@@ -125,7 +125,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
 
 	var expected = "postgresql://custom_username$&+,%2F%3A;=%3F%40:custom_password$&+,%2F%3A;=%3F%40@localhost:5432/?sslmode=disable"
 
-	dsn, err := GetDataSources()
+	dsn, err := GetDataSources(DataSourceOpts{})
 	if err != nil {
 		c.Errorf("Unexpected error reading datasources")
 	}
@@ -145,7 +145,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDns(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_NAME")
 
-	dsn, err := GetDataSources()
+	dsn, err := GetDataSources(DataSourceOpts{})
 	if err != nil {
 		c.Errorf("Unexpected error reading datasources")
 	}
@@ -173,7 +173,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDnsAndSecrets(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_PASS")
 
-	dsn, err := GetDataSources()
+	dsn, err := GetDataSources(DataSourceOpts{})
 	if err != nil {
 		c.Errorf("Unexpected error reading datasources")
 	}
@@ -183,6 +183,48 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDnsAndSecrets(c *C) {
 	}
 	if dsn[0] != envDsn {
 		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn[0], envDsn)
+	}
+}
+
+// test that the --datasource.dsn flag is used even if DATA_SOURCE_NAME is set
+func (s *FunctionalSuite) TestFlagSettingWithDsn(c *C) {
+	err := os.Setenv("DATA_SOURCE_NAME", "postgresql://envUser:envPass@localhost:5432/?sslmode=disable")
+	c.Assert(err, IsNil)
+	defer UnsetEnvironment(c, "DATA_SOURCE_NAME")
+
+	flagDsn := "postgresql://flagUser:flagPass@localhost:5433/?sslmode=enable"
+	dsn, err := GetDataSources(DataSourceOpts{DSN: flagDsn})
+	if err != nil {
+		c.Errorf("Unexpected error reading datasources")
+	}
+
+	if len(dsn) == 0 {
+		c.Errorf("Expected one data source, zero found")
+	}
+	if dsn[0] != flagDsn {
+		c.Errorf("Expected DSN to be read from flag. Found=%v, expected=%v", dsn[0], flagDsn)
+	}
+}
+
+// test that --datasource.user, --datasource.pass and --datasource.uri flags are used
+// when no DATA_SOURCE_* environment variables are set
+func (s *FunctionalSuite) TestFlagSettingWithUserPassUri(c *C) {
+	var expected = "postgresql://flagUser:flagPass@localhost:5432/?sslmode=disable"
+
+	dsn, err := GetDataSources(DataSourceOpts{
+		User: "flagUser",
+		Pass: "flagPass",
+		URI:  "localhost:5432/?sslmode=disable",
+	})
+	if err != nil {
+		c.Errorf("Unexpected error reading datasources")
+	}
+
+	if len(dsn) == 0 {
+		c.Errorf("Expected one data source, zero found")
+	}
+	if dsn[0] != expected {
+		c.Errorf("Expected datasource to be built from flags. Found=%v, expected=%v", dsn[0], expected)
 	}
 }
 

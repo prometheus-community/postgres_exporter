@@ -51,6 +51,13 @@ var (
 	includeDatabases      = kingpin.Flag("include-databases", "A list of databases to include when autoDiscoverDatabases is enabled (DEPRECATED)").Default("").Envar("PG_EXPORTER_INCLUDE_DATABASES").String()
 	metricPrefix          = kingpin.Flag("metric-prefix", "A metric prefix can be used to have non-default (not \"pg\") prefixes for each of the metrics").Default("pg").Envar("PG_EXPORTER_METRIC_PREFIX").String()
 	collectionTimeout     = kingpin.Flag("collection-timeout", "Timeout for collecting the statistics when the database is slow").Default("1m").Envar("PG_EXPORTER_COLLECTION_TIMEOUT").String()
+	dataSourceDSN         = kingpin.Flag("datasource.dsn", "Postgres connection DSN(s). Takes precedence over all other datasource.* flags. (replaces DATA_SOURCE_NAME)").Default("").String()
+	dataSourceURI         = kingpin.Flag("datasource.uri", "Postgres connection host and parameters (replaces DATA_SOURCE_URI)").Default("").String()
+	dataSourceURIFile     = kingpin.Flag("datasource.uri-file", "Path to a file containing the postgres connection host and parameters (replaces DATA_SOURCE_URI_FILE)").Default("").String()
+	dataSourceUser        = kingpin.Flag("datasource.user", "Postgres connection user (replaces DATA_SOURCE_USER)").Default("").String()
+	dataSourceUserFile    = kingpin.Flag("datasource.user-file", "Path to a file containing the postgres connection user (replaces DATA_SOURCE_USER_FILE)").Default("").String()
+	dataSourcePass        = kingpin.Flag("datasource.pass", "Postgres connection password (replaces DATA_SOURCE_PASS)").Default("").String()
+	dataSourcePassFile    = kingpin.Flag("datasource.pass-file", "Path to a file containing the postgres connection password (replaces DATA_SOURCE_PASS_FILE)").Default("").String()
 	collectorFlags        = newCollectorFlags()
 	statStatementsFlags   = newPGStatStatementsFlags()
 	logger                = promslog.NewNopLogger()
@@ -141,7 +148,15 @@ func main() {
 		logger.Warn("Error loading config", "err", err)
 	}
 
-	dsns, err := exporter.GetDataSources()
+	dsns, err := exporter.GetDataSources(exporter.DataSourceOpts{
+		DSN:      *dataSourceDSN,
+		URI:      *dataSourceURI,
+		URIFile:  *dataSourceURIFile,
+		User:     *dataSourceUser,
+		UserFile: *dataSourceUserFile,
+		Pass:     *dataSourcePass,
+		PassFile: *dataSourcePassFile,
+	})
 	if err != nil {
 		logger.Error("Failed reading data sources", "err", err.Error())
 		os.Exit(1)

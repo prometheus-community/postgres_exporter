@@ -202,6 +202,28 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `config.file`
   Set the config file path. Default is `postgres_exporter.yml`
 
+* `datasource.dsn`
+  Postgres connection DSN(s), comma-separated for multiple servers. Takes precedence
+  over all other `datasource.*` flags. Replaces `DATA_SOURCE_NAME`.
+
+* `datasource.uri`
+  Postgres connection host and parameters. Replaces `DATA_SOURCE_URI`.
+
+* `datasource.uri-file`
+  Path to a file containing the value for `datasource.uri`. Replaces `DATA_SOURCE_URI_FILE`.
+
+* `datasource.user`
+  Postgres connection username, used together with `datasource.uri`. Replaces `DATA_SOURCE_USER`.
+
+* `datasource.user-file`
+  Path to a file containing the value for `datasource.user`. Replaces `DATA_SOURCE_USER_FILE`.
+
+* `datasource.pass`
+  Postgres connection password, used together with `datasource.uri`. Replaces `DATA_SOURCE_PASS`.
+
+* `datasource.pass-file`
+  Path to a file containing the value for `datasource.pass`. Replaces `DATA_SOURCE_PASS_FILE`.
+
 * `web.systemd-socket`
   Use systemd socket activation listeners instead of port listeners (Linux only). Default is `false`
 
@@ -249,7 +271,8 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 
 ### Environment Variables
 
-The following environment variables configure the exporter:
+The following environment variables configure the exporter. Each has an equivalent
+`--datasource.*` flag (see [Flags](#flags)); the flag takes precedence when both are set.
 
 * `DATA_SOURCE_NAME`
   the default legacy format. Accepts URI form and key=value form arguments. The

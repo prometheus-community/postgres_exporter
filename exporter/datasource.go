@@ -115,48 +115,81 @@ func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 	return server.Scrape(ch)
 }
 
+// DataSourceOpts holds the CLI flag values that can be used in place of the
+// DATA_SOURCE_* environment variables. A zero value means "no flag given",
+// which falls back to the environment variable it replaces.
+type DataSourceOpts struct {
+	DSN      string
+	URI      string
+	URIFile  string
+	User     string
+	UserFile string
+	Pass     string
+	PassFile string
+}
+
 // try to get the DataSource
 // DATA_SOURCE_NAME always wins so we do not break older versions
 // reading secrets from files wins over secrets in environment variables
 // DATA_SOURCE_NAME > DATA_SOURCE_{USER|PASS}_FILE > DATA_SOURCE_{USER|PASS}
-func GetDataSources() ([]string, error) {
-	var dsn = os.Getenv("DATA_SOURCE_NAME")
+// The --datasource.* flags take the place of their corresponding env var above
+// whenever they are set.
+func GetDataSources(opts DataSourceOpts) ([]string, error) {
+	var dsn = opts.DSN
+	if len(dsn) == 0 {
+		dsn = os.Getenv("DATA_SOURCE_NAME")
+	}
 	if len(dsn) != 0 {
 		return strings.Split(dsn, ","), nil
 	}
 
 	var user, pass, uri string
 
-	dataSourceUserFile := os.Getenv("DATA_SOURCE_USER_FILE")
+	dataSourceUserFile := opts.UserFile
+	if len(dataSourceUserFile) == 0 {
+		dataSourceUserFile = os.Getenv("DATA_SOURCE_USER_FILE")
+	}
 	if len(dataSourceUserFile) != 0 {
 		fileContents, err := os.ReadFile(dataSourceUserFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed loading data source user file %s: %s", dataSourceUserFile, err.Error())
 		}
 		user = strings.TrimSpace(string(fileContents))
+	} else if len(opts.User) != 0 {
+		user = opts.User
 	} else {
 		user = os.Getenv("DATA_SOURCE_USER")
 	}
 
-	dataSourcePassFile := os.Getenv("DATA_SOURCE_PASS_FILE")
+	dataSourcePassFile := opts.PassFile
+	if len(dataSourcePassFile) == 0 {
+		dataSourcePassFile = os.Getenv("DATA_SOURCE_PASS_FILE")
+	}
 	if len(dataSourcePassFile) != 0 {
 		fileContents, err := os.ReadFile(dataSourcePassFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed loading data source pass file %s: %s", dataSourcePassFile, err.Error())
 		}
 		pass = strings.TrimSpace(string(fileContents))
+	} else if len(opts.Pass) != 0 {
+		pass = opts.Pass
 	} else {
 		pass = os.Getenv("DATA_SOURCE_PASS")
 	}
 
 	ui := url.UserPassword(user, pass).String()
-	dataSrouceURIFile := os.Getenv("DATA_SOURCE_URI_FILE")
+	dataSrouceURIFile := opts.URIFile
+	if len(dataSrouceURIFile) == 0 {
+		dataSrouceURIFile = os.Getenv("DATA_SOURCE_URI_FILE")
+	}
 	if len(dataSrouceURIFile) != 0 {
 		fileContents, err := os.ReadFile(dataSrouceURIFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed loading data source URI file %s: %s", dataSrouceURIFile, err.Error())
 		}
 		uri = strings.TrimSpace(string(fileContents))
+	} else if len(opts.URI) != 0 {
+		uri = opts.URI
 	} else {
 		uri = os.Getenv("DATA_SOURCE_URI")
 	}
