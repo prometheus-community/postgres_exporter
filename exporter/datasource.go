@@ -115,19 +115,38 @@ func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 	return server.Scrape(ch)
 }
 
+// DataSourceOpts holds the values of the --datasource.* flags. An empty
+// field falls back to the corresponding DATA_SOURCE_* environment variable.
+type DataSourceOpts struct {
+	DSN      string
+	URI      string
+	URIFile  string
+	User     string
+	UserFile string
+	Pass     string
+	PassFile string
+}
+
+func flagOrEnvVar(flagVal, envKey string) string {
+	if flagVal != "" {
+		return flagVal
+	}
+	return os.Getenv(envKey)
+}
+
 // try to get the DataSource
-// DATA_SOURCE_NAME always wins so we do not break older versions
-// reading secrets from files wins over secrets in environment variables
-// DATA_SOURCE_NAME > DATA_SOURCE_{USER|PASS}_FILE > DATA_SOURCE_{USER|PASS}
-func GetDataSources() ([]string, error) {
-	var dsn = os.Getenv("DATA_SOURCE_NAME")
+// The --datasource.dsn flag / DATA_SOURCE_NAME env var always wins so we do not break older versions
+// reading secrets from files wins over secrets passed directly
+// dsn > {user|pass}-file > {user|pass}
+func GetDataSources(opts DataSourceOpts) ([]string, error) {
+	dsn := flagOrEnvVar(opts.DSN, "DATA_SOURCE_NAME")
 	if len(dsn) != 0 {
 		return strings.Split(dsn, ","), nil
 	}
 
 	var user, pass, uri string
 
-	dataSourceUserFile := os.Getenv("DATA_SOURCE_USER_FILE")
+	dataSourceUserFile := flagOrEnvVar(opts.UserFile, "DATA_SOURCE_USER_FILE")
 	if len(dataSourceUserFile) != 0 {
 		fileContents, err := os.ReadFile(dataSourceUserFile)
 		if err != nil {
@@ -135,10 +154,10 @@ func GetDataSources() ([]string, error) {
 		}
 		user = strings.TrimSpace(string(fileContents))
 	} else {
-		user = os.Getenv("DATA_SOURCE_USER")
+		user = flagOrEnvVar(opts.User, "DATA_SOURCE_USER")
 	}
 
-	dataSourcePassFile := os.Getenv("DATA_SOURCE_PASS_FILE")
+	dataSourcePassFile := flagOrEnvVar(opts.PassFile, "DATA_SOURCE_PASS_FILE")
 	if len(dataSourcePassFile) != 0 {
 		fileContents, err := os.ReadFile(dataSourcePassFile)
 		if err != nil {
@@ -146,11 +165,11 @@ func GetDataSources() ([]string, error) {
 		}
 		pass = strings.TrimSpace(string(fileContents))
 	} else {
-		pass = os.Getenv("DATA_SOURCE_PASS")
+		pass = flagOrEnvVar(opts.Pass, "DATA_SOURCE_PASS")
 	}
 
 	ui := url.UserPassword(user, pass).String()
-	dataSrouceURIFile := os.Getenv("DATA_SOURCE_URI_FILE")
+	dataSrouceURIFile := flagOrEnvVar(opts.URIFile, "DATA_SOURCE_URI_FILE")
 	if len(dataSrouceURIFile) != 0 {
 		fileContents, err := os.ReadFile(dataSrouceURIFile)
 		if err != nil {
@@ -158,7 +177,7 @@ func GetDataSources() ([]string, error) {
 		}
 		uri = strings.TrimSpace(string(fileContents))
 	} else {
-		uri = os.Getenv("DATA_SOURCE_URI")
+		uri = flagOrEnvVar(opts.URI, "DATA_SOURCE_URI")
 	}
 
 	// No datasources found. This allows us to support the multi-target pattern

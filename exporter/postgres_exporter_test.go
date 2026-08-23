@@ -125,7 +125,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
 
 	var expected = "postgresql://custom_username$&+,%2F%3A;=%3F%40:custom_password$&+,%2F%3A;=%3F%40@localhost:5432/?sslmode=disable"
 
-	dsn, err := GetDataSources()
+	dsn, err := GetDataSources(DataSourceOpts{})
 	if err != nil {
 		c.Errorf("Unexpected error reading datasources")
 	}
@@ -145,7 +145,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDns(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_NAME")
 
-	dsn, err := GetDataSources()
+	dsn, err := GetDataSources(DataSourceOpts{})
 	if err != nil {
 		c.Errorf("Unexpected error reading datasources")
 	}
@@ -173,7 +173,7 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDnsAndSecrets(c *C) {
 	c.Assert(err, IsNil)
 	defer UnsetEnvironment(c, "DATA_SOURCE_PASS")
 
-	dsn, err := GetDataSources()
+	dsn, err := GetDataSources(DataSourceOpts{})
 	if err != nil {
 		c.Errorf("Unexpected error reading datasources")
 	}
@@ -183,6 +183,47 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDnsAndSecrets(c *C) {
 	}
 	if dsn[0] != envDsn {
 		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn[0], envDsn)
+	}
+}
+
+// test --datasource.* flags: reading secrets from files, plain dsn, and dsn taking
+// precedence over user/pass
+func (s *FunctionalSuite) TestFlagSettingDataSources(c *C) {
+	cases := []struct {
+		name     string
+		opts     DataSourceOpts
+		expected string
+	}{
+		{
+			name: "user and pass read from files",
+			opts: DataSourceOpts{
+				UserFile: "./tests/username_file",
+				PassFile: "./tests/userpass_file",
+				URI:      "localhost:5432/?sslmode=disable",
+			},
+			expected: "postgresql://custom_username$&+,%2F%3A;=%3F%40:custom_password$&+,%2F%3A;=%3F%40@localhost:5432/?sslmode=disable",
+		},
+		{
+			name:     "dsn flag",
+			opts:     DataSourceOpts{DSN: "postgresql://user:password@localhost:5432/?sslmode=enabled"},
+			expected: "postgresql://user:password@localhost:5432/?sslmode=enabled",
+		},
+		{
+			name: "dsn flag wins even if user/pass flags are set",
+			opts: DataSourceOpts{
+				DSN:      "postgresql://userDsn:passwordDsn@localhost:55432/?sslmode=disabled",
+				UserFile: "./tests/username_file",
+				Pass:     "flagUserPass",
+			},
+			expected: "postgresql://userDsn:passwordDsn@localhost:55432/?sslmode=disabled",
+		},
+	}
+
+	for _, cs := range cases {
+		dsn, err := GetDataSources(cs.opts)
+		c.Assert(err, IsNil, Commentf("case %q", cs.name))
+		c.Assert(dsn, HasLen, 1, Commentf("case %q", cs.name))
+		c.Assert(dsn[0], Equals, cs.expected, Commentf("case %q", cs.name))
 	}
 }
 
