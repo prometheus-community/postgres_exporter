@@ -51,6 +51,13 @@ var (
 	includeDatabases      = kingpin.Flag("include-databases", "A list of databases to include when autoDiscoverDatabases is enabled (DEPRECATED)").Default("").Envar("PG_EXPORTER_INCLUDE_DATABASES").String()
 	metricPrefix          = kingpin.Flag("metric-prefix", "A metric prefix can be used to have non-default (not \"pg\") prefixes for each of the metrics").Default("pg").Envar("PG_EXPORTER_METRIC_PREFIX").String()
 	collectionTimeout     = kingpin.Flag("collection-timeout", "Timeout for collecting the statistics when the database is slow").Default("1m").Envar("PG_EXPORTER_COLLECTION_TIMEOUT").String()
+	datasourceDSN         = kingpin.Flag("datasource.dsn", "Comma-separated list of data source names. Takes precedence over all other datasource.* flags.").Default("").String()
+	datasourceURI         = kingpin.Flag("datasource.uri", "Data source URI, in host:port/dbname form.").Default("").String()
+	datasourceURIFile     = kingpin.Flag("datasource.uri-file", "Path to a file containing the data source URI. Takes precedence over datasource.uri.").Default("").String()
+	datasourceUser        = kingpin.Flag("datasource.user", "Data source user name.").Default("").String()
+	datasourceUserFile    = kingpin.Flag("datasource.user-file", "Path to a file containing the data source user name. Takes precedence over datasource.user.").Default("").String()
+	datasourcePass        = kingpin.Flag("datasource.pass", "Data source password.").Default("").String()
+	datasourcePassFile    = kingpin.Flag("datasource.pass-file", "Path to a file containing the data source password. Takes precedence over datasource.pass.").Default("").String()
 	collectorFlags        = newCollectorFlags()
 	statStatementsFlags   = newPGStatStatementsFlags()
 	logger                = promslog.NewNopLogger()
@@ -141,7 +148,15 @@ func main() {
 		logger.Warn("Error loading config", "err", err)
 	}
 
-	dsns, err := exporter.GetDataSources()
+	dsns, err := exporter.GetDataSources(exporter.DataSourceOpts{
+		DSN:      *datasourceDSN,
+		URI:      *datasourceURI,
+		URIFile:  *datasourceURIFile,
+		User:     *datasourceUser,
+		UserFile: *datasourceUserFile,
+		Pass:     *datasourcePass,
+		PassFile: *datasourcePassFile,
+	})
 	if err != nil {
 		logger.Error("Failed reading data sources", "err", err.Error())
 		os.Exit(1)
