@@ -261,7 +261,8 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 
 	for rows.Next() {
 		var datid, datname sql.NullString
-		var numBackends, xactCommit, xactRollback, blksRead, blksHit, tupReturned, tupFetched, tupInserted, tupUpdated, tupDeleted, conflicts, tempFiles, tempBytes, deadlocks, blkReadTime, blkWriteTime, activeTime sql.NullFloat64
+		var numBackends, xactCommit, xactRollback, blksRead, blksHit, tupReturned, tupFetched, tupInserted, tupUpdated, tupDeleted, conflicts, tempFiles, tempBytes, deadlocks sql.NullInt64
+		var blkReadTime, blkWriteTime, activeTime sql.NullFloat64
 		var statsReset sql.NullTime
 
 		r := []any{
@@ -385,98 +386,98 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseNumbackends,
 			prometheus.GaugeValue,
-			numBackends.Float64,
+			float64(numBackends.Int64),
 			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseXactCommit,
 			prometheus.CounterValue,
-			xactCommit.Float64,
+			int64CounterValue(xactCommit, instance.wrapLargeCounters),
 			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseXactRollback,
 			prometheus.CounterValue,
-			xactRollback.Float64,
+			int64CounterValue(xactRollback, instance.wrapLargeCounters),
 			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseBlksRead,
 			prometheus.CounterValue,
-			blksRead.Float64,
+			int64CounterValue(blksRead, instance.wrapLargeCounters),
 			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseBlksHit,
 			prometheus.CounterValue,
-			blksHit.Float64,
+			int64CounterValue(blksHit, instance.wrapLargeCounters),
 			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTupReturned,
 			prometheus.CounterValue,
-			tupReturned.Float64,
+			int64CounterValue(tupReturned, instance.wrapLargeCounters),
 			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTupFetched,
 			prometheus.CounterValue,
-			tupFetched.Float64,
+			int64CounterValue(tupFetched, instance.wrapLargeCounters),
 			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTupInserted,
 			prometheus.CounterValue,
-			tupInserted.Float64,
+			int64CounterValue(tupInserted, instance.wrapLargeCounters),
 			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTupUpdated,
 			prometheus.CounterValue,
-			tupUpdated.Float64,
+			int64CounterValue(tupUpdated, instance.wrapLargeCounters),
 			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTupDeleted,
 			prometheus.CounterValue,
-			tupDeleted.Float64,
+			int64CounterValue(tupDeleted, instance.wrapLargeCounters),
 			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseConflicts,
 			prometheus.CounterValue,
-			conflicts.Float64,
+			int64CounterValue(conflicts, instance.wrapLargeCounters),
 			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTempFiles,
 			prometheus.CounterValue,
-			tempFiles.Float64,
+			int64CounterValue(tempFiles, instance.wrapLargeCounters),
 			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseTempBytes,
 			prometheus.CounterValue,
-			tempBytes.Float64,
+			int64CounterValue(tempBytes, instance.wrapLargeCounters),
 			labels...,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseDeadlocks,
 			prometheus.CounterValue,
-			deadlocks.Float64,
+			int64CounterValue(deadlocks, instance.wrapLargeCounters),
 			labels...,
 		)
 

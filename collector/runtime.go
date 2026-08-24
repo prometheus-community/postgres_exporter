@@ -55,6 +55,7 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 		WithCollectionTimeout(cfg.CollectionTimeout.String()),
 		WithCollectorStates(cfg.Collectors),
 		WithPGStatStatementsConfig(cfg.PGStatStatements),
+		WithWrapLargeCounters(cfg.WrapLargeCounters),
 	)
 	if err != nil {
 		runtime.Close()
@@ -93,5 +94,6 @@ func exporterOptions(cfg config.Config) []exporter.ExporterOpt {
 		exporter.ExcludeDatabases(cfg.ExcludeDatabases),
 		exporter.IncludeDatabases(strings.Join(cfg.IncludeDatabases, ",")),
 		exporter.WithMetricPrefix(cfg.MetricPrefix),
+		exporter.WrapLargeCounters(cfg.WrapLargeCounters),
 	}
 }

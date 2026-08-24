@@ -77,7 +77,7 @@ func (PGStatArchiverCollector) Update(ctx context.Context, instance *instance, c
 		ch <- prometheus.MustNewConstMetric(
 			statArchiverArchivedCountDesc,
 			prometheus.CounterValue,
-			float64(archivedCount.Int64),
+			int64CounterValue(archivedCount, instance.wrapLargeCounters),
 		)
 	}
 
@@ -85,7 +85,7 @@ func (PGStatArchiverCollector) Update(ctx context.Context, instance *instance, c
 		ch <- prometheus.MustNewConstMetric(
 			statArchiverFailedCountDesc,
 			prometheus.CounterValue,
-			float64(failedCount.Int64),
+			int64CounterValue(failedCount, instance.wrapLargeCounters),
 		)
 	}
 

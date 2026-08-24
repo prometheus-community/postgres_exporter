@@ -229,6 +229,9 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
   Do not run - print the internal representation of the metric maps. Useful when debugging a custom
   queries file.
 
+* `[no-]wrap-large-counters`
+  Wrap 64-bit counter values at 2^53 to avoid floating point rounding. Default is `true`.
+
 * `constantLabels` (DEPRECATED)
   Labels to set in all metrics. A list of `label=value` pairs, separated by commas.
 
