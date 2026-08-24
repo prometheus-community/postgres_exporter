@@ -51,6 +51,7 @@ var (
 	includeDatabases      = kingpin.Flag("include-databases", "A list of databases to include when autoDiscoverDatabases is enabled (DEPRECATED)").Default("").Envar("PG_EXPORTER_INCLUDE_DATABASES").String()
 	metricPrefix          = kingpin.Flag("metric-prefix", "A metric prefix can be used to have non-default (not \"pg\") prefixes for each of the metrics").Default("pg").Envar("PG_EXPORTER_METRIC_PREFIX").String()
 	collectionTimeout     = kingpin.Flag("collection-timeout", "Timeout for collecting the statistics when the database is slow").Default("1m").Envar("PG_EXPORTER_COLLECTION_TIMEOUT").String()
+	wrapLargeCounters     = kingpin.Flag("wrap-large-counters", "Wrap 64-bit counters at 2^53 to avoid floating point rounding.").Default("true").Envar("PG_EXPORTER_WRAP_LARGE_COUNTERS").Bool()
 	collectorFlags        = newCollectorFlags()
 	statStatementsFlags   = newPGStatStatementsFlags()
 	logger                = promslog.NewNopLogger()
@@ -233,6 +234,7 @@ func buildConfig(dsns []string) (config.Config, error) {
 	cfg.DataSourceNames = dsns
 	cfg.MetricPrefix = *metricPrefix
 	cfg.CollectionTimeout = parsedCollectionTimeout
+	cfg.WrapLargeCounters = *wrapLargeCounters
 	cfg.DisableDefaultMetrics = *disableDefaultMetrics
 	cfg.AutoDiscoverDatabases = *autoDiscoverDatabases
 	cfg.UserQueriesPath = *queriesPath

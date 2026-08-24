@@ -28,10 +28,11 @@ import (
 // Server describes a connection to Postgres.
 // Also it contains metrics map and query overrides.
 type Server struct {
-	db          *sql.DB
-	labels      prometheus.Labels
-	master      bool
-	runonserver string
+	db                *sql.DB
+	labels            prometheus.Labels
+	master            bool
+	runonserver       string
+	wrapLargeCounters bool
 
 	// Last version used to calculate metric map. If mismatch on scrape,
 	// then maps are recalculated.
@@ -65,6 +66,13 @@ func ServerWithLogger(logger *slog.Logger) ServerOpt {
 	}
 }
 
+// ServerWithWrapLargeCounters configures wrapping counters at 2^53.
+func ServerWithWrapLargeCounters(wrap bool) ServerOpt {
+	return func(s *Server) {
+		s.wrapLargeCounters = wrap
+	}
+}
+
 // NewServer establishes a new connection using DSN.
 func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 	fingerprint, err := parseFingerprint(dsn)
@@ -80,8 +88,9 @@ func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 	db.SetMaxIdleConns(1)
 
 	s := &Server{
-		db:     db,
-		master: false,
+		db:                db,
+		master:            false,
+		wrapLargeCounters: true,
 		labels: prometheus.Labels{
 			serverLabelName: fingerprint,
 		},

@@ -229,6 +229,9 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
   Do not run - print the internal representation of the metric maps. Useful when debugging a custom
   queries file.
 
+* `[no-]wrap-large-counters`
+  Wrap 64-bit counter values at 2^53 to avoid floating point rounding. Default is `true`.
+
 * `constantLabels` (DEPRECATED)
   Labels to set in all metrics. A list of `label=value` pairs, separated by commas.
 
@@ -310,6 +313,10 @@ The following environment variables configure the exporter:
 
 * `PG_EXPORTER_METRIC_PREFIX`
   A prefix to use for each of the default metrics exported by postgres-exporter. Default is `pg`
+
+* `PG_EXPORTER_WRAP_LARGE_COUNTERS`
+  Whether to wrap 64-bit counter values at 2^53 to avoid floating point rounding. Value can be `true`
+  or `false`. Default is `true`.
 
 Settings set by environment variables starting with `PG_` will be overwritten by the corresponding CLI flag if given.
 

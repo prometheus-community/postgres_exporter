@@ -93,5 +93,6 @@ func exporterOptions(cfg config.Config) []exporter.ExporterOpt {
 		exporter.ExcludeDatabases(cfg.ExcludeDatabases),
 		exporter.IncludeDatabases(strings.Join(cfg.IncludeDatabases, ",")),
 		exporter.WithMetricPrefix(cfg.MetricPrefix),
+		exporter.WrapLargeCounters(cfg.WrapLargeCounters),
 	}
 }

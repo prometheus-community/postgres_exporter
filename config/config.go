@@ -70,6 +70,7 @@ type Config struct {
 	DataSourceNames       []string
 	MetricPrefix          string
 	CollectionTimeout     time.Duration
+	WrapLargeCounters     bool
 	DisableDefaultMetrics bool
 	AutoDiscoverDatabases bool
 	UserQueriesPath       string
@@ -115,6 +116,7 @@ func NewConfigWithDefaults() Config {
 	return Config{
 		MetricPrefix:      DefaultMetricPrefix,
 		CollectionTimeout: DefaultCollectionTimeout,
+		WrapLargeCounters: true,
 		Collectors:        DefaultCollectorConfig(),
 		PGStatStatements: PGStatStatementsConfig{
 			IncludeQuery: DefaultPGStatStatementsIncludeQuery,
