@@ -1,5 +1,16 @@
 ## main / (unreleased)
 
+**WARNING: upgrading with large counters can cause a one-time false rate spike.**
+Non-negative 64-bit counters are now wrapped at `2^53` by default so that
+single-unit changes remain representable as `float64`. On the first scrape
+after an upgrade, a previous value such as `2^53 + 1,234,567` becomes
+`1,234,567`. Prometheus interprets that decrease as a counter reset and counts
+the remainder as post-reset growth, so `rate()` and `increase()` can report a
+large false spike for that evaluation window. Use
+`--no-wrap-large-counters` to preserve the previous conversion during rollout;
+enabling wrapping later will still create this one-time reset boundary.
+
+* [CHANGE] Wrap non-negative 64-bit counters at `2^53` to preserve single-unit precision by @gnanirahulnutakki in https://github.com/prometheus-community/postgres_exporter/pull/1351
 * [CHANGE] stat_replication: add `pid` label to disambiguate replication connections that otherwise share identical labels by @sysadmind in https://github.com/prometheus-community/postgres_exporter/pull/1353
 
 ## 0.20.1 / 2026-07-07

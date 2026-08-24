@@ -41,6 +41,12 @@ func TestInt64CounterValue(t *testing.T) {
 			want:  1,
 		},
 		{
+			name:  "upgrade warning example",
+			value: int64(1<<53) + 1_234_567,
+			wrap:  true,
+			want:  1_234_567,
+		},
+		{
 			name:  "wrapping disabled",
 			value: int64(1<<53) + 1,
 			wrap:  false,
