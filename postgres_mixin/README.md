@@ -11,8 +11,13 @@ for Grafana.
 To use them, you need to have `mixtool` and `jsonnetfmt` installed. If you
 have a working Go development environment, it's easiest to run the following:
 ```bash
-$ go get github.com/monitoring-mixins/mixtool/cmd/mixtool
-$ go get github.com/google/go-jsonnet/cmd/jsonnetfmt
+$ go install github.com/monitoring-mixins/mixtool/cmd/mixtool@latest
+$ go install github.com/google/go-jsonnet/cmd/jsonnetfmt@latest
+```
+
+If not already set, you may also need to set your path appropriately:
+```bash
+$ PATH=$PATH:$(go env GOPATH)/bin
 ```
 
 You can then build the Prometheus rules files `alerts.yaml` and
