@@ -25,7 +25,7 @@ import (
 )
 
 func init() {
-	registerCollector(statDatabaseSubsystem, NewPGStatDatabaseCollector)
+	registerCollector(statDatabaseSubsystem, clusterScope, NewPGStatDatabaseCollector)
 }
 
 type PGStatDatabaseCollector struct {

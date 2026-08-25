@@ -22,7 +22,7 @@ import (
 )
 
 func init() {
-	registerCollector(progressVacuumSubsystem, NewPGStatProgressVacuumCollector)
+	registerCollector(progressVacuumSubsystem, clusterScope, NewPGStatProgressVacuumCollector)
 }
 
 type PGStatProgressVacuumCollector struct {

@@ -24,6 +24,46 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// Target describes one DSN the exporter scrapes.
+type Target struct {
+	// DSN is the connection string for this target.
+	DSN string
+	// Primary is true for a DSN that was explicitly configured (via
+	// DATA_SOURCE_NAME or the config file), as opposed to one produced by
+	// database autodiscovery. Callers that need to run instance-wide (as
+	// opposed to per-database) work exactly once per configured instance can
+	// use this to pick which of the returned targets to run it against.
+	Primary bool
+}
+
+// TargetDSNs returns the current, effective list of DSNs this exporter
+// scrapes: the configured DSNs, expanded with autodiscovered per-database
+// DSNs when autoDiscoverDatabases is enabled. When autodiscovery is enabled,
+// this re-queries the configured servers every time it's called, so the
+// returned list reflects databases created or dropped since the last call.
+func (e *Exporter) TargetDSNs() []Target {
+	if !e.autoDiscoverDatabases {
+		targets := make([]Target, len(e.dsn))
+		for i, dsn := range e.dsn {
+			targets[i] = Target{DSN: dsn, Primary: true}
+		}
+		return targets
+	}
+
+	primary := make(map[string]struct{}, len(e.dsn))
+	for _, dsn := range e.dsn {
+		primary[dsn] = struct{}{}
+	}
+
+	discovered := e.discoverDatabaseDSNs()
+	targets := make([]Target, len(discovered))
+	for i, dsn := range discovered {
+		_, ok := primary[dsn]
+		targets[i] = Target{DSN: dsn, Primary: ok}
+	}
+	return targets
+}
+
 func (e *Exporter) discoverDatabaseDSNs() []string {
 	// connstring syntax is complex (and not sure if even regular).
 	// we don't need to parse it, so just superficially validate that it starts
@@ -39,19 +79,19 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			var err error
 			dsnURI, err = url.Parse(dsn)
 			if err != nil {
-				e.logger.Error("Unable to parse DSN as URI", "dsn", loggableDSN(dsn), "err", err)
+				e.logger.Error("Unable to parse DSN as URI", "dsn", LoggableDSN(dsn), "err", err)
 				continue
 			}
 		} else if connstringRe.MatchString(dsn) {
 			dsnConnstring = dsn
 		} else {
-			e.logger.Error("Unable to parse DSN as either URI or connstring", "dsn", loggableDSN(dsn))
+			e.logger.Error("Unable to parse DSN as either URI or connstring", "dsn", LoggableDSN(dsn))
 			continue
 		}
 
 		server, err := e.servers.GetServer(dsn)
 		if err != nil {
-			e.logger.Error("Error opening connection to database", "dsn", loggableDSN(dsn), "err", err)
+			e.logger.Error("Error opening connection to database", "dsn", LoggableDSN(dsn), "err", err)
 			continue
 		}
 		dsns[dsn] = struct{}{}
@@ -61,7 +101,7 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 
 		databaseNames, err := queryDatabases(server)
 		if err != nil {
-			e.logger.Error("Error querying databases", "dsn", loggableDSN(dsn), "err", err)
+			e.logger.Error("Error querying databases", "dsn", LoggableDSN(dsn), "err", err)
 			continue
 		}
 		for _, databaseName := range databaseNames {
@@ -99,7 +139,7 @@ func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 	server, err := e.servers.GetServer(dsn)
 
 	if err != nil {
-		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), err.Error())}
+		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", LoggableDSN(dsn), err.Error())}
 	}
 
 	// Check if autoDiscoverDatabases is false, set dsn as master database (Default: false)

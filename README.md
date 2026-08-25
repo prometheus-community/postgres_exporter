@@ -329,6 +329,9 @@ Also, you can set a list of sources to scrape different instances from the one e
 
     sudo -u postgres DATA_SOURCE_NAME="port=5432,port=6432" postgres_exporter
 
+Every DSN in the list gets its own connection and the full set of enabled collectors, exactly as if each was scraped
+by its own exporter instance.
+
 See the [github.com/lib/pq](http://github.com/lib/pq) module for other ways to format the connection string.
 
 ### Adding new metrics
@@ -363,6 +366,13 @@ flag. This removes all built-in metrics, and uses only metrics defined by querie
 To scrape metrics from all databases on a database server, the database DSN's can be dynamically discovered via the
 `--auto-discover-databases` flag. When true, `SELECT datname FROM pg_database WHERE datallowconn = true AND datistemplate = false and datname != current_database()` is run for all configured DSN's. From the
 result a new set of DSN's is created for which the metrics are scraped.
+
+Every discovered database gets its own connection and gets scraped for the collectors that report on a single
+database (e.g. `stat_user_tables`, `statio_user_tables`, `statio_user_indexes`). Collectors that report on the whole
+instance (e.g. `wal`, `bgwriter`, `stat_activity`) still only run once, against the originally configured DSN, since
+re-running them against another database on the same instance would report the exact same rows again. The set of
+discovered databases is re-evaluated on every scrape, so databases created or dropped after the exporter starts are
+picked up without a restart.
 
 In addition, the option `--exclude-databases` adds the possibily to filter the result from the auto discovery to discard databases you do not need.
 

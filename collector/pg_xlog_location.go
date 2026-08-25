@@ -22,7 +22,7 @@ import (
 )
 
 func init() {
-	registerCollector(xlogLocationSubsystem, NewPGXlogLocationCollector)
+	registerCollector(xlogLocationSubsystem, clusterScope, NewPGXlogLocationCollector)
 }
 
 type PGXlogLocationCollector struct {

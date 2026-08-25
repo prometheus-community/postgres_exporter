@@ -219,6 +219,28 @@ func TestNewPostgresCollectorUsesCollectorStateOverrides(t *testing.T) {
 	}
 }
 
+func TestOnlyScopeFiltersToMatchingCollectors(t *testing.T) {
+	logger := promslog.NewNopLogger()
+	dsn := "postgresql://local"
+
+	c, err := NewPostgresCollector(logger, nil, dsn, nil, onlyScope(databaseScope))
+	if err != nil {
+		t.Fatalf("NewPostgresCollector() error = %v", err)
+	}
+
+	if len(c.Collectors) == 0 {
+		t.Fatal("len(Collectors) = 0, want at least one database-scoped collector")
+	}
+	for name := range c.Collectors {
+		if got, want := factories[name].scope, databaseScope; got != want {
+			t.Errorf("collector %q has scope %v, want %v", name, got, want)
+		}
+	}
+	if _, ok := c.Collectors[databaseSubsystem]; ok {
+		t.Fatal("cluster-scoped database collector is present, want filtered out by onlyScope(databaseScope)")
+	}
+}
+
 func TestRegisterCollectorRejectsUnknownConfig(t *testing.T) {
 	const name = "not_in_default_config"
 
@@ -228,7 +250,7 @@ func TestRegisterCollectorRejectsUnknownConfig(t *testing.T) {
 		}
 	}()
 
-	registerCollector(name, func(collectorConfig) (Collector, error) {
+	registerCollector(name, clusterScope, func(collectorConfig) (Collector, error) {
 		return nil, nil
 	})
 }
