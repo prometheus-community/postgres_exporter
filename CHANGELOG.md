@@ -12,6 +12,7 @@ enabling wrapping later will still create this one-time reset boundary.
 
 * [CHANGE] Wrap non-negative 64-bit counters at `2^53` to preserve single-unit precision by @gnanirahulnutakki in https://github.com/prometheus-community/postgres_exporter/pull/1351
 * [CHANGE] stat_replication: add `pid` label to disambiguate replication connections that otherwise share identical labels by @sysadmind in https://github.com/prometheus-community/postgres_exporter/pull/1353
+* [BUGFIX] Fix `long_running_transactions` to count only transactions older than a configurable threshold, by @ArthurSens in https://github.com/prometheus-community/postgres_exporter/pull/1379, based on the contribution by @moreinhardt in https://github.com/prometheus-community/postgres_exporter/pull/1210
 
 ## 0.20.1 / 2026-07-07
 
