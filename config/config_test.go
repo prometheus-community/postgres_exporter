@@ -30,6 +30,9 @@ func TestNewConfigWithDefaults(t *testing.T) {
 	if got, want := cfg.CollectionTimeout, DefaultCollectionTimeout; got != want {
 		t.Fatalf("CollectionTimeout = %v, want %v", got, want)
 	}
+	if got, want := cfg.LongRunningTransactions.Threshold, DefaultLongRunningTransactionsThreshold; got != want {
+		t.Fatalf("LongRunningTransactions.Threshold = %v, want %v", got, want)
+	}
 	if !cfg.WrapLargeCounters {
 		t.Fatal("WrapLargeCounters = false, want true")
 	}
@@ -135,6 +138,13 @@ func TestConfigValidateFailures(t *testing.T) {
 				cfg.CollectionTimeout = 0
 			},
 			want: "collection timeout must be greater than zero",
+		},
+		{
+			name: "zero long running transactions threshold",
+			mutate: func(cfg *Config) {
+				cfg.LongRunningTransactions.Threshold = 0
+			},
+			want: "long running transactions threshold must be greater than zero",
 		},
 		{
 			name: "empty data source",

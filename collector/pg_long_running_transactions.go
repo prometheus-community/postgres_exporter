@@ -17,7 +17,9 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"time"
 
+	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -26,11 +28,21 @@ func init() {
 }
 
 type PGLongRunningTransactionsCollector struct {
-	log *slog.Logger
+	log       *slog.Logger
+	threshold time.Duration
 }
 
-func NewPGLongRunningTransactionsCollector(config collectorConfig) (Collector, error) {
-	return &PGLongRunningTransactionsCollector{log: config.logger}, nil
+func defaultLongRunningTransactionsConfig() config.LongRunningTransactionsConfig {
+	return config.LongRunningTransactionsConfig{
+		Threshold: config.DefaultLongRunningTransactionsThreshold,
+	}
+}
+
+func NewPGLongRunningTransactionsCollector(cfg collectorConfig) (Collector, error) {
+	return &PGLongRunningTransactionsCollector{
+		log:       cfg.logger,
+		threshold: cfg.longRunningTransactionsConfig.Threshold,
+	}, nil
 }
 
 var (
@@ -54,17 +66,18 @@ var (
     MAX(EXTRACT(EPOCH FROM clock_timestamp() - pg_stat_activity.xact_start)) AS oldest_timestamp_seconds
 FROM pg_catalog.pg_stat_activity
 WHERE state IS DISTINCT FROM 'idle'
-AND (now() - pg_stat_activity.xact_start) > '1 minutes'::interval
+AND (now() - pg_stat_activity.xact_start) > make_interval(secs => $1)
 AND query NOT LIKE 'autovacuum:%'
 AND pg_stat_activity.xact_start IS NOT NULL
 AND pid <> pg_backend_pid();
 	`
 )
 
-func (PGLongRunningTransactionsCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+func (c PGLongRunningTransactionsCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
 	rows, err := db.QueryContext(ctx,
-		longRunningTransactionsQuery)
+		longRunningTransactionsQuery,
+		c.threshold.Seconds())
 
 	if err != nil {
 		return err

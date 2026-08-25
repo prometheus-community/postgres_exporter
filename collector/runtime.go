@@ -54,6 +54,7 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 		nil,
 		WithCollectionTimeout(cfg.CollectionTimeout.String()),
 		WithCollectorStates(cfg.Collectors),
+		WithLongRunningTransactionsConfig(cfg.LongRunningTransactions),
 		WithPGStatStatementsConfig(cfg.PGStatStatements),
 		WithWrapLargeCounters(cfg.WrapLargeCounters),
 	)
