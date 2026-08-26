@@ -52,9 +52,10 @@ type Collector interface {
 }
 
 type collectorConfig struct {
-	logger                 *slog.Logger
-	excludeDatabases       []string
-	pgStatStatementsConfig config.PGStatStatementsConfig
+	logger                        *slog.Logger
+	excludeDatabases              []string
+	longRunningTransactionsConfig config.LongRunningTransactionsConfig
+	pgStatStatementsConfig        config.PGStatStatementsConfig
 }
 
 func registerCollector(name string, createFunc func(collectorConfig) (Collector, error)) {
@@ -69,11 +70,12 @@ type PostgresCollector struct {
 	Collectors map[string]Collector
 	logger     *slog.Logger
 
-	instance          *instance
-	CollectionTimeout time.Duration
-	collectorStates   map[string]bool
-	pgStatStatements  config.PGStatStatementsConfig
-	wrapLargeCounters bool
+	instance                *instance
+	CollectionTimeout       time.Duration
+	collectorStates         map[string]bool
+	longRunningTransactions config.LongRunningTransactionsConfig
+	pgStatStatements        config.PGStatStatementsConfig
+	wrapLargeCounters       bool
 }
 
 type Option func(*PostgresCollector) error
@@ -81,11 +83,12 @@ type Option func(*PostgresCollector) error
 // NewPostgresCollector creates a new PostgresCollector.
 func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn string, filters []string, options ...Option) (*PostgresCollector, error) {
 	p := &PostgresCollector{
-		logger:            logger,
-		collectorStates:   config.DefaultCollectorConfig(),
-		pgStatStatements:  defaultPGStatStatementsConfig(),
-		CollectionTimeout: time.Minute,
-		wrapLargeCounters: true,
+		logger:                  logger,
+		collectorStates:         config.DefaultCollectorConfig(),
+		longRunningTransactions: defaultLongRunningTransactionsConfig(),
+		pgStatStatements:        defaultPGStatStatementsConfig(),
+		CollectionTimeout:       time.Minute,
+		wrapLargeCounters:       true,
 	}
 	// Apply options to customize the collector
 	for _, o := range options {
@@ -116,9 +119,10 @@ func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn st
 			return nil, fmt.Errorf("missing collector factory: %s", key)
 		}
 		collector, err := factory(collectorConfig{
-			logger:                 logger.With("collector", key),
-			excludeDatabases:       excludeDatabases,
-			pgStatStatementsConfig: p.pgStatStatements,
+			logger:                        logger.With("collector", key),
+			excludeDatabases:              excludeDatabases,
+			longRunningTransactionsConfig: p.longRunningTransactions,
+			pgStatStatementsConfig:        p.pgStatStatements,
 		})
 		if err != nil {
 			return nil, err
@@ -159,6 +163,13 @@ func WithCollectorStates(states map[string]bool) Option {
 func WithPGStatStatementsConfig(cfg config.PGStatStatementsConfig) Option {
 	return func(e *PostgresCollector) error {
 		e.pgStatStatements = withPGStatStatementsDefaults(cfg)
+		return nil
+	}
+}
+
+func WithLongRunningTransactionsConfig(cfg config.LongRunningTransactionsConfig) Option {
+	return func(e *PostgresCollector) error {
+		e.longRunningTransactions = cfg
 		return nil
 	}
 }

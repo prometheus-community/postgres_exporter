@@ -15,6 +15,7 @@ package collector
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/prometheus/client_golang/prometheus"
@@ -36,12 +37,14 @@ func TestPGLongRunningTransactionsCollector(t *testing.T) {
 	rows := sqlmock.NewRows(columns).
 		AddRow(20, 1200)
 
-	mock.ExpectQuery(sanitizeQuery(longRunningTransactionsQuery)).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(longRunningTransactionsQuery)).
+		WithArgs((5 * time.Minute).Seconds()).
+		WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
-		c := PGLongRunningTransactionsCollector{}
+		c := PGLongRunningTransactionsCollector{threshold: 5 * time.Minute}
 
 		if err := c.Update(context.Background(), inst, ch); err != nil {
 			t.Errorf("Error calling PGLongRunningTransactionsCollector.Update: %s", err)
@@ -77,12 +80,14 @@ func TestPGLongRunningTransactionsCollectorNull(t *testing.T) {
 	rows := sqlmock.NewRows(columns).
 		AddRow(0, nil)
 
-	mock.ExpectQuery(sanitizeQuery(longRunningTransactionsQuery)).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(longRunningTransactionsQuery)).
+		WithArgs(time.Minute.Seconds()).
+		WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
-		c := PGLongRunningTransactionsCollector{}
+		c := PGLongRunningTransactionsCollector{threshold: time.Minute}
 
 		if err := c.Update(context.Background(), inst, ch); err != nil {
 			t.Errorf("Error calling PGLongRunningTransactionsCollector.Update: %s", err)
