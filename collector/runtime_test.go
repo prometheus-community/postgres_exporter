@@ -15,6 +15,7 @@ package collector
 
 import (
 	"testing"
+	"time"
 
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/common/promslog"
@@ -97,5 +98,36 @@ func TestNewRuntimePropagatesWrapLargeCounters(t *testing.T) {
 	}
 	if pc.instance.wrapLargeCounters {
 		t.Fatal("postgres collector wrapLargeCounters = true, want false")
+	}
+}
+
+func TestNewRuntimePropagatesLongRunningTransactionsThreshold(t *testing.T) {
+	cfg := config.NewConfigWithDefaults()
+	cfg.DataSourceNames = []string{"postgresql://localhost:5432/postgres?sslmode=disable"}
+	cfg.Collectors[config.CollectorLongRunningTransactions] = true
+	cfg.LongRunningTransactions.Threshold = 5 * time.Minute
+	validated, err := cfg.Validate()
+	if err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+
+	runtime, err := NewRuntime(validated, promslog.NewNopLogger())
+	if err != nil {
+		t.Fatalf("NewRuntime() error = %v", err)
+	}
+	defer runtime.Close()
+
+	dsn := "postgresql://localhost:5432/postgres?sslmode=disable"
+	pc, ok := runtime.postgresCollectors.collectors[dsn]
+	if !ok {
+		t.Fatalf("no postgres collector built for %q", dsn)
+	}
+
+	collector, ok := pc.Collectors[config.CollectorLongRunningTransactions].(*PGLongRunningTransactionsCollector)
+	if !ok {
+		t.Fatalf("collector type = %T, want *PGLongRunningTransactionsCollector", collector)
+	}
+	if got, want := collector.threshold, 5*time.Minute; got != want {
+		t.Fatalf("threshold = %v, want %v", got, want)
 	}
 }

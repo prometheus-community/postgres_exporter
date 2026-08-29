@@ -32,6 +32,8 @@ const (
 	DefaultMetricPrefix      string        = "pg"
 	DefaultCollectionTimeout time.Duration = time.Minute
 
+	DefaultLongRunningTransactionsThreshold time.Duration = time.Minute
+
 	DefaultPGStatStatementsIncludeQuery bool = false
 	DefaultPGStatStatementsQueryLength  uint = 120
 	DefaultPGStatStatementsLimit        uint = 100
@@ -67,18 +69,19 @@ const (
 )
 
 type Config struct {
-	DataSourceNames       []string
-	MetricPrefix          string
-	CollectionTimeout     time.Duration
-	WrapLargeCounters     bool
-	DisableDefaultMetrics bool
-	AutoDiscoverDatabases bool
-	UserQueriesPath       string
-	ConstantLabels        string
-	ExcludeDatabases      []string
-	IncludeDatabases      []string
-	Collectors            map[string]bool
-	PGStatStatements      PGStatStatementsConfig
+	DataSourceNames         []string
+	MetricPrefix            string
+	CollectionTimeout       time.Duration
+	WrapLargeCounters       bool
+	DisableDefaultMetrics   bool
+	AutoDiscoverDatabases   bool
+	UserQueriesPath         string
+	ConstantLabels          string
+	ExcludeDatabases        []string
+	IncludeDatabases        []string
+	Collectors              map[string]bool
+	LongRunningTransactions LongRunningTransactionsConfig
+	PGStatStatements        PGStatStatementsConfig
 }
 
 // ValidatedConfig is the result of a successful Config.Validate call. It holds
@@ -112,12 +115,19 @@ type PGStatStatementsConfig struct {
 	ExcludeUsers     []string
 }
 
+type LongRunningTransactionsConfig struct {
+	Threshold time.Duration
+}
+
 func NewConfigWithDefaults() Config {
 	return Config{
 		MetricPrefix:      DefaultMetricPrefix,
 		CollectionTimeout: DefaultCollectionTimeout,
 		WrapLargeCounters: true,
 		Collectors:        DefaultCollectorConfig(),
+		LongRunningTransactions: LongRunningTransactionsConfig{
+			Threshold: DefaultLongRunningTransactionsThreshold,
+		},
 		PGStatStatements: PGStatStatementsConfig{
 			IncludeQuery: DefaultPGStatStatementsIncludeQuery,
 			QueryLength:  DefaultPGStatStatementsQueryLength,
@@ -137,6 +147,9 @@ func (c Config) Validate() (ValidatedConfig, error) {
 	}
 	if c.CollectionTimeout <= 0 {
 		return ValidatedConfig{}, fmt.Errorf("collection timeout must be greater than zero")
+	}
+	if c.LongRunningTransactions.Threshold <= 0 {
+		return ValidatedConfig{}, fmt.Errorf("long running transactions threshold must be greater than zero")
 	}
 	for i, dsn := range c.DataSourceNames {
 		if dsn == "" {

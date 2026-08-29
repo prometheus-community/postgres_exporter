@@ -53,8 +53,14 @@ var (
 	collectionTimeout     = kingpin.Flag("collection-timeout", "Timeout for collecting the statistics when the database is slow").Default("1m").Envar("PG_EXPORTER_COLLECTION_TIMEOUT").String()
 	wrapLargeCounters     = kingpin.Flag("wrap-large-counters", "Wrap 64-bit counters at 2^53 to avoid floating point rounding.").Default("true").Bool()
 	collectorFlags        = newCollectorFlags()
-	statStatementsFlags   = newPGStatStatementsFlags()
-	logger                = promslog.NewNopLogger()
+
+	longRunningTransactionsThreshold = kingpin.Flag(
+		"collector.long_running_transactions.threshold",
+		"Minimum transaction duration to consider long running.",
+	).Default(config.DefaultLongRunningTransactionsThreshold.String()).Duration()
+
+	statStatementsFlags = newPGStatStatementsFlags()
+	logger              = promslog.NewNopLogger()
 )
 
 // The name of the exporter.
@@ -242,6 +248,9 @@ func buildConfig(dsns []string) (config.Config, error) {
 	cfg.ExcludeDatabases = splitList(*excludeDatabases)
 	cfg.IncludeDatabases = splitList(*includeDatabases)
 	cfg.Collectors = collectorFlags.states()
+	cfg.LongRunningTransactions = config.LongRunningTransactionsConfig{
+		Threshold: *longRunningTransactionsThreshold,
+	}
 	cfg.PGStatStatements = config.PGStatStatementsConfig{
 		IncludeQuery:     *statStatementsFlags.includeQuery,
 		QueryLength:      *statStatementsFlags.queryLength,
