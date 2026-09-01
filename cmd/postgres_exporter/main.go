@@ -14,6 +14,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -32,16 +33,12 @@ import (
 	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/promslog"
-	"github.com/prometheus/common/promslog/flag"
-	"github.com/prometheus/common/version"
+	"github.com/prometheus/exporter-toolkit/bootstrap"
 	"github.com/prometheus/exporter-toolkit/web"
-	"github.com/prometheus/exporter-toolkit/web/kingpinflag"
 )
 
 var (
 	configFile            = kingpin.Flag("config.file", "Postgres exporter configuration file.").Default("postgres_exporter.yml").String()
-	webConfig             = kingpinflag.AddFlags(kingpin.CommandLine, ":9187")
-	metricsPath           = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").Envar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
 	disableDefaultMetrics = kingpin.Flag("disable-default-metrics", "Do not include default metrics.").Default("false").Envar("PG_EXPORTER_DISABLE_DEFAULT_METRICS").Bool()
 	autoDiscoverDatabases = kingpin.Flag("auto-discover-databases", "Whether to discover the databases on a server dynamically. (DEPRECATED)").Default("false").Envar("PG_EXPORTER_AUTO_DISCOVER_DATABASES").Bool()
 	queriesPath           = kingpin.Flag("extend.query-path", "Path to custom queries to run. (DEPRECATED)").Default("").Envar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
@@ -61,10 +58,21 @@ var (
 
 	statStatementsFlags = newPGStatStatementsFlags()
 	logger              = promslog.NewNopLogger()
+	// loggerConfigured is false until logger is no longer a no-op (e.g. a flag-parse failure).
+	loggerConfigured = false
 )
 
 // The name of the exporter.
 const exporterName = "postgres_exporter"
+
+// webTelemetryPathEnvar is the legacy metrics-path env var. bootstrap
+// dropped env-var support for --web.telemetry-path (exporter-toolkit#430),
+// so when set, metrics are additionally served at this path alongside the
+// flag, rather than relocated or overridden as before.
+const webTelemetryPathEnvar = "PG_EXPORTER_WEB_TELEMETRY_PATH"
+
+// errDumpMaps signals --dumpmaps so main, not the bootstrap callback, exits.
+var errDumpMaps = errors.New("dumpmaps requested")
 
 type collectorFlagSet map[string]*bool
 
@@ -124,23 +132,54 @@ func newPGStatStatementsFlags() pgStatStatementsFlags {
 }
 
 func main() {
-	kingpin.Version(version.Print(exporterName))
-	promslogConfig := &promslog.Config{}
-	flag.AddFlags(kingpin.CommandLine, promslogConfig)
-	kingpin.HelpFlag.Short('h')
-	kingpin.Parse()
-	logger = promslog.New(promslogConfig)
+	runner := bootstrap.New(bootstrap.Config{
+		App:            kingpin.CommandLine,
+		Name:           exporterName,
+		Description:    "Prometheus PostgreSQL server Exporter",
+		DefaultAddress: ":9187",
+		LandingConfig: web.LandingConfig{
+			Name: "Postgres Exporter",
+		},
+		MetricsHandlerFactory: newMetricsHandler,
+	})
 
-	if *onlyDumpMaps {
+	err := runner.Run()
+	if pgRuntime != nil {
+		if closeErr := pgRuntime.Close(); closeErr != nil {
+			logger.Error("Failed to close runtime", "err", closeErr)
+		}
+	}
+	if errors.Is(err, errDumpMaps) {
 		exporter.DumpMaps()
 		return
+	}
+	if err != nil {
+		if loggerConfigured {
+			logger.Error("Error running exporter", "err", err)
+		} else {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		os.Exit(1)
+	}
+}
+
+// pgRuntime is package level so it can be closed once the server stops.
+var pgRuntime *collector.Runtime
+
+// newMetricsHandler wires up the exporter and registers postgres_exporter's
+// endpoints once the toolkit has parsed flags.
+func newMetricsHandler(b *bootstrap.Bootstrap) (http.Handler, error) {
+	logger = b.Logger
+	loggerConfigured = true
+
+	if *onlyDumpMaps {
+		return nil, errDumpMaps
 	}
 
 	registry := prometheus.NewRegistry()
 	authHandler, err := config.NewHandler(registry)
 	if err != nil {
-		logger.Error("Failed to create config handler", "err", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("failed to create config handler: %w", err)
 	}
 
 	if err := authHandler.ReloadAuthConfig(*configFile, logger); err != nil {
@@ -150,14 +189,12 @@ func main() {
 
 	dsns, err := exporter.GetDataSources()
 	if err != nil {
-		logger.Error("Failed reading data sources", "err", err.Error())
-		os.Exit(1)
+		return nil, fmt.Errorf("failed reading data sources: %w", err)
 	}
 
 	cfg, err := buildConfig(dsns)
 	if err != nil {
-		logger.Error("Failed building config", "err", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("failed building config: %w", err)
 	}
 	logger.Info("Excluded databases", "databases", fmt.Sprintf("%v", cfg.ExcludeDatabases))
 
@@ -175,59 +212,41 @@ func main() {
 
 	validatedConfig, err := cfg.Validate()
 	if err != nil {
-		logger.Error("Invalid config", "err", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
-	pgRuntime, err := collector.NewRuntime(validatedConfig, logger)
+	runtime, err := collector.NewRuntime(validatedConfig, logger)
 	if err != nil {
-		logger.Error("Failed to create runtime", "err", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("failed to create runtime: %w", err)
 	}
-	defer func() {
-		if err := pgRuntime.Close(); err != nil {
-			logger.Error("Failed to close runtime", "err", err)
-		}
-	}()
+	pgRuntime = runtime
 
-	registry.MustRegister(
-		prometheuscollectors.NewGoCollector(),
-		prometheuscollectors.NewProcessCollector(prometheuscollectors.ProcessCollectorOpts{}),
-		versioncollector.NewCollector(exporterName),
-	)
-	for _, collector := range pgRuntime.Collectors() {
+	if !b.DisableExporterMetrics {
+		registry.MustRegister(
+			prometheuscollectors.NewGoCollector(),
+			prometheuscollectors.NewProcessCollector(prometheuscollectors.ProcessCollectorOpts{}),
+		)
+	}
+	registry.MustRegister(versioncollector.NewCollector(exporterName))
+	for _, collector := range runtime.Collectors() {
 		registry.MustRegister(collector)
 	}
 
-	http.Handle(*metricsPath, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
+	b.HandleFunc("/probe", handleProbe(logger, authHandler, cfg))
+	// net/http/pprof and the transitively-imported "expvar" package both
+	// register handlers under /debug/ on the default mux.
+	b.Handle("/debug/", http.DefaultServeMux)
 
-	if *metricsPath != "/" && *metricsPath != "" {
-		landingConfig := web.LandingConfig{
-			Name:        "Postgres Exporter",
-			Description: "Prometheus PostgreSQL server Exporter",
-			Version:     version.Info(),
-			Links: []web.LandingLinks{
-				{
-					Address: *metricsPath,
-					Text:    "Metrics",
-				},
-			},
-		}
-		landingPage, err := web.NewLandingPage(landingConfig)
-		if err != nil {
-			logger.Error("error creating landing page", "err", err)
-			os.Exit(1)
-		}
-		http.Handle("/", landingPage)
+	metricsHandler := promhttp.HandlerFor(registry, promhttp.HandlerOpts{
+		MaxRequestsInFlight: b.MaxRequests,
+	})
+
+	if legacyPath := os.Getenv(webTelemetryPathEnvar); legacyPath != "" && legacyPath != b.MetricsPath {
+		logger.Warn(webTelemetryPathEnvar+" is DEPRECATED, use --web.telemetry-path instead", "path", legacyPath)
+		b.Handle(legacyPath, metricsHandler)
 	}
 
-	http.HandleFunc("/probe", handleProbe(logger, authHandler, cfg))
-
-	srv := &http.Server{}
-	if err := web.ListenAndServe(srv, webConfig, logger); err != nil {
-		logger.Error("Error running HTTP server", "err", err)
-		os.Exit(1)
-	}
+	return metricsHandler, nil
 }
 
 func buildConfig(dsns []string) (config.Config, error) {
