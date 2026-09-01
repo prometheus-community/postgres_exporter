@@ -142,6 +142,11 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `[no-]collector.stat_activity`
   Enable the `stat_activity` collector (default: enabled).
 
+* `[no-]collector.sequence_overflow`
+  Enable the `sequence_overflow` collector (default: disabled).
+  Requires USAGE privilege on each sequence, or pg_read_all_data. Without it,
+  `pg_sequence_last_value()` returns NULL and all metrics will show 0.
+
 * `[no-]collector.stat_activity_autovacuum`
   Enable the `stat_activity_autovacuum` collector (default: disabled).
 
