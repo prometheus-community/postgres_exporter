@@ -77,8 +77,9 @@ func TestNewRuntimeCollectorsWithDataSource(t *testing.T) {
 }
 
 func TestNewRuntimePropagatesWrapLargeCounters(t *testing.T) {
+	dsn := "postgresql://localhost:5432/postgres?sslmode=disable"
 	cfg := config.NewConfigWithDefaults()
-	cfg.DataSourceNames = []string{"postgresql://localhost:5432/postgres?sslmode=disable"}
+	cfg.DataSourceNames = []string{dsn}
 	cfg.WrapLargeCounters = false
 	validated, err := cfg.Validate()
 	if err != nil {
@@ -91,7 +92,11 @@ func TestNewRuntimePropagatesWrapLargeCounters(t *testing.T) {
 	}
 	defer runtime.Close()
 
-	if runtime.postgresCollector.instance.wrapLargeCounters {
+	pc, ok := runtime.postgresCollectors.collectors[dsn]
+	if !ok {
+		t.Fatalf("no postgres collector built for %q", dsn)
+	}
+	if pc.instance.wrapLargeCounters {
 		t.Fatal("postgres collector wrapLargeCounters = true, want false")
 	}
 }
@@ -112,7 +117,13 @@ func TestNewRuntimePropagatesLongRunningTransactionsThreshold(t *testing.T) {
 	}
 	defer runtime.Close()
 
-	collector, ok := runtime.postgresCollector.Collectors[config.CollectorLongRunningTransactions].(*PGLongRunningTransactionsCollector)
+	dsn := "postgresql://localhost:5432/postgres?sslmode=disable"
+	pc, ok := runtime.postgresCollectors.collectors[dsn]
+	if !ok {
+		t.Fatalf("no postgres collector built for %q", dsn)
+	}
+
+	collector, ok := pc.Collectors[config.CollectorLongRunningTransactions].(*PGLongRunningTransactionsCollector)
 	if !ok {
 		t.Fatalf("collector type = %T, want *PGLongRunningTransactionsCollector", collector)
 	}

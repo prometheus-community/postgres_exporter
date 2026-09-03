@@ -27,7 +27,33 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var factories = make(map[string]func(collectorConfig) (Collector, error))
+// collectorScope describes whether a collector's data is specific to the
+// database it is connected to, or shared across the whole PostgreSQL
+// instance/cluster.
+type collectorScope int
+
+const (
+	// clusterScope collectors read catalog views or functions that report on
+	// the whole PostgreSQL instance (e.g. pg_stat_activity, pg_stat_bgwriter,
+	// pg_stat_statements) regardless of which database the connection happens
+	// to be attached to. They must only ever be run once per instance: running
+	// them again from a second connection to a different database on the same
+	// instance would re-report the exact same rows and panic the registry with
+	// a duplicate-metric error.
+	clusterScope collectorScope = iota
+	// databaseScope collectors read catalog views that are scoped to the
+	// currently connected database (e.g. pg_stat_user_tables). They report
+	// different data depending on which database the connection is attached
+	// to, and must be run once per database to get complete coverage.
+	databaseScope
+)
+
+type registeredCollector struct {
+	scope  collectorScope
+	create func(collectorConfig) (Collector, error)
+}
+
+var factories = make(map[string]registeredCollector)
 
 // Namespace for all metrics.
 const namespace = "pg"
@@ -58,11 +84,11 @@ type collectorConfig struct {
 	pgStatStatementsConfig        config.PGStatStatementsConfig
 }
 
-func registerCollector(name string, createFunc func(collectorConfig) (Collector, error)) {
+func registerCollector(name string, scope collectorScope, createFunc func(collectorConfig) (Collector, error)) {
 	if _, ok := config.DefaultCollectorConfig()[name]; !ok {
 		panic(fmt.Sprintf("collector %q is not declared in config.DefaultCollectorConfig", name))
 	}
-	factories[name] = createFunc
+	factories[name] = registeredCollector{scope: scope, create: createFunc}
 }
 
 // PostgresCollector implements the prometheus.Collector interface.
@@ -76,6 +102,7 @@ type PostgresCollector struct {
 	longRunningTransactions config.LongRunningTransactionsConfig
 	pgStatStatements        config.PGStatStatementsConfig
 	wrapLargeCounters       bool
+	scopeFilter             *collectorScope
 }
 
 type Option func(*PostgresCollector) error
@@ -118,7 +145,10 @@ func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn st
 		if !ok {
 			return nil, fmt.Errorf("missing collector factory: %s", key)
 		}
-		collector, err := factory(collectorConfig{
+		if p.scopeFilter != nil && factory.scope != *p.scopeFilter {
+			continue
+		}
+		collector, err := factory.create(collectorConfig{
 			logger:                        logger.With("collector", key),
 			excludeDatabases:              excludeDatabases,
 			longRunningTransactionsConfig: p.longRunningTransactions,
@@ -156,6 +186,17 @@ func WithCollectorStates(states map[string]bool) Option {
 			merged[name] = enabled
 		}
 		e.collectorStates = merged
+		return nil
+	}
+}
+
+// onlyScope restricts the collectors built by NewPostgresCollector to those
+// registered with the given scope. It is used to run only the per-database
+// collectors against additional databases discovered on an instance that is
+// already covered by another, fully-scoped PostgresCollector.
+func onlyScope(scope collectorScope) Option {
+	return func(e *PostgresCollector) error {
+		e.scopeFilter = &scope
 		return nil
 	}
 }

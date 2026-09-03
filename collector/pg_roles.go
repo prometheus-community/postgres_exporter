@@ -22,7 +22,7 @@ import (
 )
 
 func init() {
-	registerCollector(rolesSubsystem, NewPGRolesCollector)
+	registerCollector(rolesSubsystem, clusterScope, NewPGRolesCollector)
 }
 
 type PGRolesCollector struct {

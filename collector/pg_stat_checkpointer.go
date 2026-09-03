@@ -25,7 +25,7 @@ import (
 func init() {
 	// WARNING:
 	//   Disabled by default because this set of metrics is only available from Postgres 17
-	registerCollector(statCheckpointerSubsystem, NewPGStatCheckpointerCollector)
+	registerCollector(statCheckpointerSubsystem, clusterScope, NewPGStatCheckpointerCollector)
 }
 
 type PGStatCheckpointerCollector struct {

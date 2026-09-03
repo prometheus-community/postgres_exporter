@@ -23,7 +23,7 @@ import (
 )
 
 func init() {
-	registerCollector(buffercacheSummarySubsystem, NewBuffercacheSummaryCollector)
+	registerCollector(buffercacheSummarySubsystem, clusterScope, NewBuffercacheSummaryCollector)
 }
 
 // BuffercacheSummaryCollector collects stats from pg_buffercache: https://www.postgresql.org/docs/current/pgbuffercache.html.

@@ -22,7 +22,7 @@ import (
 )
 
 func init() {
-	registerCollector(locksSubsystem, NewPGLocksCollector)
+	registerCollector(locksSubsystem, clusterScope, NewPGLocksCollector)
 }
 
 type PGLocksCollector struct {
