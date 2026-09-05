@@ -74,7 +74,7 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			}
 
 			if dsnURI != nil {
-				dsnURI.Path = databaseName
+				dsnURI.Path = "/" + databaseName
 				dsn = dsnURI.String()
 			} else {
 				// replacing one dbname with another is complicated.
