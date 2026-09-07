@@ -1,3 +1,8 @@
+---
+title: Configuring the Exporter
+nav_title: Configuration
+sort_rank: 5
+---
 # Configuring the Exporter
 
 The exporter is configured through a combination of command-line flags, environment variables, and (optionally) a YAML config file. This page covers the operator-facing settings; database connection and credentials are covered separately in [Connecting to PostgreSQL](connecting.md) and [Secrets](secrets.md).

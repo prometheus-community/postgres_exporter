@@ -1,3 +1,7 @@
+---
+title: Connecting to PostgreSQL
+sort_rank: 3
+---
 # Connecting to PostgreSQL
 
 ## How the exporter connects

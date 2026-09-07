@@ -1,3 +1,7 @@
+---
+title: Secrets
+sort_rank: 6
+---
 # Secrets
 
 There are several ways to supply the database credentials the exporter connects with, and separately, ways to protect the exporter's own HTTP endpoint. Prefer file-based secrets over plain environment variables where your deployment tooling supports it (e.g. Kubernetes Secrets mounted as files, Docker secrets, Vault agent templates) — environment variables are visible to anything that can read the process's environment (e.g. `/proc/<pid>/environ`, `docker inspect`).

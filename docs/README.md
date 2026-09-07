@@ -1,3 +1,8 @@
+---
+title: postgres_exporter Documentation
+nav_title: Overview
+sort_rank: 1
+---
 # postgres_exporter Documentation
 
 `postgres_exporter` is a [Prometheus](https://prometheus.io/) exporter for PostgreSQL server metrics. It connects to a PostgreSQL instance as a regular database user, queries the server's built-in statistics views on each scrape, and exposes the results as Prometheus metrics over HTTP.

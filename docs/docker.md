@@ -1,3 +1,8 @@
+---
+title: Docker Images
+nav_title: Docker
+sort_rank: 7
+---
 # Docker Images
 
 Official images are published to three registries, kept in sync on every release:

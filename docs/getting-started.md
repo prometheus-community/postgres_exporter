@@ -1,3 +1,7 @@
+---
+title: Getting Started
+sort_rank: 2
+---
 # Getting Started
 
 ## Install

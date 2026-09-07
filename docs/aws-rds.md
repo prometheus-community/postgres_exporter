@@ -1,3 +1,8 @@
+---
+title: Running Against AWS RDS
+nav_title: AWS RDS
+sort_rank: 8
+---
 # Running Against AWS RDS
 
 RDS is a managed PostgreSQL service, so you don't have superuser access — a few things need to be set up differently than on a self-managed server.

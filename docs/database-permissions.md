@@ -1,3 +1,7 @@
+---
+title: Database Permissions
+sort_rank: 4
+---
 # Database Permissions
 
 The exporter needs a PostgreSQL role it can connect as, plus enough privileges to read the `pg_stat_*` / `pg_settings` views the enabled collectors query. Two options: use a superuser (simplest, not recommended beyond local testing), or grant a dedicated monitoring role the minimum it needs.
