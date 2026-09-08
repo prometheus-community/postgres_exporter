@@ -16,6 +16,7 @@ package config
 import (
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -97,6 +98,50 @@ func Test_dsn_String(t *testing.T) {
 			}
 			if got := d.String(); got != tt.want {
 				t.Errorf("dsn.String() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// Test_dsn_String_Redacted tests the parse-then-print round trip that log lines rely on:
+// no matter which form the password arrives in, it must not survive into dsn.String().
+// https://github.com/prometheus-community/postgres_exporter/issues/643
+func TestDSNStringRedacted(t *testing.T) {
+	const password = "S3CRET"
+
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "password in userinfo",
+			input: "postgresql://user:" + password + "@localhost:5432/postgres?sslmode=disable",
+		},
+		{
+			name:  "password as a query parameter",
+			input: "postgresql://localhost:5432/postgres?user=test&password=" + password + "&sslmode=disable",
+		},
+		{
+			name:  "password in a key=value connection string",
+			input: "host=localhost port=5432 user=test password=" + password + " sslmode=disable",
+		},
+		{
+			name:  "quoted password in a key=value connection string",
+			input: "host=localhost user=test password='" + password + " with spaces' sslmode=disable",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d, err := dsnFromString(tt.input)
+			if err != nil {
+				t.Fatalf("dsnFromString(%q) error = %v", tt.input, err)
+			}
+			got := d.String()
+			if strings.Contains(got, password) {
+				t.Errorf("dsn.String() leaked the password: %v", got)
+			}
+			if !strings.Contains(got, "******") {
+				t.Errorf("dsn.String() did not redact the password: %v", got)
 			}
 		})
 	}
