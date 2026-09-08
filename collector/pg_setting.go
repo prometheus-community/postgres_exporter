@@ -25,7 +25,7 @@ import (
 )
 
 func init() {
-	registerCollector(settingsSubsystem, clusterScope, NewPGSettingsCollector)
+	registerCollector(settingsSubsystem, serverScope, NewPGSettingsCollector)
 }
 
 type PGSettingsCollector struct {

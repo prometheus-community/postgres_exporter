@@ -92,12 +92,57 @@ func TestNewRuntimePropagatesWrapLargeCounters(t *testing.T) {
 	}
 	defer runtime.Close()
 
-	pc, ok := runtime.postgresCollectors.collectors[dsn]
-	if !ok {
-		t.Fatalf("no postgres collector built for %q", dsn)
-	}
+	pc := runtime.postgresCollector
 	if pc.instance.wrapLargeCounters {
 		t.Fatal("postgres collector wrapLargeCounters = true, want false")
+	}
+}
+
+func TestNewRuntimeOnlyEnablesDatabaseDiscoveryWhenAutoDiscoverDatabasesIsSet(t *testing.T) {
+	cfg := config.NewConfigWithDefaults()
+	cfg.DataSourceNames = []string{"postgresql://localhost:5432/postgres?sslmode=disable"}
+	validated, err := cfg.Validate()
+	if err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+
+	runtime, err := NewRuntime(validated, promslog.NewNopLogger())
+	if err != nil {
+		t.Fatalf("NewRuntime() error = %v", err)
+	}
+	defer runtime.Close()
+
+	if runtime.postgresCollector.databaseDiscovery != nil {
+		t.Fatal("databaseDiscovery is set, want nil when AutoDiscoverDatabases is false")
+	}
+}
+
+func TestNewRuntimeEnablesDatabaseDiscoveryWithAutoDiscoverDatabases(t *testing.T) {
+	cfg := config.NewConfigWithDefaults()
+	cfg.DataSourceNames = []string{"postgresql://localhost:5432/postgres?sslmode=disable"}
+	cfg.AutoDiscoverDatabases = true
+	cfg.IncludeDatabases = []string{"included"}
+	cfg.ExcludeDatabases = []string{"excluded"}
+	validated, err := cfg.Validate()
+	if err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+
+	runtime, err := NewRuntime(validated, promslog.NewNopLogger())
+	if err != nil {
+		t.Fatalf("NewRuntime() error = %v", err)
+	}
+	defer runtime.Close()
+
+	discovery := runtime.postgresCollector.databaseDiscovery
+	if discovery == nil {
+		t.Fatal("databaseDiscovery is nil, want set when AutoDiscoverDatabases is true")
+	}
+	if got, want := discovery.includeDatabases, cfg.IncludeDatabases; len(got) != 1 || got[0] != want[0] {
+		t.Errorf("includeDatabases = %v, want %v", got, want)
+	}
+	if got, want := discovery.excludeDatabases, cfg.ExcludeDatabases; len(got) != 1 || got[0] != want[0] {
+		t.Errorf("excludeDatabases = %v, want %v", got, want)
 	}
 }
 
@@ -117,12 +162,7 @@ func TestNewRuntimePropagatesLongRunningTransactionsThreshold(t *testing.T) {
 	}
 	defer runtime.Close()
 
-	dsn := "postgresql://localhost:5432/postgres?sslmode=disable"
-	pc, ok := runtime.postgresCollectors.collectors[dsn]
-	if !ok {
-		t.Fatalf("no postgres collector built for %q", dsn)
-	}
-
+	pc := runtime.postgresCollector
 	collector, ok := pc.Collectors[config.CollectorLongRunningTransactions].(*PGLongRunningTransactionsCollector)
 	if !ok {
 		t.Fatalf("collector type = %T, want *PGLongRunningTransactionsCollector", collector)

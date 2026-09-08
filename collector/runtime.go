@@ -25,8 +25,8 @@ import (
 )
 
 type Runtime struct {
-	exporter           *exporter.Exporter
-	postgresCollectors *multiInstanceCollector
+	exporter          *exporter.Exporter
+	postgresCollector *PostgresCollector
 }
 
 func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*Runtime, error) {
@@ -47,37 +47,42 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 		return runtime, nil
 	}
 
-	build := func(dsn string, primary bool) (*PostgresCollector, error) {
-		opts := []Option{
-			WithCollectionTimeout(cfg.CollectionTimeout.String()),
-			WithCollectorStates(cfg.Collectors),
-			WithLongRunningTransactionsConfig(cfg.LongRunningTransactions),
-			WithPGStatStatementsConfig(cfg.PGStatStatements),
-			WithWrapLargeCounters(cfg.WrapLargeCounters),
-		}
-		if !primary {
-			// Additional databases found via autodiscovery only get
-			// per-database collectors; instance-wide collectors already ran
-			// against the primary DSN and must not run again.
-			opts = append(opts, onlyScope(databaseScope))
-		}
-		return NewPostgresCollector(logger, cfg.ExcludeDatabases, dsn, nil, opts...)
+	opts := []Option{
+		WithCollectionTimeout(cfg.CollectionTimeout.String()),
+		WithCollectorStates(cfg.Collectors),
+		WithLongRunningTransactionsConfig(cfg.LongRunningTransactions),
+		WithPGStatStatementsConfig(cfg.PGStatStatements),
+		WithWrapLargeCounters(cfg.WrapLargeCounters),
+	}
+	if cfg.AutoDiscoverDatabases {
+		// Run the database-scoped collectors (stat_user_tables,
+		// statio_user_tables, statio_user_indexes, ...) against every other
+		// database on the server too. Server-scoped collectors are
+		// unaffected: they still only ever run once, against
+		// DataSourceNames[0], so they are never duplicated.
+		opts = append(opts, WithDatabaseDiscovery(cfg.IncludeDatabases, cfg.ExcludeDatabases))
 	}
 
-	postgresCollectors := newMultiInstanceCollector(logger, exporterCollector.TargetDSNs, build)
-	if err := postgresCollectors.init(); err != nil {
+	postgresCollector, err := NewPostgresCollector(
+		logger,
+		cfg.ExcludeDatabases,
+		cfg.DataSourceNames[0],
+		nil,
+		opts...,
+	)
+	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("create postgres collector: %w", err)
 	}
-	runtime.postgresCollectors = postgresCollectors
+	runtime.postgresCollector = postgresCollector
 
 	return runtime, nil
 }
 
 func (r *Runtime) Collectors() []prometheus.Collector {
 	collectors := []prometheus.Collector{r.exporter}
-	if r.postgresCollectors != nil {
-		collectors = append(collectors, r.postgresCollectors)
+	if r.postgresCollector != nil {
+		collectors = append(collectors, r.postgresCollector)
 	}
 	return collectors
 }
@@ -87,8 +92,8 @@ func (r *Runtime) Close() error {
 	if r.exporter != nil {
 		r.exporter.CloseServers()
 	}
-	if r.postgresCollectors != nil {
-		err = errors.Join(err, r.postgresCollectors.Close())
+	if r.postgresCollector != nil {
+		err = errors.Join(err, r.postgresCollector.Close())
 	}
 	return err
 }

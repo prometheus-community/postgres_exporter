@@ -28,19 +28,18 @@ import (
 )
 
 // collectorScope describes whether a collector's data is specific to the
-// database it is connected to, or shared across the whole PostgreSQL
-// instance/cluster.
+// database it is connected to, or shared across the whole PostgreSQL server.
 type collectorScope int
 
 const (
-	// clusterScope collectors read catalog views or functions that report on
-	// the whole PostgreSQL instance (e.g. pg_stat_activity, pg_stat_bgwriter,
+	// serverScope collectors read catalog views or functions that report on
+	// the whole PostgreSQL server (e.g. pg_stat_activity, pg_stat_bgwriter,
 	// pg_stat_statements) regardless of which database the connection happens
-	// to be attached to. They must only ever be run once per instance: running
+	// to be attached to. They must only ever be run once per server: running
 	// them again from a second connection to a different database on the same
-	// instance would re-report the exact same rows and panic the registry with
+	// server would re-report the exact same rows and panic the registry with
 	// a duplicate-metric error.
-	clusterScope collectorScope = iota
+	serverScope collectorScope = iota
 	// databaseScope collectors read catalog views that are scoped to the
 	// currently connected database (e.g. pg_stat_user_tables). They report
 	// different data depending on which database the connection is attached
@@ -99,10 +98,12 @@ type PostgresCollector struct {
 	instance                *instance
 	CollectionTimeout       time.Duration
 	collectorStates         map[string]bool
+	excludeDatabases        []string
 	longRunningTransactions config.LongRunningTransactionsConfig
 	pgStatStatements        config.PGStatStatementsConfig
 	wrapLargeCounters       bool
 	scopeFilter             *collectorScope
+	databaseDiscovery       *databaseDiscovery
 }
 
 type Option func(*PostgresCollector) error
@@ -111,6 +112,7 @@ type Option func(*PostgresCollector) error
 func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn string, filters []string, options ...Option) (*PostgresCollector, error) {
 	p := &PostgresCollector{
 		logger:                  logger,
+		excludeDatabases:        excludeDatabases,
 		collectorStates:         config.DefaultCollectorConfig(),
 		longRunningTransactions: defaultLongRunningTransactionsConfig(),
 		pgStatStatements:        defaultPGStatStatementsConfig(),
@@ -191,14 +193,50 @@ func WithCollectorStates(states map[string]bool) Option {
 }
 
 // onlyScope restricts the collectors built by NewPostgresCollector to those
-// registered with the given scope. It is used to run only the per-database
-// collectors against additional databases discovered on an instance that is
-// already covered by another, fully-scoped PostgresCollector.
+// registered with the given scope. It is used to build a collector that only
+// runs the database-scoped collectors, against a database discovered on the
+// same server as another, fully-scoped PostgresCollector.
 func onlyScope(scope collectorScope) Option {
 	return func(e *PostgresCollector) error {
 		e.scopeFilter = &scope
 		return nil
 	}
+}
+
+// WithDatabaseDiscovery makes the collector discover every other database on
+// the same PostgreSQL server as its primary connection, and run the
+// database-scoped collectors against each one over its own connection, in
+// addition to the primary database. The set of databases is re-evaluated on
+// every scrape, so databases created or dropped after startup are picked up
+// without a restart.
+//
+// Server-scoped collectors are unaffected by this option: they still only
+// ever run once, against the primary connection, so they are never
+// duplicated no matter how many databases are discovered.
+func WithDatabaseDiscovery(includeDatabases, excludeDatabases []string) Option {
+	return func(p *PostgresCollector) error {
+		p.databaseDiscovery = newDatabaseDiscovery(includeDatabases, excludeDatabases)
+		return nil
+	}
+}
+
+// buildDatabaseCollector creates a PostgresCollector that only runs
+// database-scoped collectors against dsn, sharing every other setting with
+// p. It is used to scrape a database discovered alongside p's own primary
+// connection.
+func (p *PostgresCollector) buildDatabaseCollector(dsn string) (*PostgresCollector, error) {
+	return NewPostgresCollector(
+		p.logger,
+		p.excludeDatabases,
+		dsn,
+		nil,
+		WithCollectorStates(p.collectorStates),
+		WithLongRunningTransactionsConfig(p.longRunningTransactions),
+		WithPGStatStatementsConfig(p.pgStatStatements),
+		WithWrapLargeCounters(p.wrapLargeCounters),
+		WithCollectionTimeout(p.CollectionTimeout.String()),
+		onlyScope(databaseScope),
+	)
 }
 
 func WithPGStatStatementsConfig(cfg config.PGStatStatementsConfig) Option {
@@ -256,6 +294,12 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 	p.collectFromConnection(inst, ch)
+
+	if p.databaseDiscovery != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), p.CollectionTimeout)
+		defer cancel()
+		p.databaseDiscovery.collect(ctx, inst.dsn, inst.getDB(), ch, p.logger, p.buildDatabaseCollector)
+	}
 }
 
 func (p PostgresCollector) collectFromConnection(inst *instance, ch chan<- prometheus.Metric) {
@@ -275,7 +319,11 @@ func (p PostgresCollector) collectFromConnection(inst *instance, ch chan<- prome
 }
 
 func (p *PostgresCollector) Close() error {
-	return p.instance.Close()
+	err := p.instance.Close()
+	if p.databaseDiscovery != nil {
+		err = errors.Join(err, p.databaseDiscovery.Close())
+	}
+	return err
 }
 
 func execute(ctx context.Context, name string, c Collector, instance *instance, ch chan<- prometheus.Metric, logger *slog.Logger) {

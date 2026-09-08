@@ -225,9 +225,7 @@ func parseFingerprint(dsn string) (string, error) {
 	return fingerprint, nil
 }
 
-// LoggableDSN returns dsn with any credentials redacted, safe to include in
-// logs and error messages.
-func LoggableDSN(dsn string) string {
+func loggableDSN(dsn string) string {
 	pDSN, err := url.Parse(dsn)
 	if err != nil {
 		return "could not parse DATA_SOURCE_NAME"

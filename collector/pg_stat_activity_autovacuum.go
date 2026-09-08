@@ -21,7 +21,7 @@ import (
 )
 
 func init() {
-	registerCollector(statActivityAutovacuumSubsystem, clusterScope, NewPGStatActivityAutovacuumCollector)
+	registerCollector(statActivityAutovacuumSubsystem, serverScope, NewPGStatActivityAutovacuumCollector)
 }
 
 type PGStatActivityAutovacuumCollector struct {

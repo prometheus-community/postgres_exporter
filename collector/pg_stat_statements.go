@@ -31,7 +31,7 @@ func init() {
 	// WARNING:
 	//   Disabled by default because this set of metrics can be quite expensive on a busy server
 	//   Every unique query will cause a new timeseries to be created
-	registerCollector(statStatementsSubsystem, clusterScope, NewPGStatStatementsCollector)
+	registerCollector(statStatementsSubsystem, serverScope, NewPGStatStatementsCollector)
 }
 
 func defaultPGStatStatementsConfig() config.PGStatStatementsConfig {

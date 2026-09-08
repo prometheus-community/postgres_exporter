@@ -21,7 +21,7 @@ import (
 )
 
 func init() {
-	registerCollector(postmasterSubsystem, clusterScope, NewPGPostmasterCollector)
+	registerCollector(postmasterSubsystem, serverScope, NewPGPostmasterCollector)
 }
 
 type PGPostmasterCollector struct {

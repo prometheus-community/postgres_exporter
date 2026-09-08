@@ -237,7 +237,7 @@ func TestOnlyScopeFiltersToMatchingCollectors(t *testing.T) {
 		}
 	}
 	if _, ok := c.Collectors[databaseSubsystem]; ok {
-		t.Fatal("cluster-scoped database collector is present, want filtered out by onlyScope(databaseScope)")
+		t.Fatal("server-scoped database collector is present, want filtered out by onlyScope(databaseScope)")
 	}
 }
 
@@ -250,7 +250,7 @@ func TestRegisterCollectorRejectsUnknownConfig(t *testing.T) {
 		}
 	}()
 
-	registerCollector(name, clusterScope, func(collectorConfig) (Collector, error) {
+	registerCollector(name, serverScope, func(collectorConfig) (Collector, error) {
 		return nil, nil
 	})
 }
