@@ -335,7 +335,7 @@ func (ch *Handler) SetAuthConfig(config *AuthConfig) {
 }
 
 func (m AuthModule) ConfigureTarget(target string) (DSN, error) {
-	dsn, err := ParseDSN(target)
+	dsn, err := dsnFromString(target)
 	if err != nil {
 		return DSN{}, err
 	}

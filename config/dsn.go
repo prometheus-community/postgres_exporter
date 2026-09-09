@@ -82,9 +82,14 @@ func (d DSN) WithDatabase(database string) DSN {
 	return d
 }
 
-// ParseDSN parses a connection string into a dsn. It will attempt to parse the string as
-// a URL and as a set of key=value pairs. If both attempts fail, ParseDSN will return an error.
-func ParseDSN(in string) (DSN, error) {
+// NewDSN parses a connection string into a DSN.
+func NewDSN(in string) (DSN, error) {
+	return dsnFromString(in)
+}
+
+// dsnFromString parses a connection string into a dsn. It will attempt to parse the string as
+// a URL and as a set of key=value pairs. If both attempts fail, dsnFromString will return an error.
+func dsnFromString(in string) (DSN, error) {
 	if strings.HasPrefix(in, "postgresql://") || strings.HasPrefix(in, "postgres://") {
 		return dsnFromURL(in)
 	}

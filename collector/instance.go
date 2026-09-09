@@ -60,7 +60,7 @@ func (i *instance) copy() *instance {
 // used to scrape a database discovered alongside i's own primary connection,
 // on the same PostgreSQL server.
 func (i *instance) withDatabase(database string) (*instance, error) {
-	dsn, err := config.ParseDSN(i.dsn)
+	dsn, err := config.NewDSN(i.dsn)
 	if err != nil {
 		return nil, fmt.Errorf("malformed dsn: %w", err)
 	}
