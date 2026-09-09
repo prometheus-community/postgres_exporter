@@ -61,13 +61,13 @@ var (
 	scrapeDurationDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "scrape", "collector_duration_seconds"),
 		"postgres_exporter: Duration of a collector scrape.",
-		[]string{"collector"},
+		[]string{"collector", "datname"},
 		nil,
 	)
 	scrapeSuccessDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "scrape", "collector_success"),
 		"postgres_exporter: Whether a collector succeeded.",
-		[]string{"collector"},
+		[]string{"collector", "datname"},
 		nil,
 	)
 )
@@ -102,8 +102,16 @@ type PostgresCollector struct {
 	longRunningTransactions config.LongRunningTransactionsConfig
 	pgStatStatements        config.PGStatStatementsConfig
 	wrapLargeCounters       bool
-	scopeFilter             *collectorScope
-	databaseDiscovery       *databaseDiscovery
+	databaseDiscovery       *databaseDiscoveryConfig
+}
+
+// databaseDiscoveryConfig holds the include/exclude filters for
+// WithDatabaseDiscovery. Its presence on a PostgresCollector (non-nil) is
+// what enables discovery; it carries no other state; the databases it names
+// are discovered fresh on every scrape.
+type databaseDiscoveryConfig struct {
+	includeDatabases []string
+	excludeDatabases []string
 }
 
 type Option func(*PostgresCollector) error
@@ -147,9 +155,6 @@ func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn st
 		if !ok {
 			return nil, fmt.Errorf("missing collector factory: %s", key)
 		}
-		if p.scopeFilter != nil && factory.scope != *p.scopeFilter {
-			continue
-		}
 		collector, err := factory.create(collectorConfig{
 			logger:                        logger.With("collector", key),
 			excludeDatabases:              excludeDatabases,
@@ -192,17 +197,6 @@ func WithCollectorStates(states map[string]bool) Option {
 	}
 }
 
-// onlyScope restricts the collectors built by NewPostgresCollector to those
-// registered with the given scope. It is used to build a collector that only
-// runs the database-scoped collectors, against a database discovered on the
-// same server as another, fully-scoped PostgresCollector.
-func onlyScope(scope collectorScope) Option {
-	return func(e *PostgresCollector) error {
-		e.scopeFilter = &scope
-		return nil
-	}
-}
-
 // WithDatabaseDiscovery makes the collector discover every other database on
 // the same PostgreSQL server as its primary connection, and run the
 // database-scoped collectors against each one over its own connection, in
@@ -215,28 +209,12 @@ func onlyScope(scope collectorScope) Option {
 // duplicated no matter how many databases are discovered.
 func WithDatabaseDiscovery(includeDatabases, excludeDatabases []string) Option {
 	return func(p *PostgresCollector) error {
-		p.databaseDiscovery = newDatabaseDiscovery(includeDatabases, excludeDatabases)
+		p.databaseDiscovery = &databaseDiscoveryConfig{
+			includeDatabases: includeDatabases,
+			excludeDatabases: excludeDatabases,
+		}
 		return nil
 	}
-}
-
-// buildDatabaseCollector creates a PostgresCollector that only runs
-// database-scoped collectors against dsn, sharing every other setting with
-// p. It is used to scrape a database discovered alongside p's own primary
-// connection.
-func (p *PostgresCollector) buildDatabaseCollector(dsn string) (*PostgresCollector, error) {
-	return NewPostgresCollector(
-		p.logger,
-		p.excludeDatabases,
-		dsn,
-		nil,
-		WithCollectorStates(p.collectorStates),
-		WithLongRunningTransactionsConfig(p.longRunningTransactions),
-		WithPGStatStatementsConfig(p.pgStatStatements),
-		WithWrapLargeCounters(p.wrapLargeCounters),
-		WithCollectionTimeout(p.CollectionTimeout.String()),
-		onlyScope(databaseScope),
-	)
 }
 
 func WithPGStatStatementsConfig(cfg config.PGStatStatementsConfig) Option {
@@ -293,37 +271,74 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 		p.logger.Error("Error opening connection to database", "err", err)
 		return
 	}
-	p.collectFromConnection(inst, ch)
+	p.collectFromConnection(inst, ch, nil)
 
 	if p.databaseDiscovery != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), p.CollectionTimeout)
-		defer cancel()
-		p.databaseDiscovery.collect(ctx, inst.dsn, inst.getDB(), ch, p.logger, p.buildDatabaseCollector)
+		p.collectDiscoveredDatabases(inst, ch)
 	}
 }
 
-func (p PostgresCollector) collectFromConnection(inst *instance, ch chan<- prometheus.Metric) {
+// collectDiscoveredDatabases discovers every other database on the same
+// PostgreSQL server as primary, then runs the database-scoped Collectors
+// against each one over its own connection. The set of databases is
+// rediscovered on every call, so databases created or dropped after startup
+// are picked up without a restart; no state is kept between calls.
+func (p PostgresCollector) collectDiscoveredDatabases(primary *instance, ch chan<- prometheus.Metric) {
+	ctx, cancel := context.WithTimeout(context.Background(), p.CollectionTimeout)
+	defer cancel()
+
+	databases, err := discoverDatabases(ctx, primary.getDB(), p.databaseDiscovery.includeDatabases, p.databaseDiscovery.excludeDatabases)
+	if err != nil {
+		p.logger.Error("failed to discover databases", "err", err)
+		return
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(databases))
+	for _, database := range databases {
+		go func(database string) {
+			defer wg.Done()
+
+			inst, err := primary.withDatabase(database)
+			if err != nil {
+				p.logger.Error("failed to build connection for discovered database", "database", database, "err", err)
+				return
+			}
+			defer inst.Close()
+			if err := inst.setup(); err != nil {
+				p.logger.Error("failed to connect to discovered database", "database", database, "err", err)
+				return
+			}
+			scope := databaseScope
+			p.collectFromConnection(inst, ch, &scope)
+		}(database)
+	}
+	wg.Wait()
+}
+
+// collectFromConnection runs the Collectors matching scope against inst,
+// sending their metrics to ch. A nil scope runs every Collector.
+func (p PostgresCollector) collectFromConnection(inst *instance, ch chan<- prometheus.Metric, scope *collectorScope) {
 	// Eventually, connect this to the http scraping context
 	ctx, cancel := context.WithTimeout(context.Background(), p.CollectionTimeout)
 	defer cancel()
 
 	wg := sync.WaitGroup{}
-	wg.Add(len(p.Collectors))
 	for name, c := range p.Collectors {
+		if scope != nil && factories[name].scope != *scope {
+			continue
+		}
+		wg.Add(1)
 		go func(name string, c Collector) {
+			defer wg.Done()
 			execute(ctx, name, c, inst, ch, p.logger)
-			wg.Done()
 		}(name, c)
 	}
 	wg.Wait()
 }
 
 func (p *PostgresCollector) Close() error {
-	err := p.instance.Close()
-	if p.databaseDiscovery != nil {
-		err = errors.Join(err, p.databaseDiscovery.Close())
-	}
-	return err
+	return p.instance.Close()
 }
 
 func execute(ctx context.Context, name string, c Collector, instance *instance, ch chan<- prometheus.Metric, logger *slog.Logger) {
@@ -343,8 +358,8 @@ func execute(ctx context.Context, name string, c Collector, instance *instance, 
 		logger.Debug("collector succeeded", "name", name, "duration_seconds", duration.Seconds())
 		success = 1
 	}
-	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), name)
-	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name)
+	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), name, instance.database)
+	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name, instance.database)
 }
 
 // ErrNoData indicates the collector found no data to collect, but had no other error.

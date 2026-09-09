@@ -62,9 +62,29 @@ func (d DSN) GetConnectionString() string {
 	return u.String()
 }
 
-// dsnFromString parses a connection string into a dsn. It will attempt to parse the string as
-// a URL and as a set of key=value pairs. If both attempts fail, dsnFromString will return an error.
-func dsnFromString(in string) (DSN, error) {
+// WithDatabase returns a copy of d pointed at database instead of whichever
+// database it originally targeted. The override is always carried in the
+// query string (as "dbname"), regardless of how the database was originally
+// specified, since a "dbname" left behind in the query string would
+// otherwise take precedence over the path when the driver parses the
+// resulting connection string.
+func (d DSN) WithDatabase(database string) DSN {
+	d.path = ""
+	query := url.Values{}
+	for k, v := range d.query {
+		if k == "dbname" {
+			continue
+		}
+		query[k] = v
+	}
+	query.Set("dbname", database)
+	d.query = query
+	return d
+}
+
+// ParseDSN parses a connection string into a dsn. It will attempt to parse the string as
+// a URL and as a set of key=value pairs. If both attempts fail, ParseDSN will return an error.
+func ParseDSN(in string) (DSN, error) {
 	if strings.HasPrefix(in, "postgresql://") || strings.HasPrefix(in, "postgres://") {
 		return dsnFromURL(in)
 	}

@@ -68,15 +68,17 @@ func (c *PGStatioUserIndexesCollector) Update(ctx context.Context, instance *ins
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var datname, schemaname, relname, indexrelname sql.NullString
+		// datname comes from current_database(), which Postgres guarantees is
+		// never NULL. Unlike the other columns below, it must not fall back to
+		// a shared sentinel on an invalid value: this label is what keeps rows
+		// from different, concurrently-scraped databases from colliding in the
+		// registry, so it needs to always be the real, distinct database name.
+		var datname string
+		var schemaname, relname, indexrelname sql.NullString
 		var idxBlksRead, idxBlksHit sql.NullInt64
 
 		if err := rows.Scan(&datname, &schemaname, &relname, &indexrelname, &idxBlksRead, &idxBlksHit); err != nil {
 			return err
-		}
-		datnameLabel := "unknown"
-		if datname.Valid {
-			datnameLabel = datname.String
 		}
 		schemanameLabel := "unknown"
 		if schemaname.Valid {
@@ -90,7 +92,7 @@ func (c *PGStatioUserIndexesCollector) Update(ctx context.Context, instance *ins
 		if indexrelname.Valid {
 			indexrelnameLabel = indexrelname.String
 		}
-		labels := []string{datnameLabel, schemanameLabel, relnameLabel, indexrelnameLabel}
+		labels := []string{datname, schemanameLabel, relnameLabel, indexrelnameLabel}
 
 		idxBlksReadMetric := int64CounterValue(idxBlksRead, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(

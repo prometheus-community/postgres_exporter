@@ -82,7 +82,7 @@ func TestPgStatioUserIndexesCollectorNull(t *testing.T) {
 		"idx_blks_hit",
 	}
 	rows := sqlmock.NewRows(columns).
-		AddRow(nil, nil, nil, nil, nil, nil)
+		AddRow("postgres", nil, nil, nil, nil, nil)
 
 	mock.ExpectQuery(sanitizeQuery(statioUserIndexesQuery)).WillReturnRows(rows)
 
@@ -96,8 +96,8 @@ func TestPgStatioUserIndexesCollectorNull(t *testing.T) {
 		}
 	}()
 	expected := []MetricResult{
-		{labels: labelMap{"datname": "unknown", "schemaname": "unknown", "relname": "unknown", "indexrelname": "unknown"}, value: 0, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"datname": "unknown", "schemaname": "unknown", "relname": "unknown", "indexrelname": "unknown"}, value: 0, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown", "indexrelname": "unknown"}, value: 0, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown", "indexrelname": "unknown"}, value: 0, metricType: dto.MetricType_COUNTER},
 	}
 	convey.Convey("Metrics comparison", t, func() {
 		for _, expect := range expected {

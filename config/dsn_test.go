@@ -102,10 +102,10 @@ func Test_dsn_String(t *testing.T) {
 	}
 }
 
-// Test_dsnFromString tests the dsnFromString function with known variations
+// Test_ParseDSN tests the ParseDSN function with known variations
 // of connection string inputs to ensure that it properly parses the input into
 // a dsn.
-func Test_dsnFromString(t *testing.T) {
+func Test_ParseDSN(t *testing.T) {
 
 	tests := []struct {
 		name    string
@@ -215,13 +215,52 @@ func Test_dsnFromString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := dsnFromString(tt.input)
+			got, err := ParseDSN(tt.input)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("dsnFromString() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ParseDSN() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("dsnFromString() = %+v, want %+v", got, tt.want)
+				t.Errorf("ParseDSN() = %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
+// Test_DSN_WithDatabase tests that WithDatabase overrides whichever database
+// a dsn originally targeted, regardless of how that database was specified.
+func Test_DSN_WithDatabase(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "URL with path-based database",
+			input: "postgresql://user:pass@host.example.com:5432/original?sslmode=disable",
+			want:  "postgresql://user:pass@host.example.com:5432?dbname=other&sslmode=disable",
+		},
+		{
+			name:  "key-value with dbname",
+			input: "host=host.example.com dbname=original sslmode=disable",
+			want:  "postgresql://host.example.com?dbname=other&sslmode=disable",
+		},
+		{
+			name:  "key-value without dbname",
+			input: "host=host.example.com sslmode=disable",
+			want:  "postgresql://host.example.com?dbname=other&sslmode=disable",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d, err := ParseDSN(tt.input)
+			if err != nil {
+				t.Fatalf("ParseDSN() error = %v", err)
+			}
+			got := d.WithDatabase("other").GetConnectionString()
+			if got != tt.want {
+				t.Fatalf("WithDatabase(\"other\").GetConnectionString() = %q, want %q", got, tt.want)
 			}
 		})
 	}
