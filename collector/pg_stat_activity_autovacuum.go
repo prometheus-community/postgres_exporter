@@ -15,6 +15,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 	"log/slog"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -51,7 +52,7 @@ var (
 	`
 )
 
-func (PGStatActivityAutovacuumCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+func (c PGStatActivityAutovacuumCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
 	rows, err := db.QueryContext(ctx,
 		statActivityAutovacuumQuery)
@@ -63,16 +64,21 @@ func (PGStatActivityAutovacuumCollector) Update(ctx context.Context, instance *i
 
 	for rows.Next() {
 		var relname string
-		var ageInSeconds float64
+		var ageInSeconds sql.NullFloat64
 
 		if err := rows.Scan(&relname, &ageInSeconds); err != nil {
 			return err
 		}
 
+		if !ageInSeconds.Valid {
+			c.log.Debug("Skipping collecting metric because it has no xact_start")
+			continue
+		}
+
 		ch <- prometheus.MustNewConstMetric(
 			statActivityAutovacuumAgeInSeconds,
 			prometheus.GaugeValue,
-			ageInSeconds, relname,
+			ageInSeconds.Float64, relname,
 		)
 	}
 	if err := rows.Err(); err != nil {
