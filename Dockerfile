@@ -6,6 +6,8 @@ LABEL maintainer="The Prometheus Authors <prometheus-developers@googlegroups.com
 ARG ARCH="amd64"
 ARG OS="linux"
 COPY .build/${OS}-${ARCH}/postgres_exporter /bin/postgres_exporter
+COPY LICENSE /LICENSE
+COPY NOTICE /NOTICE
 
 EXPOSE     9187
 USER       nobody
