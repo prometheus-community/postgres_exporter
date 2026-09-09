@@ -21,7 +21,7 @@ import (
 )
 
 func init() {
-	registerCollector(walSubsystem, NewPGWALCollector)
+	registerCollector(walSubsystem, serverScope, NewPGWALCollector)
 }
 
 type PGWALCollector struct {

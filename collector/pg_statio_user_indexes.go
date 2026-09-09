@@ -21,7 +21,7 @@ import (
 )
 
 func init() {
-	registerCollector(statioUserIndexesSubsystem, NewPGStatioUserIndexesCollector)
+	registerCollector(statioUserIndexesSubsystem, databaseScope, NewPGStatioUserIndexesCollector)
 }
 
 type PGStatioUserIndexesCollector struct {
@@ -36,18 +36,19 @@ var (
 	statioUserIndexesIdxBlksRead = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statioUserIndexesSubsystem, "idx_blks_read_total"),
 		"Number of disk blocks read from this index",
-		[]string{"schemaname", "relname", "indexrelname"},
+		[]string{"datname", "schemaname", "relname", "indexrelname"},
 		prometheus.Labels{},
 	)
 	statioUserIndexesIdxBlksHit = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statioUserIndexesSubsystem, "idx_blks_hit_total"),
 		"Number of buffer hits in this index",
-		[]string{"schemaname", "relname", "indexrelname"},
+		[]string{"datname", "schemaname", "relname", "indexrelname"},
 		prometheus.Labels{},
 	)
 
 	statioUserIndexesQuery = `
 	SELECT
+		current_database() datname,
 		schemaname,
 		relname,
 		indexrelname,
@@ -67,10 +68,16 @@ func (c *PGStatioUserIndexesCollector) Update(ctx context.Context, instance *ins
 	}
 	defer rows.Close()
 	for rows.Next() {
+		// datname comes from current_database(), which Postgres guarantees is
+		// never NULL. Unlike the other columns below, it must not fall back to
+		// a shared sentinel on an invalid value: this label is what keeps rows
+		// from different, concurrently-scraped databases from colliding in the
+		// registry, so it needs to always be the real, distinct database name.
+		var datname string
 		var schemaname, relname, indexrelname sql.NullString
 		var idxBlksRead, idxBlksHit sql.NullInt64
 
-		if err := rows.Scan(&schemaname, &relname, &indexrelname, &idxBlksRead, &idxBlksHit); err != nil {
+		if err := rows.Scan(&datname, &schemaname, &relname, &indexrelname, &idxBlksRead, &idxBlksHit); err != nil {
 			return err
 		}
 		schemanameLabel := "unknown"
@@ -85,7 +92,7 @@ func (c *PGStatioUserIndexesCollector) Update(ctx context.Context, instance *ins
 		if indexrelname.Valid {
 			indexrelnameLabel = indexrelname.String
 		}
-		labels := []string{schemanameLabel, relnameLabel, indexrelnameLabel}
+		labels := []string{datname, schemanameLabel, relnameLabel, indexrelnameLabel}
 
 		idxBlksReadMetric := int64CounterValue(idxBlksRead, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(

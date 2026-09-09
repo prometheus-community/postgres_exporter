@@ -19,12 +19,14 @@ import (
 	"regexp"
 
 	"github.com/blang/semver/v4"
+	"github.com/prometheus-community/postgres_exporter/config"
 )
 
 type instance struct {
 	dsn               string
 	db                *sql.DB
 	version           semver.Version
+	database          string
 	wrapLargeCounters bool
 }
 
@@ -53,6 +55,23 @@ func (i *instance) copy() *instance {
 	}
 }
 
+// withDatabase returns a new, unconnected instance whose dsn points at
+// database instead of whichever database i's dsn originally targeted. It is
+// used to scrape a database discovered alongside i's own primary connection,
+// on the same PostgreSQL server.
+func (i *instance) withDatabase(database string) (*instance, error) {
+	dsn, err := config.NewDSN(i.dsn)
+	if err != nil {
+		return nil, fmt.Errorf("malformed dsn: %w", err)
+	}
+	other, err := newInstance(dsn.WithDatabase(database).GetConnectionString())
+	if err != nil {
+		return nil, err
+	}
+	other.wrapLargeCounters = i.wrapLargeCounters
+	return other, nil
+}
+
 func (i *instance) setup() error {
 	db, err := sql.Open("postgres", i.dsn)
 	if err != nil {
@@ -65,8 +84,11 @@ func (i *instance) setup() error {
 	version, err := queryVersion(i.db)
 	if err != nil {
 		return fmt.Errorf("error querying postgresql version: %w", err)
-	} else {
-		i.version = version
+	}
+	i.version = version
+
+	if err := i.db.QueryRow("SELECT current_database()").Scan(&i.database); err != nil {
+		return fmt.Errorf("error querying current database: %w", err)
 	}
 	return nil
 }

@@ -62,6 +62,26 @@ func (d DSN) GetConnectionString() string {
 	return u.String()
 }
 
+// WithDatabase returns a copy of d pointed at database instead of whichever
+// database it originally targeted. The override is always carried in the
+// query string (as "dbname"), regardless of how the database was originally
+// specified, since a "dbname" left behind in the query string would
+// otherwise take precedence over the path when the driver parses the
+// resulting connection string.
+func (d DSN) WithDatabase(database string) DSN {
+	d.path = ""
+	query := url.Values{}
+	for k, v := range d.query {
+		if k == "dbname" {
+			continue
+		}
+		query[k] = v
+	}
+	query.Set("dbname", database)
+	d.query = query
+	return d
+}
+
 // NewDSN parses a connection string into a DSN.
 func NewDSN(in string) (DSN, error) {
 	return dsnFromString(in)

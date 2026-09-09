@@ -13,7 +13,9 @@
 package collector
 
 import (
+	"context"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -151,7 +153,7 @@ func TestWithConnectionTimeout(t *testing.T) {
 	}()
 
 	startTime := time.Now()
-	c.collectFromConnection(inst, ch)
+	c.collectFromConnection(inst, ch, nil)
 	elapsed := time.Since(startTime)
 
 	if elapsed <= timeoutForQuery {
@@ -219,6 +221,58 @@ func TestNewPostgresCollectorUsesCollectorStateOverrides(t *testing.T) {
 	}
 }
 
+func TestCollectFromConnectionFiltersToMatchingScope(t *testing.T) {
+	logger := promslog.NewNopLogger()
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Error opening a stub db connection: %s", err)
+	}
+	defer db.Close()
+	inst := &instance{db: db}
+
+	c, err := NewPostgresCollector(logger, nil, "postgresql://local", nil)
+	if err != nil {
+		t.Fatalf("NewPostgresCollector() error = %v", err)
+	}
+
+	var mu sync.Mutex
+	ran := make(map[string]bool)
+	for name := range c.Collectors {
+		c.Collectors[name] = collectorFunc(func(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+			mu.Lock()
+			ran[name] = true
+			mu.Unlock()
+			return nil
+		})
+	}
+
+	ch := make(chan prometheus.Metric, 1024)
+	scope := databaseScope
+	c.collectFromConnection(inst, ch, &scope)
+	close(ch)
+	for range ch {
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	for name, didRun := range ran {
+		want := factories[name].scope == databaseScope
+		if didRun != want {
+			t.Errorf("collector %q ran = %v, want %v", name, didRun, want)
+		}
+	}
+}
+
+// collectorFunc adapts a function to the Collector interface.
+type collectorFunc func(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error
+
+func (f collectorFunc) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	return f(ctx, instance, ch)
+}
+
 func TestRegisterCollectorRejectsUnknownConfig(t *testing.T) {
 	const name = "not_in_default_config"
 
@@ -228,7 +282,7 @@ func TestRegisterCollectorRejectsUnknownConfig(t *testing.T) {
 		}
 	}()
 
-	registerCollector(name, func(collectorConfig) (Collector, error) {
+	registerCollector(name, serverScope, func(collectorConfig) (Collector, error) {
 		return nil, nil
 	})
 }

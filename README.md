@@ -364,6 +364,13 @@ To scrape metrics from all databases on a database server, the database DSN's ca
 `--auto-discover-databases` flag. When true, `SELECT datname FROM pg_database WHERE datallowconn = true AND datistemplate = false and datname != current_database()` is run for all configured DSN's. From the
 result a new set of DSN's is created for which the metrics are scraped.
 
+Every discovered database gets its own connection and gets scraped for the collectors that report on a single
+database (e.g. `stat_user_tables`, `statio_user_tables`, `statio_user_indexes`). Collectors that report on the whole
+server (e.g. `wal`, `bgwriter`, `stat_activity`) still only run once, against the first configured DSN, since
+re-running them against another database on the same server would report the exact same rows again. The set of
+discovered databases is re-evaluated on every scrape, so databases created or dropped after the exporter starts are
+picked up without a restart.
+
 In addition, the option `--exclude-databases` adds the possibily to filter the result from the auto discovery to discard databases you do not need.
 
 If you want to include only subset of databases, you can use option `--include-databases`. Exporter still makes request to

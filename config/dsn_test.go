@@ -271,3 +271,42 @@ func Test_dsnFromString(t *testing.T) {
 		})
 	}
 }
+
+// Test_DSN_WithDatabase tests that WithDatabase overrides whichever database
+// a dsn originally targeted, regardless of how that database was specified.
+func Test_DSN_WithDatabase(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "URL with path-based database",
+			input: "postgresql://user:pass@host.example.com:5432/original?sslmode=disable",
+			want:  "postgresql://user:pass@host.example.com:5432?dbname=other&sslmode=disable",
+		},
+		{
+			name:  "key-value with dbname",
+			input: "host=host.example.com dbname=original sslmode=disable",
+			want:  "postgresql://host.example.com?dbname=other&sslmode=disable",
+		},
+		{
+			name:  "key-value without dbname",
+			input: "host=host.example.com sslmode=disable",
+			want:  "postgresql://host.example.com?dbname=other&sslmode=disable",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d, err := dsnFromString(tt.input)
+			if err != nil {
+				t.Fatalf("dsnFromString() error = %v", err)
+			}
+			got := d.WithDatabase("other").GetConnectionString()
+			if got != tt.want {
+				t.Fatalf("WithDatabase(\"other\").GetConnectionString() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

@@ -47,16 +47,28 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 		return runtime, nil
 	}
 
-	postgresCollector, err := NewPostgresCollector(
-		logger,
-		cfg.ExcludeDatabases,
-		cfg.DataSourceNames[0],
-		nil,
+	opts := []Option{
 		WithCollectionTimeout(cfg.CollectionTimeout.String()),
 		WithCollectorStates(cfg.Collectors),
 		WithLongRunningTransactionsConfig(cfg.LongRunningTransactions),
 		WithPGStatStatementsConfig(cfg.PGStatStatements),
 		WithWrapLargeCounters(cfg.WrapLargeCounters),
+	}
+	if cfg.AutoDiscoverDatabases {
+		// Run the database-scoped collectors (stat_user_tables,
+		// statio_user_tables, statio_user_indexes, ...) against every other
+		// database on the server too. Server-scoped collectors are
+		// unaffected: they still only ever run once, against
+		// DataSourceNames[0], so they are never duplicated.
+		opts = append(opts, WithDatabaseDiscovery(cfg.IncludeDatabases, cfg.ExcludeDatabases))
+	}
+
+	postgresCollector, err := NewPostgresCollector(
+		logger,
+		cfg.ExcludeDatabases,
+		cfg.DataSourceNames[0],
+		nil,
+		opts...,
 	)
 	if err != nil {
 		runtime.Close()
