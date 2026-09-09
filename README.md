@@ -10,6 +10,8 @@ Prometheus exporter for PostgreSQL server metrics.
 
 CI Tested PostgreSQL versions: `13`, `14`, `15`, `16`, `17`, `18`.
 
+See the [docs/](docs/README.md) directory for user-focused documentation: getting started, Docker images, configuration, database permissions, connecting, and secrets.
+
 ## Quick Start
 This package is available for Docker:
 ```
@@ -29,20 +31,9 @@ Test with:
 curl "http://localhost:9187/metrics"
 ```
 
-Example Prometheus config:
-```yaml
-scrape_configs:
-  - job_name: postgres
-    static_configs:
-      - targets: ["127.0.0.1:9187"] # Replace IP with the hostname of the docker container if you're running the container in a separate network
-```
+See [Getting Started](docs/getting-started.md) for the other ways to install it, how to point Prometheus at it, and how to supply the password without putting it in an environment variable.
 
-Now use the DATA_SOURCE_PASS_FILE with a mounted file containing the password to prevent having the password in an environment variable.
-
-The container process runs with uid/gid 65534 (important for file permissions).
-
-## Multi-Target Support (BETA)
-**This Feature is in beta and may require changes in future releases. Feedback is welcome.**
+## Multi-Target Support
 
 This exporter supports the [multi-target pattern](https://prometheus.io/docs/guides/multi-target-exporter/). This allows running a single instance of this exporter for multiple postgres targets. Using the multi-target functionality of this exporter is **optional** and meant for cases where it is impossible to install the exporter as a sidecar, for example SaaS-managed services.
 
@@ -75,7 +66,7 @@ scrape_configs:
 The configuration file controls the behavior of the exporter. It can be set using the `--config.file` command line flag and defaults to `postgres_exporter.yml`. Set `--config.file=""` to run without a configuration file.
 
 ### auth_modules
-This section defines preset authentication and connection parameters for use in the [multi-target endpoint](#multi-target-support-beta). `auth_modules` is a map of modules with the key being the identifier which can be used in the `/probe` endpoint.
+This section defines preset authentication and connection parameters for use in the [multi-target endpoint](#multi-target-support). `auth_modules` is a map of modules with the key being the identifier which can be used in the `/probe` endpoint.
 Currently only the `userpass` type is supported.
 
 Example:
