@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus-community/postgres_exporter/internal/metricutil"
 )
 
@@ -225,15 +226,15 @@ func parseFingerprint(dsn string) (string, error) {
 	return fingerprint, nil
 }
 
+// loggableDSN returns a redacted representation of dsn that is safe to log. Passwords are
+// stripped whether they are supplied in the URL user info, as a query parameter, or as a
+// key=value keyword. It never returns the original dsn, so an unparseable input is reported
+// without echoing it back.
 func loggableDSN(dsn string) string {
-	pDSN, err := url.Parse(dsn)
+	d, err := config.NewDSN(dsn)
 	if err != nil {
 		return "could not parse DATA_SOURCE_NAME"
 	}
-	// Blank user info if not nil
-	if pDSN.User != nil {
-		pDSN.User = url.UserPassword(pDSN.User.Username(), "PASSWORD_REMOVED")
-	}
 
-	return pDSN.String()
+	return d.String()
 }
