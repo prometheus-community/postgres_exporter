@@ -138,6 +138,36 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
 	}
 }
 
+// test GetDataSourcesIgnoringPassword never reads DATA_SOURCE_PASS_FILE, even
+// when it's set to a file that doesn't exist, as happens under IAM auth.
+func (s *FunctionalSuite) TestGetDataSourcesIgnoringPassword(c *C) {
+	err := os.Setenv("DATA_SOURCE_USER_FILE", "./tests/username_file")
+	c.Assert(err, IsNil)
+	defer UnsetEnvironment(c, "DATA_SOURCE_USER_FILE")
+
+	err = os.Setenv("DATA_SOURCE_PASS_FILE", "./tests/does-not-exist")
+	c.Assert(err, IsNil)
+	defer UnsetEnvironment(c, "DATA_SOURCE_PASS_FILE")
+
+	err = os.Setenv("DATA_SOURCE_URI", "localhost:5432/?sslmode=disable")
+	c.Assert(err, IsNil)
+	defer UnsetEnvironment(c, "DATA_SOURCE_URI")
+
+	var expected = "postgresql://custom_username$&+,%2F%3A;=%3F%40:@localhost:5432/?sslmode=disable"
+
+	dsn, err := GetDataSourcesIgnoringPassword()
+	if err != nil {
+		c.Errorf("Unexpected error reading datasources: %v", err)
+	}
+
+	if len(dsn) == 0 {
+		c.Errorf("Expected one data source, zero found")
+	}
+	if dsn[0] != expected {
+		c.Errorf("Expected password to be ignored. Found=%v, expected=%v", dsn[0], expected)
+	}
+}
+
 // test read DATA_SOURCE_NAME from environment
 func (s *FunctionalSuite) TestEnvironmentSettingWithDns(c *C) {
 	envDsn := "postgresql://user:password@localhost:5432/?sslmode=enabled"

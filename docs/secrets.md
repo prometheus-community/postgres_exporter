@@ -29,6 +29,16 @@ docker run \
 
 The mounted secret file must be readable by the container's uid/gid (`65534` in the official image — see [Docker Images](docker.md)).
 
+### IAM authentication (single-target)
+
+As an alternative to a static password, set `DATA_SOURCE_AUTH=iam` to authenticate with AWS RDS/Aurora IAM database authentication instead — the exporter mints a fresh, short-lived token for every connection rather than using a password at all. This takes precedence over `DATA_SOURCE_PASS`/`DATA_SOURCE_PASS_FILE`, which are ignored and don't need to be set.
+
+* `DATA_SOURCE_AUTH=iam` — enables IAM auth for the primary datasource. The host/database still come from `DATA_SOURCE_URI`/`DATA_SOURCE_NAME` as usual; the user (from `DATA_SOURCE_USER`) must have `rds_iam` granted and no password.
+* `DATA_SOURCE_REGION` — optional; the AWS region of the target cluster, resolved via the AWS SDK's usual chain (env, shared config, instance metadata) if unset.
+* `DATA_SOURCE_ROLE` — optional; an IAM role ARN to assume via STS before minting a token, otherwise uses whatever AWS credentials are already available (e.g. an instance/task role).
+
+See [Running Against AWS RDS](aws-rds.md#iam-database-authentication) for the IAM policy the connecting role/user needs.
+
 ### Multi-target (`/probe`) credentials
 
 For the multi-target `/probe` endpoint, credentials are defined in the [config file](configuration.md#config-file) under `auth_modules` instead of environment variables, and selected per-request via `?auth_module=<name>`:
@@ -43,6 +53,8 @@ auth_modules:
 ```
 
 This keeps credentials out of Prometheus's target list and scrape URLs (which otherwise show up in Prometheus's UI and logs). See [Connecting to PostgreSQL](connecting.md#multi-target-mode-probe) for the full request flow. Note that the config file itself contains plaintext passwords, so its file permissions and any secrets-management layer around it (e.g. templating it from Vault) matter just as much as protecting `DATA_SOURCE_PASS_FILE`.
+
+IAM authentication is also available for multi-target, via an `iam` auth module instead of `userpass` — see [Configuration](configuration.md#config-file).
 
 ## Exporter HTTP endpoint
 

@@ -45,8 +45,12 @@ func handleProbe(logger *slog.Logger, authHandler *config.Handler, baseConfig co
 				http.Error(w, fmt.Sprintf("auth_module %s not found", authModuleName), http.StatusBadRequest)
 				return
 			}
-			if authModule.UserPass.Username == "" || authModule.UserPass.Password == "" {
+			if authModule.Type == "userpass" && (authModule.UserPass.Username == "" || authModule.UserPass.Password == "") {
 				http.Error(w, fmt.Sprintf("auth_module %s has no username or password", authModuleName), http.StatusBadRequest)
+				return
+			}
+			if authModule.Type == "iam" && baseConfig.AutoDiscoverDatabases {
+				http.Error(w, fmt.Sprintf("auth_module %s: auto-discover-databases is not supported with iam auth: discovered databases have no static password and would silently fail to scrape", authModuleName), http.StatusBadRequest)
 				return
 			}
 		}
@@ -55,6 +59,13 @@ func handleProbe(logger *slog.Logger, authHandler *config.Handler, baseConfig co
 		if err != nil {
 			logger.Error("failed to configure target", "err", err)
 			http.Error(w, fmt.Sprintf("could not configure dsn for target: %v", err), http.StatusBadRequest)
+			return
+		}
+
+		conn, err := authHandler.ConnectorFor(authModuleName, authModule, target)
+		if err != nil {
+			logger.Error("failed to configure connector for target", "err", err)
+			http.Error(w, fmt.Sprintf("could not configure connector for target: %v", err), http.StatusBadRequest)
 			return
 		}
 
@@ -72,7 +83,7 @@ func handleProbe(logger *slog.Logger, authHandler *config.Handler, baseConfig co
 			return
 		}
 
-		runtime, err := collector.NewRuntime(validatedConfig, tl)
+		runtime, err := collector.NewRuntime(validatedConfig, tl, collector.WithRuntimeConnector(conn))
 		if err != nil {
 			logger.Error("error creating probe runtime", "err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
