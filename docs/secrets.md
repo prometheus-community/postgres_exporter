@@ -33,6 +33,18 @@ The mounted secret file must be readable by the container's uid/gid (`65534` in 
 
 The `DATA_SOURCE_URI`, `DATA_SOURCE_URI_FILE`, `DATA_SOURCE_USER_FILE` and `DATA_SOURCE_PASS_FILE` environment variables still work and are used when the matching flag is unset, but they are deprecated and will be removed in v0.22.0. `DATA_SOURCE_NAME`, `DATA_SOURCE_USER` and `DATA_SOURCE_PASS` are not deprecated.
 
+### IAM authentication (single-target)
+
+As an alternative to a static password, set `DATA_SOURCE_AUTH=iam` to authenticate with AWS RDS/Aurora IAM database authentication instead — the exporter mints a fresh, short-lived token for every connection rather than using a password at all. This takes precedence over `DATA_SOURCE_PASS` and `--datasource.pass-file`, which are ignored and don't need to be set.
+
+* `DATA_SOURCE_AUTH=iam` — enables IAM auth for the primary datasource. The host/database still come from `--datasource.uri` (or `DATA_SOURCE_NAME`) as usual; the user (from `DATA_SOURCE_USER` or `--datasource.user-file`) must have `rds_iam` granted and no password.
+
+Credentials and region are not configured through the exporter: they come from the AWS SDK's default chain, so an instance profile, ECS/Fargate task role or EKS service-account role is used as-is. The region is taken from `AWS_REGION`, the shared config, or the EC2 instance's own region (instance metadata), in that order. To use different settings, e.g. a database in another region or a role in another account, set the standard `AWS_REGION` and `AWS_PROFILE` variables (with `role_arn` set on the profile), or use an `iam` auth module with `/probe`.
+
+The host in `--datasource.uri`/`DATA_SOURCE_NAME` should be the RDS/Aurora endpoint itself, since the token is signed for that host and port. A DNS alias (CNAME) for the endpoint may not work.
+
+See [Running Against AWS RDS](aws-rds.md#iam-database-authentication) for the IAM policy the connecting role/user needs.
+
 ### Multi-target (`/probe`) credentials
 
 For the multi-target `/probe` endpoint, credentials are defined in the [config file](configuration.md#config-file) under `auth_modules` instead of environment variables, and selected per-request via `?auth_module=<name>`:
@@ -47,6 +59,8 @@ auth_modules:
 ```
 
 This keeps credentials out of Prometheus's target list and scrape URLs (which otherwise show up in Prometheus's UI and logs). See [Connecting to PostgreSQL](connecting.md#multi-target-mode-probe) for the full request flow. Note that the config file itself contains plaintext passwords, so its file permissions and any secrets-management layer around it (e.g. templating it from Vault) matter just as much as protecting the file behind `--datasource.pass-file`.
+
+IAM authentication is also available for multi-target, via an `iam` auth module instead of `userpass` — see [Configuration](configuration.md#config-file).
 
 ## Exporter HTTP endpoint
 

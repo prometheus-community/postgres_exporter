@@ -110,3 +110,24 @@ func TestGetDataSourcesEnvDSNWinsOverFlags(t *testing.T) {
 		t.Fatalf("getDataSources() = %v, want [%v]", dsn, envDSN)
 	}
 }
+
+// IgnorePassword never reads the password file, even when it doesn't exist, as
+// happens under IAM auth.
+func TestGetDataSourcesIgnorePassword(t *testing.T) {
+	clearDataSourceEnv(t)
+	t.Setenv("DATA_SOURCE_PASS", "ignored")
+
+	dsn, err := getDataSources(dataSourceOpts{
+		UserFile:       writeSecretFile(t, "user", testUser),
+		PassFile:       filepath.Join(t.TempDir(), "does-not-exist"),
+		URI:            "localhost:5432/?sslmode=disable",
+		IgnorePassword: true,
+	})
+	if err != nil {
+		t.Fatalf("getDataSources() error = %v", err)
+	}
+	want := "postgresql://custom_username$&+,%2F%3A;=%3F%40:@localhost:5432/?sslmode=disable"
+	if len(dsn) != 1 || dsn[0] != want {
+		t.Fatalf("getDataSources() = %v, want [%v]", dsn, want)
+	}
+}

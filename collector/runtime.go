@@ -14,6 +14,7 @@
 package collector
 
 import (
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -29,16 +30,40 @@ type Runtime struct {
 	postgresCollector *PostgresCollector
 }
 
-func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*Runtime, error) {
+// RuntimeOption configures a Runtime.
+type RuntimeOption func(*runtimeConfig)
+
+type runtimeConfig struct {
+	connector driver.Connector
+}
+
+// WithRuntimeConnector overrides how the runtime's exporter and collector open
+// connections, e.g. for IAM auth. Named distinctly from the package's other
+// WithConnector (a PostgresCollector Option) since a Runtime wraps both an
+// Exporter and a PostgresCollector.
+func WithRuntimeConnector(conn driver.Connector) RuntimeOption {
+	return func(rc *runtimeConfig) { rc.connector = conn }
+}
+
+func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger, opts ...RuntimeOption) (*Runtime, error) {
 	if !validatedConfig.Valid() {
 		return nil, errors.New("config has not been validated; obtain a ValidatedConfig from Config.Validate")
 	}
 	if logger == nil {
 		logger = slog.Default()
 	}
+	var rc runtimeConfig
+	for _, opt := range opts {
+		opt(&rc)
+	}
+	conn := rc.connector
 	cfg := validatedConfig.Config()
 
-	exporterCollector := exporter.NewExporter(cfg.DataSourceNames, logger, exporterOptions(cfg)...)
+	exporterOpts := exporterOptions(cfg)
+	if conn != nil {
+		exporterOpts = append(exporterOpts, exporter.WithConnector(conn))
+	}
+	exporterCollector := exporter.NewExporter(cfg.DataSourceNames, logger, exporterOpts...)
 	runtime := &Runtime{
 		exporter: exporterCollector,
 	}
@@ -47,12 +72,13 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 		return runtime, nil
 	}
 
-	opts := []Option{
+	collectorOpts := []Option{
 		WithCollectionTimeout(cfg.CollectionTimeout.String()),
 		WithCollectorStates(cfg.Collectors),
 		WithLongRunningTransactionsConfig(cfg.LongRunningTransactions),
 		WithPGStatStatementsConfig(cfg.PGStatStatements),
 		WithWrapLargeCounters(cfg.WrapLargeCounters),
+		WithConnector(conn),
 	}
 	if cfg.AutoDiscoverDatabases {
 		// Run the database-scoped collectors (stat_user_tables,
@@ -60,7 +86,7 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 		// database on the server too. Server-scoped collectors are
 		// unaffected: they still only ever run once, against
 		// DataSourceNames[0], so they are never duplicated.
-		opts = append(opts, WithDatabaseDiscovery(cfg.IncludeDatabases, cfg.ExcludeDatabases, cfg.AutoDiscoverDatabasesMaxConcurrency))
+		collectorOpts = append(collectorOpts, WithDatabaseDiscovery(cfg.IncludeDatabases, cfg.ExcludeDatabases, cfg.AutoDiscoverDatabasesMaxConcurrency))
 	}
 
 	postgresCollector, err := NewPostgresCollector(
@@ -68,7 +94,7 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 		cfg.ExcludeDatabases,
 		cfg.DataSourceNames[0],
 		nil,
-		opts...,
+		collectorOpts...,
 	)
 	if err != nil {
 		runtime.Close()

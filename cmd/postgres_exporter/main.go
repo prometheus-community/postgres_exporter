@@ -14,6 +14,7 @@
 package main
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -157,15 +158,35 @@ func main() {
 
 	warnDeprecatedDataSourceEnvVars()
 
+	iamAuth := os.Getenv("DATA_SOURCE_AUTH") == "iam"
+
+	// Under IAM auth there is no static password to resolve, and
+	// DATA_SOURCE_PASS_FILE may be unset, stale or unreadable without that
+	// being an error.
 	dsns, err := getDataSources(dataSourceOpts{
-		URI:      *datasourceURI,
-		URIFile:  *datasourceURIFile,
-		UserFile: *datasourceUserFile,
-		PassFile: *datasourcePassFile,
+		URI:            *datasourceURI,
+		URIFile:        *datasourceURIFile,
+		UserFile:       *datasourceUserFile,
+		PassFile:       *datasourcePassFile,
+		IgnorePassword: iamAuth,
 	})
 	if err != nil {
 		logger.Error("Failed reading data sources", "err", err.Error())
 		os.Exit(1)
+	}
+
+	iamAuth = iamAuth && len(dsns) > 0
+
+	var conn driver.Connector
+	if iamAuth {
+		// Region and credentials (including any role to assume) come from the
+		// AWS SDK's default chain, so no exporter-specific settings are needed.
+		authModule := config.AuthModule{Type: "iam"}
+		conn, err = authModule.Connector(dsns[0])
+		if err != nil {
+			logger.Error("Failed to configure connector", "err", err)
+			os.Exit(1)
+		}
 	}
 
 	cfg, err := buildConfig(dsns)
@@ -183,6 +204,11 @@ func main() {
 		logger.Warn("Scraping additional databases via auto discovery is DEPRECATED")
 	}
 
+	if iamAuth && cfg.AutoDiscoverDatabases {
+		logger.Error("auto-discover-databases is not supported with DATA_SOURCE_AUTH=iam: discovered databases have no static password and would silently fail to scrape")
+		os.Exit(1)
+	}
+
 	if cfg.ConstantLabels != "" {
 		logger.Warn("Constant labels on all metrics is DEPRECATED")
 	}
@@ -193,7 +219,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	pgRuntime, err := collector.NewRuntime(validatedConfig, logger)
+	pgRuntime, err := collector.NewRuntime(validatedConfig, logger, collector.WithRuntimeConnector(conn))
 	if err != nil {
 		logger.Error("Failed to create runtime", "err", err)
 		os.Exit(1)

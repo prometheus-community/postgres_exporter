@@ -47,6 +47,12 @@ func (d DSN) String() string {
 	return fmt.Sprintf("%s://%s%s?%s", d.scheme, d.host, d.path, d.query.Encode())
 }
 
+// WithPassword returns a copy of d with password set, e.g. to inject a freshly minted IAM token.
+func (d DSN) WithPassword(password string) DSN {
+	d.password = password
+	return d
+}
+
 // GetConnectionString returns the connection string to pass to the driver
 // for database connections. This value should not be logged.
 func (d DSN) GetConnectionString() string {

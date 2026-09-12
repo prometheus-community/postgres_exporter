@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver/v4"
+	"github.com/prometheus-community/postgres_exporter/internal/connector"
 )
 
 func TestInstanceWithDatabase(t *testing.T) {
@@ -55,5 +56,32 @@ func TestInstanceWithDatabase(t *testing.T) {
 				t.Fatalf("withDatabase() version = %v, want %v", got.version, primary.version)
 			}
 		})
+	}
+}
+
+func TestInstanceWithDatabaseRejectsCustomConnector(t *testing.T) {
+	c, err := connector.NewStaticConnector("postgresql://user@localhost/postgres")
+	if err != nil {
+		t.Fatal(err)
+	}
+	i := &instance{dsn: "postgresql://user@localhost/postgres", connector: c}
+	if _, err := i.withDatabase("other"); err == nil {
+		t.Fatal("withDatabase() error = nil, want an error: a custom connector can't be redirected to another database")
+	}
+}
+
+// A default (non-custom) instance must stay without a connector after its
+// connection is opened, or withDatabase would mistake it for a custom one and
+// break database discovery for every normal deployment.
+func TestInstanceOpenConnectorKeepsDefaultInstanceDiscoverable(t *testing.T) {
+	i := &instance{dsn: "postgresql://user@localhost/postgres"}
+	if _, err := i.openConnector(); err != nil {
+		t.Fatalf("openConnector() error = %v", err)
+	}
+	if i.connector != nil {
+		t.Fatal("openConnector() stored a connector on a default instance")
+	}
+	if _, err := i.withDatabase("other"); err != nil {
+		t.Fatalf("withDatabase() error = %v, want discovery to work without a custom connector", err)
 	}
 }
