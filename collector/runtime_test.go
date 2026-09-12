@@ -30,7 +30,7 @@ func TestConfigCollectorDefaultsHaveRegisteredFactories(t *testing.T) {
 }
 
 func TestNewRuntimeRequiresValidatedConfig(t *testing.T) {
-	runtime, err := NewRuntime(config.ValidatedConfig{}, promslog.NewNopLogger())
+	runtime, err := NewRuntime(config.ValidatedConfig{}, promslog.NewNopLogger(), nil)
 	if err == nil {
 		t.Fatal("NewRuntime() error = nil, want error")
 	}
@@ -46,7 +46,7 @@ func TestNewRuntimeCollectorsWithoutDataSource(t *testing.T) {
 		t.Fatalf("Validate() error = %v", err)
 	}
 
-	runtime, err := NewRuntime(validated, promslog.NewNopLogger())
+	runtime, err := NewRuntime(validated, promslog.NewNopLogger(), nil)
 	if err != nil {
 		t.Fatalf("NewRuntime() error = %v", err)
 	}
@@ -65,7 +65,7 @@ func TestNewRuntimeCollectorsWithDataSource(t *testing.T) {
 		t.Fatalf("Validate() error = %v", err)
 	}
 
-	runtime, err := NewRuntime(validated, promslog.NewNopLogger())
+	runtime, err := NewRuntime(validated, promslog.NewNopLogger(), nil)
 	if err != nil {
 		t.Fatalf("NewRuntime() error = %v", err)
 	}
@@ -85,7 +85,7 @@ func TestNewRuntimePropagatesWrapLargeCounters(t *testing.T) {
 		t.Fatalf("Validate() error = %v", err)
 	}
 
-	runtime, err := NewRuntime(validated, promslog.NewNopLogger())
+	runtime, err := NewRuntime(validated, promslog.NewNopLogger(), nil)
 	if err != nil {
 		t.Fatalf("NewRuntime() error = %v", err)
 	}
@@ -106,7 +106,7 @@ func TestNewRuntimePropagatesLongRunningTransactionsThreshold(t *testing.T) {
 		t.Fatalf("Validate() error = %v", err)
 	}
 
-	runtime, err := NewRuntime(validated, promslog.NewNopLogger())
+	runtime, err := NewRuntime(validated, promslog.NewNopLogger(), nil)
 	if err != nil {
 		t.Fatalf("NewRuntime() error = %v", err)
 	}

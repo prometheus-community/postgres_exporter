@@ -14,6 +14,7 @@
 package main
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -154,6 +155,22 @@ func main() {
 		os.Exit(1)
 	}
 
+	var conn driver.Connector
+	if len(dsns) > 0 && os.Getenv("DATA_SOURCE_AUTH") == "iam" {
+		authModule := config.AuthModule{
+			Type: "iam",
+			IAM: config.IAM{
+				Region:  os.Getenv("DATA_SOURCE_REGION"),
+				RoleARN: os.Getenv("DATA_SOURCE_ROLE"),
+			},
+		}
+		conn, err = authModule.Connector(dsns[0])
+		if err != nil {
+			logger.Error("Failed to configure connector", "err", err)
+			os.Exit(1)
+		}
+	}
+
 	cfg, err := buildConfig(dsns)
 	if err != nil {
 		logger.Error("Failed building config", "err", err)
@@ -179,7 +196,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	pgRuntime, err := collector.NewRuntime(validatedConfig, logger)
+	pgRuntime, err := collector.NewRuntime(validatedConfig, logger, conn)
 	if err != nil {
 		logger.Error("Failed to create runtime", "err", err)
 		os.Exit(1)

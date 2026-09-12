@@ -76,7 +76,7 @@ The configuration file controls the behavior of the exporter. It can be set usin
 
 ### auth_modules
 This section defines preset authentication and connection parameters for use in the [multi-target endpoint](#multi-target-support-beta). `auth_modules` is a map of modules with the key being the identifier which can be used in the `/probe` endpoint.
-Currently only the `userpass` type is supported.
+Two types are supported: `userpass` (a static username/password) and `iam` (AWS RDS/Aurora IAM database authentication).
 
 Example:
 ```yaml
@@ -90,6 +90,41 @@ auth_modules:
       # options become key=value parameters of the DSN
       sslmode: disable
 ```
+
+#### IAM auth modules
+
+An `iam` auth module mints a fresh IAM auth token for every connection, instead of using a static password. This requires the DB user to have `rds_iam` granted (`GRANT rds_iam TO <user>;`) and no password.
+
+```yaml
+auth_modules:
+  iam1:
+    type: iam
+    iam:
+      region: us-east-1        # optional; resolved via the AWS SDK's usual chain (env, shared config, instance metadata) if unset
+      role_arn: arn:aws:iam::123456789012:role/rds-connect # optional; assumes this role via STS if set, otherwise uses whatever AWS credentials are already available
+      db_user: iam_user        # optional; overrides target's own user if set, else parsed from target
+      db_name: mydb            # optional; overrides target's own dbname if set, else parsed from target
+    options:
+      # same as userpass: extra key=value parameters of the DSN.
+      # IAM Auth needs minimum of require
+      sslmode: require
+```
+
+In order for the IAM user to authenticate is also needs permissions like the below (wildcards are allowed).
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [ "rds-db:connect" ],
+      "Effect": "Allow",
+      "Resource": [ "arn:aws:rds-db:<AWS_REGION>:<AWS_ACCOUNT_ID>:dbuser:<RESOURCE_ID>/<DB_USER>" ]
+    }
+  ]
+}
+```
+
+`db_user`/`db_name` above override whatever `target` (from `/probe?target=...`) itself contains, the same way `userpass`'s own `username`/`password` do. If `target` is just a bare `host:port` (see the [multi-target example](#multi-target-support-beta)), set both here explicitly — there's nothing to parse them from otherwise.
 
 ## Building and running
 
@@ -313,6 +348,15 @@ The following environment variables configure the exporter:
 
 * `PG_EXPORTER_METRIC_PREFIX`
   A prefix to use for each of the default metrics exported by postgres-exporter. Default is `pg`
+
+* `DATA_SOURCE_AUTH`
+  Set to `iam` to authenticate the primary datasource (`/metrics`) with AWS RDS/Aurora IAM database authentication instead of a static password, minting a fresh token for every connection. Requires the DB user (from `DATA_SOURCE_USER`) to have `rds_iam` granted and no password; `DATA_SOURCE_PASS`/`DATA_SOURCE_PASS_FILE` are ignored. The database name comes from `DATA_SOURCE_URI`/`DATA_SOURCE_NAME` as usual. Unset (the default) uses a static password as before.
+
+* `DATA_SOURCE_REGION`
+  Only used when `DATA_SOURCE_AUTH=iam`. The AWS region of the target cluster. Optional; if unset, resolved via the AWS SDK's usual chain (env, shared config, instance metadata).
+
+* `DATA_SOURCE_ROLE`
+  Only used when `DATA_SOURCE_AUTH=iam`. An IAM role ARN to assume via STS before minting a token. Optional; if unset, uses whatever AWS credentials are already available (e.g. an instance/task role).
 
 Settings set by environment variables starting with `PG_` will be overwritten by the corresponding CLI flag if given.
 
