@@ -67,7 +67,7 @@ The configuration file controls the behavior of the exporter. It can be set usin
 
 ### auth_modules
 This section defines preset authentication and connection parameters for use in the [multi-target endpoint](#multi-target-support). `auth_modules` is a map of modules with the key being the identifier which can be used in the `/probe` endpoint.
-Currently only the `userpass` type is supported.
+Two types are supported: `userpass` (a static username/password) and `iam` (AWS RDS/Aurora IAM database authentication, minting a fresh token per connection instead of using a password) — see [Configuration](docs/configuration.md#config-file) for the full syntax of both, and [Running Against AWS RDS](docs/aws-rds.md#iam-database-authentication) for the IAM permissions `iam` needs.
 
 Example:
 ```yaml
@@ -304,6 +304,9 @@ The following environment variables configure the exporter:
 
 * `PG_EXPORTER_METRIC_PREFIX`
   A prefix to use for each of the default metrics exported by postgres-exporter. Default is `pg`
+
+* `DATA_SOURCE_AUTH`, `DATA_SOURCE_REGION`, `DATA_SOURCE_ROLE`
+  Configure AWS RDS/Aurora IAM database authentication for the primary datasource (`/metrics`), as an alternative to a static password — see [Secrets](docs/secrets.md#iam-authentication-single-target).
 
 Settings set by environment variables starting with `PG_` will be overwritten by the corresponding CLI flag if given.
 

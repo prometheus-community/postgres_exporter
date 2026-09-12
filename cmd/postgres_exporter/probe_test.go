@@ -43,3 +43,31 @@ func TestHandleProbeRequiresTarget(t *testing.T) {
 		t.Fatalf("status code = %d, want %d", got, want)
 	}
 }
+
+func TestHandleProbeRejectsIAMWithAutoDiscoverDatabases(t *testing.T) {
+	authHandler, err := config.NewHandler(prometheus.NewRegistry())
+	if err != nil {
+		t.Fatalf("NewHandler() error = %v", err)
+	}
+	authHandler.SetAuthConfig(&config.AuthConfig{
+		AuthModules: map[string]config.AuthModule{
+			"iam": {
+				Type: "iam",
+				IAM:  config.IAM{DBUser: "iamuser", Database: "mydb"},
+			},
+		},
+	})
+
+	baseConfig := config.NewConfigWithDefaults()
+	baseConfig.AutoDiscoverDatabases = true
+
+	handler := handleProbe(promslog.NewNopLogger(), authHandler, baseConfig)
+	request := httptest.NewRequest(http.MethodGet, "/probe?target=db.example.com:5432&auth_module=iam", nil)
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, request)
+
+	if got, want := response.Code, http.StatusBadRequest; got != want {
+		t.Fatalf("status code = %d, want %d", got, want)
+	}
+}

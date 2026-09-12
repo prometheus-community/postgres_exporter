@@ -15,32 +15,40 @@ package collector
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"regexp"
 
 	"github.com/blang/semver/v4"
+
+	"github.com/prometheus-community/postgres_exporter/internal/connector"
 )
 
 type instance struct {
 	dsn               string
+	connector         driver.Connector
 	db                *sql.DB
 	version           semver.Version
 	wrapLargeCounters bool
 }
 
-func newInstance(dsn string) (*instance, error) {
+// newInstance builds an instance for dsn.
+func newInstance(dsn string, conn driver.Connector) (*instance, error) {
 	i := &instance{
 		dsn:               dsn,
+		connector:         conn,
 		wrapLargeCounters: true,
 	}
 
-	// "Create" a database handle to verify the DSN provided is valid.
-	// Open is not guaranteed to create a connection.
-	db, err := sql.Open("postgres", dsn)
-	if err != nil {
-		return nil, err
+	// If no connector is provided,
+	// create a new StaticConnector from the DSN.
+	if i.connector == nil {
+		c, err := connector.NewStaticConnector(dsn)
+		if err != nil {
+			return nil, err
+		}
+		i.connector = c
 	}
-	db.Close()
 
 	return i, nil
 }
@@ -49,15 +57,13 @@ func newInstance(dsn string) (*instance, error) {
 func (i *instance) copy() *instance {
 	return &instance{
 		dsn:               i.dsn,
+		connector:         i.connector,
 		wrapLargeCounters: i.wrapLargeCounters,
 	}
 }
 
 func (i *instance) setup() error {
-	db, err := sql.Open("postgres", i.dsn)
-	if err != nil {
-		return err
-	}
+	db := sql.OpenDB(i.connector)
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 	i.db = db

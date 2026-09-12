@@ -15,6 +15,7 @@ package exporter
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"net/url"
 	"os"
@@ -50,7 +51,7 @@ func (e *Exporter) discoverDatabaseDSNs(ctx context.Context) []string {
 			continue
 		}
 
-		server, err := e.servers.GetServer(ctx, dsn)
+		server, err := e.servers.GetServer(ctx, dsn, e.connectorFor(dsn))
 		if err != nil {
 			e.logger.Error("Error opening connection to database", "dsn", loggableDSN(dsn), "err", err)
 			continue
@@ -96,9 +97,16 @@ func (e *Exporter) discoverDatabaseDSNs(ctx context.Context) []string {
 	return result
 }
 
-func (e *Exporter) scrapeDSN(ctx context.Context, ch chan<- prometheus.Metric, dsn string) error {
-	server, err := e.servers.GetServer(ctx, dsn)
+// connectorFor returns e.connector when dsn is the configured primary DSN
+func (e *Exporter) connectorFor(dsn string) driver.Connector {
+	if e.connector != nil && len(e.dsn) > 0 && dsn == e.dsn[0] {
+		return e.connector
+	}
+	return nil
+}
 
+func (e *Exporter) scrapeDSN(ctx context.Context, ch chan<- prometheus.Metric, dsn string) error {
+	server, err := e.servers.GetServer(ctx, dsn, e.connectorFor(dsn))
 	if err != nil {
 		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), err.Error())}
 	}
@@ -116,11 +124,23 @@ func (e *Exporter) scrapeDSN(ctx context.Context, ch chan<- prometheus.Metric, d
 	return server.Scrape(ctx, ch)
 }
 
-// try to get the DataSource
+// GetDataSources tries to get the DataSource.
 // DATA_SOURCE_NAME always wins so we do not break older versions
 // reading secrets from files wins over secrets in environment variables
 // DATA_SOURCE_NAME > DATA_SOURCE_{USER|PASS}_FILE > DATA_SOURCE_{USER|PASS}
 func GetDataSources() ([]string, error) {
+	return getDataSources(true)
+}
+
+// GetDataSourcesIgnoringPassword is like GetDataSources, but never reads
+// DATA_SOURCE_PASS or DATA_SOURCE_PASS_FILE. Use this under IAM auth, where
+// there is no static password to resolve and DATA_SOURCE_PASS_FILE may be
+// unset, stale, or unreadable without that being an error.
+func GetDataSourcesIgnoringPassword() ([]string, error) {
+	return getDataSources(false)
+}
+
+func getDataSources(resolvePassword bool) ([]string, error) {
 	var dsn = os.Getenv("DATA_SOURCE_NAME")
 	if len(dsn) != 0 {
 		return strings.Split(dsn, ","), nil
@@ -139,15 +159,17 @@ func GetDataSources() ([]string, error) {
 		user = os.Getenv("DATA_SOURCE_USER")
 	}
 
-	dataSourcePassFile := os.Getenv("DATA_SOURCE_PASS_FILE")
-	if len(dataSourcePassFile) != 0 {
-		fileContents, err := os.ReadFile(dataSourcePassFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed loading data source pass file %s: %s", dataSourcePassFile, err.Error())
+	if resolvePassword {
+		dataSourcePassFile := os.Getenv("DATA_SOURCE_PASS_FILE")
+		if len(dataSourcePassFile) != 0 {
+			fileContents, err := os.ReadFile(dataSourcePassFile)
+			if err != nil {
+				return nil, fmt.Errorf("failed loading data source pass file %s: %s", dataSourcePassFile, err.Error())
+			}
+			pass = strings.TrimSpace(string(fileContents))
+		} else {
+			pass = os.Getenv("DATA_SOURCE_PASS")
 		}
-		pass = strings.TrimSpace(string(fileContents))
-	} else {
-		pass = os.Getenv("DATA_SOURCE_PASS")
 	}
 
 	ui := url.UserPassword(user, pass).String()

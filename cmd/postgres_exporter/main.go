@@ -14,6 +14,7 @@
 package main
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -148,10 +149,35 @@ func main() {
 		logger.Warn("Error loading config", "err", err)
 	}
 
-	dsns, err := exporter.GetDataSources()
+	iamAuth := os.Getenv("DATA_SOURCE_AUTH") == "iam"
+
+	var dsns []string
+	if iamAuth {
+		dsns, err = exporter.GetDataSourcesIgnoringPassword()
+	} else {
+		dsns, err = exporter.GetDataSources()
+	}
 	if err != nil {
 		logger.Error("Failed reading data sources", "err", err.Error())
 		os.Exit(1)
+	}
+
+	iamAuth = iamAuth && len(dsns) > 0
+
+	var conn driver.Connector
+	if iamAuth {
+		authModule := config.AuthModule{
+			Type: "iam",
+			IAM: config.IAM{
+				Region:  os.Getenv("DATA_SOURCE_REGION"),
+				RoleARN: os.Getenv("DATA_SOURCE_ROLE"),
+			},
+		}
+		conn, err = authModule.Connector(dsns[0])
+		if err != nil {
+			logger.Error("Failed to configure connector", "err", err)
+			os.Exit(1)
+		}
 	}
 
 	cfg, err := buildConfig(dsns)
@@ -169,6 +195,11 @@ func main() {
 		logger.Warn("Scraping additional databases via auto discovery is DEPRECATED")
 	}
 
+	if iamAuth && cfg.AutoDiscoverDatabases {
+		logger.Error("auto-discover-databases is not supported with DATA_SOURCE_AUTH=iam: discovered databases have no static password and would silently fail to scrape")
+		os.Exit(1)
+	}
+
 	if cfg.ConstantLabels != "" {
 		logger.Warn("Constant labels on all metrics is DEPRECATED")
 	}
@@ -179,7 +210,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	pgRuntime, err := collector.NewRuntime(validatedConfig, logger)
+	pgRuntime, err := collector.NewRuntime(validatedConfig, logger, collector.WithRuntimeConnector(conn))
 	if err != nil {
 		logger.Error("Failed to create runtime", "err", err)
 		os.Exit(1)
