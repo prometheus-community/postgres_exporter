@@ -14,11 +14,15 @@
 package config
 
 import (
+	"fmt"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/prometheus-community/postgres_exporter/internal/connector"
 )
 
 func TestNewConfigWithDefaults(t *testing.T) {
@@ -245,6 +249,9 @@ func TestLoadAuthConfigFile(t *testing.T) {
 	if len(config.AuthModules) == 0 {
 		t.Fatal("LoadAuthConfig() loaded no auth modules")
 	}
+	if got, want := config.AuthModules["second"].IAM.Region, "us-east-1"; got != want {
+		t.Fatalf(`AuthModules["second"].IAM.Region = %q, want %q`, got, want)
+	}
 }
 
 func TestLoadAuthConfigEmptyPath(t *testing.T) {
@@ -277,6 +284,163 @@ auth_modules:
 	}
 }
 
+func TestAuthModuleConnectorDefaultsToStatic(t *testing.T) {
+	m := AuthModule{
+		Type: "userpass",
+		UserPass: UserPass{
+			Username: "user",
+			Password: "pass",
+		},
+	}
+
+	conn, err := m.Connector("postgresql://localhost:5432/postgres")
+	if err != nil {
+		t.Fatalf("Connector() error = %v", err)
+	}
+	if _, ok := conn.(*connector.StaticConnector); !ok {
+		t.Fatalf("Connector() type = %T, want *connector.StaticConnector", conn)
+	}
+}
+
+func TestAuthModuleConnectorIAMRequiresDBUserAndDatabase(t *testing.T) {
+	tests := []struct {
+		name string
+		iam  IAM
+	}{
+		{"missing both", IAM{Region: "us-east-1"}},
+		{"missing database", IAM{Region: "us-east-1", DBUser: "iamuser"}},
+		{"missing db_user", IAM{Region: "us-east-1", Database: "mydb"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := AuthModule{Type: "iam", IAM: tt.iam}
+			if _, err := m.Connector("postgresql://db.example.com:5432/"); err == nil {
+				t.Fatal("Connector() error = nil, want error for missing iam.db_user/iam.db_name")
+			}
+		})
+	}
+}
+
+func TestAuthModuleConnectorIAMRegionAndRoleARNAreOptional(t *testing.T) {
+	m := AuthModule{
+		Type: "iam",
+		IAM: IAM{
+			DBUser:   "iamuser",
+			Database: "mydb",
+		},
+	}
+
+	conn, err := m.Connector("postgresql://db.example.com:5432/")
+	if err != nil {
+		t.Fatalf("Connector() error = %v, want no error with region/role_arn unset", err)
+	}
+
+	iamConn, ok := conn.(*connector.AWSIAMConnector)
+	if !ok {
+		t.Fatalf("Connector() type = %T, want *connector.AWSIAMConnector", conn)
+	}
+	if iamConn.Region != "" {
+		t.Errorf("Region = %q, want empty (resolved by the AWS SDK at connect time)", iamConn.Region)
+	}
+	if iamConn.RoleARN != "" {
+		t.Errorf("RoleARN = %q, want empty (use ambient credentials directly)", iamConn.RoleARN)
+	}
+}
+
+func TestAuthModuleConnectorIAM(t *testing.T) {
+	m := AuthModule{
+		Type: "iam",
+		IAM: IAM{
+			Region:   "us-east-1",
+			RoleARN:  "arn:aws:iam::123456789012:role/rds-connect",
+			DBUser:   "iamuser",
+			Database: "mydb",
+		},
+	}
+
+	// iam.db_user/iam.db_name override target's own targetuser/targetdb.
+	conn, err := m.Connector("postgresql://targetuser@db.example.com:5432/targetdb")
+	if err != nil {
+		t.Fatalf("Connector() error = %v", err)
+	}
+
+	iamConn, ok := conn.(*connector.AWSIAMConnector)
+	if !ok {
+		t.Fatalf("Connector() type = %T, want *connector.AWSIAMConnector", conn)
+	}
+	if got, want := iamConn.DBEndpoint, "db.example.com:5432"; got != want {
+		t.Errorf("DBEndpoint = %q, want %q", got, want)
+	}
+	if got, want := iamConn.DBUser, "iamuser"; got != want {
+		t.Errorf("DBUser = %q, want %q", got, want)
+	}
+	u, err := url.Parse(iamConn.DSN("token"))
+	if err != nil {
+		t.Fatalf("DSN() produced an unparseable connection string: %v", err)
+	}
+	if got, want := u.Path, "/mydb"; got != want {
+		t.Errorf("DSN() path = %q, want %q", got, want)
+	}
+	if got, want := iamConn.Region, "us-east-1"; got != want {
+		t.Errorf("Region = %q, want %q", got, want)
+	}
+	if got, want := iamConn.RoleARN, "arn:aws:iam::123456789012:role/rds-connect"; got != want {
+		t.Errorf("RoleARN = %q, want %q", got, want)
+	}
+}
+
+func TestAuthModuleConnectorIAMKeepsTargetsOwnOptions(t *testing.T) {
+	m := AuthModule{
+		Type: "iam",
+		IAM:  IAM{DBUser: "iamuser", Database: "mydb"},
+	}
+
+	conn, err := m.Connector("postgresql://db.example.com:5432/mydb?application_name=myapp")
+	if err != nil {
+		t.Fatalf("Connector() error = %v", err)
+	}
+
+	iamConn, ok := conn.(*connector.AWSIAMConnector)
+	if !ok {
+		t.Fatalf("Connector() type = %T, want *connector.AWSIAMConnector", conn)
+	}
+	u, err := url.Parse(iamConn.DSN("token"))
+	if err != nil {
+		t.Fatalf("DSN() produced an unparseable connection string: %v", err)
+	}
+	if got, want := u.Query().Get("application_name"), "myapp"; got != want {
+		t.Errorf("application_name = %q, want %q", got, want)
+	}
+}
+
+func TestAuthModuleConnectorIAMOptionsOverrideTargetsOwnOptions(t *testing.T) {
+	m := AuthModule{
+		Type: "iam",
+		IAM:  IAM{DBUser: "iamuser", Database: "mydb"},
+		Options: map[string]string{
+			"sslmode": "verify-full",
+		},
+	}
+
+	// target sets sslmode=disable; auth_modules.options should win.
+	conn, err := m.Connector("postgresql://db.example.com:5432/mydb?sslmode=disable")
+	if err != nil {
+		t.Fatalf("Connector() error = %v", err)
+	}
+
+	iamConn, ok := conn.(*connector.AWSIAMConnector)
+	if !ok {
+		t.Fatalf("Connector() type = %T, want *connector.AWSIAMConnector", conn)
+	}
+	u, err := url.Parse(iamConn.DSN("token"))
+	if err != nil {
+		t.Fatalf("DSN() produced an unparseable connection string: %v", err)
+	}
+	if got, want := u.Query().Get("sslmode"), "verify-full"; got != want {
+		t.Errorf("sslmode = %q, want %q", got, want)
+	}
+}
+
 func TestReloadAuthConfig(t *testing.T) {
 	ch, err := NewHandler(prometheus.NewRegistry())
 	if err != nil {
@@ -285,6 +449,154 @@ func TestReloadAuthConfig(t *testing.T) {
 
 	if err := ch.ReloadAuthConfig("testdata/config-good.yaml", nil); err != nil {
 		t.Errorf("error loading config: %s", err)
+	}
+}
+
+func TestHandlerConnectorForCachesByModuleAndTarget(t *testing.T) {
+	ch, err := NewHandler(prometheus.NewRegistry())
+	if err != nil {
+		t.Fatalf("NewHandler() error = %v", err)
+	}
+	m := AuthModule{Type: "iam", IAM: IAM{DBUser: "iamuser", Database: "mydb"}}
+
+	first, err := ch.ConnectorFor("m", m, "postgresql://db.example.com:5432/mydb")
+	if err != nil {
+		t.Fatalf("ConnectorFor() error = %v", err)
+	}
+	second, err := ch.ConnectorFor("m", m, "postgresql://db.example.com:5432/mydb")
+	if err != nil {
+		t.Fatalf("ConnectorFor() error = %v", err)
+	}
+	if first != second {
+		t.Error("ConnectorFor() returned a different connector for the same module and target, want the cached one")
+	}
+
+	third, err := ch.ConnectorFor("m", m, "postgresql://other.example.com:5432/mydb")
+	if err != nil {
+		t.Fatalf("ConnectorFor() error = %v", err)
+	}
+	if first == third {
+		t.Error("ConnectorFor() returned the same connector for a different target, want a distinct one")
+	}
+}
+
+func TestHandlerConnectorForClearsCacheOnReload(t *testing.T) {
+	ch, err := NewHandler(prometheus.NewRegistry())
+	if err != nil {
+		t.Fatalf("NewHandler() error = %v", err)
+	}
+	m := AuthModule{Type: "iam", IAM: IAM{DBUser: "iamuser", Database: "mydb"}}
+
+	before, err := ch.ConnectorFor("m", m, "postgresql://db.example.com:5432/mydb")
+	if err != nil {
+		t.Fatalf("ConnectorFor() error = %v", err)
+	}
+
+	ch.SetAuthConfig(&AuthConfig{})
+
+	after, err := ch.ConnectorFor("m", m, "postgresql://db.example.com:5432/mydb")
+	if err != nil {
+		t.Fatalf("ConnectorFor() error = %v", err)
+	}
+	if before == after {
+		t.Error("ConnectorFor() reused a connector cached before SetAuthConfig, want a fresh one after reload")
+	}
+}
+
+func TestHandlerConnectorForKeysOnModuleConfig(t *testing.T) {
+	ch, err := NewHandler(prometheus.NewRegistry())
+	if err != nil {
+		t.Fatalf("NewHandler() error = %v", err)
+	}
+	target := "postgresql://db.example.com:5432/mydb"
+	old := AuthModule{Type: "iam", IAM: IAM{DBUser: "iamuser", Database: "mydb", RoleARN: "arn:aws:iam::1:role/old"}}
+	updated := AuthModule{Type: "iam", IAM: IAM{DBUser: "iamuser", Database: "mydb", RoleARN: "arn:aws:iam::1:role/new"}}
+
+	a, err := ch.ConnectorFor("m", old, target)
+	if err != nil {
+		t.Fatalf("ConnectorFor() error = %v", err)
+	}
+	b, err := ch.ConnectorFor("m", updated, target)
+	if err != nil {
+		t.Fatalf("ConnectorFor() error = %v", err)
+	}
+	if a == b {
+		t.Error("ConnectorFor() reused a connector across different module configs under the same name")
+	}
+}
+
+func TestHandlerConnectorForIsBounded(t *testing.T) {
+	ch, err := NewHandler(prometheus.NewRegistry())
+	if err != nil {
+		t.Fatalf("NewHandler() error = %v", err)
+	}
+	m := AuthModule{Type: "iam", IAM: IAM{DBUser: "iamuser", Database: "mydb"}}
+	for i := 0; i < 3*maxCachedConnectors; i++ {
+		if _, err := ch.ConnectorFor("m", m, fmt.Sprintf("postgresql://db.example.com:5432/mydb?application_name=app%d", i)); err != nil {
+			t.Fatalf("ConnectorFor() error = %v", err)
+		}
+	}
+	ch.RLock()
+	n := len(ch.connectors)
+	ch.RUnlock()
+	if n > maxCachedConnectors {
+		t.Errorf("cache holds %d connectors, want at most %d", n, maxCachedConnectors)
+	}
+}
+
+func TestAuthModuleConnectorIAMDatabaseAndEndpoint(t *testing.T) {
+	tests := []struct {
+		name         string
+		iam          IAM
+		target       string
+		wantEndpoint string
+		wantDatabase string
+	}{
+		{"key-value dbname", IAM{DBUser: "iamuser"}, "host=db.example.com user=iamuser dbname=mydb", "db.example.com:5432", "mydb"},
+		{"url dbname query", IAM{DBUser: "iamuser"}, "postgresql://db.example.com/?dbname=mydb", "db.example.com:5432", "mydb"},
+		{"db_name overrides inherited dbname", IAM{DBUser: "iamuser", Database: "other"}, "host=db.example.com dbname=mydb", "db.example.com:5432", "other"},
+		{"port query overrides authority", IAM{DBUser: "iamuser"}, "postgresql://db.example.com/mydb?port=5433", "db.example.com:5433", "mydb"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			conn, err := AuthModule{Type: "iam", IAM: tt.iam}.Connector(tt.target)
+			if err != nil {
+				t.Fatalf("Connector() error = %v", err)
+			}
+			iamConn := conn.(*connector.AWSIAMConnector)
+			if iamConn.DBEndpoint != tt.wantEndpoint {
+				t.Errorf("DBEndpoint = %q, want %q", iamConn.DBEndpoint, tt.wantEndpoint)
+			}
+			u, err := url.Parse(iamConn.DSN("token"))
+			if err != nil {
+				t.Fatalf("DSN() unparseable: %v", err)
+			}
+			if got := strings.TrimPrefix(u.Path, "/"); got != tt.wantDatabase {
+				t.Errorf("database = %q, want %q", got, tt.wantDatabase)
+			}
+			if u.Query().Has("dbname") {
+				t.Errorf("DSN still carries dbname=%q, want it removed", u.Query().Get("dbname"))
+			}
+		})
+	}
+}
+
+func TestAuthModuleConnectorIAMPortFallsBackToPGPORT(t *testing.T) {
+	t.Setenv("PGPORT", "5433")
+	conn, err := AuthModule{Type: "iam", IAM: IAM{DBUser: "iamuser"}}.Connector("postgresql://db.example.com/mydb")
+	if err != nil {
+		t.Fatalf("Connector() error = %v", err)
+	}
+	iamConn := conn.(*connector.AWSIAMConnector)
+	if got, want := iamConn.DBEndpoint, "db.example.com:5433"; got != want {
+		t.Errorf("DBEndpoint = %q, want %q", got, want)
+	}
+	u, err := url.Parse(iamConn.DSN("token"))
+	if err != nil {
+		t.Fatalf("DSN() unparseable: %v", err)
+	}
+	if got, want := u.Host, "db.example.com:5433"; got != want {
+		t.Errorf("connection host = %q, want %q (signed and dialed endpoints must match)", got, want)
 	}
 }
 
@@ -315,6 +627,10 @@ func TestLoadBadConfigs(t *testing.T) {
 		{
 			input: "testdata/config-bad-extra-field.yaml",
 			want:  "error parsing config file \"testdata/config-bad-extra-field.yaml\": yaml: unmarshal errors:\n  line 8: field doesNotExist not found in type config.AuthModule",
+		},
+		{
+			input: "testdata/config-bad-iam-extra-field.yaml",
+			want:  "error parsing config file \"testdata/config-bad-iam-extra-field.yaml\": yaml: unmarshal errors:\n  line 8: field doesNotExist not found in type config.IAM",
 		},
 	}
 

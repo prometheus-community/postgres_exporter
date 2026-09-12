@@ -16,15 +16,19 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"regexp"
 
 	"github.com/blang/semver/v4"
 	"github.com/prometheus-community/postgres_exporter/config"
+
+	"github.com/prometheus-community/postgres_exporter/internal/connector"
 )
 
 type instance struct {
 	dsn               string
+	connector         driver.Connector
 	db                *sql.DB
 	version           semver.Version
 	database          string
@@ -35,6 +39,7 @@ type instance struct {
 func (i *instance) copy() *instance {
 	return &instance{
 		dsn:               i.dsn,
+		connector:         i.connector,
 		wrapLargeCounters: i.wrapLargeCounters,
 	}
 }
@@ -48,8 +53,24 @@ func (i *instance) withDatabase(database string) (*instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("malformed dsn: %w", err)
 	}
+	var conn driver.Connector
+	if iam, ok := i.connector.(*connector.AWSIAMConnector); ok {
+		// Mint tokens as usual, but point each connection at database.
+		baseDSN := iam.DSN
+		conn, err = connector.NewAWSIAMConnector(iam.DBEndpoint, iam.DBUser, iam.Region, iam.RoleARN, func(token string) string {
+			d, derr := config.NewDSN(baseDSN(token))
+			if derr != nil {
+				return baseDSN(token)
+			}
+			return d.WithDatabase(database).GetConnectionString()
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
 	other := &instance{
 		dsn:               dsn.WithDatabase(database).GetConnectionString(),
+		connector:         conn,
 		wrapLargeCounters: i.wrapLargeCounters,
 		// database is on the same PostgreSQL server as i, so it runs the same
 		// version; skip re-querying it over the new connection.
@@ -59,10 +80,15 @@ func (i *instance) withDatabase(database string) (*instance, error) {
 }
 
 func (i *instance) setup(ctx context.Context) error {
-	db, err := sql.Open("postgres", i.dsn)
-	if err != nil {
-		return err
+	// Without a custom connector, connect with the DSN as sql.Open would.
+	if i.connector == nil {
+		c, err := connector.NewStaticConnector(i.dsn)
+		if err != nil {
+			return err
+		}
+		i.connector = c
 	}
+	db := sql.OpenDB(i.connector)
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 	i.db = db

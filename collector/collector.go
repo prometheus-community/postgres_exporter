@@ -16,6 +16,7 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -122,6 +123,7 @@ type PostgresCollector struct {
 	logger     *slog.Logger
 
 	instance                *instance
+	connector               driver.Connector
 	CollectionTimeout       time.Duration
 	collectorStates         map[string]bool
 	excludeDatabases        []string
@@ -206,6 +208,7 @@ func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn st
 
 	p.instance = &instance{
 		dsn:               dsn,
+		connector:         p.connector,
 		wrapLargeCounters: p.wrapLargeCounters,
 	}
 
@@ -288,6 +291,14 @@ func WithCollectionTimeout(s string) Option {
 func WithWrapLargeCounters(wrap bool) Option {
 	return func(p *PostgresCollector) error {
 		p.wrapLargeCounters = wrap
+		return nil
+	}
+}
+
+// WithConnector overrides how connections to dsn are opened.
+func WithConnector(conn driver.Connector) Option {
+	return func(p *PostgresCollector) error {
+		p.connector = conn
 		return nil
 	}
 }
