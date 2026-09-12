@@ -14,6 +14,7 @@
 package config
 
 import (
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"io"
@@ -21,11 +22,14 @@ import (
 	"maps"
 	"os"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v3"
+
+	"github.com/prometheus-community/postgres_exporter/internal/connector"
 )
 
 const (
@@ -225,6 +229,7 @@ type AuthConfig struct {
 type AuthModule struct {
 	Type     string   `yaml:"type"`
 	UserPass UserPass `yaml:"userpass,omitempty"`
+	IAM      IAM      `yaml:"iam,omitempty"`
 	// Add alternative auth modules here
 	Options map[string]string `yaml:"options"`
 }
@@ -232,6 +237,13 @@ type AuthModule struct {
 type UserPass struct {
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
+}
+
+type IAM struct {
+	Region   string `yaml:"region,omitempty"`
+	RoleARN  string `yaml:"role_arn,omitempty"`
+	DBUser   string `yaml:"db_user,omitempty"`
+	Database string `yaml:"db_name,omitempty"`
 }
 
 type Handler struct {
@@ -356,4 +368,45 @@ func (m AuthModule) ConfigureTarget(target string) (DSN, error) {
 	}
 
 	return dsn, nil
+}
+
+// Connector builds a driver.Connector
+func (m AuthModule) Connector(target string) (driver.Connector, error) {
+	if m.Type == "iam" {
+		dsn, err := dsnFromString(target)
+		if err != nil {
+			return nil, err
+		}
+
+		// db_user/db_name override target when set, else they're parsed from it.
+		dbUser := dsn.username
+		if m.IAM.DBUser != "" {
+			dbUser = m.IAM.DBUser
+		}
+		database := strings.TrimPrefix(dsn.path, "/")
+		if m.IAM.Database != "" {
+			database = m.IAM.Database
+		}
+		if dbUser == "" {
+			return nil, errors.New(`auth module type "iam" requires a db user, from either iam.db_user or target`)
+		}
+		if database == "" {
+			return nil, errors.New(`auth module type "iam" requires a database name, from either iam.db_name or target`)
+		}
+
+		return connector.NewAWSIAMConnector(
+			dsn.host,
+			dbUser,
+			database,
+			m.IAM.Region,
+			m.IAM.RoleARN,
+			m.Options,
+		), nil
+	}
+
+	dsn, err := m.ConfigureTarget(target)
+	if err != nil {
+		return nil, err
+	}
+	return connector.NewStaticConnector(dsn.GetConnectionString())
 }

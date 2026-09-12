@@ -6,3 +6,10 @@ auth_modules:
       password: firstpass
     options:
       sslmode: disable
+  second:
+    type: iam
+    iam:
+      region: us-east-1
+      role_arn: arn:aws:iam::123456789012:role/rds-connect
+      db_user: iamuser
+      db_name: mydb

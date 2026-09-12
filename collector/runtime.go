@@ -14,6 +14,7 @@
 package collector
 
 import (
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -29,7 +30,7 @@ type Runtime struct {
 	postgresCollector *PostgresCollector
 }
 
-func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*Runtime, error) {
+func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger, conn driver.Connector) (*Runtime, error) {
 	if !validatedConfig.Valid() {
 		return nil, errors.New("config has not been validated; obtain a ValidatedConfig from Config.Validate")
 	}
@@ -38,7 +39,11 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 	}
 	cfg := validatedConfig.Config()
 
-	exporterCollector := exporter.NewExporter(cfg.DataSourceNames, logger, exporterOptions(cfg)...)
+	exporterOpts := exporterOptions(cfg)
+	if conn != nil {
+		exporterOpts = append(exporterOpts, exporter.WithConnector(conn))
+	}
+	exporterCollector := exporter.NewExporter(cfg.DataSourceNames, logger, exporterOpts...)
 	runtime := &Runtime{
 		exporter: exporterCollector,
 	}
@@ -57,6 +62,7 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 		WithLongRunningTransactionsConfig(cfg.LongRunningTransactions),
 		WithPGStatStatementsConfig(cfg.PGStatStatements),
 		WithWrapLargeCounters(cfg.WrapLargeCounters),
+		WithConnector(conn),
 	)
 	if err != nil {
 		runtime.Close()

@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/prometheus-community/postgres_exporter/internal/connector"
 )
 
 func TestNewConfigWithDefaults(t *testing.T) {
@@ -223,6 +225,9 @@ func TestLoadAuthConfigFile(t *testing.T) {
 	if len(config.AuthModules) == 0 {
 		t.Fatal("LoadAuthConfig() loaded no auth modules")
 	}
+	if got, want := config.AuthModules["second"].IAM.Region, "us-east-1"; got != want {
+		t.Fatalf(`AuthModules["second"].IAM.Region = %q, want %q`, got, want)
+	}
 }
 
 func TestLoadAuthConfigEmptyPath(t *testing.T) {
@@ -252,6 +257,107 @@ auth_modules:
 	}
 	if got, want := config.AuthModules["module"].UserPass.Username, "user"; got != want {
 		t.Fatalf("username = %q, want %q", got, want)
+	}
+}
+
+func TestAuthModuleConnectorDefaultsToStatic(t *testing.T) {
+	m := AuthModule{
+		Type: "userpass",
+		UserPass: UserPass{
+			Username: "user",
+			Password: "pass",
+		},
+	}
+
+	conn, err := m.Connector("postgresql://localhost:5432/postgres")
+	if err != nil {
+		t.Fatalf("Connector() error = %v", err)
+	}
+	if _, ok := conn.(*connector.StaticConnector); !ok {
+		t.Fatalf("Connector() type = %T, want *connector.StaticConnector", conn)
+	}
+}
+
+func TestAuthModuleConnectorIAMRequiresDBUserAndDatabase(t *testing.T) {
+	tests := []struct {
+		name string
+		iam  IAM
+	}{
+		{"missing both", IAM{Region: "us-east-1"}},
+		{"missing database", IAM{Region: "us-east-1", DBUser: "iamuser"}},
+		{"missing db_user", IAM{Region: "us-east-1", Database: "mydb"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := AuthModule{Type: "iam", IAM: tt.iam}
+			if _, err := m.Connector("postgresql://db.example.com:5432/"); err == nil {
+				t.Fatal("Connector() error = nil, want error for missing iam.db_user/iam.db_name")
+			}
+		})
+	}
+}
+
+func TestAuthModuleConnectorIAMRegionAndRoleARNAreOptional(t *testing.T) {
+	m := AuthModule{
+		Type: "iam",
+		IAM: IAM{
+			DBUser:   "iamuser",
+			Database: "mydb",
+		},
+	}
+
+	conn, err := m.Connector("postgresql://db.example.com:5432/")
+	if err != nil {
+		t.Fatalf("Connector() error = %v, want no error with region/role_arn unset", err)
+	}
+
+	iamConn, ok := conn.(*connector.AWSIAMConnector)
+	if !ok {
+		t.Fatalf("Connector() type = %T, want *connector.AWSIAMConnector", conn)
+	}
+	if iamConn.Region != "" {
+		t.Errorf("Region = %q, want empty (resolved by the AWS SDK at connect time)", iamConn.Region)
+	}
+	if iamConn.RoleARN != "" {
+		t.Errorf("RoleARN = %q, want empty (use ambient credentials directly)", iamConn.RoleARN)
+	}
+}
+
+func TestAuthModuleConnectorIAM(t *testing.T) {
+	m := AuthModule{
+		Type: "iam",
+		IAM: IAM{
+			Region:   "us-east-1",
+			RoleARN:  "arn:aws:iam::123456789012:role/rds-connect",
+			DBUser:   "iamuser",
+			Database: "mydb",
+		},
+	}
+
+	// iam.db_user/iam.db_name override target's own targetuser/targetdb.
+	conn, err := m.Connector("postgresql://targetuser@db.example.com:5432/targetdb")
+	if err != nil {
+		t.Fatalf("Connector() error = %v", err)
+	}
+
+	iamConn, ok := conn.(*connector.AWSIAMConnector)
+	if !ok {
+		t.Fatalf("Connector() type = %T, want *connector.AWSIAMConnector", conn)
+	}
+	if got, want := iamConn.DBEndpoint, "db.example.com:5432"; got != want {
+		t.Errorf("DBEndpoint = %q, want %q", got, want)
+	}
+	if got, want := iamConn.DBUser, "iamuser"; got != want {
+		t.Errorf("DBUser = %q, want %q", got, want)
+	}
+	if got, want := iamConn.Database, "mydb"; got != want {
+		t.Errorf("Database = %q, want %q", got, want)
+	}
+	if got, want := iamConn.Region, "us-east-1"; got != want {
+		t.Errorf("Region = %q, want %q", got, want)
+	}
+	if got, want := iamConn.RoleARN, "arn:aws:iam::123456789012:role/rds-connect"; got != want {
+		t.Errorf("RoleARN = %q, want %q", got, want)
 	}
 }
 
@@ -293,6 +399,10 @@ func TestLoadBadConfigs(t *testing.T) {
 		{
 			input: "testdata/config-bad-extra-field.yaml",
 			want:  "error parsing config file \"testdata/config-bad-extra-field.yaml\": yaml: unmarshal errors:\n  line 8: field doesNotExist not found in type config.AuthModule",
+		},
+		{
+			input: "testdata/config-bad-iam-extra-field.yaml",
+			want:  "error parsing config file \"testdata/config-bad-iam-extra-field.yaml\": yaml: unmarshal errors:\n  line 8: field doesNotExist not found in type config.IAM",
 		},
 	}
 

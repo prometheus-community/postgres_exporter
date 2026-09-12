@@ -14,6 +14,7 @@
 package exporter
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"net/url"
 	"os"
@@ -49,7 +50,7 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			continue
 		}
 
-		server, err := e.servers.GetServer(dsn)
+		server, err := e.servers.GetServer(dsn, e.connectorFor(dsn))
 		if err != nil {
 			e.logger.Error("Error opening connection to database", "dsn", loggableDSN(dsn), "err", err)
 			continue
@@ -95,9 +96,16 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 	return result
 }
 
-func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
-	server, err := e.servers.GetServer(dsn)
+// connectorFor returns e.connector when dsn is the configured primary DSN
+func (e *Exporter) connectorFor(dsn string) driver.Connector {
+	if e.connector != nil && len(e.dsn) > 0 && dsn == e.dsn[0] {
+		return e.connector
+	}
+	return nil
+}
 
+func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
+	server, err := e.servers.GetServer(dsn, e.connectorFor(dsn))
 	if err != nil {
 		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), err.Error())}
 	}
