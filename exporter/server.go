@@ -16,6 +16,7 @@ package exporter
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -24,12 +25,15 @@ import (
 	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/promslog"
+
+	"github.com/prometheus-community/postgres_exporter/internal/connector"
 )
 
 // Server describes a connection to Postgres.
 // Also it contains metrics map and query overrides.
 type Server struct {
 	db                *sql.DB
+	connector         driver.Connector
 	labels            prometheus.Labels
 	master            bool
 	runonserver       string
@@ -74,6 +78,13 @@ func ServerWithWrapLargeCounters(wrap bool) ServerOpt {
 	}
 }
 
+// ServerWithConnector overrides how the connection to dsn is opened
+func ServerWithConnector(conn driver.Connector) ServerOpt {
+	return func(s *Server) {
+		s.connector = conn
+	}
+}
+
 // NewServer establishes a new connection using DSN.
 func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 	fingerprint, err := parseFingerprint(dsn)
@@ -81,15 +92,7 @@ func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 		return nil, err
 	}
 
-	db, err := sql.Open("postgres", dsn)
-	if err != nil {
-		return nil, err
-	}
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
-
 	s := &Server{
-		db:                db,
 		master:            false,
 		wrapLargeCounters: true,
 		labels: prometheus.Labels{
@@ -102,6 +105,21 @@ func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 	for _, opt := range opts {
 		opt(s)
 	}
+
+	// If no connector is provided,
+	// create a new StaticConnector from the DSN.
+	conn := s.connector
+	if conn == nil {
+		conn, err = connector.NewStaticConnector(dsn)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	db := sql.OpenDB(conn)
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+	s.db = db
 
 	s.logger.Info("Established new database connection", "fingerprint", fingerprint)
 
@@ -164,7 +182,7 @@ func NewServers(opts ...ServerOpt) *Servers {
 }
 
 // GetServer returns established connection from a collection.
-func (s *Servers) GetServer(ctx context.Context, dsn string) (*Server, error) {
+func (s *Servers) GetServer(ctx context.Context, dsn string, conn driver.Connector) (*Server, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	var err error
@@ -178,7 +196,11 @@ func (s *Servers) GetServer(ctx context.Context, dsn string) (*Server, error) {
 		}
 		server, ok = s.servers[dsn]
 		if !ok {
-			server, err = NewServer(dsn, s.opts...)
+			opts := s.opts
+			if conn != nil {
+				opts = append(append([]ServerOpt{}, s.opts...), ServerWithConnector(conn))
+			}
+			server, err = NewServer(dsn, opts...)
 			if err != nil {
 				select {
 				case <-time.After(time.Duration(errCount) * time.Second):

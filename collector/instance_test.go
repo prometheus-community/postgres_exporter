@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver/v4"
+	"github.com/prometheus-community/postgres_exporter/internal/connector"
 )
 
 func TestInstanceWithDatabase(t *testing.T) {
@@ -55,5 +56,16 @@ func TestInstanceWithDatabase(t *testing.T) {
 				t.Fatalf("withDatabase() version = %v, want %v", got.version, primary.version)
 			}
 		})
+	}
+}
+
+func TestInstanceWithDatabaseRejectsCustomConnector(t *testing.T) {
+	c, err := connector.NewStaticConnector("postgresql://user@localhost/postgres")
+	if err != nil {
+		t.Fatal(err)
+	}
+	i := &instance{dsn: "postgresql://user@localhost/postgres", connector: c}
+	if _, err := i.withDatabase("other"); err == nil {
+		t.Fatal("withDatabase() error = nil, want an error: a custom connector can't be redirected to another database")
 	}
 }

@@ -28,6 +28,10 @@ type dataSourceOpts struct {
 	URIFile  string
 	UserFile string
 	PassFile string
+
+	// IgnorePassword skips resolving the password altogether, for IAM auth
+	// where there is none; the password file isn't read, even if set.
+	IgnorePassword bool
 }
 
 // DATA_SOURCE_NAME/USER/PASS are absent on purpose: they carry secrets, so
@@ -75,15 +79,17 @@ func getDataSources(opts dataSourceOpts) ([]string, error) {
 		user = os.Getenv("DATA_SOURCE_USER")
 	}
 
-	dataSourcePassFile := flagOrEnvVar(opts.PassFile, "DATA_SOURCE_PASS_FILE")
-	if len(dataSourcePassFile) != 0 {
-		fileContents, err := os.ReadFile(dataSourcePassFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed loading data source pass file %s: %s", dataSourcePassFile, err.Error())
+	if !opts.IgnorePassword {
+		dataSourcePassFile := flagOrEnvVar(opts.PassFile, "DATA_SOURCE_PASS_FILE")
+		if len(dataSourcePassFile) != 0 {
+			fileContents, err := os.ReadFile(dataSourcePassFile)
+			if err != nil {
+				return nil, fmt.Errorf("failed loading data source pass file %s: %s", dataSourcePassFile, err.Error())
+			}
+			pass = strings.TrimSpace(string(fileContents))
+		} else {
+			pass = os.Getenv("DATA_SOURCE_PASS")
 		}
-		pass = strings.TrimSpace(string(fileContents))
-	} else {
-		pass = os.Getenv("DATA_SOURCE_PASS")
 	}
 
 	ui := url.UserPassword(user, pass).String()

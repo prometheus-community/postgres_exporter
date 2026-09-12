@@ -17,6 +17,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -337,6 +338,7 @@ type Exporter struct {
 	excludeDatabases []string
 	includeDatabases []string
 	dsn              []string
+	connector        driver.Connector
 	userQueriesPath  string
 	constantLabels   prometheus.Labels
 	duration         prometheus.Gauge
@@ -412,6 +414,13 @@ func WithConstantLabels(s string) ExporterOpt {
 func WithMetricPrefix(prefix string) ExporterOpt {
 	return func(e *Exporter) {
 		e.metricPrefix = prefix
+	}
+}
+
+// WithConnector overrides how connections to the primary DSN
+func WithConnector(conn driver.Connector) ExporterOpt {
+	return func(e *Exporter) {
+		e.connector = conn
 	}
 }
 
