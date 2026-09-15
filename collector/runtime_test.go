@@ -123,6 +123,7 @@ func TestNewRuntimeEnablesDatabaseDiscoveryWithAutoDiscoverDatabases(t *testing.
 	cfg.AutoDiscoverDatabases = true
 	cfg.IncludeDatabases = []string{"included"}
 	cfg.ExcludeDatabases = []string{"excluded"}
+	cfg.AutoDiscoverDatabasesMaxConcurrency = 7
 	validated, err := cfg.Validate()
 	if err != nil {
 		t.Fatalf("Validate() error = %v", err)
@@ -143,6 +144,9 @@ func TestNewRuntimeEnablesDatabaseDiscoveryWithAutoDiscoverDatabases(t *testing.
 	}
 	if got, want := discovery.excludeDatabases, cfg.ExcludeDatabases; len(got) != 1 || got[0] != want[0] {
 		t.Errorf("excludeDatabases = %v, want %v", got, want)
+	}
+	if got, want := discovery.maxConcurrency, cfg.AutoDiscoverDatabasesMaxConcurrency; got != want {
+		t.Errorf("maxConcurrency = %d, want %d", got, want)
 	}
 }
 

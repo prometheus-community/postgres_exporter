@@ -221,6 +221,10 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `auto-discover-databases` (DEPRECATED)
   Whether to discover the databases on a server dynamically.  Default is `false`.
 
+* `auto-discover-databases.max-concurrency`
+  Maximum number of discovered databases to scrape concurrently in a single scrape, when
+  `auto-discover-databases` is enabled. Default is `10`.
+
 * `extend.query-path` (DEPRECATED)
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
   for examples of the format.
@@ -297,6 +301,11 @@ The following environment variables configure the exporter:
 * `PG_EXPORTER_AUTO_DISCOVER_DATABASES` (DEPRECATED)
   Whether to discover the databases on a server dynamically. Value can be `true` or `false`. Default is `false`.
 
+* `PG_EXPORTER_AUTO_DISCOVER_DATABASES_MAX_CONCURRENCY`
+  Maximum number of discovered databases to scrape concurrently in a single scrape, when
+  `auto-discover-databases` is enabled. Bounds how many extra connections a scrape can open on a
+  server with many databases. Default is `10`.
+
 * `PG_EXPORTER_EXTEND_QUERY_PATH`
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
   for examples of the format.
@@ -369,7 +378,8 @@ database (e.g. `stat_user_tables`, `statio_user_tables`, `statio_user_indexes`).
 server (e.g. `wal`, `bgwriter`, `stat_activity`) still only run once, against the first configured DSN, since
 re-running them against another database on the same server would report the exact same rows again. The set of
 discovered databases is re-evaluated on every scrape, so databases created or dropped after the exporter starts are
-picked up without a restart.
+picked up without a restart. At most `--auto-discover-databases.max-concurrency` discovered databases are scraped
+concurrently, so a server with many databases cannot make a single scrape open more connections than it can spare.
 
 In addition, the option `--exclude-databases` adds the possibily to filter the result from the auto discovery to discard databases you do not need.
 

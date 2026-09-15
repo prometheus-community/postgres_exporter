@@ -60,7 +60,7 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 		// database on the server too. Server-scoped collectors are
 		// unaffected: they still only ever run once, against
 		// DataSourceNames[0], so they are never duplicated.
-		opts = append(opts, WithDatabaseDiscovery(cfg.IncludeDatabases, cfg.ExcludeDatabases))
+		opts = append(opts, WithDatabaseDiscovery(cfg.IncludeDatabases, cfg.ExcludeDatabases, cfg.AutoDiscoverDatabasesMaxConcurrency))
 	}
 
 	postgresCollector, err := NewPostgresCollector(

@@ -71,7 +71,7 @@ func TestPostgresCollectorRunsDatabaseScopedCollectorsAgainstDiscoveredDatabases
 		nil,
 		primaryDSN,
 		[]string{userTableSubsystem},
-		WithDatabaseDiscovery(nil, nil),
+		WithDatabaseDiscovery(nil, nil, 0),
 	)
 	if err != nil {
 		t.Fatalf("NewPostgresCollector() error = %v", err)

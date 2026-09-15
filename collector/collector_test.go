@@ -152,8 +152,11 @@ func TestWithConnectionTimeout(t *testing.T) {
 		}
 	}()
 
+	ctx, cancel := context.WithTimeout(context.Background(), timeoutForQuery)
+	defer cancel()
+
 	startTime := time.Now()
-	c.collectFromConnection(inst, ch, nil)
+	c.collectFromConnection(ctx, inst, ch, nil)
 	elapsed := time.Since(startTime)
 
 	if elapsed <= timeoutForQuery {
@@ -248,7 +251,7 @@ func TestCollectFromConnectionFiltersToMatchingScope(t *testing.T) {
 
 	ch := make(chan prometheus.Metric, 1024)
 	scope := databaseScope
-	c.collectFromConnection(inst, ch, &scope)
+	c.collectFromConnection(context.Background(), inst, ch, &scope)
 	close(ch)
 	for range ch {
 	}

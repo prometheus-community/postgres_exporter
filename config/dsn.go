@@ -15,8 +15,10 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"unicode"
 )
@@ -45,8 +47,20 @@ func (d DSN) String() string {
 	return fmt.Sprintf("%s://%s%s?%s", d.scheme, d.host, d.path, d.query.Encode())
 }
 
-// GetConnectionString returns the URL to pass to the driver for database connections. This value should not be logged.
+// GetConnectionString returns the connection string to pass to the driver
+// for database connections. This value should not be logged.
 func (d DSN) GetConnectionString() string {
+	// A host that names a filesystem path (e.g. "/var/run/postgresql/") or
+	// abstract socket (prefixed with "@") addresses a Unix-domain socket, as
+	// documented for the "host" keyword at
+	// https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-PARAMKEYWORDS.
+	// The pq driver's own URL parser rejects a percent-encoded "/" in the URL
+	// authority (see lib/pq's connector.go doc comment on convertURL), so a
+	// socket path can only survive serialization in key=value form.
+	if isSocketHost(d.host) {
+		return d.keyValueConnectionString()
+	}
+
 	u := url.URL{
 		Scheme:   d.scheme,
 		Host:     d.host,
@@ -60,6 +74,53 @@ func (d DSN) GetConnectionString() string {
 	}
 
 	return u.String()
+}
+
+// isSocketHost reports whether host addresses a Unix-domain socket rather
+// than a TCP host, per the rules of the "host" connection parameter: an
+// absolute path, or a value prefixed with "@" for an abstract socket.
+func isSocketHost(host string) bool {
+	h := host
+	if hh, _, err := net.SplitHostPort(host); err == nil {
+		h = hh
+	}
+	return strings.HasPrefix(h, "/") || strings.HasPrefix(h, "@")
+}
+
+// keyValueConnectionString renders d as a key=value connection string, the
+// only form the driver accepts for a Unix-domain socket host. Parts are
+// sorted so the result is deterministic despite the map iteration used to
+// walk the query string.
+func (d DSN) keyValueConnectionString() string {
+	host, port := d.host, ""
+	if h, p, err := net.SplitHostPort(d.host); err == nil {
+		host, port = h, p
+	}
+
+	escaper := strings.NewReplacer(`\`, `\\`, `'`, `\'`)
+	var parts []string
+	set := func(k, v string) {
+		if v == "" {
+			return
+		}
+		parts = append(parts, fmt.Sprintf("%s='%s'", k, escaper.Replace(v)))
+	}
+
+	set("host", host)
+	set("port", port)
+	set("user", d.username)
+	set("password", d.password)
+	if d.path != "" {
+		set("dbname", strings.TrimPrefix(d.path, "/"))
+	}
+	for k, values := range d.query {
+		for _, v := range values {
+			set(k, v)
+		}
+	}
+
+	sort.Strings(parts)
+	return strings.Join(parts, " ")
 }
 
 // WithDatabase returns a copy of d pointed at database instead of whichever

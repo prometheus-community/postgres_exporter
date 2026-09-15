@@ -295,6 +295,20 @@ func Test_DSN_WithDatabase(t *testing.T) {
 			input: "host=host.example.com sslmode=disable",
 			want:  "postgresql://host.example.com?dbname=other&sslmode=disable",
 		},
+		{
+			// Documented at README.md's "Setting the Postgres server's data
+			// source name" section. Must stay in key=value form: pq's URL
+			// parser rejects a percent-encoded "/" in the host, so a
+			// socket path can never survive as a URL.
+			name:  "unix socket path",
+			input: "host=/var/run/postgresql/ user=postgres_exporter sslmode=disable",
+			want:  "dbname='other' host='/var/run/postgresql/' sslmode='disable' user='postgres_exporter'",
+		},
+		{
+			name:  "unix socket path with port",
+			input: "host=/var/run/postgresql/ port=5432 sslmode=disable",
+			want:  "dbname='other' host='/var/run/postgresql/' port='5432' sslmode='disable'",
+		},
 	}
 
 	for _, tt := range tests {
