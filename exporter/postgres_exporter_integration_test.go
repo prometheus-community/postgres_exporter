@@ -160,6 +160,13 @@ func (s *IntegrationSuite) TestExtendQueriesDoesntCrash(c *C) {
 }
 
 func (s *IntegrationSuite) TestAutoDiscoverDatabases(c *C) {
+	// Setup a dummy channel to consume metrics
+	ch := make(chan prometheus.Metric, 100)
+	go func() {
+		for range ch {
+		}
+	}()
+
 	dsn := os.Getenv("DATA_SOURCE_NAME")
 
 	exporter := NewExporter(
@@ -171,4 +178,25 @@ func (s *IntegrationSuite) TestAutoDiscoverDatabases(c *C) {
 	dsns := exporter.discoverDatabaseDSNs()
 
 	c.Assert(len(dsns), Equals, 2)
+
+	for _, dsn := range dsns {
+		// Open a database connection
+		server, err := NewServer(dsn)
+		c.Assert(server, NotNil)
+		c.Assert(err, IsNil)
+
+		// Do a version update
+		err = exporter.checkMapVersions(ch, server)
+		c.Assert(err, IsNil)
+
+		// This should never happen in our test cases.
+		errMap := queryNamespaceMappings(ch, server)
+		if !c.Check(len(errMap), Equals, 0) {
+			fmt.Println("## NAMESPACE ERRORS FOUND")
+			for namespace, err := range errMap {
+				fmt.Println(namespace, ":", err)
+			}
+		}
+		server.Close()
+	}
 }
