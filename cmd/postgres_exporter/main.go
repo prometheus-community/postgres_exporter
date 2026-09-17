@@ -149,13 +149,13 @@ func main() {
 		logger.Warn("Error loading config", "err", err)
 	}
 
-	dsns, err := exporter.GetDataSources()
+	dsn, err := exporter.GetDataSources()
 	if err != nil {
 		logger.Error("Failed reading data sources", "err", err.Error())
 		os.Exit(1)
 	}
 
-	cfg, err := buildConfig(dsns)
+	cfg, err := buildConfig(dsn)
 	if err != nil {
 		logger.Error("Failed building config", "err", err)
 		os.Exit(1)
@@ -231,14 +231,14 @@ func main() {
 	}
 }
 
-func buildConfig(dsns []string) (config.Config, error) {
+func buildConfig(dsn string) (config.Config, error) {
 	parsedCollectionTimeout, err := parseCollectionTimeout(*collectionTimeout)
 	if err != nil {
 		return config.Config{}, err
 	}
 
 	cfg := config.NewConfigWithDefaults()
-	cfg.DataSourceNames = dsns
+	cfg.DataSourceName = dsn
 	cfg.MetricPrefix = *metricPrefix
 	cfg.CollectionTimeout = parsedCollectionTimeout
 	cfg.WrapLargeCounters = *wrapLargeCounters

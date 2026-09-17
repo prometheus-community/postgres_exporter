@@ -74,7 +74,10 @@ const (
 )
 
 type Config struct {
-	DataSourceNames       []string
+	// DataSourceName is the primary database connection this exporter's
+	// registry-based collectors (and /probe) scrape. Empty means no primary
+	// datasource is configured, which is valid in multi-target-only mode.
+	DataSourceName        string
 	MetricPrefix          string
 	CollectionTimeout     time.Duration
 	WrapLargeCounters     bool
@@ -163,11 +166,6 @@ func (c Config) Validate() (ValidatedConfig, error) {
 	if c.AutoDiscoverDatabases && c.AutoDiscoverDatabasesMaxConcurrency <= 0 {
 		return ValidatedConfig{}, fmt.Errorf("auto-discover-databases max concurrency must be greater than zero")
 	}
-	for i, dsn := range c.DataSourceNames {
-		if dsn == "" {
-			return ValidatedConfig{}, fmt.Errorf("data source name at index %d must not be empty", i)
-		}
-	}
 	if c.PGStatStatements.QueryLength <= 0 {
 		return ValidatedConfig{}, fmt.Errorf("pg_stat_statements query length must be greater than zero")
 	}
@@ -190,7 +188,6 @@ func (c Config) Validate() (ValidatedConfig, error) {
 // (slices and maps) deep-copied, so the copy shares no mutable state with the
 // original.
 func (c Config) clone() Config {
-	c.DataSourceNames = slices.Clone(c.DataSourceNames)
 	c.ExcludeDatabases = slices.Clone(c.ExcludeDatabases)
 	c.IncludeDatabases = slices.Clone(c.IncludeDatabases)
 	c.Collectors = maps.Clone(c.Collectors)

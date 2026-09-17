@@ -59,7 +59,7 @@ func TestNewRuntimeCollectorsWithoutDataSource(t *testing.T) {
 
 func TestNewRuntimeCollectorsWithDataSource(t *testing.T) {
 	cfg := config.NewConfigWithDefaults()
-	cfg.DataSourceNames = []string{"postgresql://localhost:5432/postgres?sslmode=disable"}
+	cfg.DataSourceName = "postgresql://localhost:5432/postgres?sslmode=disable"
 	validated, err := cfg.Validate()
 	if err != nil {
 		t.Fatalf("Validate() error = %v", err)
@@ -79,7 +79,7 @@ func TestNewRuntimeCollectorsWithDataSource(t *testing.T) {
 func TestNewRuntimePropagatesWrapLargeCounters(t *testing.T) {
 	dsn := "postgresql://localhost:5432/postgres?sslmode=disable"
 	cfg := config.NewConfigWithDefaults()
-	cfg.DataSourceNames = []string{dsn}
+	cfg.DataSourceName = dsn
 	cfg.WrapLargeCounters = false
 	validated, err := cfg.Validate()
 	if err != nil {
@@ -100,7 +100,7 @@ func TestNewRuntimePropagatesWrapLargeCounters(t *testing.T) {
 
 func TestNewRuntimeOnlyEnablesDatabaseDiscoveryWhenAutoDiscoverDatabasesIsSet(t *testing.T) {
 	cfg := config.NewConfigWithDefaults()
-	cfg.DataSourceNames = []string{"postgresql://localhost:5432/postgres?sslmode=disable"}
+	cfg.DataSourceName = "postgresql://localhost:5432/postgres?sslmode=disable"
 	validated, err := cfg.Validate()
 	if err != nil {
 		t.Fatalf("Validate() error = %v", err)
@@ -119,7 +119,7 @@ func TestNewRuntimeOnlyEnablesDatabaseDiscoveryWhenAutoDiscoverDatabasesIsSet(t 
 
 func TestNewRuntimeEnablesDatabaseDiscoveryWithAutoDiscoverDatabases(t *testing.T) {
 	cfg := config.NewConfigWithDefaults()
-	cfg.DataSourceNames = []string{"postgresql://localhost:5432/postgres?sslmode=disable"}
+	cfg.DataSourceName = "postgresql://localhost:5432/postgres?sslmode=disable"
 	cfg.AutoDiscoverDatabases = true
 	cfg.IncludeDatabases = []string{"included"}
 	cfg.ExcludeDatabases = []string{"excluded"}
@@ -152,7 +152,7 @@ func TestNewRuntimeEnablesDatabaseDiscoveryWithAutoDiscoverDatabases(t *testing.
 
 func TestNewRuntimePropagatesLongRunningTransactionsThreshold(t *testing.T) {
 	cfg := config.NewConfigWithDefaults()
-	cfg.DataSourceNames = []string{"postgresql://localhost:5432/postgres?sslmode=disable"}
+	cfg.DataSourceName = "postgresql://localhost:5432/postgres?sslmode=disable"
 	cfg.Collectors[config.CollectorLongRunningTransactions] = true
 	cfg.LongRunningTransactions.Threshold = 5 * time.Minute
 	validated, err := cfg.Validate()

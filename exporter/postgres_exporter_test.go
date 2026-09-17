@@ -130,11 +130,11 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
 		c.Errorf("Unexpected error reading datasources")
 	}
 
-	if len(dsn) == 0 {
+	if dsn == "" {
 		c.Errorf("Expected one data source, zero found")
 	}
-	if dsn[0] != expected {
-		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn[0], expected)
+	if dsn != expected {
+		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, expected)
 	}
 }
 
@@ -150,11 +150,11 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDns(c *C) {
 		c.Errorf("Unexpected error reading datasources")
 	}
 
-	if len(dsn) == 0 {
+	if dsn == "" {
 		c.Errorf("Expected one data source, zero found")
 	}
-	if dsn[0] != envDsn {
-		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn[0], envDsn)
+	if dsn != envDsn {
+		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, envDsn)
 	}
 }
 
@@ -178,12 +178,24 @@ func (s *FunctionalSuite) TestEnvironmentSettingWithDnsAndSecrets(c *C) {
 		c.Errorf("Unexpected error reading datasources")
 	}
 
-	if len(dsn) == 0 {
+	if dsn == "" {
 		c.Errorf("Expected one data source, zero found")
 	}
-	if dsn[0] != envDsn {
-		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn[0], envDsn)
+	if dsn != envDsn {
+		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn, envDsn)
 	}
+}
+
+// test that a comma-separated DATA_SOURCE_NAME is rejected: multiple servers
+// from one exporter is the job of the /probe multi-target endpoint now.
+func (s *FunctionalSuite) TestEnvironmentSettingWithMultipleDsnsIsRejected(c *C) {
+	err := os.Setenv("DATA_SOURCE_NAME", "postgresql://user:password@host1:5432/?sslmode=disable,postgresql://user:password@host2:5432/?sslmode=disable")
+	c.Assert(err, IsNil)
+	defer UnsetEnvironment(c, "DATA_SOURCE_NAME")
+
+	dsn, err := GetDataSources()
+	c.Assert(err, NotNil)
+	c.Assert(dsn, Equals, "")
 }
 
 func (s *FunctionalSuite) TestPostgresVersionParsing(c *C) {

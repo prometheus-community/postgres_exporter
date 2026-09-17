@@ -69,11 +69,11 @@ func TestDBToFloat64Counter(t *testing.T) {
 }
 
 func TestNewExporterWrapLargeCounters(t *testing.T) {
-	if exporter := NewExporter(nil, promslog.NewNopLogger()); !exporter.wrapLargeCounters {
+	if exporter := NewExporter("", promslog.NewNopLogger()); !exporter.wrapLargeCounters {
 		t.Error("large counter wrapping should be enabled by default")
 	}
 
-	if exporter := NewExporter(nil, promslog.NewNopLogger(), WrapLargeCounters(false)); exporter.wrapLargeCounters {
+	if exporter := NewExporter("", promslog.NewNopLogger(), WrapLargeCounters(false)); exporter.wrapLargeCounters {
 		t.Error("large counter wrapping should be disabled by option")
 	}
 }

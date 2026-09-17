@@ -38,12 +38,12 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 	}
 	cfg := validatedConfig.Config()
 
-	exporterCollector := exporter.NewExporter(cfg.DataSourceNames, logger, exporterOptions(cfg)...)
+	exporterCollector := exporter.NewExporter(cfg.DataSourceName, logger, exporterOptions(cfg)...)
 	runtime := &Runtime{
 		exporter: exporterCollector,
 	}
 
-	if len(cfg.DataSourceNames) == 0 {
+	if cfg.DataSourceName == "" {
 		return runtime, nil
 	}
 
@@ -59,14 +59,14 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 		// statio_user_tables, statio_user_indexes, ...) against every other
 		// database on the server too. Server-scoped collectors are
 		// unaffected: they still only ever run once, against
-		// DataSourceNames[0], so they are never duplicated.
+		// DataSourceName, so they are never duplicated.
 		opts = append(opts, WithDatabaseDiscovery(cfg.IncludeDatabases, cfg.ExcludeDatabases, cfg.AutoDiscoverDatabasesMaxConcurrency))
 	}
 
 	postgresCollector, err := NewPostgresCollector(
 		logger,
 		cfg.ExcludeDatabases,
-		cfg.DataSourceNames[0],
+		cfg.DataSourceName,
 		nil,
 		opts...,
 	)
