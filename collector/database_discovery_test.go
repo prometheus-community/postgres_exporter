@@ -15,7 +15,12 @@ package collector
 
 import (
 	"context"
+	"slices"
+	"sort"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 )
@@ -43,5 +48,70 @@ func TestDiscoverDatabases(t *testing.T) {
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestForEachDatabase(t *testing.T) {
+	databases := []string{"a", "b", "c", "d", "e"}
+
+	var mu sync.Mutex
+	var seen []string
+	var maxInFlight, inFlight int32
+
+	forEachDatabase(context.Background(), databases, 2, func(_ context.Context, database string) {
+		n := atomic.AddInt32(&inFlight, 1)
+		for {
+			max := atomic.LoadInt32(&maxInFlight)
+			if n <= max || atomic.CompareAndSwapInt32(&maxInFlight, max, n) {
+				break
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+		atomic.AddInt32(&inFlight, -1)
+
+		mu.Lock()
+		seen = append(seen, database)
+		mu.Unlock()
+	})
+
+	sort.Strings(seen)
+	if !slices.Equal(seen, databases) {
+		t.Fatalf("forEachDatabase() visited %v, want %v", seen, databases)
+	}
+	if maxInFlight > 2 {
+		t.Fatalf("forEachDatabase() ran %d databases concurrently, want at most 2", maxInFlight)
+	}
+}
+
+// TestForEachDatabaseRespectsDeadline is a regression test: batching used to
+// give each batch its own fresh context.WithTimeout(context.Background(),
+// ...), so a caller-supplied deadline could be blown past once enough
+// batches ran in sequence. forEachDatabase must instead honor a single
+// shared ctx and stop scheduling new work once it expires.
+func TestForEachDatabaseRespectsDeadline(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+
+	databases := make([]string, 100)
+	for i := range databases {
+		databases[i] = "db"
+	}
+
+	var ran int32
+	start := time.Now()
+	forEachDatabase(ctx, databases, 1, func(ctx context.Context, _ string) {
+		atomic.AddInt32(&ran, 1)
+		select {
+		case <-time.After(5 * time.Millisecond):
+		case <-ctx.Done():
+		}
+	})
+	elapsed := time.Since(start)
+
+	if elapsed > 200*time.Millisecond {
+		t.Fatalf("forEachDatabase() took %s, want it to stop shortly after the 20ms deadline", elapsed)
+	}
+	if n := atomic.LoadInt32(&ran); n >= int32(len(databases)) {
+		t.Fatalf("forEachDatabase() ran all %d databases, want the deadline to cut it short", n)
 	}
 }

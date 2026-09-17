@@ -324,7 +324,7 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 	p.collectFromConnection(ctx, inst, ch, nil)
 
 	if p.databaseDiscovery != nil {
-		p.collectDiscoveredDatabases(inst, ch)
+		p.collectDiscoveredDatabases(ctx, inst, ch)
 	}
 }
 
@@ -335,48 +335,30 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 // are picked up without a restart; no state is kept between calls. At most
 // databaseDiscovery.maxConcurrency databases are scraped at once, so a
 // server with many databases cannot make a single scrape exhaust its
-// connection slots.
-func (p PostgresCollector) collectDiscoveredDatabases(primary *instance, ch chan<- prometheus.Metric) {
-	discoveryCtx, cancel := context.WithTimeout(context.Background(), p.CollectionTimeout)
-	defer cancel()
-
-	databases, err := discoverDatabases(discoveryCtx, primary.getDB(), p.databaseDiscovery.includeDatabases, p.databaseDiscovery.excludeDatabases)
+// connection slots. ctx carries the single deadline for the whole call, so a
+// server with more databases than fit in one batch cannot make the overall
+// scrape run past CollectionTimeout.
+func (p PostgresCollector) collectDiscoveredDatabases(ctx context.Context, primary *instance, ch chan<- prometheus.Metric) {
+	databases, err := discoverDatabases(ctx, primary.getDB(), p.databaseDiscovery.includeDatabases, p.databaseDiscovery.excludeDatabases)
 	if err != nil {
 		p.logger.Error("failed to discover databases", "err", err)
 		return
 	}
 
-	sem := make(chan struct{}, p.databaseDiscovery.maxConcurrency)
-	var wg sync.WaitGroup
-	wg.Add(len(databases))
-	for _, database := range databases {
-		go func(database string) {
-			defer wg.Done()
-
-			sem <- struct{}{}
-			defer func() { <-sem }()
-
-			// One deadline covers both connecting to database and
-			// scraping it, so a stalled connect/authentication cannot
-			// keep the scrape blocked past CollectionTimeout.
-			ctx, cancel := context.WithTimeout(context.Background(), p.CollectionTimeout)
-			defer cancel()
-
-			inst, err := primary.withDatabase(database)
-			if err != nil {
-				p.logger.Error("failed to build connection for discovered database", "database", database, "err", err)
-				return
-			}
-			defer inst.Close()
-			if err := inst.setup(ctx); err != nil {
-				p.logger.Error("failed to connect to discovered database", "database", database, "err", err)
-				return
-			}
-			scope := databaseScope
-			p.collectFromConnection(ctx, inst, ch, &scope)
-		}(database)
-	}
-	wg.Wait()
+	forEachDatabase(ctx, databases, p.databaseDiscovery.maxConcurrency, func(ctx context.Context, database string) {
+		inst, err := primary.withDatabase(database)
+		if err != nil {
+			p.logger.Error("failed to build connection for discovered database", "database", database, "err", err)
+			return
+		}
+		defer inst.Close()
+		if err := inst.setup(ctx); err != nil {
+			p.logger.Error("failed to connect to discovered database", "database", database, "err", err)
+			return
+		}
+		scope := databaseScope
+		p.collectFromConnection(ctx, inst, ch, &scope)
+	})
 }
 
 // collectFromConnection runs the Collectors matching scope against inst,

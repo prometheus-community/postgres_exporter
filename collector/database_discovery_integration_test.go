@@ -29,7 +29,7 @@ import (
 // is an end-to-end regression test for the bug this package's
 // WithDatabaseDiscovery option fixes: database-scoped collectors, such as
 // stat_user_tables, must run against every database on the server, not just
-// the one DataSourceNames[0] points at.
+// the one DataSourceName points at.
 func TestPostgresCollectorRunsDatabaseScopedCollectorsAgainstDiscoveredDatabases(t *testing.T) {
 	primaryDSN := os.Getenv("DATA_SOURCE_NAME")
 	if primaryDSN == "" {

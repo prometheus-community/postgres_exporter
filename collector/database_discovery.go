@@ -17,6 +17,7 @@ import (
 	"context"
 	"database/sql"
 	"slices"
+	"sync"
 )
 
 // discoverDatabases returns every database on the server db is connected to,
@@ -44,4 +45,50 @@ func discoverDatabases(ctx context.Context, db *sql.DB, includeDatabases, exclud
 		databases = append(databases, database)
 	}
 	return databases, rows.Err()
+}
+
+// forEachDatabase runs collect for every entry in databases, using at most
+// maxConcurrency workers, all sharing ctx. Sharing a single ctx across every
+// worker (rather than giving each database its own fresh deadline) ensures
+// the deadline applies to the whole call: a caller-supplied
+// context.WithTimeout still expires on schedule no matter how many batches
+// of databases it takes to work through the list. A maxConcurrency <= 0 is
+// treated as 1.
+func forEachDatabase(ctx context.Context, databases []string, maxConcurrency int, collect func(context.Context, string)) {
+	if len(databases) == 0 {
+		return
+	}
+	if maxConcurrency <= 0 {
+		maxConcurrency = 1
+	}
+	if maxConcurrency > len(databases) {
+		maxConcurrency = len(databases)
+	}
+
+	jobs := make(chan string)
+	var wg sync.WaitGroup
+	wg.Add(maxConcurrency)
+	for i := 0; i < maxConcurrency; i++ {
+		go func() {
+			defer wg.Done()
+			for database := range jobs {
+				if ctx.Err() != nil {
+					return
+				}
+				collect(ctx, database)
+			}
+		}()
+	}
+
+	for _, database := range databases {
+		select {
+		case jobs <- database:
+		case <-ctx.Done():
+			close(jobs)
+			wg.Wait()
+			return
+		}
+	}
+	close(jobs)
+	wg.Wait()
 }
