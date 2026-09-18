@@ -14,7 +14,9 @@
 package exporter
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/prometheus/client_golang/prometheus"
@@ -130,7 +132,7 @@ func TestQueryNamespaceMappingWrapsLargeCounters(t *testing.T) {
 				},
 			}
 
-			metrics, nonfatalErrors, err := queryNamespaceMapping(server, "test_namespace", mapping)
+			metrics, nonfatalErrors, err := queryNamespaceMapping(context.Background(), server, "test_namespace", mapping)
 			if err != nil {
 				t.Fatalf("querying namespace: %v", err)
 			}
@@ -161,5 +163,39 @@ func TestQueryNamespaceMappingWrapsLargeCounters(t *testing.T) {
 				t.Errorf("unmet database expectations: %v", err)
 			}
 		})
+	}
+}
+
+func TestQueryNamespaceMappingHonorsContextCancellation(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("creating mock database: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = db.Close()
+	})
+
+	mock.ExpectQuery("SELECT slow_metric").WillDelayFor(time.Second).WillReturnRows(
+		sqlmock.NewRows([]string{"slow_metric"}).AddRow(1),
+	)
+	server := &Server{
+		db:             db,
+		logger:         promslog.NewNopLogger(),
+		queryOverrides: map[string]string{"slow": "SELECT slow_metric"},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+	started := time.Now()
+	_, _, err = queryNamespaceMapping(ctx, server, "slow", MetricMapNamespace{})
+
+	if err == nil {
+		t.Fatal("querying namespace returned nil error after context deadline")
+	}
+	if elapsed := time.Since(started); elapsed >= time.Second {
+		t.Fatalf("query returned after %v, want cancellation before mock query completed", elapsed)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unmet database expectations: %v", err)
 	}
 }
