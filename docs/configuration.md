@@ -94,7 +94,6 @@ Flags specific to this exporter:
 | `--web.telemetry-path` | Metrics path. Default `/metrics`. |
 | `--config.file` | Path to the [config file](#config-file). Default `postgres_exporter.yml`. |
 | `--collection-timeout` | Per-scrape timeout. Default `1m`. See [Connecting](connecting.md#connection-timeout). |
-| `--metric-prefix` | Prefix for emitted metrics. Default `pg`. |
 
 ### Flags from the Prometheus toolkit
 
@@ -130,8 +129,6 @@ auth_modules:
       # merged into the DSN as key=value query parameters
       sslmode: require
 ```
-
-The config file is reloaded without restarting the process by sending an HTTP POST to `/-/reload`.
 
 ## Deprecated options
 

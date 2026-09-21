@@ -21,7 +21,7 @@ The exporter reads PostgreSQL's own statistics and catalog views — nothing is 
 - **Query statistics** — per-query call counts and timings via the `pg_stat_statements` extension (opt-in).
 - **Server configuration** — the values of `pg_settings`, exported as metrics so configuration drift is queryable.
 
-All metrics are prefixed with `pg_` by default (configurable with `--metric-prefix`). The exporter's own health is exposed via `pg_up` and `pg_exporter_*` metrics alongside the standard Go runtime metrics.
+All metrics are prefixed with `pg_`. The exporter's own health is exposed via `pg_up` and `pg_exporter_*` metrics alongside the standard Go runtime metrics.
 
 Run `postgres_exporter --help` for the authoritative list of collectors and flags in the version you're running.
 
