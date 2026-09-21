@@ -23,6 +23,8 @@ The defaults are a reasonable starting point for a general-purpose server. Colle
 | `long_running_transactions` | disabled | Count of open non-idle transactions and the age of the oldest, excluding autovacuum. A long-lived transaction blocks vacuum and holds back the xmin horizon, so this is worth turning on. |
 | `process_idle` | disabled | Histogram of how long idle connections have been idle, by state and application name. Finds connection-pool leaks and `idle in transaction` sessions. |
 
+The long_running_transactions collector can be customized with the `--collector.long_running_transactions.threshold` flag, which sets the age at which a transaction is considered long-running. The default is 1 minute (1m).
+
 ### Database-level statistics
 
 | Collector | Default | What it tells you |
@@ -94,6 +96,7 @@ Flags specific to this exporter:
 | `--web.telemetry-path` | Metrics path. Default `/metrics`. |
 | `--config.file` | Path to the [config file](#config-file). Default `postgres_exporter.yml`. |
 | `--collection-timeout` | Per-scrape timeout. Default `1m`. See [Connecting](connecting.md#connection-timeout). |
+| `--wrap-large-counters` | Wrap 64-bit counters at 2^53 to avoid floating point rounding. Default `false`. |
 
 ### Flags from the Prometheus toolkit
 
