@@ -180,7 +180,11 @@ func (s *Servers) GetServer(ctx context.Context, dsn string) (*Server, error) {
 		if !ok {
 			server, err = NewServer(dsn, s.opts...)
 			if err != nil {
-				time.Sleep(time.Duration(errCount) * time.Second)
+				select {
+				case <-time.After(time.Duration(errCount) * time.Second):
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				}
 				continue
 			}
 			s.servers[dsn] = server
@@ -188,7 +192,11 @@ func (s *Servers) GetServer(ctx context.Context, dsn string) (*Server, error) {
 		if err = server.Ping(ctx); err != nil {
 			server.Close()
 			delete(s.servers, dsn)
-			time.Sleep(time.Duration(errCount) * time.Second)
+			select {
+			case <-time.After(time.Duration(errCount) * time.Second):
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
 			continue
 		}
 		break

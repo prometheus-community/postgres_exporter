@@ -182,6 +182,9 @@ func queryNamespaceMapping(ctx context.Context, server *Server, namespace string
 			metrics = append(metrics, metric)
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return []prometheus.Metric{}, []error{}, errors.New(fmt.Sprintln("Error retrieving rows:", namespace, err))
+	}
 	return metrics, nonfatalErrors, nil
 }
 

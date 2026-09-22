@@ -15,6 +15,7 @@ package exporter
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -194,6 +195,48 @@ func TestQueryNamespaceMappingHonorsContextCancellation(t *testing.T) {
 	}
 	if elapsed := time.Since(started); elapsed >= time.Second {
 		t.Fatalf("query returned after %v, want cancellation before mock query completed", elapsed)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unmet database expectations: %v", err)
+	}
+}
+
+func TestQueryNamespaceMappingDiscardsMetricsOnRowError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("creating mock database: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = db.Close()
+	})
+
+	rows := sqlmock.NewRows([]string{"metric"}).
+		AddRow(1).
+		AddRow(2).
+		RowError(1, errors.New("row iteration failed"))
+	mock.ExpectQuery(`SELECT \* FROM test_namespace;`).WillReturnRows(rows)
+	server := &Server{
+		db:     db,
+		logger: promslog.NewNopLogger(),
+	}
+	mapping := MetricMapNamespace{
+		columnMappings: map[string]MetricMap{
+			"metric": {
+				vtype: prometheus.GaugeValue,
+				desc:  prometheus.NewDesc("test_metric", "Test metric.", nil, nil),
+			},
+		},
+	}
+
+	metrics, nonfatalErrors, err := queryNamespaceMapping(context.Background(), server, "test_namespace", mapping)
+	if err == nil {
+		t.Fatal("querying namespace returned nil error after row iteration failed")
+	}
+	if len(metrics) != 0 {
+		t.Errorf("got %d metrics after row iteration failed, want none", len(metrics))
+	}
+	if len(nonfatalErrors) != 0 {
+		t.Errorf("got nonfatal errors %v after row iteration failed, want none", nonfatalErrors)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("unmet database expectations: %v", err)
