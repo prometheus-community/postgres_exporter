@@ -14,6 +14,7 @@
 package exporter
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -24,7 +25,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func (e *Exporter) discoverDatabaseDSNs() []string {
+func (e *Exporter) discoverDatabaseDSNs(ctx context.Context) []string {
 	if e.dsn == "" {
 		return nil
 	}
@@ -52,7 +53,7 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 		return nil
 	}
 
-	server, err := e.servers.GetServer(dsn)
+	server, err := e.servers.GetServer(ctx, dsn)
 	if err != nil {
 		e.logger.Error("Error opening connection to database", "dsn", loggableDSN(dsn), "err", err)
 		return nil
@@ -63,7 +64,7 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 	// If autoDiscoverDatabases is true, set dsn as master database (Default: false)
 	server.master = true
 
-	databaseNames, err := queryDatabases(server)
+	databaseNames, err := queryDatabases(ctx, server)
 	if err != nil {
 		e.logger.Error("Error querying databases", "dsn", loggableDSN(dsn), "err", err)
 	} else {
@@ -98,8 +99,8 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 	return result
 }
 
-func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
-	server, err := e.servers.GetServer(dsn)
+func (e *Exporter) scrapeDSN(ctx context.Context, ch chan<- prometheus.Metric, dsn string) error {
+	server, err := e.servers.GetServer(ctx, dsn)
 
 	if err != nil {
 		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), err.Error())}
@@ -111,11 +112,11 @@ func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 	}
 
 	// Check if map versions need to be updated
-	if err := e.checkMapVersions(ch, server); err != nil {
+	if err := e.checkMapVersions(ctx, ch, server); err != nil {
 		e.logger.Warn("Proceeding with outdated query maps, as the Postgres version could not be determined", "err", err)
 	}
 
-	return server.Scrape(ch)
+	return server.Scrape(ctx, ch)
 }
 
 // try to get the DataSource

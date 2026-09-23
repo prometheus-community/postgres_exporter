@@ -102,6 +102,7 @@ func exporterOptions(cfg config.Config) []exporter.ExporterOpt {
 	return []exporter.ExporterOpt{
 		exporter.DisableDefaultMetrics(cfg.DisableDefaultMetrics),
 		exporter.AutoDiscoverDatabases(cfg.AutoDiscoverDatabases),
+		exporter.WithCollectionTimeout(cfg.CollectionTimeout),
 		exporter.WithUserQueriesPath(cfg.UserQueriesPath),
 		exporter.WithConstantLabels(cfg.ConstantLabels),
 		exporter.ExcludeDatabases(cfg.ExcludeDatabases),
