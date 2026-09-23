@@ -136,6 +136,9 @@ func queryDatabases(ctx context.Context, server *Server) ([]string, error) {
 		}
 		result = append(result, databaseName)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.New(fmt.Sprintln("Error retrieving rows:", err))
+	}
 
 	return result, nil
 }
