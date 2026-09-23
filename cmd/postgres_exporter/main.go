@@ -44,7 +44,7 @@ var (
 	metricsPath                         = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").Envar("PG_EXPORTER_WEB_TELEMETRY_PATH").String()
 	disableDefaultMetrics               = kingpin.Flag("disable-default-metrics", "Do not include default metrics.").Default("false").Envar("PG_EXPORTER_DISABLE_DEFAULT_METRICS").Bool()
 	autoDiscoverDatabases               = kingpin.Flag("auto-discover-databases", "Whether to discover the databases on a server dynamically. (DEPRECATED)").Default("false").Envar("PG_EXPORTER_AUTO_DISCOVER_DATABASES").Bool()
-	autoDiscoverDatabasesMaxConcurrency = kingpin.Flag("auto-discover-databases.max-concurrency", "Maximum number of discovered databases to scrape concurrently in a single scrape.").Default(fmt.Sprintf("%d", config.DefaultAutoDiscoverDatabasesMaxConcurrency)).Envar("PG_EXPORTER_AUTO_DISCOVER_DATABASES_MAX_CONCURRENCY").Int()
+	autoDiscoverDatabasesMaxConcurrency = kingpin.Flag("auto-discover-databases.max-concurrency", "Maximum number of discovered databases to scrape concurrently in a single scrape.").Default(fmt.Sprintf("%d", config.DefaultAutoDiscoverDatabasesMaxConcurrency)).Int()
 	queriesPath                         = kingpin.Flag("extend.query-path", "Path to custom queries to run. (DEPRECATED)").Default("").Envar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
 	onlyDumpMaps                        = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
 	constantLabelsList                  = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,). (DEPRECATED)").Default("").Envar("PG_EXPORTER_CONSTANT_LABELS").String()

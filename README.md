@@ -292,11 +292,6 @@ The following environment variables configure the exporter:
 * `PG_EXPORTER_AUTO_DISCOVER_DATABASES` (DEPRECATED)
   Whether to discover the databases on a server dynamically. Value can be `true` or `false`. Default is `false`.
 
-* `PG_EXPORTER_AUTO_DISCOVER_DATABASES_MAX_CONCURRENCY`
-  Maximum number of discovered databases to scrape concurrently in a single scrape, when
-  `auto-discover-databases` is enabled. Bounds how many extra connections a scrape can open on a
-  server with many databases. Default is `10`.
-
 * `PG_EXPORTER_EXTEND_QUERY_PATH`
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
   for examples of the format.
