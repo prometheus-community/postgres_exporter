@@ -22,7 +22,7 @@ import (
 )
 
 func init() {
-	registerCollector(statWalReceiverSubsystem, NewPGStatWalReceiverCollector)
+	registerCollector(statWalReceiverSubsystem, serverScope, NewPGStatWalReceiverCollector)
 }
 
 type PGStatWalReceiverCollector struct {

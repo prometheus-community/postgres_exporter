@@ -30,6 +30,7 @@ func TestPgStatioUserIndexesCollector(t *testing.T) {
 	defer db.Close()
 	inst := &instance{db: db}
 	columns := []string{
+		"datname",
 		"schemaname",
 		"relname",
 		"indexrelname",
@@ -37,22 +38,26 @@ func TestPgStatioUserIndexesCollector(t *testing.T) {
 		"idx_blks_hit",
 	}
 	rows := sqlmock.NewRows(columns).
-		AddRow("public", "pgtest_accounts", "pgtest_accounts_pkey", 8, 9)
+		AddRow("postgres", "public", "pgtest_accounts", "pgtest_accounts_pkey", 8, 9)
 
 	mock.ExpectQuery(sanitizeQuery(statioUserIndexesQuery)).WillReturnRows(rows)
+
+	collector, err := NewPGStatioUserIndexesCollector(collectorConfig{databaseDiscoveryEnabled: true})
+	if err != nil {
+		t.Fatalf("NewPGStatioUserIndexesCollector() error = %s", err)
+	}
 
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
-		c := PGStatioUserIndexesCollector{}
 
-		if err := c.Update(context.Background(), inst, ch); err != nil {
+		if err := collector.Update(context.Background(), inst, ch); err != nil {
 			t.Errorf("Error calling PGStatioUserIndexesCollector.Update: %s", err)
 		}
 	}()
 	expected := []MetricResult{
-		{labels: labelMap{"schemaname": "public", "relname": "pgtest_accounts", "indexrelname": "pgtest_accounts_pkey"}, value: 8, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"schemaname": "public", "relname": "pgtest_accounts", "indexrelname": "pgtest_accounts_pkey"}, value: 9, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "pgtest_accounts", "indexrelname": "pgtest_accounts_pkey"}, value: 8, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"datname": "postgres", "schemaname": "public", "relname": "pgtest_accounts", "indexrelname": "pgtest_accounts_pkey"}, value: 9, metricType: dto.MetricType_COUNTER},
 	}
 	convey.Convey("Metrics comparison", t, func() {
 		for _, expect := range expected {
@@ -73,6 +78,7 @@ func TestPgStatioUserIndexesCollectorNull(t *testing.T) {
 	defer db.Close()
 	inst := &instance{db: db}
 	columns := []string{
+		"datname",
 		"schemaname",
 		"relname",
 		"indexrelname",
@@ -80,22 +86,79 @@ func TestPgStatioUserIndexesCollectorNull(t *testing.T) {
 		"idx_blks_hit",
 	}
 	rows := sqlmock.NewRows(columns).
-		AddRow(nil, nil, nil, nil, nil)
+		AddRow("postgres", nil, nil, nil, nil, nil)
 
 	mock.ExpectQuery(sanitizeQuery(statioUserIndexesQuery)).WillReturnRows(rows)
+
+	collector, err := NewPGStatioUserIndexesCollector(collectorConfig{databaseDiscoveryEnabled: true})
+	if err != nil {
+		t.Fatalf("NewPGStatioUserIndexesCollector() error = %s", err)
+	}
 
 	ch := make(chan prometheus.Metric)
 	go func() {
 		defer close(ch)
-		c := PGStatioUserIndexesCollector{}
 
-		if err := c.Update(context.Background(), inst, ch); err != nil {
+		if err := collector.Update(context.Background(), inst, ch); err != nil {
 			t.Errorf("Error calling PGStatioUserIndexesCollector.Update: %s", err)
 		}
 	}()
 	expected := []MetricResult{
-		{labels: labelMap{"schemaname": "unknown", "relname": "unknown", "indexrelname": "unknown"}, value: 0, metricType: dto.MetricType_COUNTER},
-		{labels: labelMap{"schemaname": "unknown", "relname": "unknown", "indexrelname": "unknown"}, value: 0, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown", "indexrelname": "unknown"}, value: 0, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"datname": "postgres", "schemaname": "unknown", "relname": "unknown", "indexrelname": "unknown"}, value: 0, metricType: dto.MetricType_COUNTER},
+	}
+	convey.Convey("Metrics comparison", t, func() {
+		for _, expect := range expected {
+			m := readMetric(<-ch)
+			convey.So(expect, convey.ShouldResemble, m)
+		}
+	})
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled exceptions: %s", err)
+	}
+}
+
+// TestPgStatioUserIndexesCollectorOmitsDatnameWithoutDiscovery guards against
+// this collector's datname label reappearing for installs that never opted
+// into WithDatabaseDiscovery: unlike the discovery case, a single
+// unconditional connection can never produce two colliding rows, so adding
+// the label there would only be a breaking schema change with no upside.
+func TestPgStatioUserIndexesCollectorOmitsDatnameWithoutDiscovery(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Error opening a stub db connection: %s", err)
+	}
+	defer db.Close()
+	inst := &instance{db: db}
+	columns := []string{
+		"datname",
+		"schemaname",
+		"relname",
+		"indexrelname",
+		"idx_blks_read",
+		"idx_blks_hit",
+	}
+	rows := sqlmock.NewRows(columns).
+		AddRow("postgres", "public", "pgtest_accounts", "pgtest_accounts_pkey", 8, 9)
+
+	mock.ExpectQuery(sanitizeQuery(statioUserIndexesQuery)).WillReturnRows(rows)
+
+	collector, err := NewPGStatioUserIndexesCollector(collectorConfig{})
+	if err != nil {
+		t.Fatalf("NewPGStatioUserIndexesCollector() error = %s", err)
+	}
+
+	ch := make(chan prometheus.Metric)
+	go func() {
+		defer close(ch)
+
+		if err := collector.Update(context.Background(), inst, ch); err != nil {
+			t.Errorf("Error calling PGStatioUserIndexesCollector.Update: %s", err)
+		}
+	}()
+	expected := []MetricResult{
+		{labels: labelMap{"schemaname": "public", "relname": "pgtest_accounts", "indexrelname": "pgtest_accounts_pkey"}, value: 8, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"schemaname": "public", "relname": "pgtest_accounts", "indexrelname": "pgtest_accounts_pkey"}, value: 9, metricType: dto.MetricType_COUNTER},
 	}
 	convey.Convey("Metrics comparison", t, func() {
 		for _, expect := range expected {

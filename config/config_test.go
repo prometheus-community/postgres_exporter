@@ -33,6 +33,9 @@ func TestNewConfigWithDefaults(t *testing.T) {
 	if got, want := cfg.LongRunningTransactions.Threshold, DefaultLongRunningTransactionsThreshold; got != want {
 		t.Fatalf("LongRunningTransactions.Threshold = %v, want %v", got, want)
 	}
+	if got, want := cfg.AutoDiscoverDatabasesMaxConcurrency, DefaultAutoDiscoverDatabasesMaxConcurrency; got != want {
+		t.Fatalf("AutoDiscoverDatabasesMaxConcurrency = %v, want %v", got, want)
+	}
 	if !cfg.WrapLargeCounters {
 		t.Fatal("WrapLargeCounters = false, want true")
 	}
@@ -154,6 +157,14 @@ func TestConfigValidateFailures(t *testing.T) {
 			want: "data source name at index 1 must not be empty",
 		},
 		{
+			name: "zero auto-discover-databases max concurrency when enabled",
+			mutate: func(cfg *Config) {
+				cfg.AutoDiscoverDatabases = true
+				cfg.AutoDiscoverDatabasesMaxConcurrency = 0
+			},
+			want: "auto-discover-databases max concurrency must be greater than zero",
+		},
+		{
 			name: "zero pg_stat_statements query length",
 			mutate: func(cfg *Config) {
 				cfg.PGStatStatements.QueryLength = 0
@@ -210,6 +221,17 @@ func TestConfigValidateAcceptsNoDataSourcesForMultiTargetMode(t *testing.T) {
 func TestConfigValidateAcceptsCustomTimeout(t *testing.T) {
 	cfg := NewConfigWithDefaults()
 	cfg.CollectionTimeout = 30 * time.Second
+	if _, err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+}
+
+// TestConfigValidateIgnoresMaxConcurrencyWhenDiscoveryDisabled ensures a zero
+// AutoDiscoverDatabasesMaxConcurrency is only rejected when
+// AutoDiscoverDatabases is actually enabled: it is meaningless otherwise.
+func TestConfigValidateIgnoresMaxConcurrencyWhenDiscoveryDisabled(t *testing.T) {
+	cfg := NewConfigWithDefaults()
+	cfg.AutoDiscoverDatabasesMaxConcurrency = 0
 	if _, err := cfg.Validate(); err != nil {
 		t.Fatalf("Validate() error = %v", err)
 	}

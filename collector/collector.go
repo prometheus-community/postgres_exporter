@@ -27,12 +27,44 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var factories = make(map[string]func(collectorConfig) (Collector, error))
+// collectorScope describes whether a collector's data is specific to the
+// database it is connected to, or shared across the whole PostgreSQL server.
+type collectorScope int
+
+const (
+	// serverScope collectors read catalog views or functions that report on
+	// the whole PostgreSQL server (e.g. pg_stat_activity, pg_stat_bgwriter,
+	// pg_stat_statements) regardless of which database the connection happens
+	// to be attached to. They must only ever be run once per server: running
+	// them again from a second connection to a different database on the same
+	// server would re-report the exact same rows and panic the registry with
+	// a duplicate-metric error.
+	serverScope collectorScope = iota
+	// databaseScope collectors read catalog views that are scoped to the
+	// currently connected database (e.g. pg_stat_user_tables). They report
+	// different data depending on which database the connection is attached
+	// to, and must be run once per database to get complete coverage.
+	databaseScope
+)
+
+type registeredCollector struct {
+	scope  collectorScope
+	create func(collectorConfig) (Collector, error)
+}
+
+var factories = make(map[string]registeredCollector)
 
 // Namespace for all metrics.
 const namespace = "pg"
 
 var (
+	// scrapeDurationDesc and scrapeSuccessDesc carry no datname label: a
+	// PostgresCollector without database discovery only ever runs each
+	// collector once, against its single primary connection, so there is
+	// nothing for the label to disambiguate. scrapeDurationDescWithDatname
+	// and scrapeSuccessDescWithDatname are used instead once discovery is
+	// enabled, where the same collector name can legitimately run
+	// concurrently against several databases in one scrape.
 	scrapeDurationDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "scrape", "collector_duration_seconds"),
 		"postgres_exporter: Duration of a collector scrape.",
@@ -43,6 +75,18 @@ var (
 		prometheus.BuildFQName(namespace, "scrape", "collector_success"),
 		"postgres_exporter: Whether a collector succeeded.",
 		[]string{"collector"},
+		nil,
+	)
+	scrapeDurationDescWithDatname = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "scrape", "collector_duration_seconds"),
+		"postgres_exporter: Duration of a collector scrape.",
+		[]string{"collector", "datname"},
+		nil,
+	)
+	scrapeSuccessDescWithDatname = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "scrape", "collector_success"),
+		"postgres_exporter: Whether a collector succeeded.",
+		[]string{"collector", "datname"},
 		nil,
 	)
 )
@@ -56,13 +100,20 @@ type collectorConfig struct {
 	excludeDatabases              []string
 	longRunningTransactionsConfig config.LongRunningTransactionsConfig
 	pgStatStatementsConfig        config.PGStatStatementsConfig
+	// databaseDiscoveryEnabled is set when WithDatabaseDiscovery is in
+	// effect, i.e. this collector may run concurrently against more than
+	// one database in the same scrape. Collectors that only need a datname
+	// label to disambiguate that case (see pg_statio_user_indexes.go) should
+	// gate it on this flag, so upgrading does not silently add a new label
+	// to installs that never opted into discovery.
+	databaseDiscoveryEnabled bool
 }
 
-func registerCollector(name string, createFunc func(collectorConfig) (Collector, error)) {
+func registerCollector(name string, scope collectorScope, createFunc func(collectorConfig) (Collector, error)) {
 	if _, ok := config.DefaultCollectorConfig()[name]; !ok {
 		panic(fmt.Sprintf("collector %q is not declared in config.DefaultCollectorConfig", name))
 	}
-	factories[name] = createFunc
+	factories[name] = registeredCollector{scope: scope, create: createFunc}
 }
 
 // PostgresCollector implements the prometheus.Collector interface.
@@ -73,9 +124,24 @@ type PostgresCollector struct {
 	instance                *instance
 	CollectionTimeout       time.Duration
 	collectorStates         map[string]bool
+	excludeDatabases        []string
 	longRunningTransactions config.LongRunningTransactionsConfig
 	pgStatStatements        config.PGStatStatementsConfig
 	wrapLargeCounters       bool
+	databaseDiscovery       *databaseDiscoveryConfig
+}
+
+// databaseDiscoveryConfig holds the include/exclude filters for
+// WithDatabaseDiscovery. Its presence on a PostgresCollector (non-nil) is
+// what enables discovery; it carries no other state; the databases it names
+// are discovered fresh on every scrape.
+type databaseDiscoveryConfig struct {
+	includeDatabases []string
+	excludeDatabases []string
+	// maxConcurrency bounds how many discovered databases are scraped
+	// concurrently in a single scrape, so a server with many databases
+	// cannot make a scrape open more connections than it can spare.
+	maxConcurrency int
 }
 
 type Option func(*PostgresCollector) error
@@ -84,6 +150,7 @@ type Option func(*PostgresCollector) error
 func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn string, filters []string, options ...Option) (*PostgresCollector, error) {
 	p := &PostgresCollector{
 		logger:                  logger,
+		excludeDatabases:        excludeDatabases,
 		collectorStates:         config.DefaultCollectorConfig(),
 		longRunningTransactions: defaultLongRunningTransactionsConfig(),
 		pgStatStatements:        defaultPGStatStatementsConfig(),
@@ -118,11 +185,12 @@ func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn st
 		if !ok {
 			return nil, fmt.Errorf("missing collector factory: %s", key)
 		}
-		collector, err := factory(collectorConfig{
+		collector, err := factory.create(collectorConfig{
 			logger:                        logger.With("collector", key),
 			excludeDatabases:              excludeDatabases,
 			longRunningTransactionsConfig: p.longRunningTransactions,
 			pgStatStatementsConfig:        p.pgStatStatements,
+			databaseDiscoveryEnabled:      p.databaseDiscovery != nil,
 		})
 		if err != nil {
 			return nil, err
@@ -156,6 +224,36 @@ func WithCollectorStates(states map[string]bool) Option {
 			merged[name] = enabled
 		}
 		e.collectorStates = merged
+		return nil
+	}
+}
+
+// WithDatabaseDiscovery makes the collector discover every other database on
+// the same PostgreSQL server as its primary connection, and run the
+// database-scoped collectors against each one over its own connection, in
+// addition to the primary database. The set of databases is re-evaluated on
+// every scrape, so databases created or dropped after startup are picked up
+// without a restart.
+//
+// Server-scoped collectors are unaffected by this option: they still only
+// ever run once, against the primary connection, so they are never
+// duplicated no matter how many databases are discovered.
+//
+// maxConcurrency bounds how many discovered databases are scraped
+// concurrently; a value <= 0 falls back to
+// config.DefaultAutoDiscoverDatabasesMaxConcurrency so callers can never
+// accidentally configure unbounded (or zero, which would deadlock)
+// concurrency.
+func WithDatabaseDiscovery(includeDatabases, excludeDatabases []string, maxConcurrency int) Option {
+	return func(p *PostgresCollector) error {
+		if maxConcurrency <= 0 {
+			maxConcurrency = config.DefaultAutoDiscoverDatabasesMaxConcurrency
+		}
+		p.databaseDiscovery = &databaseDiscoveryConfig{
+			includeDatabases: includeDatabases,
+			excludeDatabases: excludeDatabases,
+			maxConcurrency:   maxConcurrency,
+		}
 		return nil
 	}
 }
@@ -198,6 +296,11 @@ func WithWrapLargeCounters(wrap bool) Option {
 
 // Describe implements the prometheus.Collector interface.
 func (p PostgresCollector) Describe(ch chan<- *prometheus.Desc) {
+	if p.databaseDiscovery != nil {
+		ch <- scrapeDurationDescWithDatname
+		ch <- scrapeSuccessDescWithDatname
+		return
+	}
 	ch <- scrapeDurationDesc
 	ch <- scrapeSuccessDesc
 }
@@ -207,27 +310,70 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 	// copy the instance so that concurrent scrapes have independent instances
 	inst := p.instance.copy()
 
+	// Eventually, connect this to the http scraping context
+	ctx, cancel := context.WithTimeout(context.Background(), p.CollectionTimeout)
+	defer cancel()
+
 	// Set up the database connection for the collector.
-	err := inst.setup()
+	err := inst.setup(ctx)
 	defer inst.Close()
 	if err != nil {
 		p.logger.Error("Error opening connection to database", "err", err)
 		return
 	}
-	p.collectFromConnection(inst, ch)
+	p.collectFromConnection(ctx, inst, ch, nil)
+
+	if p.databaseDiscovery != nil {
+		p.collectDiscoveredDatabases(ctx, inst, ch)
+	}
 }
 
-func (p PostgresCollector) collectFromConnection(inst *instance, ch chan<- prometheus.Metric) {
-	// Eventually, connect this to the http scraping context
-	ctx, cancel := context.WithTimeout(context.Background(), p.CollectionTimeout)
-	defer cancel()
+// collectDiscoveredDatabases discovers every other database on the same
+// PostgreSQL server as primary, then runs the database-scoped Collectors
+// against each one over its own connection. The set of databases is
+// rediscovered on every call, so databases created or dropped after startup
+// are picked up without a restart; no state is kept between calls. At most
+// databaseDiscovery.maxConcurrency databases are scraped at once, so a
+// server with many databases cannot make a single scrape exhaust its
+// connection slots. ctx carries the single deadline for the whole call, so a
+// server with more databases than fit in one batch cannot make the overall
+// scrape run past CollectionTimeout.
+func (p PostgresCollector) collectDiscoveredDatabases(ctx context.Context, primary *instance, ch chan<- prometheus.Metric) {
+	databases, err := discoverDatabases(ctx, primary.getDB(), p.databaseDiscovery.includeDatabases, p.databaseDiscovery.excludeDatabases)
+	if err != nil {
+		p.logger.Error("failed to discover databases", "err", err)
+		return
+	}
 
+	forEachDatabase(ctx, databases, p.databaseDiscovery.maxConcurrency, func(ctx context.Context, database string) {
+		inst, err := primary.withDatabase(database)
+		if err != nil {
+			p.logger.Error("failed to build connection for discovered database", "database", database, "err", err)
+			return
+		}
+		defer inst.Close()
+		if err := inst.setup(ctx); err != nil {
+			p.logger.Error("failed to connect to discovered database", "database", database, "err", err)
+			return
+		}
+		scope := databaseScope
+		p.collectFromConnection(ctx, inst, ch, &scope)
+	})
+}
+
+// collectFromConnection runs the Collectors matching scope against inst,
+// sending their metrics to ch. A nil scope runs every Collector.
+func (p PostgresCollector) collectFromConnection(ctx context.Context, inst *instance, ch chan<- prometheus.Metric, scope *collectorScope) {
+	includeDatname := p.databaseDiscovery != nil
 	wg := sync.WaitGroup{}
-	wg.Add(len(p.Collectors))
 	for name, c := range p.Collectors {
+		if scope != nil && factories[name].scope != *scope {
+			continue
+		}
+		wg.Add(1)
 		go func(name string, c Collector) {
-			execute(ctx, name, c, inst, ch, p.logger)
-			wg.Done()
+			defer wg.Done()
+			execute(ctx, name, c, inst, ch, p.logger, includeDatname)
 		}(name, c)
 	}
 	wg.Wait()
@@ -237,7 +383,7 @@ func (p *PostgresCollector) Close() error {
 	return p.instance.Close()
 }
 
-func execute(ctx context.Context, name string, c Collector, instance *instance, ch chan<- prometheus.Metric, logger *slog.Logger) {
+func execute(ctx context.Context, name string, c Collector, instance *instance, ch chan<- prometheus.Metric, logger *slog.Logger, includeDatname bool) {
 	begin := time.Now()
 	err := c.Update(ctx, instance, ch)
 	duration := time.Since(begin)
@@ -254,8 +400,15 @@ func execute(ctx context.Context, name string, c Collector, instance *instance, 
 		logger.Debug("collector succeeded", "name", name, "duration_seconds", duration.Seconds())
 		success = 1
 	}
-	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), name)
-	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name)
+
+	durationDesc, successDesc := scrapeDurationDesc, scrapeSuccessDesc
+	labels := []string{name}
+	if includeDatname {
+		durationDesc, successDesc = scrapeDurationDescWithDatname, scrapeSuccessDescWithDatname
+		labels = []string{name, instance.database}
+	}
+	ch <- prometheus.MustNewConstMetric(durationDesc, prometheus.GaugeValue, duration.Seconds(), labels...)
+	ch <- prometheus.MustNewConstMetric(successDesc, prometheus.GaugeValue, success, labels...)
 }
 
 // ErrNoData indicates the collector found no data to collect, but had no other error.

@@ -22,7 +22,7 @@ import (
 )
 
 func init() {
-	registerCollector(databaseWraparoundSubsystem, NewPGDatabaseWraparoundCollector)
+	registerCollector(databaseWraparoundSubsystem, serverScope, NewPGDatabaseWraparoundCollector)
 }
 
 type PGDatabaseWraparoundCollector struct {

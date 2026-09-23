@@ -34,6 +34,11 @@ const (
 
 	DefaultLongRunningTransactionsThreshold time.Duration = time.Minute
 
+	// DefaultAutoDiscoverDatabasesMaxConcurrency bounds how many discovered
+	// databases are scraped concurrently, so a server with many databases
+	// cannot make a single scrape open more connections than it can spare.
+	DefaultAutoDiscoverDatabasesMaxConcurrency int = 10
+
 	DefaultPGStatStatementsIncludeQuery bool = false
 	DefaultPGStatStatementsQueryLength  uint = 120
 	DefaultPGStatStatementsLimit        uint = 100
@@ -69,19 +74,22 @@ const (
 )
 
 type Config struct {
-	DataSourceNames         []string
-	MetricPrefix            string
-	CollectionTimeout       time.Duration
-	WrapLargeCounters       bool
-	DisableDefaultMetrics   bool
-	AutoDiscoverDatabases   bool
-	UserQueriesPath         string
-	ConstantLabels          string
-	ExcludeDatabases        []string
-	IncludeDatabases        []string
-	Collectors              map[string]bool
-	LongRunningTransactions LongRunningTransactionsConfig
-	PGStatStatements        PGStatStatementsConfig
+	DataSourceNames       []string
+	MetricPrefix          string
+	CollectionTimeout     time.Duration
+	WrapLargeCounters     bool
+	DisableDefaultMetrics bool
+	AutoDiscoverDatabases bool
+	// AutoDiscoverDatabasesMaxConcurrency bounds how many discovered
+	// databases are scraped concurrently when AutoDiscoverDatabases is set.
+	AutoDiscoverDatabasesMaxConcurrency int
+	UserQueriesPath                     string
+	ConstantLabels                      string
+	ExcludeDatabases                    []string
+	IncludeDatabases                    []string
+	Collectors                          map[string]bool
+	LongRunningTransactions             LongRunningTransactionsConfig
+	PGStatStatements                    PGStatStatementsConfig
 }
 
 // ValidatedConfig is the result of a successful Config.Validate call. It holds
@@ -121,10 +129,11 @@ type LongRunningTransactionsConfig struct {
 
 func NewConfigWithDefaults() Config {
 	return Config{
-		MetricPrefix:      DefaultMetricPrefix,
-		CollectionTimeout: DefaultCollectionTimeout,
-		WrapLargeCounters: true,
-		Collectors:        DefaultCollectorConfig(),
+		MetricPrefix:                        DefaultMetricPrefix,
+		CollectionTimeout:                   DefaultCollectionTimeout,
+		WrapLargeCounters:                   true,
+		AutoDiscoverDatabasesMaxConcurrency: DefaultAutoDiscoverDatabasesMaxConcurrency,
+		Collectors:                          DefaultCollectorConfig(),
 		LongRunningTransactions: LongRunningTransactionsConfig{
 			Threshold: DefaultLongRunningTransactionsThreshold,
 		},
@@ -150,6 +159,9 @@ func (c Config) Validate() (ValidatedConfig, error) {
 	}
 	if c.LongRunningTransactions.Threshold <= 0 {
 		return ValidatedConfig{}, fmt.Errorf("long running transactions threshold must be greater than zero")
+	}
+	if c.AutoDiscoverDatabases && c.AutoDiscoverDatabasesMaxConcurrency <= 0 {
+		return ValidatedConfig{}, fmt.Errorf("auto-discover-databases max concurrency must be greater than zero")
 	}
 	for i, dsn := range c.DataSourceNames {
 		if dsn == "" {

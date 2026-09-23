@@ -14,17 +14,20 @@
 package collector
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"regexp"
 
 	"github.com/blang/semver/v4"
+	"github.com/prometheus-community/postgres_exporter/config"
 )
 
 type instance struct {
 	dsn               string
 	db                *sql.DB
 	version           semver.Version
+	database          string
 	wrapLargeCounters bool
 }
 
@@ -53,7 +56,24 @@ func (i *instance) copy() *instance {
 	}
 }
 
-func (i *instance) setup() error {
+// withDatabase returns a new, unconnected instance whose dsn points at
+// database instead of whichever database i's dsn originally targeted. It is
+// used to scrape a database discovered alongside i's own primary connection,
+// on the same PostgreSQL server.
+func (i *instance) withDatabase(database string) (*instance, error) {
+	dsn, err := config.NewDSN(i.dsn)
+	if err != nil {
+		return nil, fmt.Errorf("malformed dsn: %w", err)
+	}
+	other, err := newInstance(dsn.WithDatabase(database).GetConnectionString())
+	if err != nil {
+		return nil, err
+	}
+	other.wrapLargeCounters = i.wrapLargeCounters
+	return other, nil
+}
+
+func (i *instance) setup(ctx context.Context) error {
 	db, err := sql.Open("postgres", i.dsn)
 	if err != nil {
 		return err
@@ -62,11 +82,14 @@ func (i *instance) setup() error {
 	db.SetMaxIdleConns(1)
 	i.db = db
 
-	version, err := queryVersion(i.db)
+	version, err := queryVersion(ctx, i.db)
 	if err != nil {
 		return fmt.Errorf("error querying postgresql version: %w", err)
-	} else {
-		i.version = version
+	}
+	i.version = version
+
+	if err := i.db.QueryRowContext(ctx, "SELECT current_database()").Scan(&i.database); err != nil {
+		return fmt.Errorf("error querying current database: %w", err)
 	}
 	return nil
 }
@@ -89,9 +112,9 @@ func (i *instance) Close() error {
 var versionRegex = regexp.MustCompile(`^\w+ ((\d+)(\.\d+)?(\.\d+)?)`)
 var serverVersionRegex = regexp.MustCompile(`^((\d+)(\.\d+)?(\.\d+)?)`)
 
-func queryVersion(db *sql.DB) (semver.Version, error) {
+func queryVersion(ctx context.Context, db *sql.DB) (semver.Version, error) {
 	var version string
-	err := db.QueryRow("SELECT version();").Scan(&version)
+	err := db.QueryRowContext(ctx, "SELECT version();").Scan(&version)
 	if err != nil {
 		return semver.Version{}, err
 	}
@@ -102,7 +125,7 @@ func queryVersion(db *sql.DB) (semver.Version, error) {
 
 	// We could also try to parse the version from the server_version field.
 	// This is of the format 13.3 (Debian 13.3-1.pgdg100+1)
-	err = db.QueryRow("SHOW server_version;").Scan(&version)
+	err = db.QueryRowContext(ctx, "SHOW server_version;").Scan(&version)
 	if err != nil {
 		return semver.Version{}, err
 	}
