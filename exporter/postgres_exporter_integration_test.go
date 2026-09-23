@@ -19,6 +19,7 @@
 package exporter
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -67,11 +68,11 @@ func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 		c.Assert(err, IsNil)
 
 		// Do a version update
-		err = s.e.checkMapVersions(ch, server)
+		err = s.e.checkMapVersions(context.Background(), ch, server)
 		c.Assert(err, IsNil)
 
 		// This should never happen in our test cases.
-		errMap := queryNamespaceMappings(ch, server)
+		errMap := queryNamespaceMappings(context.Background(), ch, server)
 		if !c.Check(len(errMap), Equals, 0) {
 			fmt.Println("## NAMESPACE ERRORS FOUND")
 			for namespace, err := range errMap {
@@ -96,12 +97,12 @@ func (s *IntegrationSuite) TestInvalidDsnDoesntCrash(c *C) {
 	// Send a bad DSN
 	exporter := NewExporter([]string{"invalid dsn"}, promslog.NewNopLogger())
 	c.Assert(exporter, NotNil)
-	exporter.scrape(ch)
+	exporter.scrape(context.Background(), ch)
 
 	// Send a DSN to a non-listening port.
 	exporter = NewExporter([]string{"postgresql://nothing:nothing@127.0.0.1:1/nothing"}, promslog.NewNopLogger())
 	c.Assert(exporter, NotNil)
-	exporter.scrape(ch)
+	exporter.scrape(context.Background(), ch)
 }
 
 // TestUnknownMetricParsingDoesntCrash deliberately deletes all the column maps out
@@ -132,7 +133,7 @@ func (s *IntegrationSuite) TestUnknownMetricParsingDoesntCrash(c *C) {
 	exporter.builtinMetricMaps = emptyMaps
 
 	// scrape the exporter and make sure it works
-	exporter.scrape(ch)
+	exporter.scrape(context.Background(), ch)
 }
 
 // TestExtendQueriesDoesntCrash tests that specifying extend.query-path doesn't
@@ -156,7 +157,7 @@ func (s *IntegrationSuite) TestExtendQueriesDoesntCrash(c *C) {
 	c.Assert(exporter, NotNil)
 
 	// scrape the exporter and make sure it works
-	exporter.scrape(ch)
+	exporter.scrape(context.Background(), ch)
 }
 
 func (s *IntegrationSuite) TestAutoDiscoverDatabases(c *C) {
@@ -168,7 +169,7 @@ func (s *IntegrationSuite) TestAutoDiscoverDatabases(c *C) {
 	)
 	c.Assert(exporter, NotNil)
 
-	dsns := exporter.discoverDatabaseDSNs()
+	dsns := exporter.discoverDatabaseDSNs(context.Background())
 
 	c.Assert(len(dsns), Equals, 2)
 }

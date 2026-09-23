@@ -14,6 +14,7 @@
 package exporter
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
@@ -113,8 +114,8 @@ func (s *Server) Close() error {
 }
 
 // Ping checks connection availability and possibly invalidates the connection if it fails.
-func (s *Server) Ping() error {
-	if err := s.db.Ping(); err != nil {
+func (s *Server) Ping(ctx context.Context) error {
+	if err := s.db.PingContext(ctx); err != nil {
 		if cerr := s.Close(); cerr != nil {
 			s.logger.Error("Error while closing non-pinging DB connection", "server", s, "err", cerr)
 		}
@@ -129,13 +130,13 @@ func (s *Server) String() string {
 }
 
 // Scrape loads metrics.
-func (s *Server) Scrape(ch chan<- prometheus.Metric) error {
+func (s *Server) Scrape(ctx context.Context, ch chan<- prometheus.Metric) error {
 	s.mappingMtx.RLock()
 	defer s.mappingMtx.RUnlock()
 
 	var err error
 
-	errMap := queryNamespaceMappings(ch, s)
+	errMap := queryNamespaceMappings(ctx, ch, s)
 	if len(errMap) == 0 {
 		return nil
 	}
@@ -163,7 +164,7 @@ func NewServers(opts ...ServerOpt) *Servers {
 }
 
 // GetServer returns established connection from a collection.
-func (s *Servers) GetServer(dsn string) (*Server, error) {
+func (s *Servers) GetServer(ctx context.Context, dsn string) (*Server, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	var err error
@@ -179,15 +180,23 @@ func (s *Servers) GetServer(dsn string) (*Server, error) {
 		if !ok {
 			server, err = NewServer(dsn, s.opts...)
 			if err != nil {
-				time.Sleep(time.Duration(errCount) * time.Second)
+				select {
+				case <-time.After(time.Duration(errCount) * time.Second):
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				}
 				continue
 			}
 			s.servers[dsn] = server
 		}
-		if err = server.Ping(); err != nil {
+		if err = server.Ping(ctx); err != nil {
 			server.Close()
 			delete(s.servers, dsn)
-			time.Sleep(time.Duration(errCount) * time.Second)
+			select {
+			case <-time.After(time.Duration(errCount) * time.Second):
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
 			continue
 		}
 		break

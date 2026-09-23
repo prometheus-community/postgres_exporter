@@ -14,6 +14,7 @@
 package exporter
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -24,7 +25,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func (e *Exporter) discoverDatabaseDSNs() []string {
+func (e *Exporter) discoverDatabaseDSNs(ctx context.Context) []string {
 	// connstring syntax is complex (and not sure if even regular).
 	// we don't need to parse it, so just superficially validate that it starts
 	// with a valid-ish keyword pair
@@ -49,7 +50,7 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 			continue
 		}
 
-		server, err := e.servers.GetServer(dsn)
+		server, err := e.servers.GetServer(ctx, dsn)
 		if err != nil {
 			e.logger.Error("Error opening connection to database", "dsn", loggableDSN(dsn), "err", err)
 			continue
@@ -59,7 +60,7 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 		// If autoDiscoverDatabases is true, set first dsn as master database (Default: false)
 		server.master = true
 
-		databaseNames, err := queryDatabases(server)
+		databaseNames, err := queryDatabases(ctx, server)
 		if err != nil {
 			e.logger.Error("Error querying databases", "dsn", loggableDSN(dsn), "err", err)
 			continue
@@ -95,8 +96,8 @@ func (e *Exporter) discoverDatabaseDSNs() []string {
 	return result
 }
 
-func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
-	server, err := e.servers.GetServer(dsn)
+func (e *Exporter) scrapeDSN(ctx context.Context, ch chan<- prometheus.Metric, dsn string) error {
+	server, err := e.servers.GetServer(ctx, dsn)
 
 	if err != nil {
 		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), err.Error())}
@@ -108,11 +109,11 @@ func (e *Exporter) scrapeDSN(ch chan<- prometheus.Metric, dsn string) error {
 	}
 
 	// Check if map versions need to be updated
-	if err := e.checkMapVersions(ch, server); err != nil {
+	if err := e.checkMapVersions(ctx, ch, server); err != nil {
 		e.logger.Warn("Proceeding with outdated query maps, as the Postgres version could not be determined", "err", err)
 	}
 
-	return server.Scrape(ch)
+	return server.Scrape(ctx, ch)
 }
 
 // try to get the DataSource

@@ -14,6 +14,7 @@
 package exporter
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -119,8 +120,8 @@ func addQueries(content []byte, pgVersion semver.Version, server *Server, metric
 	return nil
 }
 
-func queryDatabases(server *Server) ([]string, error) {
-	rows, err := server.db.Query("SELECT datname FROM pg_database WHERE datallowconn = true AND datistemplate = false AND datname != current_database()")
+func queryDatabases(ctx context.Context, server *Server) ([]string, error) {
+	rows, err := server.db.QueryContext(ctx, "SELECT datname FROM pg_database WHERE datallowconn = true AND datistemplate = false AND datname != current_database()")
 	if err != nil {
 		return nil, fmt.Errorf("Error retrieving databases: %v", err)
 	}
@@ -134,6 +135,9 @@ func queryDatabases(server *Server) ([]string, error) {
 			return nil, errors.New(fmt.Sprintln("Error retrieving rows:", err))
 		}
 		result = append(result, databaseName)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.New(fmt.Sprintln("Error retrieving rows:", err))
 	}
 
 	return result, nil
