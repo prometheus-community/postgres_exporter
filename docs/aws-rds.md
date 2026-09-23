@@ -19,9 +19,9 @@ Follow the standard non-superuser [database permissions](database-permissions.md
 
 To use the `stat_statements` collector, `pg_stat_statements` must be preloaded via the RDS parameter group, not just created as an extension:
 
-1. In the RDS parameter group attached to your instance, set:
+1. In the RDS parameter group attached to your instance, ensure that the pg_stat_statements extension is preloaded:
    ```
-   shared_preload_libraries = "pg_stat_statements,pg_hint_plan"
+   shared_preload_libraries = "pg_stat_statements"
    ```
 2. Reboot the RDS instance for the change to take effect.
 3. Then `CREATE EXTENSION pg_stat_statements;` as usual.

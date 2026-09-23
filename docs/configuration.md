@@ -43,7 +43,7 @@ The per-table and per-index collectors scale with your schema — one set of ser
 |---|---|---|
 | `stat_progress_vacuum` | enabled | Vacuums currently in flight: which phase they're in, heap blocks total/scanned/vacuumed, index vacuum passes, and dead tuple counts. Answers "is this vacuum making progress?". From `pg_stat_progress_vacuum`. |
 | `stat_activity_autovacuum` | disabled | The start time of each running autovacuum worker, labeled by the relation it's working on. Shows autovacuum workers that have been stuck for hours. |
-| `database_wraparound` | disabled | Age of `datfrozenxid` and `datminmxid` per database, in seconds. This is the early warning for transaction ID wraparound — worth enabling on any database with high write volume. |
+| `database_wraparound` | disabled | Age of `datfrozenxid` and `datminmxid` per database. This is the early warning for transaction ID wraparound — worth enabling on any database with high write volume. |
 
 ### Replication and WAL
 
@@ -55,7 +55,7 @@ The per-table and per-index collectors scale with your schema — one set of ser
 | `stat_archiver` | enabled | WAL archiving: count of archived and failed segments, and seconds since the last successful archive. Catches a broken `archive_command` before it fills `pg_wal`. From `pg_stat_archiver`. |
 | `wal` | enabled | Number of WAL segment files and their total size on disk, via `pg_ls_waldir()`. |
 | `stat_wal_receiver` | disabled | Seen from a standby: the WAL receiver's LSNs, timeline, upstream node, and last message send/receipt times. Enable this on replicas for a view of the receiving side. From `pg_stat_wal_receiver`. |
-| `xlog_location` | disabled | Current WAL write position (or replay position on a replica) as a byte offset. Largely superseded by `stat_replication`; retained for old setups and pre-10 servers. |
+| `xlog_location` | disabled | Current WAL write position (or replay position on a replica) as a byte offset. Superseded by `stat_replication`; retained for old setups and pre-10 servers. |
 
 ### Checkpoints, buffers, and I/O
 
@@ -96,7 +96,7 @@ Flags specific to this exporter:
 | `--web.telemetry-path` | Metrics path. Default `/metrics`. |
 | `--config.file` | Path to the [config file](#config-file). Default `postgres_exporter.yml`. |
 | `--collection-timeout` | Per-scrape timeout. Default `1m`. See [Connecting](connecting.md#connection-timeout). |
-| `--wrap-large-counters` | Wrap 64-bit counters at 2^53 to avoid floating point rounding. Default `false`. |
+| `--wrap-large-counters` | Wrap 64-bit counters at 2^53 to avoid floating point rounding. Default `true`. |
 
 ### Flags from the Prometheus toolkit
 

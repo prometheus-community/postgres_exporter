@@ -23,7 +23,7 @@ Available tags are listed on the [Docker Hub tags page](https://hub.docker.com/r
 
 ## Image details
 
-- Based on a minimal `busybox` image — there is no shell to `exec` into.
+- Based on a minimal `busybox` image.
 - The exporter binary is at `/bin/postgres_exporter` and is also the container `ENTRYPOINT`, so flags can be passed directly as container arguments.
 - Exposes port `9187`.
 - The process runs as the `nobody` user, uid/gid `65534`. If you mount config or secret files into the container (e.g. for `DATA_SOURCE_PASS_FILE` or `--config.file`), make sure they're readable by that uid/gid.
@@ -66,4 +66,4 @@ promu crossbuild -p linux/amd64 -p linux/armv7 -p linux/arm64 -p linux/ppc64le
 make docker
 ```
 
-This produces a local image tagged `prometheuscommunity/postgres_exporter:${branch}`.
+This produces a local image tagged `prometheuscommunity/postgres-exporter-linux-<arch>:${branch}`.
