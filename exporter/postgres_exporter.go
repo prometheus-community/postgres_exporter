@@ -336,7 +336,7 @@ type Exporter struct {
 
 	excludeDatabases []string
 	includeDatabases []string
-	dsn              string
+	dsn              []string
 	userQueriesPath  string
 	constantLabels   prometheus.Labels
 	duration         prometheus.Gauge
@@ -448,10 +448,8 @@ func parseConstLabels(s string, logger *slog.Logger) prometheus.Labels {
 	return labels
 }
 
-// NewExporter returns a new PostgreSQL exporter for the provided DSN. An
-// empty dsn is valid: it means this Exporter has no primary target of its
-// own, which multi-target mode relies on for /probe-only deployments.
-func NewExporter(dsn string, logger *slog.Logger, opts ...ExporterOpt) *Exporter {
+// NewExporter returns a new PostgreSQL exporter for the provided DSN.
+func NewExporter(dsn []string, logger *slog.Logger, opts ...ExporterOpt) *Exporter {
 	e := &Exporter{
 		dsn:               dsn,
 		builtinMetricMaps: builtinMetricMaps,
@@ -619,11 +617,9 @@ func (e *Exporter) scrape(ctx context.Context, ch chan<- prometheus.Metric) {
 
 	e.totalScrapes.Inc()
 
-	var dsns []string
+	dsns := e.dsn
 	if e.autoDiscoverDatabases {
 		dsns = e.discoverDatabaseDSNs(ctx)
-	} else if e.dsn != "" {
-		dsns = []string{e.dsn}
 	}
 
 	var errorsCount int

@@ -26,48 +26,45 @@ import (
 )
 
 func (e *Exporter) discoverDatabaseDSNs(ctx context.Context) []string {
-	if e.dsn == "" {
-		return nil
-	}
-
 	// connstring syntax is complex (and not sure if even regular).
 	// we don't need to parse it, so just superficially validate that it starts
 	// with a valid-ish keyword pair
 	connstringRe := regexp.MustCompile(`^ *[a-zA-Z0-9]+ *= *[^= ]+`)
 
-	dsn := e.dsn
-	var dsnURI *url.URL
-	var dsnConnstring string
+	dsns := make(map[string]struct{})
+	for _, dsn := range e.dsn {
+		var dsnURI *url.URL
+		var dsnConnstring string
 
-	if strings.HasPrefix(dsn, "postgresql://") || strings.HasPrefix(dsn, "postgres://") {
-		var err error
-		dsnURI, err = url.Parse(dsn)
-		if err != nil {
-			e.logger.Error("Unable to parse DSN as URI", "dsn", loggableDSN(dsn), "err", err)
-			return nil
+		if strings.HasPrefix(dsn, "postgresql://") || strings.HasPrefix(dsn, "postgres://") {
+			var err error
+			dsnURI, err = url.Parse(dsn)
+			if err != nil {
+				e.logger.Error("Unable to parse DSN as URI", "dsn", loggableDSN(dsn), "err", err)
+				continue
+			}
+		} else if connstringRe.MatchString(dsn) {
+			dsnConnstring = dsn
+		} else {
+			e.logger.Error("Unable to parse DSN as either URI or connstring", "dsn", loggableDSN(dsn))
+			continue
 		}
-	} else if connstringRe.MatchString(dsn) {
-		dsnConnstring = dsn
-	} else {
-		e.logger.Error("Unable to parse DSN as either URI or connstring", "dsn", loggableDSN(dsn))
-		return nil
-	}
 
-	server, err := e.servers.GetServer(ctx, dsn)
-	if err != nil {
-		e.logger.Error("Error opening connection to database", "dsn", loggableDSN(dsn), "err", err)
-		return nil
-	}
+		server, err := e.servers.GetServer(ctx, dsn)
+		if err != nil {
+			e.logger.Error("Error opening connection to database", "dsn", loggableDSN(dsn), "err", err)
+			continue
+		}
+		dsns[dsn] = struct{}{}
 
-	dsns := map[string]struct{}{dsn: {}}
+		// If autoDiscoverDatabases is true, set first dsn as master database (Default: false)
+		server.master = true
 
-	// If autoDiscoverDatabases is true, set dsn as master database (Default: false)
-	server.master = true
-
-	databaseNames, err := queryDatabases(ctx, server)
-	if err != nil {
-		e.logger.Error("Error querying databases", "dsn", loggableDSN(dsn), "err", err)
-	} else {
+		databaseNames, err := queryDatabases(ctx, server)
+		if err != nil {
+			e.logger.Error("Error querying databases", "dsn", loggableDSN(dsn), "err", err)
+			continue
+		}
 		for _, databaseName := range databaseNames {
 			if slices.Contains(e.excludeDatabases, databaseName) {
 				continue
@@ -123,17 +120,10 @@ func (e *Exporter) scrapeDSN(ctx context.Context, ch chan<- prometheus.Metric, d
 // DATA_SOURCE_NAME always wins so we do not break older versions
 // reading secrets from files wins over secrets in environment variables
 // DATA_SOURCE_NAME > DATA_SOURCE_{USER|PASS}_FILE > DATA_SOURCE_{USER|PASS}
-//
-// Only a single data source is supported: monitoring more than one server
-// from one exporter process is the job of the /probe multi-target endpoint,
-// not of this exporter's primary datasource.
-func GetDataSources() (string, error) {
+func GetDataSources() ([]string, error) {
 	var dsn = os.Getenv("DATA_SOURCE_NAME")
 	if len(dsn) != 0 {
-		if strings.Contains(dsn, ",") {
-			return "", fmt.Errorf("DATA_SOURCE_NAME must contain a single data source, got %q; use the /probe multi-target endpoint to monitor more than one server from a single exporter", dsn)
-		}
-		return dsn, nil
+		return strings.Split(dsn, ","), nil
 	}
 
 	var user, pass, uri string
@@ -142,7 +132,7 @@ func GetDataSources() (string, error) {
 	if len(dataSourceUserFile) != 0 {
 		fileContents, err := os.ReadFile(dataSourceUserFile)
 		if err != nil {
-			return "", fmt.Errorf("failed loading data source user file %s: %s", dataSourceUserFile, err.Error())
+			return nil, fmt.Errorf("failed loading data source user file %s: %s", dataSourceUserFile, err.Error())
 		}
 		user = strings.TrimSpace(string(fileContents))
 	} else {
@@ -153,7 +143,7 @@ func GetDataSources() (string, error) {
 	if len(dataSourcePassFile) != 0 {
 		fileContents, err := os.ReadFile(dataSourcePassFile)
 		if err != nil {
-			return "", fmt.Errorf("failed loading data source pass file %s: %s", dataSourcePassFile, err.Error())
+			return nil, fmt.Errorf("failed loading data source pass file %s: %s", dataSourcePassFile, err.Error())
 		}
 		pass = strings.TrimSpace(string(fileContents))
 	} else {
@@ -165,20 +155,20 @@ func GetDataSources() (string, error) {
 	if len(dataSrouceURIFile) != 0 {
 		fileContents, err := os.ReadFile(dataSrouceURIFile)
 		if err != nil {
-			return "", fmt.Errorf("failed loading data source URI file %s: %s", dataSrouceURIFile, err.Error())
+			return nil, fmt.Errorf("failed loading data source URI file %s: %s", dataSrouceURIFile, err.Error())
 		}
 		uri = strings.TrimSpace(string(fileContents))
 	} else {
 		uri = os.Getenv("DATA_SOURCE_URI")
 	}
 
-	// No datasource found. This allows us to support the multi-target pattern
+	// No datasources found. This allows us to support the multi-target pattern
 	// without an explicit datasource.
 	if uri == "" {
-		return "", nil
+		return []string{}, nil
 	}
 
 	dsn = "postgresql://" + ui + "@" + uri
 
-	return dsn, nil
+	return []string{dsn}, nil
 }

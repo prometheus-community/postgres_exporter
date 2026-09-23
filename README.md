@@ -320,8 +320,9 @@ For running it locally on a default Debian/Ubuntu install, this will work (trans
 
     sudo -u postgres DATA_SOURCE_NAME="user=postgres host=/var/run/postgresql/ sslmode=disable" postgres_exporter
 
-`DATA_SOURCE_NAME` accepts a single data source. To scrape multiple servers from one exporter setup, use the
-[multi-target `/probe` endpoint](#multi-target-support-beta) instead of a comma-separated list of DSNs.
+Also, you can set a list of sources to scrape different instances from the one exporter setup. Just define a comma separated string.
+
+    sudo -u postgres DATA_SOURCE_NAME="port=5432,port=6432" postgres_exporter
 
 See the [github.com/lib/pq](http://github.com/lib/pq) module for other ways to format the connection string.
 

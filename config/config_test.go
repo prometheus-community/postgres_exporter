@@ -58,7 +58,7 @@ func TestNewConfigWithDefaults(t *testing.T) {
 
 func TestConfigValidate(t *testing.T) {
 	cfg := NewConfigWithDefaults()
-	cfg.DataSourceName = "postgresql://localhost:5432/postgres?sslmode=disable"
+	cfg.DataSourceNames = []string{"postgresql://localhost:5432/postgres?sslmode=disable"}
 
 	validated, err := cfg.Validate()
 	if err != nil {
@@ -81,7 +81,7 @@ func TestValidatedConfigZeroValueIsInvalid(t *testing.T) {
 
 func TestValidatedConfigIsIsolatedFromOriginal(t *testing.T) {
 	cfg := NewConfigWithDefaults()
-	cfg.DataSourceName = "postgresql://localhost:5432/postgres?sslmode=disable"
+	cfg.DataSourceNames = []string{"postgresql://localhost:5432/postgres?sslmode=disable"}
 	cfg.PGStatStatements.ExcludeDatabases = []string{"template0"}
 
 	validated, err := cfg.Validate()
@@ -90,15 +90,15 @@ func TestValidatedConfigIsIsolatedFromOriginal(t *testing.T) {
 	}
 
 	cfg.Collectors[CollectorDatabase] = false
-	cfg.DataSourceName = "mutated"
+	cfg.DataSourceNames[0] = "mutated"
 	cfg.PGStatStatements.ExcludeDatabases[0] = "mutated"
 
 	got := validated.Config()
 	if !got.Collectors[CollectorDatabase] {
 		t.Fatalf("Collectors[%q] = false after mutating original, want true", CollectorDatabase)
 	}
-	if want := "postgresql://localhost:5432/postgres?sslmode=disable"; got.DataSourceName != want {
-		t.Fatalf("DataSourceName = %q after mutating original, want %q", got.DataSourceName, want)
+	if want := "postgresql://localhost:5432/postgres?sslmode=disable"; got.DataSourceNames[0] != want {
+		t.Fatalf("DataSourceNames[0] = %q after mutating original, want %q", got.DataSourceNames[0], want)
 	}
 	if want := "template0"; got.PGStatStatements.ExcludeDatabases[0] != want {
 		t.Fatalf("PGStatStatements.ExcludeDatabases[0] = %q after mutating original, want %q", got.PGStatStatements.ExcludeDatabases[0], want)
@@ -150,6 +150,13 @@ func TestConfigValidateFailures(t *testing.T) {
 			want: "long running transactions threshold must be greater than zero",
 		},
 		{
+			name: "empty data source",
+			mutate: func(cfg *Config) {
+				cfg.DataSourceNames = []string{"postgresql://localhost:5432/postgres", ""}
+			},
+			want: "data source name at index 1 must not be empty",
+		},
+		{
 			name: "zero auto-discover-databases max concurrency when enabled",
 			mutate: func(cfg *Config) {
 				cfg.AutoDiscoverDatabases = true
@@ -190,7 +197,7 @@ func TestConfigValidateFailures(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			cfg := NewConfigWithDefaults()
-			cfg.DataSourceName = "postgresql://localhost:5432/postgres?sslmode=disable"
+			cfg.DataSourceNames = []string{"postgresql://localhost:5432/postgres?sslmode=disable"}
 			test.mutate(&cfg)
 
 			validated, err := cfg.Validate()

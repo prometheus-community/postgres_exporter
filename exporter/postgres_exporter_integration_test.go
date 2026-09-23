@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	_ "github.com/lib/pq"
@@ -43,7 +44,7 @@ func (s *IntegrationSuite) SetUpSuite(c *C) {
 	dsn := os.Getenv("DATA_SOURCE_NAME")
 	c.Assert(dsn, Not(Equals), "")
 
-	exporter := NewExporter(dsn, promslog.NewNopLogger())
+	exporter := NewExporter(strings.Split(dsn, ","), promslog.NewNopLogger())
 	c.Assert(exporter, NotNil)
 	// Assign the exporter to the suite
 	s.e = exporter
@@ -60,24 +61,26 @@ func (s *IntegrationSuite) TestAllNamespacesReturnResults(c *C) {
 		}
 	}()
 
-	// Open a database connection
-	server, err := NewServer(s.e.dsn)
-	c.Assert(server, NotNil)
-	c.Assert(err, IsNil)
+	for _, dsn := range s.e.dsn {
+		// Open a database connection
+		server, err := NewServer(dsn)
+		c.Assert(server, NotNil)
+		c.Assert(err, IsNil)
 
-	// Do a version update
-	err = s.e.checkMapVersions(context.Background(), ch, server)
-	c.Assert(err, IsNil)
+		// Do a version update
+		err = s.e.checkMapVersions(context.Background(), ch, server)
+		c.Assert(err, IsNil)
 
-	// This should never happen in our test cases.
-	errMap := queryNamespaceMappings(context.Background(), ch, server)
-	if !c.Check(len(errMap), Equals, 0) {
-		fmt.Println("## NAMESPACE ERRORS FOUND")
-		for namespace, err := range errMap {
-			fmt.Println(namespace, ":", err)
+		// This should never happen in our test cases.
+		errMap := queryNamespaceMappings(context.Background(), ch, server)
+		if !c.Check(len(errMap), Equals, 0) {
+			fmt.Println("## NAMESPACE ERRORS FOUND")
+			for namespace, err := range errMap {
+				fmt.Println(namespace, ":", err)
+			}
 		}
+		server.Close()
 	}
-	server.Close()
 }
 
 // TestInvalidDsnDoesntCrash tests that specifying an invalid DSN doesn't crash
@@ -92,12 +95,12 @@ func (s *IntegrationSuite) TestInvalidDsnDoesntCrash(c *C) {
 	}()
 
 	// Send a bad DSN
-	exporter := NewExporter("invalid dsn", promslog.NewNopLogger())
+	exporter := NewExporter([]string{"invalid dsn"}, promslog.NewNopLogger())
 	c.Assert(exporter, NotNil)
 	exporter.scrape(context.Background(), ch)
 
 	// Send a DSN to a non-listening port.
-	exporter = NewExporter("postgresql://nothing:nothing@127.0.0.1:1/nothing", promslog.NewNopLogger())
+	exporter = NewExporter([]string{"postgresql://nothing:nothing@127.0.0.1:1/nothing"}, promslog.NewNopLogger())
 	c.Assert(exporter, NotNil)
 	exporter.scrape(context.Background(), ch)
 }
@@ -115,7 +118,7 @@ func (s *IntegrationSuite) TestUnknownMetricParsingDoesntCrash(c *C) {
 	dsn := os.Getenv("DATA_SOURCE_NAME")
 	c.Assert(dsn, Not(Equals), "")
 
-	exporter := NewExporter(dsn, promslog.NewNopLogger())
+	exporter := NewExporter(strings.Split(dsn, ","), promslog.NewNopLogger())
 	c.Assert(exporter, NotNil)
 
 	// Convert the default maps into a list of empty maps.
@@ -147,7 +150,7 @@ func (s *IntegrationSuite) TestExtendQueriesDoesntCrash(c *C) {
 	c.Assert(dsn, Not(Equals), "")
 
 	exporter := NewExporter(
-		dsn,
+		strings.Split(dsn, ","),
 		promslog.NewNopLogger(),
 		WithUserQueriesPath("../user_queries_test.yaml"),
 	)
@@ -161,7 +164,7 @@ func (s *IntegrationSuite) TestAutoDiscoverDatabases(c *C) {
 	dsn := os.Getenv("DATA_SOURCE_NAME")
 
 	exporter := NewExporter(
-		dsn,
+		strings.Split(dsn, ","),
 		promslog.NewNopLogger(),
 	)
 	c.Assert(exporter, NotNil)

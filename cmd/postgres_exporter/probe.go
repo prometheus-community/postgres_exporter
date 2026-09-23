@@ -64,7 +64,7 @@ func handleProbe(logger *slog.Logger, authHandler *config.Handler, baseConfig co
 
 		// Copy process-level config before setting the per-request target DSN.
 		probeConfig := baseConfig
-		probeConfig.DataSourceName = dsn.GetConnectionString()
+		probeConfig.DataSourceNames = []string{dsn.GetConnectionString()}
 		validatedConfig, err := probeConfig.Validate()
 		if err != nil {
 			logger.Error("invalid probe config", "err", err)
