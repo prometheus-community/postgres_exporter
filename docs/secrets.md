@@ -11,23 +11,27 @@ There are several ways to supply the database credentials the exporter connects 
 The exporter resolves the connection to use in this order, first match wins:
 
 1. **`DATA_SOURCE_NAME`** — a full DSN (or comma-separated list of DSNs), credentials included. Simplest, but the password ends up in the environment.
-2. **`DATA_SOURCE_USER_FILE` / `DATA_SOURCE_PASS_FILE`** — file paths; the exporter reads the username/password from these files at startup. Use this to keep the password out of the environment entirely.
-3. **`DATA_SOURCE_USER` / `DATA_SOURCE_PASS`** — plain environment variables, used only if the corresponding `_FILE` variable isn't set.
+2. **`--datasource.user-file` / `--datasource.pass-file`** — file paths; the exporter reads the username/password from these files at startup. Use this to keep the password out of the environment entirely.
+3. **`DATA_SOURCE_USER` / `DATA_SOURCE_PASS`** — plain environment variables, used only if the corresponding file flag isn't set.
 
-The host/port/database/query-string portion is supplied separately via `DATA_SOURCE_URI` (or `DATA_SOURCE_URI_FILE`), which never contains credentials.
+The host/port/database/query-string portion is supplied separately via `--datasource.uri` (or `--datasource.uri-file`), which never contains credentials.
+
+The username and password have no flag on purpose: flags are readable via `/proc/<pid>/cmdline` and, on Kubernetes, through the API. The `-file` flags pass only a path, so the secret itself never reaches the command line.
 
 Recommended for anything beyond local testing:
 
 ```bash
 docker run \
-  -e DATA_SOURCE_URI="my-postgres-host:5432/postgres?sslmode=require" \
   -e DATA_SOURCE_USER=postgres_exporter \
-  -e DATA_SOURCE_PASS_FILE=/run/secrets/pg_password \
   -v /path/to/pg_password:/run/secrets/pg_password:ro \
-  quay.io/prometheuscommunity/postgres-exporter
+  quay.io/prometheuscommunity/postgres-exporter \
+  --datasource.uri="my-postgres-host:5432/postgres?sslmode=require" \
+  --datasource.pass-file=/run/secrets/pg_password
 ```
 
 The mounted secret file must be readable by the container's uid/gid (`65534` in the official image — see [Docker Images](docker.md)).
+
+The `DATA_SOURCE_URI`, `DATA_SOURCE_URI_FILE`, `DATA_SOURCE_USER_FILE` and `DATA_SOURCE_PASS_FILE` environment variables still work and are used when the matching flag is unset, but they are deprecated and will be removed two releases from now. `DATA_SOURCE_NAME`, `DATA_SOURCE_USER` and `DATA_SOURCE_PASS` are not deprecated.
 
 ### Multi-target (`/probe`) credentials
 
@@ -42,7 +46,7 @@ auth_modules:
       password: monitoring_password
 ```
 
-This keeps credentials out of Prometheus's target list and scrape URLs (which otherwise show up in Prometheus's UI and logs). See [Connecting to PostgreSQL](connecting.md#multi-target-mode-probe) for the full request flow. Note that the config file itself contains plaintext passwords, so its file permissions and any secrets-management layer around it (e.g. templating it from Vault) matter just as much as protecting `DATA_SOURCE_PASS_FILE`.
+This keeps credentials out of Prometheus's target list and scrape URLs (which otherwise show up in Prometheus's UI and logs). See [Connecting to PostgreSQL](connecting.md#multi-target-mode-probe) for the full request flow. Note that the config file itself contains plaintext passwords, so its file permissions and any secrets-management layer around it (e.g. templating it from Vault) matter just as much as protecting the file behind `--datasource.pass-file`.
 
 ## Exporter HTTP endpoint
 

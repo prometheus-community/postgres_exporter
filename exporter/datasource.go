@@ -120,6 +120,10 @@ func (e *Exporter) scrapeDSN(ctx context.Context, ch chan<- prometheus.Metric, d
 // DATA_SOURCE_NAME always wins so we do not break older versions
 // reading secrets from files wins over secrets in environment variables
 // DATA_SOURCE_NAME > DATA_SOURCE_{USER|PASS}_FILE > DATA_SOURCE_{USER|PASS}
+//
+// Deprecated: cmd/postgres_exporter reads the --datasource.* flags instead and
+// passes the DSNs to NewExporter; embedders should do the same. Removed two
+// releases from now.
 func GetDataSources() ([]string, error) {
 	var dsn = os.Getenv("DATA_SOURCE_NAME")
 	if len(dsn) != 0 {

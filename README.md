@@ -20,10 +20,10 @@ docker run --net=host -it --rm -e POSTGRES_PASSWORD=password postgres
 # Connect to it
 docker run \
   --net=host \
-  -e DATA_SOURCE_URI="localhost:5432/postgres?sslmode=disable" \
   -e DATA_SOURCE_USER=postgres \
   -e DATA_SOURCE_PASS=password \
-  quay.io/prometheuscommunity/postgres-exporter
+  quay.io/prometheuscommunity/postgres-exporter \
+  --datasource.uri="localhost:5432/postgres?sslmode=disable"
 ```
 
 Test with:
@@ -235,6 +235,21 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `include-databases` (DEPRECATED)
   A list of databases to only include when autoDiscoverDatabases is enabled.
 
+* `datasource.uri`
+  The hostname, port, database and query string to connect to, without
+  credentials. For example, `my_pg_hostname` or
+  `my_pg_hostname:5432/postgres?sslmode=disable`.
+
+* `datasource.uri-file`
+  The same as above but reads the URI from a file.
+
+* `datasource.user-file`
+  Reads the username to connect with from a file.
+
+* `datasource.pass-file`
+  Reads the password to connect with from a file. The flag takes a path, so
+  the password itself never appears on the command line.
+
 * `log.level`
   Set logging level: one of `debug`, `info`, `warn`, `error`.
 
@@ -243,32 +258,35 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 
 ### Environment Variables
 
-The following environment variables configure the exporter:
+The following environment variables configure the exporter. The ones marked
+DEPRECATED have a `--datasource.*` flag equivalent, are only used when that
+flag is unset, and will be removed two releases from now. The exporter logs a
+warning at startup when one of them is set.
 
 * `DATA_SOURCE_NAME`
   the default legacy format. Accepts URI form and key=value form arguments. The
   URI may contain the username and password to connect with.
 
-* `DATA_SOURCE_URI`
+* `DATA_SOURCE_URI` (DEPRECATED, use `--datasource.uri`)
    an alternative to `DATA_SOURCE_NAME` which exclusively accepts the hostname
    without a username and password component. For example, `my_pg_hostname` or
    `my_pg_hostname:5432/postgres?sslmode=disable`.
 
-* `DATA_SOURCE_URI_FILE`
+* `DATA_SOURCE_URI_FILE` (DEPRECATED, use `--datasource.uri-file`)
    The same as above but reads the URI from a file.
 
 * `DATA_SOURCE_USER`
-  When using `DATA_SOURCE_URI`, this environment variable is used to specify
+  When using `--datasource.uri`, this environment variable is used to specify
   the username.
 
-* `DATA_SOURCE_USER_FILE`
+* `DATA_SOURCE_USER_FILE` (DEPRECATED, use `--datasource.user-file`)
   The same, but reads the username from a file.
 
 * `DATA_SOURCE_PASS`
-  When using `DATA_SOURCE_URI`, this environment variable is used to specify
+  When using `--datasource.uri`, this environment variable is used to specify
   the password to connect with.
 
-* `DATA_SOURCE_PASS_FILE`
+* `DATA_SOURCE_PASS_FILE` (DEPRECATED, use `--datasource.pass-file`)
   The same as above but reads the password from a file.
 
 * `PG_EXPORTER_COLLECTION_TIMEOUT`

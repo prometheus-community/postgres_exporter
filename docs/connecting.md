@@ -12,7 +12,7 @@ Each scrape opens a connection using that DSN, runs the enabled collectors' quer
 
 ## Single-target mode (the default)
 
-In single-target mode, the exporter scrapes one DSN configured at startup (via `DATA_SOURCE_NAME` or the `DATA_SOURCE_*` variables — see [Secrets](secrets.md)) and always serves their metrics at `/metrics`. This is the typical deployment: one exporter process per database instance, usually as a sidecar.
+In single-target mode, the exporter scrapes one DSN configured at startup (via the `--datasource.*` flags or `DATA_SOURCE_NAME` — see [Secrets](secrets.md)) and always serves their metrics at `/metrics`. This is the typical deployment: one exporter process per database instance, usually as a sidecar.
 
 ## Multi-target mode (`/probe`)
 
