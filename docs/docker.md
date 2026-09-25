@@ -26,7 +26,7 @@ Available tags are listed on the [Docker Hub tags page](https://hub.docker.com/r
 - Based on a minimal `busybox` image.
 - The exporter binary is at `/bin/postgres_exporter` and is also the container `ENTRYPOINT`, so flags can be passed directly as container arguments.
 - Exposes port `9187`.
-- The process runs as the `nobody` user, uid/gid `65534`. If you mount config or secret files into the container (e.g. for `DATA_SOURCE_PASS_FILE` or `--config.file`), make sure they're readable by that uid/gid.
+- The process runs as the `nobody` user, uid/gid `65534`. If you mount config or secret files into the container (e.g. for `--datasource.pass-file` or `--config.file`), make sure they're readable by that uid/gid.
 
 ## Running
 
@@ -37,10 +37,10 @@ Because the binary is the `ENTRYPOINT`, flags go straight on the end of the `doc
 ```bash
 docker run \
   -p 9187:9187 \
-  -e DATA_SOURCE_URI="my-postgres-host:5432/postgres?sslmode=disable" \
   -e DATA_SOURCE_USER=postgres \
   -e DATA_SOURCE_PASS=password \
   quay.io/prometheuscommunity/postgres-exporter \
+  --datasource.uri="my-postgres-host:5432/postgres?sslmode=disable" \
   --no-collector.stat_bgwriter --log.level=debug
 ```
 
@@ -49,11 +49,11 @@ To mount a secrets file instead of passing a password in an environment variable
 ```bash
 docker run \
   -p 9187:9187 \
-  -e DATA_SOURCE_URI="my-postgres-host:5432/postgres?sslmode=disable" \
   -e DATA_SOURCE_USER=postgres \
-  -e DATA_SOURCE_PASS_FILE=/run/secrets/pg_password \
   -v /path/to/pg_password:/run/secrets/pg_password:ro \
-  quay.io/prometheuscommunity/postgres-exporter
+  quay.io/prometheuscommunity/postgres-exporter \
+  --datasource.uri="my-postgres-host:5432/postgres?sslmode=disable" \
+  --datasource.pass-file=/run/secrets/pg_password
 ```
 
 See [Secrets](secrets.md) for all the supported ways to supply credentials.
