@@ -14,18 +14,23 @@
 package config
 
 import (
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"maps"
+	"net/url"
 	"os"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v3"
+
+	"github.com/prometheus-community/postgres_exporter/internal/connector"
 )
 
 const (
@@ -225,6 +230,7 @@ type AuthConfig struct {
 type AuthModule struct {
 	Type     string   `yaml:"type"`
 	UserPass UserPass `yaml:"userpass,omitempty"`
+	IAM      IAM      `yaml:"iam,omitempty"`
 	// Add alternative auth modules here
 	Options map[string]string `yaml:"options"`
 }
@@ -234,9 +240,22 @@ type UserPass struct {
 	Password string `yaml:"password"`
 }
 
+type IAM struct {
+	Region   string `yaml:"region,omitempty"`
+	RoleARN  string `yaml:"role_arn,omitempty"`
+	DBUser   string `yaml:"db_user,omitempty"`
+	Database string `yaml:"db_name,omitempty"`
+}
+
 type Handler struct {
 	sync.RWMutex
 	Config *AuthConfig
+
+	// connectors caches driver.Connectors built by AuthModule.Connector, keyed
+	// by auth module name and target, so expensive per-connector setup (e.g.
+	// the iam module's AWS credentials) isn't rebuilt on every /probe request.
+	// It is cleared whenever the auth config is reloaded.
+	connectors map[string]driver.Connector
 
 	configReloadSuccess prometheus.Gauge
 	configReloadSeconds prometheus.Gauge
@@ -331,7 +350,41 @@ func DecodeAuthConfig(r io.Reader) (*AuthConfig, error) {
 func (ch *Handler) SetAuthConfig(config *AuthConfig) {
 	ch.Lock()
 	ch.Config = config
+	ch.connectors = nil
 	ch.Unlock()
+}
+
+// ConnectorFor returns a cached driver.Connector for authModuleName+target,
+// building one via authModule.Connector on first use. This works for any auth
+// module type, since it caches whatever Connector returns without needing to
+// know what's inside it.
+func (ch *Handler) ConnectorFor(authModuleName string, authModule AuthModule, target string) (driver.Connector, error) {
+	key := authModuleName + "\x00" + target
+
+	ch.RLock()
+	conn, ok := ch.connectors[key]
+	ch.RUnlock()
+	if ok {
+		return conn, nil
+	}
+
+	conn, err := authModule.Connector(target)
+	if err != nil {
+		return nil, err
+	}
+
+	ch.Lock()
+	defer ch.Unlock()
+	if existing, ok := ch.connectors[key]; ok {
+		// Another request raced us; keep whichever was cached first so
+		// concurrent probes of the same auth module and target share one.
+		return existing, nil
+	}
+	if ch.connectors == nil {
+		ch.connectors = make(map[string]driver.Connector)
+	}
+	ch.connectors[key] = conn
+	return conn, nil
 }
 
 func (m AuthModule) ConfigureTarget(target string) (DSN, error) {
@@ -356,4 +409,66 @@ func (m AuthModule) ConfigureTarget(target string) (DSN, error) {
 	}
 
 	return dsn, nil
+}
+
+// Connector builds a driver.Connector
+func (m AuthModule) Connector(target string) (driver.Connector, error) {
+	if m.Type == "iam" {
+		dsn, err := dsnFromString(target)
+		if err != nil {
+			return nil, err
+		}
+
+		// db_user/db_name override target when set, else they're parsed from it.
+		dbUser := dsn.username
+		if m.IAM.DBUser != "" {
+			dbUser = m.IAM.DBUser
+		}
+		database := strings.TrimPrefix(dsn.path, "/")
+		if m.IAM.Database != "" {
+			database = m.IAM.Database
+		}
+		if dbUser == "" {
+			return nil, errors.New(`auth module type "iam" requires a db user, from either iam.db_user or target`)
+		}
+		if database == "" {
+			return nil, errors.New(`auth module type "iam" requires a database name, from either iam.db_name or target`)
+		}
+
+		// options override target's own query parameters when set, same as for userpass.
+		options := url.Values{}
+		maps.Copy(options, dsn.query)
+		for k, v := range m.Options {
+			options.Set(k, v)
+		}
+
+		// base is the connection, minus the password: the same shape every other
+		// auth mode builds via GetConnectionString, so a freshly minted IAM token
+		// only ever needs to be injected via WithPassword.
+		base := DSN{
+			scheme:   dsn.scheme,
+			username: dbUser,
+			host:     dsn.host,
+			path:     "/" + database,
+			query:    options,
+		}
+
+		c, err := connector.NewAWSIAMConnector(
+			dsn.host,
+			dbUser,
+			m.IAM.Region,
+			m.IAM.RoleARN,
+			func(token string) string { return base.WithPassword(token).GetConnectionString() },
+		)
+		if err != nil {
+			return nil, fmt.Errorf("configuring iam connector: %w", err)
+		}
+		return c, nil
+	}
+
+	dsn, err := m.ConfigureTarget(target)
+	if err != nil {
+		return nil, err
+	}
+	return connector.NewStaticConnector(dsn.GetConnectionString())
 }

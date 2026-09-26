@@ -133,6 +133,27 @@ auth_modules:
       sslmode: require
 ```
 
+An `iam` module mints a fresh AWS RDS/Aurora IAM auth token for every connection instead of using a static password:
+
+```yaml
+auth_modules:
+  iam1:
+    type: iam
+    iam:
+      region: us-east-1        # optional; resolved via the AWS SDK's usual chain (env, shared config, instance metadata) if unset
+      role_arn: arn:aws:iam::123456789012:role/rds-connect # optional; assumes this role via STS if set, otherwise uses whatever AWS credentials are already available
+      db_user: iam_user        # optional; overrides target's own user if set, else parsed from target
+      db_name: mydb            # optional; overrides target's own dbname if set, else parsed from target
+    options:
+      # same as userpass: extra key=value parameters of the DSN.
+      # IAM auth needs a minimum of require.
+      sslmode: require
+```
+
+`db_user`/`db_name` above override whatever `target` (from `/probe?target=...`) itself contains, the same way `userpass`'s own `username`/`password` do. If `target` is just a bare `host:port` (see [multi-target mode](connecting.md#multi-target-mode-probe)), set both here explicitly — there's nothing to parse them from otherwise.
+
+The connecting database user needs `rds_iam` granted and no password, and the IAM identity needs an `rds-db:connect` permission — see [Running Against AWS RDS](aws-rds.md#iam-database-authentication). IAM auth is also available for single-target mode — see [Secrets](secrets.md#iam-authentication-single-target).
+
 ## Deprecated options
 
 These remain for backward compatibility but shouldn't be used in new deployments:

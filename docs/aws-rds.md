@@ -27,3 +27,28 @@ To use the `stat_statements` collector, `pg_stat_statements` must be preloaded v
 3. Then `CREATE EXTENSION pg_stat_statements;` as usual.
 
 `pg_stat_statements` rows include queries run by RDS's own `rdsadmin` role. Exclude them with `--collector.stat_statements.exclude_users=rdsadmin`.
+
+## IAM database authentication
+
+As an alternative to a static password, the exporter can authenticate with AWS RDS/Aurora IAM database authentication, minting a fresh, short-lived token for every connection instead — see [Secrets](secrets.md#iam-authentication-single-target) (single-target) or [Configuration](configuration.md#config-file) (multi-target `/probe`) for how to enable it.
+
+The connecting database user needs `rds_iam` granted and no password:
+
+```sql
+GRANT rds_iam TO <user>;
+```
+
+The IAM role or user the exporter runs as needs an `rds-db:connect` permission (wildcards are allowed):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [ "rds-db:connect" ],
+      "Effect": "Allow",
+      "Resource": [ "arn:aws:rds-db:<AWS_REGION>:<AWS_ACCOUNT_ID>:dbuser:<RESOURCE_ID>/<DB_USER>" ]
+    }
+  ]
+}
+```
