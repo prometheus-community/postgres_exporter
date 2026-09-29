@@ -25,6 +25,22 @@ jobs:
       - run: make GO_ONLY=1 SKIP_GOLANGCI_LINT=1
       - run: git diff --exit-code
 
+  test_mixin:
+    name: Mixin alert tests
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/prometheus/golang-builder:1.26-base
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: go install github.com/monitoring-mixins/mixtool/cmd/mixtool@v0.0.0-20260629085351-496ea9a28ba9
+      - name: Install promtool 2.54.1
+        run: |
+          curl -fsSL https://github.com/prometheus/prometheus/releases/download/v2.54.1/prometheus-2.54.1.linux-amd64.tar.gz \
+            | tar -xz -C "$(go env GOPATH)/bin" --strip-components=1 prometheus-2.54.1.linux-amd64/promtool
+      - run: PATH="$(go env GOPATH)/bin:$PATH" make -C postgres_mixin test
+
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -42,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       packages: write
-    needs: [test_go, build]
+    needs: [test_go, test_mixin, build]
     if: |
       (github.event_name == 'push' && github.event.ref == 'refs/heads/main')
       ||
@@ -63,7 +79,7 @@ jobs:
     permissions:
       contents: write
       packages: write
-    needs: [test_go, build]
+    needs: [test_go, test_mixin, build]
     if: |
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
     steps:
