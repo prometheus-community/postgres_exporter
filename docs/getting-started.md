@@ -52,19 +52,18 @@ Point the exporter at an existing PostgreSQL server. With Docker:
 ```bash
 docker run \
   --net=host \
-  -e DATA_SOURCE_URI="my-postgres-host:5432/postgres?sslmode=disable" \
   -e DATA_SOURCE_USER=postgres \
   -e DATA_SOURCE_PASS=password \
-  quay.io/prometheuscommunity/postgres-exporter
+  quay.io/prometheuscommunity/postgres-exporter \
+  --datasource.uri="my-postgres-host:5432/postgres?sslmode=disable"
 ```
 
 Or, with the binary:
 
 ```bash
-export DATA_SOURCE_URI="my-postgres-host:5432/postgres?sslmode=disable"
 export DATA_SOURCE_USER=postgres
 export DATA_SOURCE_PASS=password
-./postgres_exporter
+./postgres_exporter --datasource.uri="my-postgres-host:5432/postgres?sslmode=disable"
 ```
 
 See [Connecting to PostgreSQL](connecting.md) for the different ways to specify the database connection, and [Secrets](secrets.md) for how to avoid putting passwords on the command line or in plain environment variables.
