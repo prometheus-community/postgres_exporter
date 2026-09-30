@@ -70,6 +70,9 @@ func (i *instance) withDatabase(database string) (*instance, error) {
 		return nil, err
 	}
 	other.wrapLargeCounters = i.wrapLargeCounters
+	// database is on the same PostgreSQL server as i, so it runs the same
+	// version; skip re-querying it over the new connection.
+	other.version = i.version
 	return other, nil
 }
 
@@ -82,11 +85,13 @@ func (i *instance) setup(ctx context.Context) error {
 	db.SetMaxIdleConns(1)
 	i.db = db
 
-	version, err := queryVersion(ctx, i.db)
-	if err != nil {
-		return fmt.Errorf("error querying postgresql version: %w", err)
+	if i.version.EQ(semver.Version{}) {
+		version, err := queryVersion(ctx, i.db)
+		if err != nil {
+			return fmt.Errorf("error querying postgresql version: %w", err)
+		}
+		i.version = version
 	}
-	i.version = version
 
 	if err := i.db.QueryRowContext(ctx, "SELECT current_database()").Scan(&i.database); err != nil {
 		return fmt.Errorf("error querying current database: %w", err)

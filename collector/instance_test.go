@@ -13,7 +13,11 @@
 
 package collector
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/blang/semver/v4"
+)
 
 func TestInstanceWithDatabase(t *testing.T) {
 	tests := []struct {
@@ -30,7 +34,7 @@ func TestInstanceWithDatabase(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			primary := &instance{dsn: test.dsn, wrapLargeCounters: true}
+			primary := &instance{dsn: test.dsn, wrapLargeCounters: true, version: semver.MustParse("15.2.0")}
 			got, err := primary.withDatabase("other")
 			if test.wantErr {
 				if err == nil {
@@ -46,6 +50,9 @@ func TestInstanceWithDatabase(t *testing.T) {
 			}
 			if got.wrapLargeCounters != primary.wrapLargeCounters {
 				t.Fatalf("withDatabase() wrapLargeCounters = %v, want %v", got.wrapLargeCounters, primary.wrapLargeCounters)
+			}
+			if !got.version.EQ(primary.version) {
+				t.Fatalf("withDatabase() version = %v, want %v", got.version, primary.version)
 			}
 		})
 	}

@@ -345,7 +345,7 @@ func (p PostgresCollector) collectDiscoveredDatabases(ctx context.Context, prima
 		return
 	}
 
-	forEachDatabase(ctx, databases, p.databaseDiscovery.maxConcurrency, func(ctx context.Context, database string) {
+	collectDatabase := func(ctx context.Context, database string) {
 		inst, err := primary.withDatabase(database)
 		if err != nil {
 			p.logger.Error("failed to build connection for discovered database", "database", database, "err", err)
@@ -358,7 +358,8 @@ func (p PostgresCollector) collectDiscoveredDatabases(ctx context.Context, prima
 		}
 		scope := databaseScope
 		p.collectFromConnection(ctx, inst, ch, &scope)
-	})
+	}
+	forEachDatabase(ctx, databases, p.databaseDiscovery.maxConcurrency, collectDatabase)
 }
 
 // collectFromConnection runs the Collectors matching scope against inst,
