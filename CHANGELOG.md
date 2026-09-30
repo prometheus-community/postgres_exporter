@@ -10,6 +10,24 @@ large false spike for that evaluation window. Use
 `--no-wrap-large-counters` to preserve the previous conversion during rollout;
 enabling wrapping later will still create this one-time reset boundary.
 
+**DEPRECATION: the `DATA_SOURCE_*` environment variables that now have a flag.**
+Each one below keeps working and still takes effect when its flag is unset, but
+the exporter logs a warning on startup and they will be removed two releases
+from now.
+
+| Deprecated env var | Replacement |
+| --- | --- |
+| `DATA_SOURCE_URI` | `--datasource.uri` |
+| `DATA_SOURCE_URI_FILE` | `--datasource.uri-file` |
+| `DATA_SOURCE_USER_FILE` | `--datasource.user-file` |
+| `DATA_SOURCE_PASS_FILE` | `--datasource.pass-file` |
+
+`DATA_SOURCE_NAME`, `DATA_SOURCE_USER` and `DATA_SOURCE_PASS` are **not**
+deprecated and get no flag: they carry secrets, and CLI flags are readable via
+`/proc` and the Kubernetes API. Pass those by environment variable, or point
+the `-file` flags at a mounted secret.
+
+* [CHANGE] Add `--datasource.*` CLI flags for the Postgres connection config and deprecate the `DATA_SOURCE_*` environment variables they replace by @nicolastakashi in https://github.com/prometheus-community/postgres_exporter/pull/1376
 * [CHANGE] Wrap non-negative 64-bit counters at `2^53` to preserve single-unit precision by @gnanirahulnutakki in https://github.com/prometheus-community/postgres_exporter/pull/1351
 * [CHANGE] stat_replication: add `pid` label to disambiguate replication connections that otherwise share identical labels by @sysadmind in https://github.com/prometheus-community/postgres_exporter/pull/1353
 * [BUGFIX] Fix `long_running_transactions` to count only transactions older than a configurable threshold, by @ArthurSens in https://github.com/prometheus-community/postgres_exporter/pull/1379, based on the contribution by @moreinhardt in https://github.com/prometheus-community/postgres_exporter/pull/1210

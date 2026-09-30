@@ -52,6 +52,10 @@ var (
 	metricPrefix          = kingpin.Flag("metric-prefix", "A metric prefix can be used to have non-default (not \"pg\") prefixes for each of the metrics").Default("pg").Envar("PG_EXPORTER_METRIC_PREFIX").String()
 	collectionTimeout     = kingpin.Flag("collection-timeout", "Timeout for collecting the statistics when the database is slow").Default("1m").Envar("PG_EXPORTER_COLLECTION_TIMEOUT").String()
 	wrapLargeCounters     = kingpin.Flag("wrap-large-counters", "Wrap 64-bit counters at 2^53 to avoid floating point rounding.").Default("true").Bool()
+	datasourceURI         = kingpin.Flag("datasource.uri", "Data source URI, in host:port/dbname form.").Default("").String()
+	datasourceURIFile     = kingpin.Flag("datasource.uri-file", "Path to a file containing the data source URI. Takes precedence over datasource.uri.").Default("").String()
+	datasourceUserFile    = kingpin.Flag("datasource.user-file", "Path to a file containing the data source user name.").Default("").String()
+	datasourcePassFile    = kingpin.Flag("datasource.pass-file", "Path to a file containing the data source password.").Default("").String()
 	collectorFlags        = newCollectorFlags()
 
 	longRunningTransactionsThreshold = kingpin.Flag(
@@ -148,7 +152,14 @@ func main() {
 		logger.Warn("Error loading config", "err", err)
 	}
 
-	dsns, err := exporter.GetDataSources()
+	warnDeprecatedDataSourceEnvVars()
+
+	dsns, err := getDataSources(dataSourceOpts{
+		URI:      *datasourceURI,
+		URIFile:  *datasourceURIFile,
+		UserFile: *datasourceUserFile,
+		PassFile: *datasourcePassFile,
+	})
 	if err != nil {
 		logger.Error("Failed reading data sources", "err", err.Error())
 		os.Exit(1)
