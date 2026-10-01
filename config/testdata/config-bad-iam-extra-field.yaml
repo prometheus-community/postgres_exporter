@@ -1,0 +1,8 @@
+auth_modules:
+  foo:
+    type: iam
+    iam:
+      region: us-east-1
+      db_user: iamuser
+      db_name: mydb
+      doesNotExist: test

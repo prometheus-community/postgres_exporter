@@ -14,6 +14,7 @@
 package collector
 
 import (
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -29,16 +30,40 @@ type Runtime struct {
 	postgresCollector *PostgresCollector
 }
 
-func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*Runtime, error) {
+// RuntimeOption configures a Runtime.
+type RuntimeOption func(*runtimeConfig)
+
+type runtimeConfig struct {
+	connector driver.Connector
+}
+
+// WithRuntimeConnector overrides how the runtime's exporter and collector open
+// connections, e.g. for IAM auth. Named distinctly from the package's other
+// WithConnector (a PostgresCollector Option) since a Runtime wraps both an
+// Exporter and a PostgresCollector.
+func WithRuntimeConnector(conn driver.Connector) RuntimeOption {
+	return func(rc *runtimeConfig) { rc.connector = conn }
+}
+
+func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger, opts ...RuntimeOption) (*Runtime, error) {
 	if !validatedConfig.Valid() {
 		return nil, errors.New("config has not been validated; obtain a ValidatedConfig from Config.Validate")
 	}
 	if logger == nil {
 		logger = slog.Default()
 	}
+	var rc runtimeConfig
+	for _, opt := range opts {
+		opt(&rc)
+	}
+	conn := rc.connector
 	cfg := validatedConfig.Config()
 
-	exporterCollector := exporter.NewExporter(cfg.DataSourceNames, logger, exporterOptions(cfg)...)
+	exporterOpts := exporterOptions(cfg)
+	if conn != nil {
+		exporterOpts = append(exporterOpts, exporter.WithConnector(conn))
+	}
+	exporterCollector := exporter.NewExporter(cfg.DataSourceNames, logger, exporterOpts...)
 	runtime := &Runtime{
 		exporter: exporterCollector,
 	}
@@ -57,6 +82,7 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 		WithLongRunningTransactionsConfig(cfg.LongRunningTransactions),
 		WithPGStatStatementsConfig(cfg.PGStatStatements),
 		WithWrapLargeCounters(cfg.WrapLargeCounters),
+		WithConnector(conn),
 	)
 	if err != nil {
 		runtime.Close()
