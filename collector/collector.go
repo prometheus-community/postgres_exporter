@@ -212,9 +212,25 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 	defer inst.Close()
 	if err != nil {
 		p.logger.Error("Error opening connection to database", "err", err)
+		p.reportConnectionError(ch)
 		return
 	}
 	p.collectFromConnection(inst, ch)
+}
+
+// reportConnectionError reports every enabled collector as failed via
+// pg_scrape_collector_success, so a per-scrape connection failure is visible
+// in the exact same metric a collector failure would use, instead of
+// silently dropping the entire metric surface. Without this, the failure
+// exists only as a log line: pg_up and pg_exporter_last_scrape_error come
+// from the separate, persistently-connected Exporter and keep reporting
+// healthy, so an alert built on pg_scrape_collector_success would otherwise
+// see "no data" - resolving itself - for the whole outage.
+func (p PostgresCollector) reportConnectionError(ch chan<- prometheus.Metric) {
+	for name := range p.Collectors {
+		ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, 0, name)
+		ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, 0, name)
+	}
 }
 
 func (p PostgresCollector) collectFromConnection(inst *instance, ch chan<- prometheus.Metric) {

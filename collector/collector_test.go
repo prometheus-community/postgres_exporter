@@ -219,6 +219,58 @@ func TestNewPostgresCollectorUsesCollectorStateOverrides(t *testing.T) {
 	}
 }
 
+// TestPostgresCollectorReportsFailureOnConnectionError guards against
+// https://github.com/prometheus-community/postgres_exporter/issues/1387:
+// when the per-scrape connection can't be established, Collect must still
+// report pg_scrape_collector_success{collector=...} 0 for every enabled
+// collector, rather than silently emitting no metrics at all.
+func TestPostgresCollectorReportsFailureOnConnectionError(t *testing.T) {
+	logger := promslog.NewNopLogger()
+	// Nothing listens on this port, so inst.setup() fails fast with a
+	// connection error without depending on a real unreachable network dial.
+	dsn := "postgresql://postgres@127.0.0.1:1/postgres?sslmode=disable&connect_timeout=2"
+
+	c, err := NewPostgresCollector(logger, nil, dsn, []string{databaseSubsystem})
+	if err != nil {
+		t.Fatalf("NewPostgresCollector() error = %v", err)
+	}
+
+	ch := make(chan prometheus.Metric, len(c.Collectors)*2)
+	c.Collect(ch)
+	close(ch)
+
+	var sawSuccessZero, sawDurationZero bool
+	count := 0
+	for m := range ch {
+		count++
+		result := readMetric(m)
+		if result.labels["collector"] != databaseSubsystem {
+			t.Fatalf("unexpected collector label %q", result.labels["collector"])
+		}
+		if result.value != 0 {
+			t.Fatalf("metric value = %v, want 0 (connection never succeeded)", result.value)
+		}
+		switch m.Desc().String() {
+		case scrapeSuccessDesc.String():
+			sawSuccessZero = true
+		case scrapeDurationDesc.String():
+			sawDurationZero = true
+		default:
+			t.Fatalf("unexpected metric desc %v", m.Desc())
+		}
+	}
+
+	if count != 2 {
+		t.Fatalf("got %d metrics, want 2 (duration+success for the single enabled collector)", count)
+	}
+	if !sawSuccessZero {
+		t.Fatal("pg_scrape_collector_success was not reported on connection failure")
+	}
+	if !sawDurationZero {
+		t.Fatal("pg_scrape_collector_duration_seconds was not reported on connection failure")
+	}
+}
+
 func TestRegisterCollectorRejectsUnknownConfig(t *testing.T) {
 	const name = "not_in_default_config"
 
