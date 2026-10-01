@@ -81,8 +81,6 @@ func (c PGStatActivityAutovacuumCollector) Update(ctx context.Context, instance 
 			ageInSeconds.Float64, relname,
 		)
 	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	return nil
+
+	return rows.Err()
 }

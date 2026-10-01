@@ -280,6 +280,7 @@ func updateReplicationSlotsSlotMetrics(ctx context.Context, instance *instance, 
 			)
 		}
 	}
+
 	return rows.Err()
 }
 

@@ -14,6 +14,7 @@ package collector
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -25,16 +26,8 @@ import (
 	"github.com/smartystreets/goconvey/convey"
 )
 
-func TestPGStatDatabaseCollector(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("Error opening a stub db connection: %s", err)
-	}
-	defer db.Close()
-
-	inst := &instance{db: db, version: semver.MustParse("14.0.0")}
-
-	columns := []string{
+var (
+	pgStatCollectorTestColumns = []string{
 		"datid",
 		"datname",
 		"numbackends",
@@ -56,13 +49,23 @@ func TestPGStatDatabaseCollector(t *testing.T) {
 		"stats_reset",
 		"active_time",
 	}
+)
+
+func TestPGStatDatabaseCollector(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Error opening a stub db connection: %s", err)
+	}
+	defer db.Close()
+
+	inst := &instance{db: db, version: semver.MustParse("14.0.0")}
 
 	srT, err := time.Parse("2006-01-02 15:04:05.00000-07", "2023-05-25 17:10:42.81132-07")
 	if err != nil {
 		t.Fatalf("Error parsing time: %s", err)
 	}
 
-	rows := sqlmock.NewRows(columns).
+	rows := sqlmock.NewRows(pgStatCollectorTestColumns).
 		AddRow(
 			"pid",
 			"postgres",
@@ -86,7 +89,7 @@ func TestPGStatDatabaseCollector(t *testing.T) {
 			33,
 		)
 
-	mock.ExpectQuery(sanitizeQuery(statDatabaseQuery(columns))).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(statDatabaseQuery(pgStatCollectorTestColumns))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -145,30 +148,7 @@ func TestPGStatDatabaseCollectorNullValues(t *testing.T) {
 	}
 	inst := &instance{db: db, version: semver.MustParse("14.0.0")}
 
-	columns := []string{
-		"datid",
-		"datname",
-		"numbackends",
-		"xact_commit",
-		"xact_rollback",
-		"blks_read",
-		"blks_hit",
-		"tup_returned",
-		"tup_fetched",
-		"tup_inserted",
-		"tup_updated",
-		"tup_deleted",
-		"conflicts",
-		"temp_files",
-		"temp_bytes",
-		"deadlocks",
-		"blk_read_time",
-		"blk_write_time",
-		"stats_reset",
-		"active_time",
-	}
-
-	rows := sqlmock.NewRows(columns).
+	rows := sqlmock.NewRows(pgStatCollectorTestColumns).
 		AddRow(
 			nil,
 			"postgres",
@@ -213,7 +193,7 @@ func TestPGStatDatabaseCollectorNullValues(t *testing.T) {
 			srT,
 			32,
 		)
-	mock.ExpectQuery(sanitizeQuery(statDatabaseQuery(columns))).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(statDatabaseQuery(pgStatCollectorTestColumns))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -267,35 +247,12 @@ func TestPGStatDatabaseCollectorRowLeakTest(t *testing.T) {
 
 	inst := &instance{db: db, version: semver.MustParse("14.0.0")}
 
-	columns := []string{
-		"datid",
-		"datname",
-		"numbackends",
-		"xact_commit",
-		"xact_rollback",
-		"blks_read",
-		"blks_hit",
-		"tup_returned",
-		"tup_fetched",
-		"tup_inserted",
-		"tup_updated",
-		"tup_deleted",
-		"conflicts",
-		"temp_files",
-		"temp_bytes",
-		"deadlocks",
-		"blk_read_time",
-		"blk_write_time",
-		"stats_reset",
-		"active_time",
-	}
-
 	srT, err := time.Parse("2006-01-02 15:04:05.00000-07", "2023-05-25 17:10:42.81132-07")
 	if err != nil {
 		t.Fatalf("Error parsing time: %s", err)
 	}
 
-	rows := sqlmock.NewRows(columns).
+	rows := sqlmock.NewRows(pgStatCollectorTestColumns).
 		AddRow(
 			"pid",
 			"postgres",
@@ -362,7 +319,7 @@ func TestPGStatDatabaseCollectorRowLeakTest(t *testing.T) {
 			srT,
 			15,
 		)
-	mock.ExpectQuery(sanitizeQuery(statDatabaseQuery(columns))).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(statDatabaseQuery(pgStatCollectorTestColumns))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -436,30 +393,7 @@ func TestPGStatDatabaseCollectorTestNilStatReset(t *testing.T) {
 
 	inst := &instance{db: db, version: semver.MustParse("14.0.0")}
 
-	columns := []string{
-		"datid",
-		"datname",
-		"numbackends",
-		"xact_commit",
-		"xact_rollback",
-		"blks_read",
-		"blks_hit",
-		"tup_returned",
-		"tup_fetched",
-		"tup_inserted",
-		"tup_updated",
-		"tup_deleted",
-		"conflicts",
-		"temp_files",
-		"temp_bytes",
-		"deadlocks",
-		"blk_read_time",
-		"blk_write_time",
-		"stats_reset",
-		"active_time",
-	}
-
-	rows := sqlmock.NewRows(columns).
+	rows := sqlmock.NewRows(pgStatCollectorTestColumns).
 		AddRow(
 			"pid",
 			"postgres",
@@ -483,7 +417,7 @@ func TestPGStatDatabaseCollectorTestNilStatReset(t *testing.T) {
 			7,
 		)
 
-	mock.ExpectQuery(sanitizeQuery(statDatabaseQuery(columns))).WillReturnRows(rows)
+	mock.ExpectQuery(sanitizeQuery(statDatabaseQuery(pgStatCollectorTestColumns))).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
 	go func() {
@@ -527,4 +461,61 @@ func TestPGStatDatabaseCollectorTestNilStatReset(t *testing.T) {
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled exceptions: %s", err)
 	}
+}
+
+func TestPGStatDatabaseCollectorRowsError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Error opening a stub db connection: %s", err)
+	}
+	defer db.Close()
+
+	inst := &instance{db: db, version: semver.MustParse("14.0.0")}
+
+	expectedRowErr := errors.New("test row error")
+	rows := sqlmock.NewRows(pgStatCollectorTestColumns).
+		AddRow(
+			"pid",
+			"postgres",
+			354,
+			4945,
+			289097744,
+			1242257,
+			int64(3275602074),
+			89320867,
+			450139,
+			2034563757,
+			0,
+			int64(2725688749),
+			23,
+			52,
+			74,
+			925,
+			16,
+			823,
+			nil,
+			7,
+		).RowError(0, expectedRowErr)
+
+	mock.ExpectQuery(sanitizeQuery(statDatabaseQuery(pgStatCollectorTestColumns))).WillReturnRows(rows)
+
+	convey.Convey("With a buffered channel and valid collector", t, func() {
+		ch := make(chan prometheus.Metric, 1)
+		defer close(ch)
+
+		c := PGStatDatabaseCollector{
+			log: promslog.NewNopLogger().With("collector", "pg_stat_database"),
+		}
+
+		convey.Convey("When doing an Update", func() {
+			err := c.Update(context.Background(), inst, ch)
+
+			convey.Convey("It should return expected row error, with the channel remaining empty", func() {
+				convey.So(err, convey.ShouldBeError, expectedRowErr)
+				convey.So(ch, convey.ShouldBeEmpty)
+
+				convey.So(mock.ExpectationsWereMet(), convey.ShouldBeNil)
+			})
+		})
+	})
 }
