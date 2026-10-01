@@ -24,7 +24,7 @@ import (
 )
 
 func init() {
-	registerCollector(longRunningTransactionsSubsystem, NewPGLongRunningTransactionsCollector)
+	registerCollector(longRunningTransactionsSubsystem, serverScope, NewPGLongRunningTransactionsCollector)
 }
 
 type PGLongRunningTransactionsCollector struct {

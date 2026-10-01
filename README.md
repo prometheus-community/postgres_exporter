@@ -212,6 +212,10 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `auto-discover-databases` (DEPRECATED)
   Whether to discover the databases on a server dynamically.  Default is `false`.
 
+* `auto-discover-databases.max-concurrency`
+  Maximum number of discovered databases to scrape concurrently in a single scrape, when
+  `auto-discover-databases` is enabled. Default is `10`.
+
 * `extend.query-path` (DEPRECATED)
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
   for examples of the format.
@@ -354,6 +358,14 @@ flag. This removes all built-in metrics, and uses only metrics defined by querie
 To scrape metrics from all databases on a database server, the database DSN's can be dynamically discovered via the
 `--auto-discover-databases` flag. When true, `SELECT datname FROM pg_database WHERE datallowconn = true AND datistemplate = false and datname != current_database()` is run for all configured DSN's. From the
 result a new set of DSN's is created for which the metrics are scraped.
+
+Every discovered database gets its own connection and gets scraped for the collectors that report on a single
+database (e.g. `stat_user_tables`, `statio_user_tables`, `statio_user_indexes`). Collectors that report on the whole
+server (e.g. `wal`, `bgwriter`, `stat_activity`) still only run once, against the first configured DSN, since
+re-running them against another database on the same server would report the exact same rows again. The set of
+discovered databases is re-evaluated on every scrape, so databases created or dropped after the exporter starts are
+picked up without a restart. At most `--auto-discover-databases.max-concurrency` discovered databases are scraped
+concurrently, so a server with many databases cannot make a single scrape open more connections than it can spare.
 
 In addition, the option `--exclude-databases` adds the possibily to filter the result from the auto discovery to discard databases you do not need.
 

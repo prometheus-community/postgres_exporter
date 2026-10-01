@@ -21,33 +21,49 @@ import (
 )
 
 func init() {
-	registerCollector(statioUserIndexesSubsystem, NewPGStatioUserIndexesCollector)
+	registerCollector(statioUserIndexesSubsystem, databaseScope, NewPGStatioUserIndexesCollector)
 }
 
 type PGStatioUserIndexesCollector struct {
 	log *slog.Logger
+	// includeDatname is set when this collector may run concurrently against
+	// more than one database in the same scrape (WithDatabaseDiscovery), the
+	// only case where two rows can otherwise collide in the registry with
+	// identical schemaname/relname/indexrelname. Gating the label on that
+	// keeps installs that never opted into discovery from seeing a new label
+	// appear on this metric after an upgrade.
+	includeDatname bool
+
+	idxBlksRead *prometheus.Desc
+	idxBlksHit  *prometheus.Desc
 }
 
 func NewPGStatioUserIndexesCollector(config collectorConfig) (Collector, error) {
-	return &PGStatioUserIndexesCollector{log: config.logger}, nil
+	labels := []string{"schemaname", "relname", "indexrelname"}
+	if config.databaseDiscoveryEnabled {
+		labels = []string{"datname", "schemaname", "relname", "indexrelname"}
+	}
+	return &PGStatioUserIndexesCollector{
+		log:            config.logger,
+		includeDatname: config.databaseDiscoveryEnabled,
+		idxBlksRead: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, statioUserIndexesSubsystem, "idx_blks_read_total"),
+			"Number of disk blocks read from this index",
+			labels,
+			prometheus.Labels{},
+		),
+		idxBlksHit: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, statioUserIndexesSubsystem, "idx_blks_hit_total"),
+			"Number of buffer hits in this index",
+			labels,
+			prometheus.Labels{},
+		),
+	}, nil
 }
 
-var (
-	statioUserIndexesIdxBlksRead = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statioUserIndexesSubsystem, "idx_blks_read_total"),
-		"Number of disk blocks read from this index",
-		[]string{"schemaname", "relname", "indexrelname"},
-		prometheus.Labels{},
-	)
-	statioUserIndexesIdxBlksHit = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statioUserIndexesSubsystem, "idx_blks_hit_total"),
-		"Number of buffer hits in this index",
-		[]string{"schemaname", "relname", "indexrelname"},
-		prometheus.Labels{},
-	)
-
-	statioUserIndexesQuery = `
+const statioUserIndexesQuery = `
 	SELECT
+		current_database() datname,
 		schemaname,
 		relname,
 		indexrelname,
@@ -55,7 +71,6 @@ var (
 		idx_blks_hit
 	FROM pg_statio_user_indexes
 	`
-)
 
 func (c *PGStatioUserIndexesCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
@@ -67,10 +82,16 @@ func (c *PGStatioUserIndexesCollector) Update(ctx context.Context, instance *ins
 	}
 	defer rows.Close()
 	for rows.Next() {
+		// datname comes from current_database(), which Postgres guarantees is
+		// never NULL. Unlike the other columns below, it must not fall back to
+		// a shared sentinel on an invalid value: this label is what keeps rows
+		// from different, concurrently-scraped databases from colliding in the
+		// registry, so it needs to always be the real, distinct database name.
+		var datname string
 		var schemaname, relname, indexrelname sql.NullString
 		var idxBlksRead, idxBlksHit sql.NullInt64
 
-		if err := rows.Scan(&schemaname, &relname, &indexrelname, &idxBlksRead, &idxBlksHit); err != nil {
+		if err := rows.Scan(&datname, &schemaname, &relname, &indexrelname, &idxBlksRead, &idxBlksHit); err != nil {
 			return err
 		}
 		schemanameLabel := "unknown"
@@ -86,10 +107,13 @@ func (c *PGStatioUserIndexesCollector) Update(ctx context.Context, instance *ins
 			indexrelnameLabel = indexrelname.String
 		}
 		labels := []string{schemanameLabel, relnameLabel, indexrelnameLabel}
+		if c.includeDatname {
+			labels = append([]string{datname}, labels...)
+		}
 
 		idxBlksReadMetric := int64CounterValue(idxBlksRead, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
-			statioUserIndexesIdxBlksRead,
+			c.idxBlksRead,
 			prometheus.CounterValue,
 			idxBlksReadMetric,
 			labels...,
@@ -97,7 +121,7 @@ func (c *PGStatioUserIndexesCollector) Update(ctx context.Context, instance *ins
 
 		idxBlksHitMetric := int64CounterValue(idxBlksHit, instance.wrapLargeCounters)
 		ch <- prometheus.MustNewConstMetric(
-			statioUserIndexesIdxBlksHit,
+			c.idxBlksHit,
 			prometheus.CounterValue,
 			idxBlksHitMetric,
 			labels...,

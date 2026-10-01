@@ -23,7 +23,7 @@ import (
 )
 
 func init() {
-	registerCollector(statReplicationSubsystem, NewPGStatReplicationCollector)
+	registerCollector(statReplicationSubsystem, serverScope, NewPGStatReplicationCollector)
 }
 
 type PGStatReplicationCollector struct{}

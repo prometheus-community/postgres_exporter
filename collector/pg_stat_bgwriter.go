@@ -22,7 +22,7 @@ import (
 )
 
 func init() {
-	registerCollector(bgWriterSubsystem, NewPGStatBGWriterCollector)
+	registerCollector(bgWriterSubsystem, serverScope, NewPGStatBGWriterCollector)
 }
 
 type PGStatBGWriterCollector struct {

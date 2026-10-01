@@ -22,7 +22,7 @@ import (
 )
 
 func init() {
-	registerCollector(statioUserTableSubsystem, NewPGStatIOUserTablesCollector)
+	registerCollector(statioUserTableSubsystem, databaseScope, NewPGStatIOUserTablesCollector)
 }
 
 type PGStatIOUserTablesCollector struct {
