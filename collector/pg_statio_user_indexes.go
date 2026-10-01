@@ -103,8 +103,6 @@ func (c *PGStatioUserIndexesCollector) Update(ctx context.Context, instance *ins
 			labels...,
 		)
 	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	return nil
+
+	return rows.Err()
 }

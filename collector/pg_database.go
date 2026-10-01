@@ -135,5 +135,6 @@ func (c PGDatabaseCollector) Update(ctx context.Context, instance *instance, ch 
 		)
 
 	}
+
 	return rows.Err()
 }

@@ -110,8 +110,6 @@ func (c PGLongRunningTransactionsCollector) Update(ctx context.Context, instance
 			age,
 		)
 	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	return nil
+
+	return rows.Err()
 }

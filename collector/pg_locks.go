@@ -120,8 +120,6 @@ func (c PGLocksCollector) Update(ctx context.Context, instance *instance, ch cha
 			datname.String, mode.String,
 		)
 	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	return nil
+
+	return rows.Err()
 }
