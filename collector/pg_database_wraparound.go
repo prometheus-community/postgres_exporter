@@ -105,8 +105,6 @@ func (c *PGDatabaseWraparoundCollector) Update(ctx context.Context, instance *in
 			ageDatminmxidMetric, datname.String,
 		)
 	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	return nil
+
+	return rows.Err()
 }

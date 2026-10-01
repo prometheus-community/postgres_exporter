@@ -419,8 +419,5 @@ func (c *PGStatUserTablesCollector) Update(ctx context.Context, instance *instan
 		)
 	}
 
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	return nil
+	return rows.Err()
 }

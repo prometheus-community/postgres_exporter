@@ -81,8 +81,6 @@ func (c PGXlogLocationCollector) Update(ctx context.Context, instance *instance,
 			bytes,
 		)
 	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	return nil
+
+	return rows.Err()
 }

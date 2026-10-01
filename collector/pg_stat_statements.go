@@ -326,10 +326,8 @@ func (c PGStatStatementsCollector) Update(ctx context.Context, instance *instanc
 			}
 		}
 	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	return nil
+
+	return rows.Err()
 }
 
 func (c PGStatStatementsCollector) buildExclusionClause(identifiers []string, clauseTemplate string) string {

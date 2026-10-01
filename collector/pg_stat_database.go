@@ -251,9 +251,7 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 		columns = append(columns, "active_time")
 	}
 
-	rows, err := db.QueryContext(ctx,
-		statDatabaseQuery(columns),
-	)
+	rows, err := db.QueryContext(ctx, statDatabaseQuery(columns))
 	if err != nil {
 		return err
 	}
@@ -511,5 +509,6 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 			)
 		}
 	}
-	return nil
+
+	return rows.Err()
 }

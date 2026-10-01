@@ -220,8 +220,5 @@ func (c *PGStatProgressVacuumCollector) Update(ctx context.Context, instance *in
 		ch <- prometheus.MustNewConstMetric(statProgressVacuumNumDeadTuples, prometheus.GaugeValue, numDead, labels...)
 	}
 
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	return nil
+	return rows.Err()
 }

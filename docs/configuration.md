@@ -69,7 +69,7 @@ The per-table and per-index collectors scale with your schema — one set of ser
 
 | Collector | Default | What it tells you |
 |---|---|---|
-| `settings` | enabled | Every boolean, integer, and real setting in `pg_settings`, exported as a metric. Makes server configuration queryable and configuration drift alertable. |
+| `settings` | enabled | Every boolean, integer, and real setting in `pg_settings`, exported as a metric, plus a `pg_settings_pending_restart` gauge for settings of any type that have been changed but only take effect after a server restart. Makes server configuration queryable and configuration drift alertable. |
 | `postmaster` | disabled | The server process start time, as a Unix timestamp. Use it to derive uptime and to detect unplanned restarts. |
 | `stat_statements` | disabled | Per-query aggregates: call counts, total execution time, rows returned, and block read/write time. The most direct way to find your slowest and most frequent queries. Requires the `pg_stat_statements` extension, and it is the highest-cardinality collector here — one series set per distinct query. From `pg_stat_statements`. |
 

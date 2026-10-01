@@ -261,8 +261,6 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 				labels...)
 		}
 	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	return nil
+
+	return rows.Err()
 }
