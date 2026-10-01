@@ -15,6 +15,7 @@ package collector
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -99,6 +100,7 @@ func TestPGSettingMetric(t *testing.T) {
 		setting    pgSetting
 		wantDesc   string
 		wantMetric float64
+		wantErr    string
 	}{
 		{
 			name:       "integer seconds",
@@ -118,11 +120,28 @@ func TestPGSettingMetric(t *testing.T) {
 			wantDesc:   `Desc{fqName: "pg_settings_rds_rds_superuser_reserved_connections", help: "Server Parameter: rds.rds-superuser-reserved-connections", unit: "", constLabels: {}, variableLabels: {}}`,
 			wantMetric: 2,
 		},
+		{
+			name:    "unsupported vartype",
+			setting: pgSetting{name: "wal_level", setting: "replica", vartype: "enum"},
+			wantErr: `pgsetting: unsupported vartype "enum"`,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			metric, err := tt.setting.metric()
+			if tt.wantErr != "" {
+				if err == nil {
+					t.Fatalf("metric() expected error %q", tt.wantErr)
+				}
+				if err.Error() != tt.wantErr {
+					t.Fatalf("metric() error = %q, want %q", err.Error(), tt.wantErr)
+				}
+				if !errors.Is(err, errUnsupportedVartype) {
+					t.Fatalf("metric() error = %v, want errUnsupportedVartype", err)
+				}
+				return
+			}
 			if err != nil {
 				t.Fatalf("metric() unexpected error: %v", err)
 			}
@@ -148,10 +167,14 @@ func TestPGSettingsCollectorUpdate(t *testing.T) {
 	defer db.Close()
 
 	inst := &instance{db: db}
-	rows := sqlmock.NewRows([]string{"name", "setting", "unit", "short_desc", "vartype"}).
-		AddRow("shared_buffers", "128", "8kB", "Sets the number of shared memory buffers used by the server.", "integer").
-		AddRow("track_counts", "on", "", "Collects statistics on database activity.", "bool").
-		AddRow("bad_setting", "not-a-number", "", "Bad setting.", "integer")
+	// shared_buffers and wal_level are pending a restart, so each gets a
+	// pg_settings_pending_restart metric. bad_setting has a broken value and
+	// wal_level no numeric vartype, so neither gets a value metric.
+	rows := sqlmock.NewRows([]string{"name", "setting", "unit", "short_desc", "vartype", "pending_restart"}).
+		AddRow("shared_buffers", "128", "8kB", "Sets the number of shared memory buffers used by the server.", "integer", true).
+		AddRow("track_counts", "on", "", "Collects statistics on database activity.", "bool", false).
+		AddRow("bad_setting", "not-a-number", "", "Bad setting.", "integer", false).
+		AddRow("wal_level", "replica", "", "Describe the level of write-ahead logging.", "enum", true)
 	mock.ExpectQuery(sanitizeQuery(pgSettingsQuery)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -166,7 +189,9 @@ func TestPGSettingsCollectorUpdate(t *testing.T) {
 	tests := []struct {
 		wantDesc  string
 		wantValue float64
+		wantName  string
 	}{
+		{wantDesc: pgSettingsPendingRestartDesc.String(), wantValue: 1, wantName: "shared_buffers"},
 		{
 			wantDesc:  `Desc{fqName: "pg_settings_shared_buffers_bytes", help: "Server Parameter: shared_buffers [Units converted to bytes.]", unit: "", constLabels: {}, variableLabels: {}}`,
 			wantValue: 1048576,
@@ -175,24 +200,32 @@ func TestPGSettingsCollectorUpdate(t *testing.T) {
 			wantDesc:  `Desc{fqName: "pg_settings_track_counts", help: "Server Parameter: track_counts", unit: "", constLabels: {}, variableLabels: {}}`,
 			wantValue: 1,
 		},
+		{wantDesc: pgSettingsPendingRestartDesc.String(), wantValue: 1, wantName: "wal_level"},
 	}
 
 	for _, tt := range tests {
 		metric := <-ch
-		got := &dto.Metric{}
-		if err := metric.Write(got); err != nil {
-			t.Fatalf("Write() unexpected error: %v", err)
+		got := readMetric(metric)
+		if got.metricType != dto.MetricType_GAUGE {
+			t.Fatalf("metric type = %v, want GAUGE", got.metricType)
 		}
 		if metric.Desc().String() != tt.wantDesc {
 			t.Fatalf("metric desc = %q, want %q", metric.Desc().String(), tt.wantDesc)
 		}
-		if got.GetGauge().GetValue() != tt.wantValue {
-			t.Fatalf("metric value = %v, want %v", got.GetGauge().GetValue(), tt.wantValue)
+		if got.value != tt.wantValue {
+			t.Fatalf("metric value = %v, want %v", got.value, tt.wantValue)
+		}
+		if tt.wantName != "" {
+			if got.labels["name"] != tt.wantName {
+				t.Fatalf(`metric name label = %q, want %q`, got.labels["name"], tt.wantName)
+			}
+		} else if len(got.labels) != 0 {
+			t.Fatalf("unexpected metric labels: %v", got.labels)
 		}
 	}
 
 	if metric, ok := <-ch; ok {
-		t.Fatalf("unexpected metric emitted after bad setting was skipped: %s", metric.Desc())
+		t.Fatalf("unexpected metric emitted: %s", metric.Desc())
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled exceptions: %s", err)
