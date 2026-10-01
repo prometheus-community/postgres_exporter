@@ -386,7 +386,25 @@ func (p *PostgresCollector) Close() error {
 
 func execute(ctx context.Context, name string, c Collector, instance *instance, ch chan<- prometheus.Metric, logger *slog.Logger, includeDatname bool) {
 	begin := time.Now()
-	err := c.Update(ctx, instance, ch)
+	// Buffer the collector's metrics so that nothing is exposed if Update fails
+	// part way through, e.g. after some rows were already processed.
+	buf := make(chan prometheus.Metric)
+	collected := make(chan []prometheus.Metric)
+	go func() {
+		var metrics []prometheus.Metric
+		for m := range buf {
+			metrics = append(metrics, m)
+		}
+		collected <- metrics
+	}()
+	err := c.Update(ctx, instance, buf)
+	close(buf)
+	metrics := <-collected
+	if err == nil {
+		for _, m := range metrics {
+			ch <- m
+		}
+	}
 	duration := time.Since(begin)
 	var success float64
 
