@@ -15,6 +15,7 @@ package collector
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -50,12 +51,27 @@ var (
 	// Settings intentionally ignored due to invalid format:
 	// - `sync_commit_cancel_wait`, specific to Azure Postgres, see https://github.com/prometheus-community/postgres_exporter/issues/523
 	// - `google_dataplex.max_messages`, specific to Google Cloud SQL, see https://github.com/prometheus-community/postgres_exporter/issues/1240
-	pgSettingsQuery = "SELECT name, setting, COALESCE(unit, ''), COALESCE(short_desc, ''), vartype FROM pg_settings WHERE vartype IN ('bool', 'integer', 'real') AND name NOT IN ('sync_commit_cancel_wait', 'google_dataplex.max_messages');"
+	pgSettingsQuery = "SELECT name, setting, COALESCE(unit, ''), COALESCE(short_desc, ''), vartype, pending_restart FROM pg_settings WHERE name NOT IN ('sync_commit_cancel_wait', 'google_dataplex.max_messages');"
+
+	// pgSettingsPendingRestartDesc reports which settings have been changed
+	// but only take effect after a server restart, as flagged by the
+	// pg_settings.pending_restart column.
+	pgSettingsPendingRestartDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, settingsSubsystem, "pending_restart"),
+		"PostgreSQL settings that require a server restart to take effect.",
+		[]string{"name"},
+		nil,
+	)
 )
+
+// errUnsupportedVartype distinguishes expected non-numeric settings
+// from malformed numeric values.
+var errUnsupportedVartype = errors.New("unsupported vartype")
 
 // Update implements Collector and exposes PostgreSQL runtime settings.
 func (c PGSettingsCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
+
 	rows, err := db.QueryContext(ctx, pgSettingsQuery)
 	if err != nil {
 		return err
@@ -64,12 +80,19 @@ func (c PGSettingsCollector) Update(ctx context.Context, instance *instance, ch 
 
 	for rows.Next() {
 		s := &pgSetting{}
-		if err := rows.Scan(&s.name, &s.setting, &s.unit, &s.shortDesc, &s.vartype); err != nil {
+		if err := rows.Scan(&s.name, &s.setting, &s.unit, &s.shortDesc, &s.vartype, &s.pendingRestart); err != nil {
 			return err
 		}
+
+		if s.pendingRestart {
+			ch <- prometheus.MustNewConstMetric(pgSettingsPendingRestartDesc, prometheus.GaugeValue, 1, s.name)
+		}
+
 		metric, err := s.metric()
 		if err != nil {
-			c.log.Warn("Error normalising unit for setting", "setting", s.name, "value", s.setting, "unit", s.unit, "error", err)
+			if !errors.Is(err, errUnsupportedVartype) {
+				c.log.Warn("Error normalising unit for setting", "setting", s.name, "value", s.setting, "unit", s.unit, "error", err)
+			}
 			continue
 		}
 		ch <- metric
@@ -81,7 +104,12 @@ func (c PGSettingsCollector) Update(ctx context.Context, instance *instance, ch 
 // pgSetting represents a PostgreSQL runtime variable as returned by the
 // pg_settings view.
 type pgSetting struct {
-	name, setting, unit, shortDesc, vartype string
+	name           string
+	setting        string
+	unit           string
+	shortDesc      string
+	vartype        string
+	pendingRestart bool
 }
 
 func (s *pgSetting) metric() (prometheus.Metric, error) {
@@ -108,7 +136,7 @@ func (s *pgSetting) metric() (prometheus.Metric, error) {
 			shortDesc = fmt.Sprintf("%s [Units converted to %s.]", shortDesc, unit)
 		}
 	default:
-		return nil, fmt.Errorf("pgsetting: unsupported vartype %q", s.vartype)
+		return nil, fmt.Errorf("pgsetting: %w %q", errUnsupportedVartype, s.vartype)
 	}
 
 	desc := prometheus.NewDesc(prometheus.BuildFQName(namespace, settingsSubsystem, name), shortDesc, nil, nil)
