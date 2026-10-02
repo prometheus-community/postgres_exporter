@@ -31,23 +31,6 @@ type instance struct {
 	wrapLargeCounters bool
 }
 
-func newInstance(dsn string) (*instance, error) {
-	i := &instance{
-		dsn:               dsn,
-		wrapLargeCounters: true,
-	}
-
-	// "Create" a database handle to verify the DSN provided is valid.
-	// Open is not guaranteed to create a connection.
-	db, err := sql.Open("postgres", dsn)
-	if err != nil {
-		return nil, err
-	}
-	db.Close()
-
-	return i, nil
-}
-
 // copy returns a copy of the instance.
 func (i *instance) copy() *instance {
 	return &instance{
@@ -65,14 +48,13 @@ func (i *instance) withDatabase(database string) (*instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("malformed dsn: %w", err)
 	}
-	other, err := newInstance(dsn.WithDatabase(database).GetConnectionString())
-	if err != nil {
-		return nil, err
+	other := &instance{
+		dsn:               dsn.WithDatabase(database).GetConnectionString(),
+		wrapLargeCounters: i.wrapLargeCounters,
+		// database is on the same PostgreSQL server as i, so it runs the same
+		// version; skip re-querying it over the new connection.
+		version: i.version,
 	}
-	other.wrapLargeCounters = i.wrapLargeCounters
-	// database is on the same PostgreSQL server as i, so it runs the same
-	// version; skip re-querying it over the new connection.
-	other.version = i.version
 	return other, nil
 }
 
