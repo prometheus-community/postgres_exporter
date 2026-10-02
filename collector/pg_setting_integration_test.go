@@ -35,7 +35,7 @@ func TestPGSettingsCollectorPendingRestart(t *testing.T) {
 	}
 	defer db.Close()
 
-	version, err := queryVersion(db)
+	version, err := queryVersion(context.Background(), db)
 	if err != nil {
 		t.Fatalf("queryVersion() error = %v", err)
 	}
