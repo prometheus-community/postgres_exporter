@@ -204,12 +204,10 @@ func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn st
 		return nil, errors.New("empty dsn")
 	}
 
-	instance, err := newInstance(dsn)
-	if err != nil {
-		return nil, err
+	p.instance = &instance{
+		dsn:               dsn,
+		wrapLargeCounters: p.wrapLargeCounters,
 	}
-	instance.wrapLargeCounters = p.wrapLargeCounters
-	p.instance = instance
 
 	return p, nil
 }
