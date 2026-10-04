@@ -14,6 +14,7 @@ package collector
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"sync"
 	"testing"
@@ -324,5 +325,52 @@ func TestNewPGStatStatementsCollectorUsesConfig(t *testing.T) {
 	}
 	if got.excludedUsers[0] != "monitor" {
 		t.Fatalf("excludedUsers[0] = %q, want monitor", got.excludedUsers[0])
+	}
+}
+
+type fakeCollector struct {
+	err error
+}
+
+func (f fakeCollector) Update(ctx context.Context, inst *instance, ch chan<- prometheus.Metric) error {
+	ch <- prometheus.MustNewConstMetric(
+		prometheus.NewDesc("fake_metric", "help", nil, nil), prometheus.GaugeValue, 1)
+	return f.err
+}
+
+func TestExecuteDropsMetricsOnError(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want []string
+	}{
+		{"success", nil, []string{"fake_metric", "pg_scrape_collector_duration_seconds", "pg_scrape_collector_success"}},
+		{"error", errors.New("boom"), []string{"pg_scrape_collector_duration_seconds", "pg_scrape_collector_success"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ch := make(chan prometheus.Metric, 10)
+			execute(context.Background(), "fake", fakeCollector{err: tt.err}, nil, ch, promslog.NewNopLogger(), false)
+			close(ch)
+			var got []string
+			success := -1.0
+			for m := range ch {
+				name := m.Desc().String()
+				for _, w := range []string{"pg_scrape_collector_duration_seconds", "pg_scrape_collector_success", "fake_metric"} {
+					if strings.Contains(name, `"`+w+`"`) {
+						got = append(got, w)
+						if w == "pg_scrape_collector_success" {
+							success = readMetric(m).value
+						}
+					}
+				}
+			}
+			if strings.Join(got, ",") != strings.Join(tt.want, ",") {
+				t.Fatalf("got metrics %v, want %v", got, tt.want)
+			}
+			if (tt.err == nil) != (success == 1) {
+				t.Fatalf("unexpected success value %v", success)
+			}
+		})
 	}
 }
