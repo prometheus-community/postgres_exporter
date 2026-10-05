@@ -34,6 +34,7 @@ The long_running_transactions collector can be customized with the `--collector.
 | `stat_user_tables` | enabled | Per-table: sequential vs. index scans, rows inserted/updated/deleted, live and dead tuple counts, rows modified since last analyze, last vacuum/analyze times and counts, and table and index size. How you find missing indexes and tables that aren't being vacuumed. From `pg_stat_user_tables`. |
 | `statio_user_tables` | enabled | Per-table block I/O: heap, index, and TOAST blocks read from disk vs. served from shared buffers. From `pg_statio_user_tables`. |
 | `statio_user_indexes` | disabled | The same read/hit split per *index* rather than per table. Off by default because it emits a series per index, which adds up quickly on large schemas. From `pg_statio_user_indexes`. |
+| `aurora_stat_dml_activity` | disabled | **Amazon Aurora PostgreSQL only.** Per database: the number and total time of successful `SELECT`, `INSERT`, `UPDATE` and `DELETE` operations. Divide the two rates for the average latency per operation. On non-Aurora servers it reports nothing. From `aurora_stat_dml_activity()`. |
 
 The per-table and per-index collectors scale with your schema — one set of series per table or index, per database scraped. On a database with thousands of tables this is the first place to look if the exporter's cardinality becomes a problem.
 

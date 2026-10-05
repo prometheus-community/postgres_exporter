@@ -76,6 +76,7 @@ const (
 	CollectorAuroraGlobalDBInstanceStatus = "aurora_global_db_instance_status"
 	CollectorAuroraGlobalDBStatus         = "aurora_global_db_status"
 	CollectorAuroraReplicaStatus          = "aurora_replica_status"
+	CollectorAuroraStatDMLActivity        = "aurora_stat_dml_activity"
 )
 
 type Config struct {
@@ -237,6 +238,7 @@ func DefaultCollectorConfig() map[string]bool {
 		CollectorAuroraGlobalDBInstanceStatus: false,
 		CollectorAuroraGlobalDBStatus:         false,
 		CollectorAuroraReplicaStatus:          false,
+		CollectorAuroraStatDMLActivity:        false,
 	}
 }
 

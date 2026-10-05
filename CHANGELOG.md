@@ -17,6 +17,7 @@ enabling wrapping later will still create this one-time reset boundary.
 * [FEATURE] Add `aurora_replica_status` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1311
 * [FEATURE] Add `aurora_global_db_status` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1308
 * [FEATURE] Add `aurora_global_db_instance_status` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1308
+* [FEATURE] Add `aurora_stat_dml_activity` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1308
 
 ## 0.20.1 / 2026-07-07
 
