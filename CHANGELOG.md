@@ -22,6 +22,7 @@ enabling wrapping later will still create this one-time reset boundary.
 * [FEATURE] Add `aurora_stat_logical_wal_cache` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1308
 * [FEATURE] Add `aurora_stat_database` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1308
 * [FEATURE] Add `aurora_stat_bgwriter` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1308
+* [FEATURE] Add `aurora_stat_optimized_reads_cache` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1308
 
 ## 0.20.1 / 2026-07-07
 

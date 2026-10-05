@@ -72,6 +72,7 @@ The per-table and per-index collectors scale with your schema — one set of ser
 | `stat_checkpointer` | disabled | Checkpoints and restartpoints: timed vs. requested counts, write and sync time, and buffers written. **PostgreSQL 17+ only** — on older servers the collector logs a warning and reports nothing. Enable it on 17+ to replace the checkpoint metrics that used to come from `stat_bgwriter`. From `pg_stat_checkpointer`. |
 | `buffercache_summary` | disabled | Shared buffer pool usage: used, unused, dirty, and pinned buffers plus average usage count. Requires `CREATE EXTENSION pg_buffercache` and PostgreSQL 16+ — see [Database Permissions](database-permissions.md#extension-specific-collectors). |
 | `aurora_stat_bgwriter` | disabled | **Amazon Aurora PostgreSQL only.** Data blocks written to the Optimized Reads cache and the time spent writing them (with `track_io_timing` on). Adds to `stat_bgwriter` rather than repeating it. Requires Aurora PostgreSQL 14.9, 15.4 or later; on older versions and on non-Aurora servers it reports nothing. From `aurora_stat_bgwriter()`. |
+| `aurora_stat_optimized_reads_cache` | disabled | **Amazon Aurora PostgreSQL only.** Total and used size of the Optimized Reads cache, which instance classes with local NVMe storage keep there. Requires Aurora PostgreSQL 14.9, 15.4 or later; on older versions and on non-Aurora servers it reports nothing. From `aurora_stat_optimized_reads_cache()`. |
 
 ### Server and query-level
 
