@@ -18,9 +18,11 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
@@ -223,6 +225,12 @@ func main() {
 	}
 
 	http.HandleFunc("/probe", handleProbe(logger, authHandler, cfg))
+	http.HandleFunc("/-/reload", handleReload(authHandler, *configFile))
+
+	reloadSignals := make(chan os.Signal, 1)
+	signal.Notify(reloadSignals, syscall.SIGHUP)
+	defer signal.Stop(reloadSignals)
+	go handleReloadSignal(reloadSignals, authHandler, *configFile, logger)
 
 	srv := &http.Server{}
 	if err := web.ListenAndServe(srv, webConfig, logger); err != nil {
