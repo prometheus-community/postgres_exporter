@@ -45,6 +45,7 @@ const (
 )
 
 const (
+	CollectorAuroraReplicaStatus     = "aurora_replica_status"
 	CollectorBuffercacheSummary      = "buffercache_summary"
 	CollectorDatabase                = "database"
 	CollectorDatabaseWraparound      = "database_wraparound"
@@ -201,6 +202,7 @@ func (c Config) clone() Config {
 
 func DefaultCollectorConfig() map[string]bool {
 	return map[string]bool{
+		CollectorAuroraReplicaStatus:     false,
 		CollectorBuffercacheSummary:      false,
 		CollectorDatabase:                true,
 		CollectorDatabaseWraparound:      false,
