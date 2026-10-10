@@ -151,7 +151,7 @@ func main() {
 
 	dsns, err := exporter.GetDataSources()
 	if err != nil {
-		logger.Error("Failed reading data sources", "err", err.Error())
+		logger.Error("Failed reading data sources", "err", err)
 		os.Exit(1)
 	}
 
