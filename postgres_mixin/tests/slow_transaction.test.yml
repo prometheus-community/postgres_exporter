@@ -1,0 +1,61 @@
+# Run from postgres_mixin with `make test`.
+rule_files:
+  - ../alerts.yaml
+evaluation_interval: 1m
+tests:
+  - name: old transaction is not diluted by other backend states
+    interval: 15s
+    input_series:
+      - series: pg_stat_activity_max_tx_duration{job="postgres",instance="pg-0:9187",datname="app",state="active"}
+        values: 0+15x80
+      - series: pg_stat_activity_max_tx_duration{job="postgres",instance="pg-0:9187",datname="app",state="idle"}
+        values: 0x80
+      - series: pg_stat_activity_max_tx_duration{job="postgres",instance="pg-0:9187",datname="app",state="idle in transaction"}
+        values: 0x80
+      - series: pg_stat_activity_max_tx_duration{job="postgres",instance="pg-0:9187",datname="app",state="idle in transaction (aborted)"}
+        values: 0x80
+      - series: pg_stat_activity_max_tx_duration{job="postgres",instance="pg-0:9187",datname="app",state="fastpath function call"}
+        values: 0x80
+      - series: pg_stat_activity_max_tx_duration{job="postgres",instance="pg-0:9187",datname="app",state="disabled"}
+        values: 0x80
+      - series: pg_stat_activity_max_tx_duration{job="postgres",instance="pg-1:9187",datname="app",state="active"}
+        values: 45x80
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: PostgreSQLSlowQueries
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: PostgreSQLSlowQueries
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: PostgreSQLSlowQueries
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: postgres
+              instance: pg-0:9187
+              datname: app
+            exp_annotations:
+              description: 'PostgreSQL transaction for database app on pg-0:9187 has been open for over 2 minutes (current maximum: 300s).'
+              summary: PostgreSQL transaction older than 2 minutes.
+  - name: transaction ends before pending period completes
+    interval: 15s
+    input_series:
+      - series: pg_stat_activity_max_tx_duration{job="postgres",instance="pg-0:9187",datname="app",state="active"}
+        values: 0+15x12 0x68
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: PostgreSQLSlowQueries
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: PostgreSQLSlowQueries
+        exp_alerts: []
+  - name: short transactions stay below threshold
+    interval: 15s
+    input_series:
+      - series: pg_stat_activity_max_tx_duration{job="postgres",instance="pg-0:9187",datname="app",state="active"}
+        values: 45x80
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: PostgreSQLSlowQueries
+        exp_alerts: []
