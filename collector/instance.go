@@ -29,6 +29,9 @@ type instance struct {
 	version           semver.Version
 	database          string
 	wrapLargeCounters bool
+	// isAurora reports whether the server is Amazon Aurora PostgreSQL.
+	// Aurora-specific collectors return ErrNoData when it is false.
+	isAurora bool
 }
 
 func newInstance(dsn string) (*instance, error) {
@@ -93,7 +96,10 @@ func (i *instance) setup(ctx context.Context) error {
 		i.version = version
 	}
 
-	if err := i.db.QueryRowContext(ctx, "SELECT current_database()").Scan(&i.database); err != nil {
+	// aurora_version() only exists on Amazon Aurora PostgreSQL. to_regproc
+	// returns NULL instead of raising an error when it is missing, so the
+	// check doesn't log errors on regular PostgreSQL servers.
+	if err := i.db.QueryRowContext(ctx, "SELECT current_database(), to_regproc('aurora_version') IS NOT NULL").Scan(&i.database, &i.isAurora); err != nil {
 		return fmt.Errorf("error querying current database: %w", err)
 	}
 	return nil
