@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
 func TestNewConfigWithDefaults(t *testing.T) {
@@ -325,5 +326,62 @@ func TestLoadBadConfigs(t *testing.T) {
 				t.Fatalf("ReloadAuthConfig(%q) = %v, want %s", test.input, got, test.want)
 			}
 		})
+	}
+}
+
+func TestReloadAuthConfigPreservesLastKnownGoodConfig(t *testing.T) {
+	ch, err := NewHandler(prometheus.NewRegistry())
+	if err != nil {
+		t.Fatalf("NewHandler() error = %v", err)
+	}
+
+	if err := ch.ReloadAuthConfig("testdata/config-good.yaml", nil); err != nil {
+		t.Fatalf("ReloadAuthConfig() initial load error = %v", err)
+	}
+
+	before := ch.GetAuthConfig()
+	if got, want := before.AuthModules["first"].UserPass.Username, "first"; got != want {
+		t.Fatalf("username before failed reload = %q, want %q", got, want)
+	}
+
+	if err := ch.ReloadAuthConfig("testdata/config-bad-auth-module.yaml", nil); err == nil {
+		t.Fatal("ReloadAuthConfig() error = nil, want error")
+	}
+
+	after := ch.GetAuthConfig()
+	if got, want := after.AuthModules["first"].UserPass.Username, "first"; got != want {
+		t.Fatalf("username after failed reload = %q, want %q", got, want)
+	}
+}
+
+func TestReloadAuthConfigMetrics(t *testing.T) {
+	ch, err := NewHandler(prometheus.NewRegistry())
+	if err != nil {
+		t.Fatalf("NewHandler() error = %v", err)
+	}
+
+	if err := ch.ReloadAuthConfig("testdata/config-good.yaml", nil); err != nil {
+		t.Fatalf("ReloadAuthConfig() error = %v", err)
+	}
+
+	if got, want := testutil.ToFloat64(ch.configReloadSuccess), float64(1); got != want {
+		t.Fatalf("config reload success = %v, want %v", got, want)
+	}
+
+	successTimestamp := testutil.ToFloat64(ch.configReloadSeconds)
+	if successTimestamp == 0 {
+		t.Fatal("config reload success timestamp = 0, want non-zero")
+	}
+
+	if err := ch.ReloadAuthConfig("testdata/config-bad-auth-module.yaml", nil); err == nil {
+		t.Fatal("ReloadAuthConfig() error = nil, want error")
+	}
+
+	if got, want := testutil.ToFloat64(ch.configReloadSuccess), float64(0); got != want {
+		t.Fatalf("config reload success after failed reload = %v, want %v", got, want)
+	}
+
+	if got := testutil.ToFloat64(ch.configReloadSeconds); got != successTimestamp {
+		t.Fatalf("config reload success timestamp after failed reload = %v, want %v", got, successTimestamp)
 	}
 }

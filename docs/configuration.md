@@ -133,6 +133,10 @@ auth_modules:
       sslmode: require
 ```
 
+The configuration file can be reloaded without restarting the exporter. Send a `SIGHUP` signal to the process or make a `POST` request to `/-/reload`.
+
+A successful reload replaces the current configuration. If the new configuration cannot be read or parsed, the existing configuration remains active. In that case, `POST /-/reload` returns a non-2xx response and a `SIGHUP` reload logs the error.
+
 ## Deprecated options
 
 These remain for backward compatibility but shouldn't be used in new deployments:
