@@ -14,18 +14,27 @@
 package config
 
 import (
+	"crypto/sha256"
+	"database/sql/driver"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"maps"
+	"net"
+	"net/url"
 	"os"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v3"
+
+	"github.com/prometheus-community/postgres_exporter/internal/connector"
 )
 
 const (
@@ -237,6 +246,7 @@ type AuthConfig struct {
 type AuthModule struct {
 	Type     string   `yaml:"type"`
 	UserPass UserPass `yaml:"userpass,omitempty"`
+	IAM      IAM      `yaml:"iam,omitempty"`
 	// Add alternative auth modules here
 	Options map[string]string `yaml:"options"`
 }
@@ -246,9 +256,22 @@ type UserPass struct {
 	Password string `yaml:"password"`
 }
 
+type IAM struct {
+	Region   string `yaml:"region,omitempty"`
+	RoleARN  string `yaml:"role_arn,omitempty"`
+	DBUser   string `yaml:"db_user,omitempty"`
+	Database string `yaml:"db_name,omitempty"`
+}
+
 type Handler struct {
 	sync.RWMutex
 	Config *AuthConfig
+
+	// connectors caches driver.Connectors built by AuthModule.Connector, keyed
+	// by auth module name and target, so expensive per-connector setup (e.g.
+	// the iam module's AWS credentials) isn't rebuilt on every /probe request.
+	// It is cleared whenever the auth config is reloaded.
+	connectors map[string]driver.Connector
 
 	configReloadSuccess prometheus.Gauge
 	configReloadSeconds prometheus.Gauge
@@ -343,7 +366,56 @@ func DecodeAuthConfig(r io.Reader) (*AuthConfig, error) {
 func (ch *Handler) SetAuthConfig(config *AuthConfig) {
 	ch.Lock()
 	ch.Config = config
+	ch.connectors = nil
 	ch.Unlock()
+}
+
+// maxCachedConnectors bounds the number of connectors Handler retains.
+const maxCachedConnectors = 128
+
+// ConnectorFor returns a cached driver.Connector for authModuleName+target,
+// building one via authModule.Connector on first use. This works for any auth
+// module type, since it caches whatever Connector returns without needing to
+// know what's inside it.
+func (ch *Handler) ConnectorFor(authModuleName string, authModule AuthModule, target string) (driver.Connector, error) {
+	// Only IAM connectors are worth caching: they hold AWS credential state
+	// that is expensive to rebuild. Static connectors are cheap.
+	if authModule.Type != "iam" {
+		return authModule.Connector(target)
+	}
+
+	// The key includes the module's own configuration, so a request that
+	// resolved its module before a reload can never populate an entry that a
+	// request using the reloaded configuration would find.
+	moduleJSON, err := json.Marshal(authModule)
+	if err != nil {
+		return nil, fmt.Errorf("encoding auth module %q: %w", authModuleName, err)
+	}
+	sum := sha256.Sum256(moduleJSON)
+	key := hex.EncodeToString(sum[:]) + "\x00" + target
+
+	// Building an IAM connector does no I/O, so it's cheap to do under the
+	// lock; that keeps concurrent probes of one target from building duplicates.
+	ch.Lock()
+	defer ch.Unlock()
+	if conn, ok := ch.connectors[key]; ok {
+		return conn, nil
+	}
+	conn, err := authModule.Connector(target)
+	if err != nil {
+		return nil, err
+	}
+	if ch.connectors == nil {
+		ch.connectors = make(map[string]driver.Connector)
+	} else if len(ch.connectors) >= maxCachedConnectors {
+		// Bound memory without discarding every cached credential provider.
+		for cachedKey := range ch.connectors {
+			delete(ch.connectors, cachedKey)
+			break
+		}
+	}
+	ch.connectors[key] = conn
+	return conn, nil
 }
 
 func (m AuthModule) ConfigureTarget(target string) (DSN, error) {
@@ -368,4 +440,110 @@ func (m AuthModule) ConfigureTarget(target string) (DSN, error) {
 	}
 
 	return dsn, nil
+}
+
+// Connector builds a driver.Connector
+func (m AuthModule) Connector(target string) (driver.Connector, error) {
+	if m.Type == "iam" {
+		dsn, err := dsnFromString(target)
+		if err != nil {
+			return nil, err
+		}
+
+		// db_user/db_name override target when set, else they're parsed from it.
+		dbUser := dsn.username
+		if m.IAM.DBUser != "" {
+			dbUser = m.IAM.DBUser
+		}
+		// A key=value DSN (or a ?dbname= URL) carries the database in the
+		// query rather than the path.
+		database := strings.TrimPrefix(dsn.path, "/")
+		if q := dsn.query.Get("dbname"); q != "" {
+			database = q
+		}
+		if name := m.Options["dbname"]; name != "" {
+			database = name
+		}
+		if m.IAM.Database != "" {
+			database = m.IAM.Database
+		}
+		if dbUser == "" {
+			return nil, errors.New(`auth module type "iam" requires a db user, from either iam.db_user or target`)
+		}
+		if database == "" {
+			return nil, errors.New(`auth module type "iam" requires a database name, from either iam.db_name or target`)
+		}
+
+		// options override target's own query parameters when set, same as for userpass.
+		options := url.Values{}
+		maps.Copy(options, dsn.query)
+		for k, v := range m.Options {
+			options.Set(k, v)
+		}
+		switch sslmode := options.Get("sslmode"); sslmode {
+		case "":
+			options.Set("sslmode", "require")
+		case "disable", "allow", "prefer":
+			return nil, fmt.Errorf("IAM authentication requires TLS; sslmode %q permits plaintext connections", sslmode)
+		}
+		options.Del("user")
+		options.Del("password")
+		// The database is carried by the path; drop any inherited dbname so
+		// it can't override the database selected above.
+		options.Del("dbname")
+		if m.IAM.Database != "" || m.Options["dbname"] != "" {
+			options.Del("database")
+		}
+		// Resolve the port lib/pq will actually dial: a port query parameter
+		// overrides the URL authority, and a portless target falls back to
+		// PGPORT. It's then written into the connection string explicitly, so
+		// the endpoint we sign for and the one we connect to can't diverge.
+		hostname, port := dsn.host, ""
+		if h, p, err := net.SplitHostPort(dsn.host); err == nil {
+			hostname, port = h, p
+		}
+		if h := options.Get("host"); h != "" {
+			hostname = h
+		}
+		if q := options.Get("port"); q != "" {
+			port = q
+		}
+		if port == "" {
+			port = os.Getenv("PGPORT")
+		}
+		if port == "" {
+			port = "5432"
+		}
+		options.Del("port")
+		endpoint := net.JoinHostPort(hostname, port)
+
+		// base is the connection, minus the password: the same shape every other
+		// auth mode builds via GetConnectionString, so a freshly minted IAM token
+		// only ever needs to be injected via WithPassword.
+		base := DSN{
+			scheme:   dsn.scheme,
+			username: dbUser,
+			host:     endpoint,
+			path:     "/" + database,
+			query:    options,
+		}
+
+		c, err := connector.NewAWSIAMConnector(
+			endpoint,
+			dbUser,
+			m.IAM.Region,
+			m.IAM.RoleARN,
+			func(token string) string { return base.WithPassword(token).GetConnectionString() },
+		)
+		if err != nil {
+			return nil, fmt.Errorf("configuring iam connector: %w", err)
+		}
+		return c, nil
+	}
+
+	dsn, err := m.ConfigureTarget(target)
+	if err != nil {
+		return nil, err
+	}
+	return connector.NewStaticConnector(dsn.GetConnectionString())
 }

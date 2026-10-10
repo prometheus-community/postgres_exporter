@@ -25,7 +25,7 @@ func TestGetServerRetryHonorsContextCancellation(t *testing.T) {
 	defer cancel()
 
 	started := time.Now()
-	_, err := NewServers().GetServer(ctx, "invalid dsn")
+	_, err := NewServers().GetServer(ctx, "invalid dsn", nil)
 
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("GetServer() error = %v, want context deadline exceeded", err)
