@@ -58,6 +58,7 @@ The per-table and per-index collectors scale with your schema — one set of ser
 | `xlog_location` | disabled | Current WAL write position (or replay position on a replica) as a byte offset. Superseded by `stat_replication`; retained for old setups and pre-10 servers. |
 | `aurora_replica_status` | disabled | **Amazon Aurora PostgreSQL only.** For each instance in the cluster: replica lag behind the writer, replay latency, and pending page reads. On non-Aurora servers it reports nothing. From `aurora_replica_status()`. |
 | `aurora_global_db_status` | disabled | **Amazon Aurora PostgreSQL only.** For each secondary cluster of an Aurora global database, by AWS Region: storage (durability) lag and recovery point objective (RPO) lag behind the primary cluster, in seconds. On non-Aurora servers it reports nothing. From `aurora_global_db_status()`. |
+| `aurora_global_db_instance_status` | disabled | **Amazon Aurora PostgreSQL only.** For each instance, including the cross-Region replicas of an Aurora global database: how far it lags behind the writer, in seconds. On non-Aurora servers it reports nothing. From `aurora_global_db_instance_status()`. |
 
 ### Checkpoints, buffers, and I/O
 
