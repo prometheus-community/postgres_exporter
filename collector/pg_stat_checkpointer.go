@@ -87,7 +87,13 @@ var (
 	)
 	statCheckpointerStatsResetDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statCheckpointerSubsystem, "stats_reset_total"),
-		"Time at which these statistics were last reset",
+		"Deprecated: use pg_stat_checkpointer_stats_reset_timestamp_seconds instead. Time at which these statistics were last reset",
+		[]string{},
+		prometheus.Labels{},
+	)
+	statCheckpointerStatsResetTimestampDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, statCheckpointerSubsystem, "stats_reset_timestamp_seconds"),
+		"Unix timestamp in seconds at which these statistics were last reset; 0 means PostgreSQL returned NULL",
 		[]string{},
 		prometheus.Labels{},
 	)
@@ -204,6 +210,11 @@ func (c PGStatCheckpointerCollector) Update(ctx context.Context, instance *insta
 	ch <- prometheus.MustNewConstMetric(
 		statCheckpointerStatsResetDesc,
 		prometheus.CounterValue,
+		srMetric,
+	)
+	ch <- prometheus.MustNewConstMetric(
+		statCheckpointerStatsResetTimestampDesc,
+		prometheus.GaugeValue,
 		srMetric,
 	)
 

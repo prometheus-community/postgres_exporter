@@ -73,6 +73,7 @@ func TestPGStatCheckpointerCollector(t *testing.T) {
 		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 450139},
 		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 2034563757},
 		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 1685059842},
+		{labels: labelMap{}, metricType: dto.MetricType_GAUGE, value: 1685059842},
 	}
 
 	convey.Convey("Metrics comparison", t, func() {
@@ -130,6 +131,7 @@ func TestPGStatCheckpointerCollectorNullValues(t *testing.T) {
 		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
 		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
 		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{}, metricType: dto.MetricType_GAUGE, value: 0},
 	}
 
 	convey.Convey("Metrics comparison", t, func() {
