@@ -45,7 +45,6 @@ const (
 )
 
 const (
-	CollectorAuroraReplicaStatus     = "aurora_replica_status"
 	CollectorBuffercacheSummary      = "buffercache_summary"
 	CollectorDatabase                = "database"
 	CollectorDatabaseWraparound      = "database_wraparound"
@@ -72,6 +71,10 @@ const (
 	CollectorStatioUserTables        = "statio_user_tables"
 	CollectorWal                     = "wal"
 	CollectorXlogLocation            = "xlog_location"
+
+	// Amazon Aurora PostgreSQL collectors.
+	CollectorAuroraGlobalDBStatus = "aurora_global_db_status"
+	CollectorAuroraReplicaStatus  = "aurora_replica_status"
 )
 
 type Config struct {
@@ -202,7 +205,6 @@ func (c Config) clone() Config {
 
 func DefaultCollectorConfig() map[string]bool {
 	return map[string]bool{
-		CollectorAuroraReplicaStatus:     false,
 		CollectorBuffercacheSummary:      false,
 		CollectorDatabase:                true,
 		CollectorDatabaseWraparound:      false,
@@ -229,6 +231,10 @@ func DefaultCollectorConfig() map[string]bool {
 		CollectorStatioUserTables:        true,
 		CollectorWal:                     true,
 		CollectorXlogLocation:            false,
+
+		// Amazon Aurora PostgreSQL collectors.
+		CollectorAuroraGlobalDBStatus: false,
+		CollectorAuroraReplicaStatus:  false,
 	}
 }
 
