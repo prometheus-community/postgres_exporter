@@ -22,6 +22,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -40,7 +41,7 @@ func (e *Exporter) discoverDatabaseDSNs(ctx context.Context) []string {
 			var err error
 			dsnURI, err = url.Parse(dsn)
 			if err != nil {
-				e.logger.Error("Unable to parse DSN as URI", "dsn", loggableDSN(dsn), "err", err)
+				e.logger.Error("Unable to parse DSN as URI", "dsn", loggableDSN(dsn), "err", config.RedactError(err, dsn))
 				continue
 			}
 		} else if connstringRe.MatchString(dsn) {
@@ -52,7 +53,7 @@ func (e *Exporter) discoverDatabaseDSNs(ctx context.Context) []string {
 
 		server, err := e.servers.GetServer(ctx, dsn)
 		if err != nil {
-			e.logger.Error("Error opening connection to database", "dsn", loggableDSN(dsn), "err", err)
+			e.logger.Error("Error opening connection to database", "dsn", loggableDSN(dsn), "err", config.RedactError(err, dsn))
 			continue
 		}
 		dsns[dsn] = struct{}{}
@@ -62,7 +63,7 @@ func (e *Exporter) discoverDatabaseDSNs(ctx context.Context) []string {
 
 		databaseNames, err := queryDatabases(ctx, server)
 		if err != nil {
-			e.logger.Error("Error querying databases", "dsn", loggableDSN(dsn), "err", err)
+			e.logger.Error("Error querying databases", "dsn", loggableDSN(dsn), "err", config.RedactError(err, dsn))
 			continue
 		}
 		for _, databaseName := range databaseNames {
@@ -100,7 +101,7 @@ func (e *Exporter) scrapeDSN(ctx context.Context, ch chan<- prometheus.Metric, d
 	server, err := e.servers.GetServer(ctx, dsn)
 
 	if err != nil {
-		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), err.Error())}
+		return &ErrorConnectToServer{fmt.Sprintf("Error opening connection to database (%s): %s", loggableDSN(dsn), config.RedactError(err, dsn))}
 	}
 
 	// Check if autoDiscoverDatabases is false, set dsn as master database (Default: false)
@@ -110,7 +111,7 @@ func (e *Exporter) scrapeDSN(ctx context.Context, ch chan<- prometheus.Metric, d
 
 	// Check if map versions need to be updated
 	if err := e.checkMapVersions(ctx, ch, server); err != nil {
-		e.logger.Warn("Proceeding with outdated query maps, as the Postgres version could not be determined", "err", err)
+		e.logger.Warn("Proceeding with outdated query maps, as the Postgres version could not be determined", "err", config.RedactError(err, dsn))
 	}
 
 	return server.Scrape(ctx, ch)
