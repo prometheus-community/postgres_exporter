@@ -116,6 +116,9 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
   Enable the `aurora_stat_database` collector (default: disabled).
 
 
+* `[no-]collector.aurora_stat_dml_activity`
+  Enable the `aurora_stat_dml_activity` collector (default: disabled).
+
 * `[no-]collector.aurora_stat_get_db_commit_latency`
   Enable the `aurora_stat_get_db_commit_latency` collector (default: disabled).
 
