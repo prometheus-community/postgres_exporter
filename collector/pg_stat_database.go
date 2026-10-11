@@ -202,7 +202,16 @@ var (
 		statDatabaseSubsystem,
 		"stats_reset",
 	),
-		"Time at which these statistics were last reset",
+		"Deprecated: use pg_stat_database_stats_reset_timestamp_seconds instead. Time at which these statistics were last reset",
+		[]string{"datid", "datname"},
+		prometheus.Labels{},
+	)
+	statDatabaseStatsResetTimestamp = prometheus.NewDesc(prometheus.BuildFQName(
+		namespace,
+		statDatabaseSubsystem,
+		"stats_reset_timestamp_seconds",
+	),
+		"Unix timestamp in seconds at which these statistics were last reset; 0 means PostgreSQL returned NULL",
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
 	)
@@ -496,6 +505,12 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 		ch <- prometheus.MustNewConstMetric(
 			statDatabaseStatsReset,
 			prometheus.CounterValue,
+			statsResetMetric,
+			labels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			statDatabaseStatsResetTimestamp,
+			prometheus.GaugeValue,
 			statsResetMetric,
 			labels...,
 		)
