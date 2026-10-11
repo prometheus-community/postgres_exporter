@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/smartystreets/goconvey/convey"
@@ -98,5 +99,44 @@ func TestPgWALCollectorZeroSegments(t *testing.T) {
 	})
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled exceptions: %s", err)
+	}
+}
+
+func TestPgWALCollectorErrors(t *testing.T) {
+	notSupported := &pq.Error{Code: "0A000", Message: "pg_ls_waldir() is currently not supported for Aurora"}
+	permissionDenied := &pq.Error{Code: "42501", Message: "permission denied for function pg_ls_waldir"}
+
+	for _, tc := range []struct {
+		name     string
+		isAurora bool
+		err      error
+		wantErr  bool
+	}{
+		{name: "Aurora rejects pg_ls_waldir", isAurora: true, err: notSupported, wantErr: false},
+		{name: "not supported outside Aurora", isAurora: false, err: notSupported, wantErr: true},
+		{name: "other errors on Aurora", isAurora: true, err: permissionDenied, wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			if err != nil {
+				t.Fatalf("Error opening a stub db connection: %s", err)
+			}
+			defer db.Close()
+
+			inst := &instance{db: db, isAurora: tc.isAurora}
+			mock.ExpectQuery(sanitizeQuery(pgWALQuery)).WillReturnError(tc.err)
+
+			ch := make(chan prometheus.Metric, 2)
+			err = PGWALCollector{}.Update(context.Background(), inst, ch)
+			if gotErr := err != nil; gotErr != tc.wantErr {
+				t.Errorf("PGWALCollector.Update returned %v, want an error: %v", err, tc.wantErr)
+			}
+			if len(ch) != 0 {
+				t.Errorf("Expected no metrics, got %d", len(ch))
+			}
+			if err := mock.ExpectationsWereMet(); err != nil {
+				t.Errorf("there were unfulfilled exceptions: %s", err)
+			}
+		})
 	}
 }

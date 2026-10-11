@@ -16,7 +16,9 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"errors"
 
+	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -69,6 +71,12 @@ func (c PGWALCollector) Update(ctx context.Context, instance *instance, ch chan<
 	var size sql.NullInt64
 	err := row.Scan(&segments, &size)
 	if err != nil {
+		// Some Amazon Aurora PostgreSQL versions reject pg_ls_waldir() as
+		// feature_not_supported. Report no WAL metrics there instead of
+		// failing every scrape; other Aurora versions run it as usual.
+		if instance.isAurora && isFeatureNotSupported(err) {
+			return nil
+		}
 		return err
 	}
 	ch <- prometheus.MustNewConstMetric(
@@ -82,4 +90,11 @@ func (c PGWALCollector) Update(ctx context.Context, instance *instance, ch chan<
 		)
 	}
 	return nil
+}
+
+// isFeatureNotSupported reports whether err is a PostgreSQL
+// feature_not_supported (0A000) error.
+func isFeatureNotSupported(err error) bool {
+	var pqErr *pq.Error
+	return errors.As(err, &pqErr) && pqErr.Code == "0A000"
 }
