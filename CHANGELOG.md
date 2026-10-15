@@ -16,6 +16,7 @@ enabling wrapping later will still create this one-time reset boundary.
 * [BUGFIX] Fix the `wal` collector failing on every scrape on Amazon Aurora PostgreSQL versions that don't support `pg_ls_waldir()` by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1312
 * [FEATURE] Export `pg_settings.pending_restart` as `pg_settings_pending_restart{name}` from the `settings` collector by @MarcWort in https://github.com/prometheus-community/postgres_exporter/pull/1396
 * [FEATURE] Add `aurora_replica_status` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1311
+* [FEATURE] Add `aurora_global_db_status` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1410
 
 ## 0.20.1 / 2026-07-07
 
