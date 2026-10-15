@@ -72,10 +72,10 @@ func (c PGWALCollector) Update(ctx context.Context, instance *instance, ch chan<
 	err := row.Scan(&segments, &size)
 	if err != nil {
 		// Some Amazon Aurora PostgreSQL versions reject pg_ls_waldir() as
-		// feature_not_supported. Report no WAL metrics there instead of
-		// failing every scrape; other Aurora versions run it as usual.
+		// feature_not_supported. Report no data there instead of failing
+		// every scrape; other Aurora versions run it as usual.
 		if instance.isAurora && isFeatureNotSupported(err) {
-			return nil
+			return ErrNoData
 		}
 		return err
 	}

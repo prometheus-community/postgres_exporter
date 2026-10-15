@@ -14,6 +14,7 @@ package collector
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -110,11 +111,11 @@ func TestPgWALCollectorErrors(t *testing.T) {
 		name     string
 		isAurora bool
 		err      error
-		wantErr  bool
+		wantErr  error
 	}{
-		{name: "Aurora rejects pg_ls_waldir", isAurora: true, err: notSupported, wantErr: false},
-		{name: "not supported outside Aurora", isAurora: false, err: notSupported, wantErr: true},
-		{name: "other errors on Aurora", isAurora: true, err: permissionDenied, wantErr: true},
+		{name: "Aurora rejects pg_ls_waldir", isAurora: true, err: notSupported, wantErr: ErrNoData},
+		{name: "not supported outside Aurora", isAurora: false, err: notSupported, wantErr: notSupported},
+		{name: "other errors on Aurora", isAurora: true, err: permissionDenied, wantErr: permissionDenied},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			db, mock, err := sqlmock.New()
@@ -128,8 +129,8 @@ func TestPgWALCollectorErrors(t *testing.T) {
 
 			ch := make(chan prometheus.Metric, 2)
 			err = PGWALCollector{}.Update(context.Background(), inst, ch)
-			if gotErr := err != nil; gotErr != tc.wantErr {
-				t.Errorf("PGWALCollector.Update returned %v, want an error: %v", err, tc.wantErr)
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("PGWALCollector.Update returned %v, want %v", err, tc.wantErr)
 			}
 			if len(ch) != 0 {
 				t.Errorf("Expected no metrics, got %d", len(ch))
