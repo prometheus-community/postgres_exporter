@@ -181,7 +181,7 @@ func parseFingerprint(dsn string) (string, error) {
 	if strings.HasPrefix(dsn, "postgres://") || strings.HasPrefix(dsn, "postgresql://") {
 		u, err := url.Parse(dsn)
 		if err != nil {
-			return "", fmt.Errorf("malformed dsn %q", dsn)
+			return "", fmt.Errorf("malformed dsn")
 		}
 
 		host := u.Hostname()
@@ -202,7 +202,7 @@ func parseFingerprint(dsn string) (string, error) {
 	for _, pair := range pairs {
 		splitted := strings.SplitN(pair, "=", 2)
 		if len(splitted) != 2 {
-			return "", fmt.Errorf("malformed dsn %q", dsn)
+			return "", fmt.Errorf("malformed dsn")
 		}
 		key := strings.Trim(splitted[0], "'\"")
 		value := strings.Trim(splitted[1], "'\"")

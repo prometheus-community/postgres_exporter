@@ -14,6 +14,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -174,7 +175,9 @@ func dsnFromString(in string) (DSN, error) {
 func dsnFromURL(in string) (DSN, error) {
 	u, err := url.Parse(in)
 	if err != nil {
-		return DSN{}, err
+		// The *url.Error quotes the whole input, password included, so it is
+		// not passed on.
+		return DSN{}, errors.New("could not parse DSN as a URL")
 	}
 	pass, _ := u.User.Password()
 	user := u.User.Username()
