@@ -73,8 +73,9 @@ const (
 	CollectorXlogLocation            = "xlog_location"
 
 	// Amazon Aurora PostgreSQL collectors.
-	CollectorAuroraGlobalDBStatus = "aurora_global_db_status"
-	CollectorAuroraReplicaStatus  = "aurora_replica_status"
+	CollectorAuroraGlobalDBInstanceStatus = "aurora_global_db_instance_status"
+	CollectorAuroraGlobalDBStatus         = "aurora_global_db_status"
+	CollectorAuroraReplicaStatus          = "aurora_replica_status"
 )
 
 type Config struct {
@@ -233,8 +234,9 @@ func DefaultCollectorConfig() map[string]bool {
 		CollectorXlogLocation:            false,
 
 		// Amazon Aurora PostgreSQL collectors.
-		CollectorAuroraGlobalDBStatus: false,
-		CollectorAuroraReplicaStatus:  false,
+		CollectorAuroraGlobalDBInstanceStatus: false,
+		CollectorAuroraGlobalDBStatus:         false,
+		CollectorAuroraReplicaStatus:          false,
 	}
 }
 
