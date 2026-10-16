@@ -29,23 +29,9 @@ type instance struct {
 	version           semver.Version
 	database          string
 	wrapLargeCounters bool
-}
-
-func newInstance(dsn string) (*instance, error) {
-	i := &instance{
-		dsn:               dsn,
-		wrapLargeCounters: true,
-	}
-
-	// "Create" a database handle to verify the DSN provided is valid.
-	// Open is not guaranteed to create a connection.
-	db, err := sql.Open("postgres", dsn)
-	if err != nil {
-		return nil, err
-	}
-	db.Close()
-
-	return i, nil
+	// isAurora reports whether the server is Amazon Aurora PostgreSQL.
+	// Aurora-specific collectors return ErrNoData when it is false.
+	isAurora bool
 }
 
 // copy returns a copy of the instance.
@@ -65,14 +51,13 @@ func (i *instance) withDatabase(database string) (*instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("malformed dsn: %w", err)
 	}
-	other, err := newInstance(dsn.WithDatabase(database).GetConnectionString())
-	if err != nil {
-		return nil, err
+	other := &instance{
+		dsn:               dsn.WithDatabase(database).GetConnectionString(),
+		wrapLargeCounters: i.wrapLargeCounters,
+		// database is on the same PostgreSQL server as i, so it runs the same
+		// version; skip re-querying it over the new connection.
+		version: i.version,
 	}
-	other.wrapLargeCounters = i.wrapLargeCounters
-	// database is on the same PostgreSQL server as i, so it runs the same
-	// version; skip re-querying it over the new connection.
-	other.version = i.version
 	return other, nil
 }
 
@@ -93,7 +78,10 @@ func (i *instance) setup(ctx context.Context) error {
 		i.version = version
 	}
 
-	if err := i.db.QueryRowContext(ctx, "SELECT current_database()").Scan(&i.database); err != nil {
+	// aurora_version() only exists on Amazon Aurora PostgreSQL. to_regproc
+	// returns NULL instead of raising an error when it is missing, so the
+	// check doesn't log errors on regular PostgreSQL servers.
+	if err := i.db.QueryRowContext(ctx, "SELECT current_database(), to_regproc('aurora_version') IS NOT NULL").Scan(&i.database, &i.isAurora); err != nil {
 		return fmt.Errorf("error querying current database: %w", err)
 	}
 	return nil

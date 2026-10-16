@@ -71,6 +71,10 @@ const (
 	CollectorStatioUserTables        = "statio_user_tables"
 	CollectorWal                     = "wal"
 	CollectorXlogLocation            = "xlog_location"
+
+	// Amazon Aurora PostgreSQL collectors.
+	CollectorAuroraGlobalDBStatus = "aurora_global_db_status"
+	CollectorAuroraReplicaStatus  = "aurora_replica_status"
 )
 
 type Config struct {
@@ -227,6 +231,10 @@ func DefaultCollectorConfig() map[string]bool {
 		CollectorStatioUserTables:        true,
 		CollectorWal:                     true,
 		CollectorXlogLocation:            false,
+
+		// Amazon Aurora PostgreSQL collectors.
+		CollectorAuroraGlobalDBStatus: false,
+		CollectorAuroraReplicaStatus:  false,
 	}
 }
 

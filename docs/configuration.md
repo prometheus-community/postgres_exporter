@@ -53,9 +53,11 @@ The per-table and per-index collectors scale with your schema — one set of ser
 | `stat_replication` | enabled | Seen from the primary: for each connected standby, how many WAL bytes it is behind on sent/written/flushed/replayed, plus the primary's current WAL position. From `pg_stat_replication`. |
 | `replication_slots` | enabled | Per slot: whether it's active, and how much WAL the slot is holding back. An inactive slot quietly retaining WAL is a classic way to fill a disk. From `pg_replication_slots`. |
 | `stat_archiver` | enabled | WAL archiving: count of archived and failed segments, and seconds since the last successful archive. Catches a broken `archive_command` before it fills `pg_wal`. From `pg_stat_archiver`. |
-| `wal` | enabled | Number of WAL segment files and their total size on disk, via `pg_ls_waldir()`. |
+| `wal` | enabled | Number of WAL segment files and their total size on disk, via `pg_ls_waldir()`. On Amazon Aurora PostgreSQL versions that don't support `pg_ls_waldir()`, it reports nothing. |
 | `stat_wal_receiver` | disabled | Seen from a standby: the WAL receiver's LSNs, timeline, upstream node, and last message send/receipt times. Enable this on replicas for a view of the receiving side. From `pg_stat_wal_receiver`. |
 | `xlog_location` | disabled | Current WAL write position (or replay position on a replica) as a byte offset. Superseded by `stat_replication`; retained for old setups and pre-10 servers. |
+| `aurora_replica_status` | disabled | **Amazon Aurora PostgreSQL only.** For each instance in the cluster: replica lag behind the writer, replay latency, and pending page reads. On non-Aurora servers it reports nothing. From `aurora_replica_status()`. |
+| `aurora_global_db_status` | disabled | **Amazon Aurora PostgreSQL only.** For each secondary cluster of an Aurora global database, by AWS Region: storage (durability) lag and recovery point objective (RPO) lag behind the primary cluster, in seconds. On non-Aurora servers it reports nothing. From `aurora_global_db_status()`. |
 
 ### Checkpoints, buffers, and I/O
 
