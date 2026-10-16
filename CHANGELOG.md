@@ -35,6 +35,8 @@ the `-file` flags at a mounted secret.
 * [FEATURE] Add `aurora_replica_status` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1311
 * [FEATURE] Add `aurora_global_db_status` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1410
 
+* [ENHANCEMENT] Expose `pg_stat_bgwriter`, `pg_stat_checkpointer`, and `pg_stat_database` statistics reset times as `_timestamp_seconds` gauges; retain the former counter families as deprecated aliases.
+
 ## 0.20.1 / 2026-07-07
 
 * [BUGFIX] stat_replication: fix "slot_name does not exist" by joining `pg_replication_slots` by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1313

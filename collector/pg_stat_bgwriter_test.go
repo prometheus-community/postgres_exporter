@@ -77,6 +77,7 @@ func TestPGStatBGWriterCollector(t *testing.T) {
 		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
 		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 2725688749},
 		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 1685059842},
+		{labels: labelMap{}, metricType: dto.MetricType_GAUGE, value: 1685059842},
 	}
 
 	convey.Convey("Metrics comparison", t, func() {
@@ -138,6 +139,7 @@ func TestPGStatBGWriterCollectorNullValues(t *testing.T) {
 		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
 		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
 		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
+		{labels: labelMap{}, metricType: dto.MetricType_GAUGE, value: 0},
 	}
 
 	convey.Convey("Metrics comparison", t, func() {
@@ -192,7 +194,7 @@ func TestPGStatBGWriterCollectorWrapsLargeCounters(t *testing.T) {
 			if metric.value != test.value {
 				t.Fatalf("buffers_clean value = %v, want %v", metric.value, test.value)
 			}
-			for range 3 {
+			for range 4 {
 				<-ch
 			}
 
