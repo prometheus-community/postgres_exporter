@@ -58,7 +58,7 @@ and `datname` labels; update dashboards and alerts to use the names without
 |---|---|---|
 | `replication` | enabled | Whether this instance is a replica, and if so how far behind it is replaying (in seconds). The simplest replication-lag signal. |
 | `stat_replication` | enabled | Seen from the primary: for each connected standby, how many WAL bytes it is behind on sent/written/flushed/replayed, plus the primary's current WAL position. From `pg_stat_replication`. |
-| `replication_slots` | enabled | Per slot: whether it's active, and how much WAL the slot is holding back. An inactive slot quietly retaining WAL is a classic way to fill a disk. From `pg_replication_slots`. |
+| `replication_slots` | enabled | Per slot: whether it's active, and how much WAL the slot is holding back. An inactive slot quietly retaining WAL is a classic way to fill a disk. On PostgreSQL 17+ it also reports whether a logical slot was invalidated by a conflict with recovery, when the slot became inactive, and whether it is a failover slot or was synced from a primary. From `pg_replication_slots`. |
 | `stat_archiver` | enabled | WAL archiving: count of archived and failed segments, and seconds since the last successful archive. Catches a broken `archive_command` before it fills `pg_wal`. From `pg_stat_archiver`. |
 | `wal` | enabled | Number of WAL segment files and their total size on disk, via `pg_ls_waldir()`. On Amazon Aurora PostgreSQL versions that don't support `pg_ls_waldir()`, it reports nothing. |
 | `stat_wal_receiver` | disabled | Seen from a standby: the WAL receiver's LSNs, timeline, upstream node, and last message send/receipt times. Enable this on replicas for a view of the receiving side. From `pg_stat_wal_receiver`. |
