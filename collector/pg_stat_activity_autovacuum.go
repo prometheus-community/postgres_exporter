@@ -44,7 +44,7 @@ var (
 	statActivityAutovacuumQuery = `
     SELECT
 		COALESCE(datname, '') AS datname,
-		REVERSE(SPLIT_PART(REVERSE(SPLIT_PART(query, '.', 1)), ' ', 1)) AS schemaname,
+		SPLIT_PART(REGEXP_REPLACE(query, '^autovacuum: (VACUUM( ANALYZE)?|ANALYZE|BRIN summarize) ', ''), '.', 1) AS schemaname,
 		SPLIT_PART(query, '.', 2) AS relname,
 		EXTRACT(EPOCH FROM xact_start) AS timestamp_seconds
     FROM
