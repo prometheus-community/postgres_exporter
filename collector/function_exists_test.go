@@ -20,24 +20,24 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 )
 
-func expectAuroraFunctionExists(mock sqlmock.Sqlmock, name string, exists bool) {
-	mock.ExpectQuery(sanitizeQuery(auroraFunctionExistsQuery)).
+func expectFunctionExists(mock sqlmock.Sqlmock, name string, exists bool) {
+	mock.ExpectQuery(sanitizeQuery(functionExistsQuery)).
 		WithArgs(name).
 		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(exists))
 }
 
-func TestAuroraFunctionExists(t *testing.T) {
+func TestFunctionExists(t *testing.T) {
 	for _, exists := range []bool{true, false} {
 		db, mock, err := sqlmock.New()
 		if err != nil {
 			t.Fatalf("Error opening a stub db connection: %s", err)
 		}
 
-		expectAuroraFunctionExists(mock, "aurora_stat_logical_wal_cache", exists)
+		expectFunctionExists(mock, "aurora_stat_logical_wal_cache", exists)
 
-		got, err := auroraFunctionExists(context.Background(), db, "aurora_stat_logical_wal_cache")
+		got, err := functionExists(context.Background(), db, "aurora_stat_logical_wal_cache")
 		if err != nil {
-			t.Errorf("Error calling auroraFunctionExists: %s", err)
+			t.Errorf("Error calling functionExists: %s", err)
 		}
 		if got != exists {
 			t.Errorf("Expected %v, got %v", exists, got)

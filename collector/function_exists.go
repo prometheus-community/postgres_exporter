@@ -18,16 +18,16 @@ import (
 	"database/sql"
 )
 
-// auroraFunctionExistsQuery uses to_regproc, which returns NULL instead of
+// functionExistsQuery uses to_regproc, which returns NULL instead of
 // raising an error when the function doesn't exist.
-const auroraFunctionExistsQuery = `SELECT to_regproc($1) IS NOT NULL`
+const functionExistsQuery = `SELECT to_regproc($1) IS NOT NULL`
 
-// auroraFunctionExists reports whether an Aurora function exists on the
-// server. Some Aurora functions only exist in newer Aurora PostgreSQL
-// versions; their collectors check first, so older versions report no data
-// instead of an error on every scrape.
-func auroraFunctionExists(ctx context.Context, db *sql.DB, name string) (bool, error) {
+// functionExists reports whether a function exists on the server. Some
+// functions only exist in newer versions or on some types of instances, e.g.
+// Amazon Aurora PostgreSQL; their collectors check first, so other servers
+// report no data instead of an error on every scrape.
+func functionExists(ctx context.Context, db *sql.DB, name string) (bool, error) {
 	var exists bool
-	err := db.QueryRowContext(ctx, auroraFunctionExistsQuery, name).Scan(&exists)
+	err := db.QueryRowContext(ctx, functionExistsQuery, name).Scan(&exists)
 	return exists, err
 }

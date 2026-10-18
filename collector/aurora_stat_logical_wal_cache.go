@@ -69,7 +69,7 @@ func (c AuroraStatLogicalWalCacheCollector) Update(ctx context.Context, instance
 
 	// aurora_stat_logical_wal_cache() is only in Aurora PostgreSQL 11.17+,
 	// 12.12+, 13.8+, 14.7+ and 15.2+.
-	exists, err := auroraFunctionExists(ctx, db, "aurora_stat_logical_wal_cache")
+	exists, err := functionExists(ctx, db, "aurora_stat_logical_wal_cache")
 	if err != nil {
 		return err
 	}

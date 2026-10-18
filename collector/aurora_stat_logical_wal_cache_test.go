@@ -39,7 +39,7 @@ func TestAuroraStatLogicalWalCacheCollector(t *testing.T) {
 
 	inst := &instance{db: db, isAurora: true}
 
-	expectAuroraFunctionExists(mock, "aurora_stat_logical_wal_cache", true)
+	expectFunctionExists(mock, "aurora_stat_logical_wal_cache", true)
 	rows := sqlmock.NewRows(auroraStatLogicalWalCacheColumns).
 		AddRow("test_slot1", 24, 0, 24).
 		AddRow("test_slot2", 1, 2, 3)
@@ -113,7 +113,7 @@ func TestAuroraStatLogicalWalCacheCollectorFunctionMissing(t *testing.T) {
 	// Older Aurora versions don't have the function: only the existence
 	// check runs.
 	inst := &instance{db: db, isAurora: true}
-	expectAuroraFunctionExists(mock, "aurora_stat_logical_wal_cache", false)
+	expectFunctionExists(mock, "aurora_stat_logical_wal_cache", false)
 
 	ch := make(chan prometheus.Metric, 1)
 	c := AuroraStatLogicalWalCacheCollector{}
@@ -137,7 +137,7 @@ func TestAuroraStatLogicalWalCacheCollectorNoRows(t *testing.T) {
 
 	inst := &instance{db: db, isAurora: true}
 
-	expectAuroraFunctionExists(mock, "aurora_stat_logical_wal_cache", true)
+	expectFunctionExists(mock, "aurora_stat_logical_wal_cache", true)
 	mock.ExpectQuery(sanitizeQuery(auroraStatLogicalWalCacheQuery)).WillReturnRows(sqlmock.NewRows(auroraStatLogicalWalCacheColumns))
 
 	ch := make(chan prometheus.Metric, 1)
