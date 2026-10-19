@@ -1,5 +1,7 @@
 ## main / (unreleased)
 
+* [BUGFIX] Add unit-correct `pg_database_wraparound_age_datfrozenxid` and `pg_database_wraparound_age_datminmxid` gauges. The existing `_seconds` metrics remain as deprecated aliases with unchanged ID-count values; migrate dashboards, rules, and alerts to the new names.
+
 **WARNING: upgrading with large counters can cause a one-time false rate spike.**
 Non-negative 64-bit counters are now wrapped at `2^53` by default so that
 single-unit changes remain representable as `float64`. On the first scrape

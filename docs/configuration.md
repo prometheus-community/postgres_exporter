@@ -45,6 +45,13 @@ The per-table and per-index collectors scale with your schema — one set of ser
 | `stat_activity_autovacuum` | disabled | The start time of each running autovacuum worker, labeled by the relation it's working on. Shows autovacuum workers that have been stuck for hours. |
 | `database_wraparound` | disabled | Age of `datfrozenxid` and `datminmxid` per database. This is the early warning for transaction ID wraparound — worth enabling on any database with high write volume. |
 
+The `database_wraparound` gauges `pg_database_wraparound_age_datfrozenxid`
+and `pg_database_wraparound_age_datminmxid` report transaction ID and
+MultiXact ID counts, respectively. They are not elapsed time. The former
+`_seconds` names remain available as deprecated aliases with the same values
+and `datname` labels; update dashboards and alerts to use the names without
+`_seconds`.
+
 ### Replication and WAL
 
 | Collector | Default | What it tells you |
