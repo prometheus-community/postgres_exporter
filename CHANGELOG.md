@@ -1,5 +1,7 @@
 ## main / (unreleased)
 
+* [BUGFIX] Add unit-correct `pg_database_wraparound_age_datfrozenxid` and `pg_database_wraparound_age_datminmxid` gauges. The existing `_seconds` metrics remain as deprecated aliases with unchanged ID-count values; migrate dashboards, rules, and alerts to the new names.
+
 **WARNING: upgrading with large counters can cause a one-time false rate spike.**
 Non-negative 64-bit counters are now wrapped at `2^53` by default so that
 single-unit changes remain representable as `float64`. On the first scrape
@@ -34,6 +36,7 @@ the `-file` flags at a mounted secret.
 * [FEATURE] Export `pg_settings.pending_restart` as `pg_settings_pending_restart{name}` from the `settings` collector by @MarcWort in https://github.com/prometheus-community/postgres_exporter/pull/1396
 * [FEATURE] Add `aurora_replica_status` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1311
 * [FEATURE] Add `aurora_global_db_status` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1410
+* [FEATURE] Add `aurora_stat_logical_wal_cache` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1414
 
 ## 0.20.1 / 2026-07-07
 

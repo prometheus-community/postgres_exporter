@@ -45,6 +45,13 @@ The per-table and per-index collectors scale with your schema — one set of ser
 | `stat_activity_autovacuum` | disabled | The start time of each running autovacuum worker, labeled by the relation it's working on. Shows autovacuum workers that have been stuck for hours. |
 | `database_wraparound` | disabled | Age of `datfrozenxid` and `datminmxid` per database. This is the early warning for transaction ID wraparound — worth enabling on any database with high write volume. |
 
+The `database_wraparound` gauges `pg_database_wraparound_age_datfrozenxid`
+and `pg_database_wraparound_age_datminmxid` report transaction ID and
+MultiXact ID counts, respectively. They are not elapsed time. The former
+`_seconds` names remain available as deprecated aliases with the same values
+and `datname` labels; update dashboards and alerts to use the names without
+`_seconds`.
+
 ### Replication and WAL
 
 | Collector | Default | What it tells you |
@@ -58,6 +65,7 @@ The per-table and per-index collectors scale with your schema — one set of ser
 | `xlog_location` | disabled | Current WAL write position (or replay position on a replica) as a byte offset. Superseded by `stat_replication`; retained for old setups and pre-10 servers. |
 | `aurora_replica_status` | disabled | **Amazon Aurora PostgreSQL only.** For each instance in the cluster: replica lag behind the writer, replay latency, and pending page reads. On non-Aurora servers it reports nothing. From `aurora_replica_status()`. |
 | `aurora_global_db_status` | disabled | **Amazon Aurora PostgreSQL only.** For each secondary cluster of an Aurora global database, by AWS Region: storage (durability) lag and recovery point objective (RPO) lag behind the primary cluster, in seconds. On non-Aurora servers it reports nothing. From `aurora_global_db_status()`. |
+| `aurora_stat_logical_wal_cache` | disabled | **Amazon Aurora PostgreSQL only.** Per logical replication slot: WAL cache hits, misses, and read requests. Requires Aurora PostgreSQL 11.17, 12.12, 13.8, 14.7, 15.2 or later; on older versions and on non-Aurora servers it reports nothing. From `aurora_stat_logical_wal_cache()`. |
 
 ### Checkpoints, buffers, and I/O
 
