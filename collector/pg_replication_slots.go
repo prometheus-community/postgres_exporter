@@ -98,6 +98,42 @@ var (
 		"availability of WAL files claimed by this slot",
 		[]string{"slot_name", "slot_type", "wal_status"}, nil,
 	)
+	replicationSlotsConflictingDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(
+			namespace,
+			replicationSlotsSubsystem,
+			"conflicting",
+		),
+		"whether the logical replication slot was invalidated by a conflict with recovery",
+		replicationSlotsSlotLabels, nil,
+	)
+	replicationSlotsInactiveSinceDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(
+			namespace,
+			replicationSlotsSubsystem,
+			"inactive_since_timestamp_seconds",
+		),
+		"time when the replication slot became inactive, in seconds since the Unix epoch",
+		replicationSlotsSlotLabels, nil,
+	)
+	replicationSlotsFailoverDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(
+			namespace,
+			replicationSlotsSubsystem,
+			"failover",
+		),
+		"whether the logical replication slot is enabled to be synced to standbys",
+		replicationSlotsSlotLabels, nil,
+	)
+	replicationSlotsSyncedDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(
+			namespace,
+			replicationSlotsSubsystem,
+			"synced",
+		),
+		"whether the logical replication slot was synced from a primary server",
+		replicationSlotsSlotLabels, nil,
+	)
 
 	replicationSlotsQuery = `
 			SELECT slot_name, database, active,
@@ -133,6 +169,23 @@ var (
 		active,
 		safe_wal_size,
 		wal_status
+	FROM pg_replication_slots;`
+	replicationSlotsSlotQueryPG17 = `SELECT
+		slot_name,
+		slot_type,
+		CASE WHEN pg_is_in_recovery() THEN
+		    pg_last_wal_receive_lsn() - '0/0'
+		ELSE
+		    pg_current_wal_lsn() - '0/0'
+		END AS current_wal_lsn,
+		COALESCE(confirmed_flush_lsn, '0/0') - '0/0' AS confirmed_flush_lsn,
+		active,
+		safe_wal_size,
+		wal_status,
+		conflicting,
+		EXTRACT(EPOCH FROM inactive_since) AS inactive_since,
+		failover,
+		synced
 	FROM pg_replication_slots;`
 )
 
@@ -213,7 +266,11 @@ func updateReplicationSlotsBefore10(ctx context.Context, instance *instance, ch 
 func updateReplicationSlotsSlotMetrics(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	query := replicationSlotsSlotQuery
 	abovePG13 := instance.version.GTE(semver.MustParse("13.0.0"))
-	if abovePG13 {
+	abovePG17 := instance.version.GTE(semver.MustParse("17.0.0"))
+	switch {
+	case abovePG17:
+		query = replicationSlotsSlotQueryPG17
+	case abovePG13:
 		query = replicationSlotsSlotNewQuery
 	}
 
@@ -232,6 +289,10 @@ func updateReplicationSlotsSlotMetrics(ctx context.Context, instance *instance, 
 		var isActive sql.NullBool
 		var safeWalSize sql.NullInt64
 		var walStatus sql.NullString
+		var conflicting sql.NullBool
+		var inactiveSince sql.NullFloat64
+		var failover sql.NullBool
+		var synced sql.NullBool
 
 		r := []any{
 			&slotName,
@@ -244,6 +305,9 @@ func updateReplicationSlotsSlotMetrics(ctx context.Context, instance *instance, 
 		if abovePG13 {
 			r = append(r, &safeWalSize)
 			r = append(r, &walStatus)
+		}
+		if abovePG17 {
+			r = append(r, &conflicting, &inactiveSince, &failover, &synced)
 		}
 
 		if err := rows.Scan(r...); err != nil {
@@ -264,7 +328,7 @@ func updateReplicationSlotsSlotMetrics(ctx context.Context, instance *instance, 
 				prometheus.GaugeValue, flushLSN.Float64, slotLabels...,
 			)
 		}
-		emitReplicationSlotsSlotIsActive(ch, isActive, slotLabels)
+		emitReplicationSlotsSlotBool(ch, replicationSlotsIsActiveDesc, isActive, slotLabels)
 
 		if safeWalSize.Valid {
 			ch <- prometheus.MustNewConstMetric(
@@ -279,6 +343,18 @@ func updateReplicationSlotsSlotMetrics(ctx context.Context, instance *instance, 
 				prometheus.GaugeValue, 1, slotLabels[0], slotLabels[1], walStatus.String,
 			)
 		}
+
+		emitReplicationSlotsSlotBool(ch, replicationSlotsConflictingDesc, conflicting, slotLabels)
+
+		if inactiveSince.Valid {
+			ch <- prometheus.MustNewConstMetric(
+				replicationSlotsInactiveSinceDesc,
+				prometheus.GaugeValue, inactiveSince.Float64, slotLabels...,
+			)
+		}
+
+		emitReplicationSlotsSlotBool(ch, replicationSlotsFailoverDesc, failover, slotLabels)
+		emitReplicationSlotsSlotBool(ch, replicationSlotsSyncedDesc, synced, slotLabels)
 	}
 
 	return rows.Err()
@@ -301,19 +377,19 @@ func emitReplicationSlotsActive(ch chan<- prometheus.Metric, active sql.NullBool
 	)
 }
 
-func emitReplicationSlotsSlotIsActive(ch chan<- prometheus.Metric, active sql.NullBool, labels []string) {
-	if !active.Valid {
+func emitReplicationSlotsSlotBool(ch chan<- prometheus.Metric, desc *prometheus.Desc, flag sql.NullBool, labels []string) {
+	if !flag.Valid {
 		return
 	}
 
-	activeValue := 0.0
-	if active.Bool {
-		activeValue = 1.0
+	value := 0.0
+	if flag.Bool {
+		value = 1.0
 	}
 	ch <- prometheus.MustNewConstMetric(
-		replicationSlotsIsActiveDesc,
+		desc,
 		prometheus.GaugeValue,
-		activeValue,
+		value,
 		labels...,
 	)
 }
