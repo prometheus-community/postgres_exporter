@@ -70,10 +70,30 @@ var (
 		ELSE 0
 	END as is_replica,
 	GREATEST (0, EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp()))) as last_replay`
+
+	// pgReplicationAuroraQuery is used on Amazon Aurora PostgreSQL, which
+	// rejects pg_last_xact_replay_timestamp() and, on readers,
+	// pg_last_wal_receive_lsn() as not supported.
+	pgReplicationAuroraQuery = `SELECT pg_is_in_recovery()::int AS is_replica`
 )
 
 func (c *PGReplicationCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
+
+	// Aurora reports only is_replica: the replica lag there comes from the
+	// aurora_replica_status collector.
+	if instance.isAurora {
+		var isReplica int64
+		if err := db.QueryRowContext(ctx, pgReplicationAuroraQuery).Scan(&isReplica); err != nil {
+			return err
+		}
+		ch <- prometheus.MustNewConstMetric(
+			pgReplicationIsReplica,
+			prometheus.GaugeValue, float64(isReplica),
+		)
+		return nil
+	}
+
 	row := db.QueryRowContext(ctx,
 		pgReplicationQuery,
 	)
