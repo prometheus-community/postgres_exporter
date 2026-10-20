@@ -56,7 +56,7 @@ and `datname` labels; update dashboards and alerts to use the names without
 
 | Collector | Default | What it tells you |
 |---|---|---|
-| `replication` | enabled | Whether this instance is a replica, and if so how far behind it is replaying (in seconds). The simplest replication-lag signal. |
+| `replication` | enabled | Whether this instance is a replica, and if so how far behind it is replaying (in seconds). The simplest replication-lag signal. Amazon Aurora PostgreSQL doesn't support `pg_last_xact_replay_timestamp()` and `pg_last_wal_receive_lsn()`, so there it reports only whether the instance is a replica; the `aurora_replica_status` collector reports the replica lag. |
 | `stat_replication` | enabled | Seen from the primary: for each connected standby, how many WAL bytes it is behind on sent/written/flushed/replayed, plus the primary's current WAL position. From `pg_stat_replication`. |
 | `replication_slots` | enabled | Per slot: whether it's active, and how much WAL the slot is holding back. An inactive slot quietly retaining WAL is a classic way to fill a disk. From `pg_replication_slots`. |
 | `stat_archiver` | enabled | WAL archiving: count of archived and failed segments, and seconds since the last successful archive. Catches a broken `archive_command` before it fills `pg_wal`. From `pg_stat_archiver`. |
