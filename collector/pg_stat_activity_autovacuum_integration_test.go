@@ -50,6 +50,8 @@ func TestPGStatActivityAutovacuumCollectorSplitsSchemaAndRelation(t *testing.T) 
 		"autovacuum: VACUUM postpaid.datacdr",
 		"autovacuum: VACUUM ANALYZE A schema.datacdr",
 		"autovacuum: VACUUM B schema.datacdr",
+		"autovacuum: ANALYZE C schema.datacdr",
+		"autovacuum: BRIN summarize D schema.datacdr",
 	} {
 		conn, err := db.Conn(ctx)
 		if err != nil {
@@ -75,7 +77,7 @@ func TestPGStatActivityAutovacuumCollectorSplitsSchemaAndRelation(t *testing.T) 
 	for m := range ch {
 		got = append(got, readMetric(m).labels)
 	}
-	for _, schemaname := range []string{"mob", "postpaid", "A schema", "B schema"} {
+	for _, schemaname := range []string{"mob", "postpaid", "A schema", "B schema", "C schema", "D schema"} {
 		want := labelMap{"datname": datname, "schemaname": schemaname, "relname": "datacdr"}
 		if !slices.ContainsFunc(got, func(l labelMap) bool { return maps.Equal(l, want) }) {
 			t.Errorf("no series with labels %v in %v", want, got)
