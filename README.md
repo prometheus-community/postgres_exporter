@@ -219,10 +219,10 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
   Path under which to expose metrics. Default is `/metrics`.
 
 * `web.max-requests`
-  Maximum number of parallel scrape requests. Use `0` to disable. Default is `40`.
+  Maximum number of parallel scrape requests per endpoint (`/metrics` and `/probe` have independent limits). Excess requests receive HTTP 503. Use `0` to disable. Default is `40`.
 
 * `web.disable-exporter-metrics`
-  Exclude metrics about the exporter itself (`promhttp_*`, `process_*`, `go_*`). Default is `false`.
+  Exclude Go, process, and `postgres_exporter_build_info` metrics. PostgreSQL scrape-status and configuration-reload metrics remain available. Default is `false`.
 
 * `disable-default-metrics`
   Use only metrics supplied from `queries.yaml` via `--extend.query-path`.  Default is `false`.
@@ -320,7 +320,7 @@ warning at startup when one of them is set.
   Value of `0` or less than `1ms` is considered invalid and will report an error.
 
 * `PG_EXPORTER_WEB_TELEMETRY_PATH` (DEPRECATED)
-  Path under which to additionally expose metrics, alongside whatever `--web.telemetry-path` resolves to (both are served; this no longer relocates or overrides the flag). Use `--web.telemetry-path` instead.
+  Path under which to expose metrics when `--web.telemetry-path` is unset. Default is `/metrics`. Use `--web.telemetry-path` instead; an explicit flag takes precedence.
 
 * `PG_EXPORTER_DISABLE_DEFAULT_METRICS`
   Use only metrics supplied from `queries.yaml`. Value can be `true` or `false`. Default is `false`.

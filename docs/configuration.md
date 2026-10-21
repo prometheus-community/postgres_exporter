@@ -104,7 +104,6 @@ Flags specific to this exporter:
 
 | Flag | Purpose |
 |---|---|
-| `--web.telemetry-path` | Metrics path. Default `/metrics`. |
 | `--config.file` | Path to the [config file](#config-file). Default `postgres_exporter.yml`. |
 | `--collection-timeout` | Per-scrape timeout. Default `1m`. See [Connecting](connecting.md#connection-timeout). |
 | `--wrap-large-counters` | Wrap 64-bit counters at 2^53 to avoid floating point rounding. Default `true`. |
@@ -115,6 +114,9 @@ The exporter's HTTP server is provided by [exporter-toolkit](https://github.com/
 
 | Flag | Purpose |
 |---|---|
+| `--web.telemetry-path` | Metrics path. Default `/metrics`. |
+| `--web.max-requests` | Maximum concurrent scrapes per endpoint, independently for the metrics path and `/probe`. Default `40`; excess requests receive HTTP 503. Set `0` for no limit. Reload and debug endpoints are not limited. |
+| `--web.disable-exporter-metrics` | Exclude Go, process, and `postgres_exporter_build_info` metrics. PostgreSQL scrape-status and config-reload metrics remain available. Default `false`. |
 | `--web.listen-address` | Address to serve on. Default `:9187`. Repeatable, to listen on several addresses (e.g. `--web.listen-address=:9187 --web.listen-address=[::1]:9187`). |
 | `--web.config.file` | Enables TLS and/or basic auth on the exporter's own HTTP server. File format: [web-configuration.md](https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md). See also [Secrets](secrets.md#exporter-http-endpoint). |
 | `--web.systemd-socket` | Use systemd socket activation instead of binding a port. Linux only — the flag doesn't exist on other platforms. |
@@ -126,7 +128,7 @@ Logging flags come from the shared [`prometheus/common`](https://github.com/prom
 | `--log.level` | Logging verbosity: `debug`, `info` (default), `warn`, or `error`. |
 | `--log.format` | Log output format: `logfmt` (default) or `json`. |
 
-Most flags also have an environment-variable equivalent (e.g. `PG_EXPORTER_WEB_TELEMETRY_PATH`, `PG_EXPORTER_COLLECTION_TIMEOUT`); a CLI flag, if set, always wins over the corresponding environment variable. The full list is in the [main README](../README.md#flags).
+`PG_EXPORTER_WEB_TELEMETRY_PATH` is deprecated; use `--web.telemetry-path` instead. It continues to work during deprecation. Many flags also have an environment-variable equivalent (e.g. `PG_EXPORTER_COLLECTION_TIMEOUT`); a CLI flag, if set, always wins over the corresponding environment variable. The full list is in the [main README](../README.md#flags).
 
 ## Config file
 
