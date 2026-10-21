@@ -320,7 +320,7 @@ warning at startup when one of them is set.
   Value of `0` or less than `1ms` is considered invalid and will report an error.
 
 * `PG_EXPORTER_WEB_TELEMETRY_PATH` (DEPRECATED)
-  Path under which to expose metrics when `--web.telemetry-path` is unset. Default is `/metrics`. Use `--web.telemetry-path` instead; an explicit flag takes precedence.
+  Path under which to expose metrics when `--web.telemetry-path` is unset. Default is `/metrics`. This environment variable will be removed in postgres_exporter v0.22.0. Use `--web.telemetry-path` instead; an explicit flag takes precedence.
 
 * `PG_EXPORTER_DISABLE_DEFAULT_METRICS`
   Use only metrics supplied from `queries.yaml`. Value can be `true` or `false`. Default is `false`.

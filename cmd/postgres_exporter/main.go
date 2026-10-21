@@ -70,6 +70,8 @@ var (
 // The name of the exporter.
 const exporterName = "postgres_exporter"
 
+// webTelemetryPathEnvar is deprecated and will be removed in v0.22.0.
+// Use --web.telemetry-path instead.
 const webTelemetryPathEnvar = "PG_EXPORTER_WEB_TELEMETRY_PATH"
 
 // Bootstrap parses flags and builds the handler before starting the listener.
@@ -147,8 +149,8 @@ func main() {
 		MetricsHandlerFactory: server.newMetricsHandler,
 	})
 	// This flag previously belonged to postgres_exporter and read this env var.
-	// Bootstrap registers it without an env binding. Restore that binding while
-	// we deprecate the variable, preserving explicit CLI flags' precedence.
+	// Bootstrap registers it without an env binding. Restore that binding until
+	// v0.22.0, preserving explicit CLI flags' precedence.
 	kingpin.CommandLine.GetFlag("web.telemetry-path").Envar(webTelemetryPathEnvar)
 
 	err := runner.Run()

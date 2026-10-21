@@ -3,6 +3,7 @@
 **DEPRECATION: `PG_EXPORTER_WEB_TELEMETRY_PATH`.** Use
 `--web.telemetry-path` instead. The environment variable continues to set the
 metrics path when the flag is unset, and now logs a warning on startup.
+It will be removed in postgres_exporter v0.22.0.
 Other `PG_EXPORTER_*` variables retain their existing behavior.
 
 * [CHANGE] Adopt exporter-toolkit bootstrap for HTTP startup, logging, and landing-page setup, based on @nicolastakashi's work in https://github.com/prometheus-community/postgres_exporter/pull/1368. Add `--web.max-requests` (default `40`, `0` disables) with independent limits for the metrics and probe endpoints; excess requests receive HTTP 503. Add `--web.disable-exporter-metrics` to exclude Go, process, and build-info metrics.
