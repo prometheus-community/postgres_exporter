@@ -162,6 +162,14 @@ func dsnFromString(in string) (DSN, error) {
 		return d, nil
 	}
 
+	// Input that starts like a key=value string must not fall back to the URL
+	// parser. url.Parse accepts some malformed key=value strings (for example
+	// "host=/tmp password=a b") and puts the whole input, password included,
+	// into the host or path, where String() would print it.
+	if keyValueRe.MatchString(in) {
+		return DSN{}, err
+	}
+
 	// Parse the string as a URL, with the scheme prefixed
 	d, err = dsnFromURL(fmt.Sprintf("postgresql://%s", in))
 	if err == nil {
@@ -210,11 +218,14 @@ func dsnFromURL(in string) (DSN, error) {
 	return d, nil
 }
 
+// keyValueRe matches the start of a key=value connection string: a keyword
+// followed by "=".
+var keyValueRe = regexp.MustCompile(`^\s*[a-zA-Z0-9_]+\s*=`)
+
 // dsnFromKeyValue parses the input as a set of key=value pairs and returns the dsn representation.
 func dsnFromKeyValue(in string) (DSN, error) {
 	// Attempt to confirm at least one key=value pair before starting the rune parser
-	connstringRe := regexp.MustCompile(`^ *[a-zA-Z0-9]+ *= *[^= ]+`)
-	if !connstringRe.MatchString(in) {
+	if !keyValueRe.MatchString(in) {
 		return DSN{}, fmt.Errorf("input is not a key-value DSN")
 	}
 
@@ -264,64 +275,70 @@ func dsnFromKeyValue(in string) (DSN, error) {
 	return d, nil
 }
 
-// parseKeyValue is a key=value parser. It loops over each rune to split out keys and values
-// and attempting to honor quoted values. parseKeyValue will return an error if it is unable
-// to properly parse the input.
+// parseKeyValue parses a keyword/value connection string the way libpq does
+// (https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING-KEYWORD-VALUE):
+// settings are separated by whitespace, spaces around "=" are optional, a value
+// ends at the first whitespace unless it is quoted, and a backslash escapes the
+// next character. A value may contain "=". An unterminated quote or a trailing
+// backslash is an error. Unlike libpq, double quotes are accepted as well as
+// single quotes.
 func parseKeyValue(in string) (map[string]string, error) {
 	out := map[string]string{}
-
-	inPart := false
-	inQuote := false
-	part := []rune{}
-	key := ""
-	for _, c := range in {
-		switch {
-		case unicode.In(c, unicode.Quotation_Mark):
-			if inQuote {
-				inQuote = false
-			} else {
-				inQuote = true
-			}
-		case unicode.In(c, unicode.White_Space):
-			if inPart {
-				if inQuote {
-					part = append(part, c)
-				} else {
-					// Are we finishing a key=value?
-					if key == "" {
-						return out, fmt.Errorf("invalid input")
-					}
-					out[key] = string(part)
-					inPart = false
-					part = []rune{}
-				}
-			} else {
-				// Are we finishing a key=value?
-				if key == "" {
-					return out, fmt.Errorf("invalid input")
-				}
-				out[key] = string(part)
-				inPart = false
-				part = []rune{}
-				// Do something with the value
-			}
-		case c == '=':
-			if inPart {
-				inPart = false
-				key = string(part)
-				part = []rune{}
-			} else {
-				return out, fmt.Errorf("invalid input")
-			}
-		default:
-			inPart = true
-			part = append(part, c)
+	s := []rune(in)
+	i := 0
+	skipSpaces := func() {
+		for i < len(s) && unicode.IsSpace(s[i]) {
+			i++
 		}
 	}
 
-	if key != "" && len(part) > 0 {
-		out[key] = string(part)
-	}
+	for {
+		skipSpaces()
+		if i == len(s) {
+			return out, nil
+		}
 
-	return out, nil
+		start := i
+		for i < len(s) && !unicode.IsSpace(s[i]) && s[i] != '=' {
+			i++
+		}
+		key := string(s[start:i])
+		skipSpaces()
+		if key == "" || i == len(s) || s[i] != '=' {
+			return out, fmt.Errorf("invalid input")
+		}
+		i++ // skip "="
+		skipSpaces()
+
+		var quote rune
+		if i < len(s) && (s[i] == '\'' || s[i] == '"') {
+			quote = s[i]
+			i++
+		}
+		value := []rune{}
+		closed := quote == 0
+		for i < len(s) {
+			c := s[i]
+			i++
+			if quote != 0 && c == quote {
+				closed = true
+				break
+			}
+			if quote == 0 && unicode.IsSpace(c) {
+				break
+			}
+			if c == '\\' {
+				if i == len(s) {
+					return out, fmt.Errorf("invalid input")
+				}
+				c = s[i]
+				i++
+			}
+			value = append(value, c)
+		}
+		if !closed {
+			return out, fmt.Errorf("invalid input")
+		}
+		out[key] = string(value)
+	}
 }
