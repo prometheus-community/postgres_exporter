@@ -316,7 +316,7 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 	err := inst.setup(ctx)
 	defer inst.Close()
 	if err != nil {
-		p.logger.Error("Error opening connection to database", "err", err)
+		p.logger.Error("Error opening connection to database", "err", config.RedactError(err, inst.dsn))
 		return
 	}
 	p.collectFromConnection(ctx, inst, ch, nil)
@@ -339,19 +339,19 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 func (p PostgresCollector) collectDiscoveredDatabases(ctx context.Context, primary *instance, ch chan<- prometheus.Metric) {
 	databases, err := discoverDatabases(ctx, primary.getDB(), p.databaseDiscovery.includeDatabases, p.databaseDiscovery.excludeDatabases)
 	if err != nil {
-		p.logger.Error("failed to discover databases", "err", err)
+		p.logger.Error("failed to discover databases", "err", config.RedactError(err, primary.dsn))
 		return
 	}
 
 	collectDatabase := func(ctx context.Context, database string) {
 		inst, err := primary.withDatabase(database)
 		if err != nil {
-			p.logger.Error("failed to build connection for discovered database", "database", database, "err", err)
+			p.logger.Error("failed to build connection for discovered database", "database", database, "err", config.RedactError(err, primary.dsn))
 			return
 		}
 		defer inst.Close()
 		if err := inst.setup(ctx); err != nil {
-			p.logger.Error("failed to connect to discovered database", "database", database, "err", err)
+			p.logger.Error("failed to connect to discovered database", "database", database, "err", config.RedactError(err, inst.dsn))
 			return
 		}
 		scope := databaseScope

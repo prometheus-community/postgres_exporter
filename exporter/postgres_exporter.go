@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/blang/semver/v4"
+	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -629,7 +630,7 @@ func (e *Exporter) scrape(ctx context.Context, ch chan<- prometheus.Metric) {
 		if err := e.scrapeDSN(ctx, ch, dsn); err != nil {
 			errorsCount++
 
-			e.logger.Error("error scraping dsn", "err", err, "dsn", loggableDSN(dsn))
+			e.logger.Error("error scraping dsn", "err", config.RedactError(err, dsn), "dsn", loggableDSN(dsn))
 
 			if _, ok := err.(*ErrorConnectToServer); ok {
 				connectionErrorsCount++

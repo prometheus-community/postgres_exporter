@@ -238,7 +238,7 @@ func (s *FunctionalSuite) TestParseFingerprint(c *C) {
 		},
 		{
 			url: "xyz",
-			err: "malformed dsn \"xyz\"",
+			err: "malformed dsn",
 		},
 	}
 
