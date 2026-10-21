@@ -16,15 +16,20 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
+	"errors"
 	"fmt"
 	"regexp"
 
 	"github.com/blang/semver/v4"
 	"github.com/prometheus-community/postgres_exporter/config"
+
+	"github.com/prometheus-community/postgres_exporter/internal/connector"
 )
 
 type instance struct {
 	dsn               string
+	connector         driver.Connector
 	db                *sql.DB
 	version           semver.Version
 	database          string
@@ -38,6 +43,7 @@ type instance struct {
 func (i *instance) copy() *instance {
 	return &instance{
 		dsn:               i.dsn,
+		connector:         i.connector,
 		wrapLargeCounters: i.wrapLargeCounters,
 	}
 }
@@ -51,6 +57,12 @@ func (i *instance) withDatabase(database string) (*instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("malformed dsn: %w", err)
 	}
+	if i.connector != nil {
+		// A custom connector (e.g. IAM) has its own endpoint and credentials, and
+		// can't be pointed at another database from here. Database discovery is
+		// rejected for IAM before this is reached; fail loudly if that changes.
+		return nil, errors.New("database discovery is not supported with a custom connector")
+	}
 	other := &instance{
 		dsn:               dsn.WithDatabase(database).GetConnectionString(),
 		wrapLargeCounters: i.wrapLargeCounters,
@@ -61,11 +73,23 @@ func (i *instance) withDatabase(database string) (*instance, error) {
 	return other, nil
 }
 
+// openConnector returns the connector to open i's database with. Without a
+// custom connector it connects with the DSN as sql.Open would. It deliberately
+// doesn't store that static connector on i: i.connector is non-nil only for a
+// custom connector (e.g. IAM), which withDatabase relies on.
+func (i *instance) openConnector() (driver.Connector, error) {
+	if i.connector != nil {
+		return i.connector, nil
+	}
+	return connector.NewStaticConnector(i.dsn)
+}
+
 func (i *instance) setup(ctx context.Context) error {
-	db, err := sql.Open("postgres", i.dsn)
+	conn, err := i.openConnector()
 	if err != nil {
 		return err
 	}
+	db := sql.OpenDB(conn)
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 	i.db = db
