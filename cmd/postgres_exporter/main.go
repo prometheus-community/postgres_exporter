@@ -72,7 +72,9 @@ const exporterName = "postgres_exporter"
 
 const webTelemetryPathEnvar = "PG_EXPORTER_WEB_TELEMETRY_PATH"
 
-// errDumpMaps signals --dumpmaps so main, not the bootstrap callback, exits.
+// Bootstrap parses flags and builds the handler before starting the listener.
+// Returning errDumpMaps from the handler factory stops startup before database
+// initialization, so main can dump the maps and exit successfully.
 var errDumpMaps = errors.New("dumpmaps requested")
 
 type collectorFlagSet map[string]*bool
@@ -132,26 +134,22 @@ func newPGStatStatementsFlags() pgStatStatementsFlags {
 	}
 }
 
-func newRunner(app *kingpin.Application, factory bootstrap.MetricsHandlerFactory) *bootstrap.Runner {
+func main() {
+	server := &exporterServer{}
 	runner := bootstrap.New(bootstrap.Config{
-		App:            app,
+		App:            kingpin.CommandLine,
 		Name:           exporterName,
 		Description:    "Prometheus PostgreSQL server Exporter",
 		DefaultAddress: ":9187",
 		LandingConfig: web.LandingConfig{
 			Name: "Postgres Exporter",
 		},
-		MetricsHandlerFactory: factory,
+		MetricsHandlerFactory: server.newMetricsHandler,
 	})
-	// Keep the legacy environment variable during its deprecation period,
-	// including the existing precedence of an explicit CLI flag.
-	app.GetFlag("web.telemetry-path").Envar(webTelemetryPathEnvar)
-	return runner
-}
-
-func main() {
-	server := &exporterServer{}
-	runner := newRunner(kingpin.CommandLine, server.newMetricsHandler)
+	// This flag previously belonged to postgres_exporter and read this env var.
+	// Bootstrap registers it without an env binding. Restore that binding while
+	// we deprecate the variable, preserving explicit CLI flags' precedence.
+	kingpin.CommandLine.GetFlag("web.telemetry-path").Envar(webTelemetryPathEnvar)
 
 	err := runner.Run()
 	server.close()
