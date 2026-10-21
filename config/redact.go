@@ -33,8 +33,11 @@ var (
 	// string and everything after it up to the next keyword (or the end). A
 	// malformed value, such as an unquoted password containing a space, can
 	// leave part of the password where the driver expects a keyword, and the
-	// driver then quotes that fragment in its error.
-	keyValuePasswordRe = regexp.MustCompile(`(?:^|\s)password\s*=\s*(.*?)(?:\s+[A-Za-z_]+\s*=|$)`)
+	// driver then quotes that fragment in its error. The driver treats any
+	// whitespace, newlines included, as a separator, so the s flag lets the
+	// value span lines rather than leaving the match to fail at the first
+	// newline.
+	keyValuePasswordRe = regexp.MustCompile(`(?s)(?:^|\s)password\s*=\s*(.*?)(?:\s+[A-Za-z_]+\s*=|$)`)
 )
 
 // RedactError returns err with every copy of dsn's password, and of dsn

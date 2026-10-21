@@ -90,6 +90,31 @@ func TestRedactSecretsRemovesPasswords(t *testing.T) {
 			dsn:     `host=127.0.0.1 user=demo password='it\'s a secret' sslmode=disable`,
 			secrets: []string{`it's a secret`, `it\'s a secret`},
 		},
+		{
+			name:    "key value with trailing newline after unterminated quote",
+			dsn:     "host=127.0.0.1 port=5999 user=demo password='dummy secret-PW\n",
+			secrets: []string{"dummy secret-PW"},
+		},
+		{
+			name:    "key value with trailing newline after unquoted password containing a space",
+			dsn:     "host=127.0.0.1 port=5999 user=demo password=dummy secret-PW\n",
+			secrets: []string{"dummy", "secret-PW"},
+		},
+		{
+			name:    "key value with newline in unquoted password",
+			dsn:     "host=127.0.0.1 port=5999 user=demo password=dummy\nsecret-PW sslmode=disable",
+			secrets: []string{"dummy", "secret-PW"},
+		},
+		{
+			name:    "key value with newline in unterminated quote",
+			dsn:     "host=127.0.0.1 port=5999 user=demo password='dummy\nsecret-PW",
+			secrets: []string{"dummy\nsecret-PW", "dummy", "secret-PW"},
+		},
+		{
+			name:    "key value with pairs separated by newlines",
+			dsn:     "host=127.0.0.1\nport=5999\nuser=demo\npassword=dummy secret-PW\nsslmode=disable",
+			secrets: []string{"dummy", "secret-PW"},
+		},
 	}
 
 	for _, tt := range tests {
