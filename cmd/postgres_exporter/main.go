@@ -207,6 +207,10 @@ func (s *exporterServer) newMetricsHandler(b *bootstrap.Bootstrap) (http.Handler
 
 	warnDeprecatedDataSourceEnvVars()
 
+	if os.Getenv(webTelemetryPathEnvar) != "" {
+		logger.Warn(webTelemetryPathEnvar + " is DEPRECATED, use --web.telemetry-path instead")
+	}
+
 	dsns, err := getDataSources(dataSourceOpts{
 		URI:      *datasourceURI,
 		URIFile:  *datasourceURIFile,
@@ -261,10 +265,6 @@ func (s *exporterServer) newMetricsHandler(b *bootstrap.Bootstrap) (http.Handler
 	b.Handle("/debug/", http.DefaultServeMux)
 
 	metricsHandler := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
-
-	if os.Getenv(webTelemetryPathEnvar) != "" {
-		logger.Warn(webTelemetryPathEnvar + " is DEPRECATED, use --web.telemetry-path instead")
-	}
 
 	b.HandleFunc("/-/reload", handleReload(authHandler, *configFile))
 
