@@ -77,6 +77,7 @@ const (
 	CollectorAuroraGlobalDBStatus         = "aurora_global_db_status"
 	CollectorAuroraReplicaStatus          = "aurora_replica_status"
 	CollectorAuroraStatDatabase           = "aurora_stat_database"
+	CollectorAuroraStatGetDBCommitLatency = "aurora_stat_get_db_commit_latency"
 	CollectorAuroraStatLogicalWalCache    = "aurora_stat_logical_wal_cache"
 )
 
@@ -240,6 +241,7 @@ func DefaultCollectorConfig() map[string]bool {
 		CollectorAuroraGlobalDBStatus:         false,
 		CollectorAuroraReplicaStatus:          false,
 		CollectorAuroraStatDatabase:           false,
+		CollectorAuroraStatGetDBCommitLatency: false,
 		CollectorAuroraStatLogicalWalCache:    false,
 	}
 }
