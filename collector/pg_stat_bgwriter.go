@@ -95,7 +95,13 @@ var (
 	)
 	statBGWriterStatsResetDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, bgWriterSubsystem, "stats_reset_total"),
-		"Time at which these statistics were last reset",
+		"Deprecated: use pg_stat_bgwriter_stats_reset_timestamp_seconds instead. Time at which these statistics were last reset",
+		[]string{},
+		prometheus.Labels{},
+	)
+	statBGWriterStatsResetTimestampDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, bgWriterSubsystem, "stats_reset_timestamp_seconds"),
+		"Unix timestamp in seconds at which these statistics were last reset; 0 means PostgreSQL returned NULL",
 		[]string{},
 		prometheus.Labels{},
 	)
@@ -160,6 +166,11 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, c
 		ch <- prometheus.MustNewConstMetric(
 			statBGWriterStatsResetDesc,
 			prometheus.CounterValue,
+			srMetric,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			statBGWriterStatsResetTimestampDesc,
+			prometheus.GaugeValue,
 			srMetric,
 		)
 	} else {
@@ -248,6 +259,11 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, c
 		ch <- prometheus.MustNewConstMetric(
 			statBGWriterStatsResetDesc,
 			prometheus.CounterValue,
+			srMetric,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			statBGWriterStatsResetTimestampDesc,
+			prometheus.GaugeValue,
 			srMetric,
 		)
 	}
