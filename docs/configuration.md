@@ -22,6 +22,7 @@ The defaults are a reasonable starting point for a general-purpose server. Colle
 | `roles` | enabled | Per-role connection limit (`rolconnlimit`). Cheap; useful to alert when a role approaches its cap. From `pg_roles`. |
 | `long_running_transactions` | disabled | Count of open non-idle transactions and the age of the oldest, excluding autovacuum. A long-lived transaction blocks vacuum and holds back the xmin horizon, so this is worth turning on. |
 | `process_idle` | disabled | Histogram of how long idle connections have been idle, by state and application name. Finds connection-pool leaks and `idle in transaction` sessions. |
+| `aurora_stat_system_waits` | disabled | **Amazon Aurora PostgreSQL only.** Per wait event, by type: how many times the instance waited for it and the total time spent waiting, in seconds, since the instance started. Only events that have occurred are reported. On non-Aurora servers it reports nothing. From `aurora_stat_system_waits()`, with names from `aurora_stat_wait_type()` and `aurora_stat_wait_event()`. |
 
 The long_running_transactions collector can be customized with the `--collector.long_running_transactions.threshold` flag, which sets the age at which a transaction is considered long-running. The default is 1 minute (1m).
 
