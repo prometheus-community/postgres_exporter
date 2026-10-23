@@ -416,7 +416,7 @@ discovered databases is re-evaluated on every scrape, so databases created or dr
 picked up without a restart. At most `--auto-discover-databases.max-concurrency` discovered databases are scraped
 concurrently, so a server with many databases cannot make a single scrape open more connections than it can spare.
 
-In addition, the option `--exclude-databases` adds the possibily to filter the result from the auto discovery to discard databases you do not need.
+In addition, the option `--exclude-databases` adds the possibility to filter the result from the auto discovery to discard databases you do not need.
 
 If you want to include only subset of databases, you can use option `--include-databases`. Exporter still makes request to
 `pg_database` table, but do scrape from only if database is in include list.
