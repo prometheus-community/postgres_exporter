@@ -32,3 +32,10 @@ func isNoDataFound(err error) bool {
 	var pqErr *pq.Error
 	return errors.As(err, &pqErr) && pqErr.Code == "P0002"
 }
+
+// isObjectNotInPrerequisiteState reports whether err is a PostgreSQL
+// object_not_in_prerequisite_state (55000) error.
+func isObjectNotInPrerequisiteState(err error) bool {
+	var pqErr *pq.Error
+	return errors.As(err, &pqErr) && pqErr.Code == "55000"
+}

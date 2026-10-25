@@ -15,9 +15,11 @@ package collector
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/smartystreets/goconvey/convey"
@@ -147,5 +149,44 @@ func TestAuroraStatLogicalWalCacheCollectorNoRows(t *testing.T) {
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled exceptions: %s", err)
+	}
+}
+
+func TestAuroraStatLogicalWalCacheCollectorErrors(t *testing.T) {
+	notSupported := &pq.Error{Code: "55000", Message: "aurora_stat_logical_wal_cache is not supported on Aurora Replicas"}
+	permissionDenied := &pq.Error{Code: "42501", Message: "permission denied for function aurora_stat_logical_wal_cache"}
+
+	for _, tc := range []struct {
+		name    string
+		err     error
+		wantErr error
+	}{
+		// Aurora readers raise object_not_in_prerequisite_state.
+		{name: "reader", err: notSupported, wantErr: ErrNoData},
+		{name: "other errors", err: permissionDenied, wantErr: permissionDenied},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			if err != nil {
+				t.Fatalf("Error opening a stub db connection: %s", err)
+			}
+			defer db.Close()
+
+			inst := &instance{db: db, isAurora: true}
+			expectFunctionExists(mock, "aurora_stat_logical_wal_cache", true)
+			mock.ExpectQuery(sanitizeQuery(auroraStatLogicalWalCacheQuery)).WillReturnError(tc.err)
+
+			ch := make(chan prometheus.Metric, 3)
+			err = AuroraStatLogicalWalCacheCollector{}.Update(context.Background(), inst, ch)
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("AuroraStatLogicalWalCacheCollector.Update returned %v, want %v", err, tc.wantErr)
+			}
+			if len(ch) != 0 {
+				t.Errorf("Expected no metrics, got %d", len(ch))
+			}
+			if err := mock.ExpectationsWereMet(); err != nil {
+				t.Errorf("there were unfulfilled exceptions: %s", err)
+			}
+		})
 	}
 }

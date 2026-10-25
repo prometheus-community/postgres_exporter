@@ -78,6 +78,10 @@ func (c AuroraStatLogicalWalCacheCollector) Update(ctx context.Context, instance
 	}
 
 	rows, err := db.QueryContext(ctx, auroraStatLogicalWalCacheQuery)
+	// Readers (Aurora Replicas) raise object_not_in_prerequisite_state.
+	if isObjectNotInPrerequisiteState(err) {
+		return ErrNoData
+	}
 	if err != nil {
 		return err
 	}
