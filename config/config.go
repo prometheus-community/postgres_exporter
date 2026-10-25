@@ -82,6 +82,7 @@ const (
 	CollectorAuroraStatGetDBCommitLatency  = "aurora_stat_get_db_commit_latency"
 	CollectorAuroraStatLogicalWalCache     = "aurora_stat_logical_wal_cache"
 	CollectorAuroraStatOptimizedReadsCache = "aurora_stat_optimized_reads_cache"
+	CollectorAuroraStatSystemWaits         = "aurora_stat_system_waits"
 )
 
 type Config struct {
@@ -249,6 +250,7 @@ func DefaultCollectorConfig() map[string]bool {
 		CollectorAuroraStatGetDBCommitLatency:  false,
 		CollectorAuroraStatLogicalWalCache:     false,
 		CollectorAuroraStatOptimizedReadsCache: false,
+		CollectorAuroraStatSystemWaits:         false,
 	}
 }
 
