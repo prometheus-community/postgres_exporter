@@ -18,7 +18,6 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -90,11 +89,4 @@ func (c AuroraStatOptimizedReadsCacheCollector) Update(ctx context.Context, inst
 		ch <- prometheus.MustNewConstMetric(auroraStatOptimizedReadsCacheUsedSize, prometheus.GaugeValue, float64(usedSize.Int64))
 	}
 	return nil
-}
-
-// isNoDataFound reports whether err is a PostgreSQL no_data_found (P0002)
-// error.
-func isNoDataFound(err error) bool {
-	var pqErr *pq.Error
-	return errors.As(err, &pqErr) && pqErr.Code == "P0002"
 }
