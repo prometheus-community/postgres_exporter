@@ -49,6 +49,7 @@ the `-file` flags at a mounted secret.
 * [FEATURE] Add `aurora_stat_bgwriter` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1426
 * [FEATURE] Add `aurora_stat_optimized_reads_cache` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1427
 * [FEATURE] Add `aurora_instance` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1433
+* [FEATURE] Add `pg_scrape_connection_success{server,datname}`, reported on every scrape for each configured DSN, each discovered database and each `/probe` target: `1` if a new connection could be opened, `0` if not, so a connection failure is visible without the collector metrics. `pg_up` is unchanged and can stay `1` while new connections are refused by @akashchamp in https://github.com/prometheus-community/postgres_exporter/pull/1394
 
 ## 0.20.1 / 2026-07-07
 
