@@ -75,6 +75,7 @@ const (
 	// Amazon Aurora PostgreSQL collectors.
 	CollectorAuroraGlobalDBInstanceStatus  = "aurora_global_db_instance_status"
 	CollectorAuroraGlobalDBStatus          = "aurora_global_db_status"
+	CollectorAuroraInstance                = "aurora_instance"
 	CollectorAuroraReplicaStatus           = "aurora_replica_status"
 	CollectorAuroraStatBgwriter            = "aurora_stat_bgwriter"
 	CollectorAuroraStatDatabase            = "aurora_stat_database"
@@ -242,6 +243,7 @@ func DefaultCollectorConfig() map[string]bool {
 		// Amazon Aurora PostgreSQL collectors.
 		CollectorAuroraGlobalDBInstanceStatus:  false,
 		CollectorAuroraGlobalDBStatus:          false,
+		CollectorAuroraInstance:                false,
 		CollectorAuroraReplicaStatus:           false,
 		CollectorAuroraStatBgwriter:            false,
 		CollectorAuroraStatDatabase:            false,

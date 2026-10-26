@@ -48,6 +48,7 @@ the `-file` flags at a mounted secret.
 * [FEATURE] Add `aurora_stat_dml_activity` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1412
 * [FEATURE] Add `aurora_stat_bgwriter` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1426
 * [FEATURE] Add `aurora_stat_optimized_reads_cache` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1427
+* [FEATURE] Add `aurora_instance` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1433
 
 ## 0.20.1 / 2026-07-07
 

@@ -88,6 +88,7 @@ and `datname` labels; update dashboards and alerts to use the names without
 | `settings` | enabled | Every boolean, integer, and real setting in `pg_settings`, exported as a metric, plus a `pg_settings_pending_restart` gauge for settings of any type that have been changed but only take effect after a server restart. Makes server configuration queryable and configuration drift alertable. |
 | `postmaster` | disabled | The server process start time, as a Unix timestamp. Use it to derive uptime and to detect unplanned restarts. |
 | `stat_statements` | disabled | Per-query aggregates: call counts, total execution time, rows returned, and block read/write time. The most direct way to find your slowest and most frequent queries. Requires the `pg_stat_statements` extension, and it is the highest-cardinality collector here — one series set per distinct query. From `pg_stat_statements`. |
+| `aurora_instance` | disabled | **Amazon Aurora PostgreSQL only.** `pg_aurora_instance_info` with value 1, labeled by the instance the exporter is connected to (`server_id`, as in `aurora_replica_status`) and the Aurora version. It shows which instance a cluster endpoint points to, e.g. after a failover. Requires Aurora PostgreSQL 13.7, 12.11, 11.16, 10.21 or later; on older versions and on non-Aurora servers it reports nothing. From `aurora_db_instance_identifier()` and `aurora_version()`. |
 
 By default `stat_statements` labels its metrics with the query ID only, not the query text. Its sub-flags control that and bound how much it emits:
 
