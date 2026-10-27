@@ -34,6 +34,9 @@ The long_running_transactions collector can be customized with the `--collector.
 | `stat_user_tables` | enabled | Per-table: sequential vs. index scans, rows inserted/updated/deleted, live and dead tuple counts, rows modified since last analyze, last vacuum/analyze times and counts, and table and index size. How you find missing indexes and tables that aren't being vacuumed. From `pg_stat_user_tables`. |
 | `statio_user_tables` | enabled | Per-table block I/O: heap, index, and TOAST blocks read from disk vs. served from shared buffers. From `pg_statio_user_tables`. |
 | `statio_user_indexes` | disabled | The same read/hit split per *index* rather than per table. Off by default because it emits a series per index, which adds up quickly on large schemas. From `pg_statio_user_indexes`. |
+| `aurora_stat_database` | disabled | **Amazon Aurora PostgreSQL only.** Per database: where block reads came from — Aurora storage, the Optimized Reads cache, or local storage — and the time spent on each (with `track_io_timing` on). Adds to `stat_database` rather than repeating it. Requires Aurora PostgreSQL 14.9, 15.4 or later; on older versions and on non-Aurora servers it reports nothing. From `aurora_stat_database()`. |
+| `aurora_stat_dml_activity` | disabled | **Amazon Aurora PostgreSQL only.** Per database: the number and total time of successful `SELECT`, `INSERT`, `UPDATE` and `DELETE` operations. Divide the two rates for the average latency per operation. On non-Aurora servers it reports nothing. From `aurora_stat_dml_activity()`. |
+| `aurora_stat_get_db_commit_latency` | disabled | **Amazon Aurora PostgreSQL only.** Per database: total time spent committing transactions, from the commit request until the client receives the acknowledgement. Divide its rate by the commit rate from `stat_database` for the average commit latency. On non-Aurora servers it reports nothing. From `aurora_stat_get_db_commit_latency()`. |
 
 The per-table and per-index collectors scale with your schema — one set of series per table or index, per database scraped. On a database with thousands of tables this is the first place to look if the exporter's cardinality becomes a problem.
 
@@ -42,7 +45,7 @@ The per-table and per-index collectors scale with your schema — one set of ser
 | Collector | Default | What it tells you |
 |---|---|---|
 | `stat_progress_vacuum` | enabled | Vacuums currently in flight: which phase they're in, heap blocks total/scanned/vacuumed, index vacuum passes, and dead tuple counts. Answers "is this vacuum making progress?". From `pg_stat_progress_vacuum`. |
-| `stat_activity_autovacuum` | disabled | The start time of each running autovacuum worker, labeled by the relation it's working on. Shows autovacuum workers that have been stuck for hours. |
+| `stat_activity_autovacuum` | disabled | The start time of each running autovacuum worker, labeled by the database, schema, and relation it's working on. Shows autovacuum workers that have been stuck for hours. |
 | `database_wraparound` | disabled | Age of `datfrozenxid` and `datminmxid` per database. This is the early warning for transaction ID wraparound — worth enabling on any database with high write volume. |
 
 The `database_wraparound` gauges `pg_database_wraparound_age_datfrozenxid`
@@ -56,15 +59,16 @@ and `datname` labels; update dashboards and alerts to use the names without
 
 | Collector | Default | What it tells you |
 |---|---|---|
-| `replication` | enabled | Whether this instance is a replica, and if so how far behind it is replaying (in seconds). The simplest replication-lag signal. |
+| `replication` | enabled | Whether this instance is a replica, and if so how far behind it is replaying (in seconds). The simplest replication-lag signal. Amazon Aurora PostgreSQL doesn't support `pg_last_xact_replay_timestamp()` and `pg_last_wal_receive_lsn()`, so there it reports only whether the instance is a replica; the `aurora_replica_status` collector reports the replica lag. |
 | `stat_replication` | enabled | Seen from the primary: for each connected standby, how many WAL bytes it is behind on sent/written/flushed/replayed, plus the primary's current WAL position. From `pg_stat_replication`. |
 | `replication_slots` | enabled | Per slot: whether it's active, and how much WAL the slot is holding back. An inactive slot quietly retaining WAL is a classic way to fill a disk. On PostgreSQL 17+ it also reports whether a logical slot was invalidated by a conflict with recovery, when the slot became inactive, and whether it is a failover slot or was synced from a primary. From `pg_replication_slots`. |
 | `stat_archiver` | enabled | WAL archiving: count of archived and failed segments, and seconds since the last successful archive. Catches a broken `archive_command` before it fills `pg_wal`. From `pg_stat_archiver`. |
 | `wal` | enabled | Number of WAL segment files and their total size on disk, via `pg_ls_waldir()`. On Amazon Aurora PostgreSQL versions that don't support `pg_ls_waldir()`, it reports nothing. |
 | `stat_wal_receiver` | disabled | Seen from a standby: the WAL receiver's LSNs, timeline, upstream node, and last message send/receipt times. Enable this on replicas for a view of the receiving side. From `pg_stat_wal_receiver`. |
 | `xlog_location` | disabled | Current WAL write position (or replay position on a replica) as a byte offset. Superseded by `stat_replication`; retained for old setups and pre-10 servers. |
-| `aurora_replica_status` | disabled | **Amazon Aurora PostgreSQL only.** For each instance in the cluster: replica lag behind the writer, replay latency, and pending page reads. On non-Aurora servers it reports nothing. From `aurora_replica_status()`. |
+| `aurora_global_db_instance_status` | disabled | **Amazon Aurora PostgreSQL only.** For each instance, including the cross-Region replicas of an Aurora global database: how far it lags behind the writer, in seconds. On non-Aurora servers it reports nothing. From `aurora_global_db_instance_status()`. |
 | `aurora_global_db_status` | disabled | **Amazon Aurora PostgreSQL only.** For each secondary cluster of an Aurora global database, by AWS Region: storage (durability) lag and recovery point objective (RPO) lag behind the primary cluster, in seconds. On non-Aurora servers it reports nothing. From `aurora_global_db_status()`. |
+| `aurora_replica_status` | disabled | **Amazon Aurora PostgreSQL only.** For each instance in the cluster: replica lag behind the writer, replay latency, and pending page reads. On non-Aurora servers it reports nothing. From `aurora_replica_status()`. |
 | `aurora_stat_logical_wal_cache` | disabled | **Amazon Aurora PostgreSQL only.** Per logical replication slot: WAL cache hits, misses, and read requests. Requires Aurora PostgreSQL 11.17, 12.12, 13.8, 14.7, 15.2 or later; on older versions and on non-Aurora servers it reports nothing. From `aurora_stat_logical_wal_cache()`. |
 
 ### Checkpoints, buffers, and I/O
@@ -74,6 +78,8 @@ and `datname` labels; update dashboards and alerts to use the names without
 | `stat_bgwriter` | enabled | Background writer activity: buffers it wrote, `maxwritten_clean` stops, and buffers allocated. On PostgreSQL 16 and earlier it additionally reports checkpoint counts, checkpoint write/sync timings, and buffers written directly by backends. PostgreSQL 17 moved those columns out of `pg_stat_bgwriter` — the checkpoint ones are available from `stat_checkpointer`, the backend-write ones live in `pg_stat_io`, which this exporter does not currently collect. From `pg_stat_bgwriter`. |
 | `stat_checkpointer` | disabled | Checkpoints and restartpoints: timed vs. requested counts, write and sync time, and buffers written. **PostgreSQL 17+ only** — on older servers the collector logs a warning and reports nothing. Enable it on 17+ to replace the checkpoint metrics that used to come from `stat_bgwriter`. From `pg_stat_checkpointer`. |
 | `buffercache_summary` | disabled | Shared buffer pool usage: used, unused, dirty, and pinned buffers plus average usage count. Requires `CREATE EXTENSION pg_buffercache` and PostgreSQL 16+ — see [Database Permissions](database-permissions.md#extension-specific-collectors). |
+| `aurora_stat_bgwriter` | disabled | **Amazon Aurora PostgreSQL only.** Data blocks written to the Optimized Reads cache and the time spent writing them (with `track_io_timing` on). Adds to `stat_bgwriter` rather than repeating it. Requires Aurora PostgreSQL 14.9, 15.4 or later; on older versions and on non-Aurora servers it reports nothing. From `aurora_stat_bgwriter()`. |
+| `aurora_stat_optimized_reads_cache` | disabled | **Amazon Aurora PostgreSQL only.** Total and used size of the Optimized Reads cache, which instance classes with local NVMe storage keep there. Requires Aurora PostgreSQL 14.9, 15.4 or later; on older versions, on instances without the Optimized Reads cache and on non-Aurora servers it reports nothing. From `aurora_stat_optimized_reads_cache()`. |
 
 ### Server and query-level
 
@@ -82,6 +88,7 @@ and `datname` labels; update dashboards and alerts to use the names without
 | `settings` | enabled | Every boolean, integer, and real setting in `pg_settings`, exported as a metric, plus a `pg_settings_pending_restart` gauge for settings of any type that have been changed but only take effect after a server restart. Makes server configuration queryable and configuration drift alertable. |
 | `postmaster` | disabled | The server process start time, as a Unix timestamp. Use it to derive uptime and to detect unplanned restarts. |
 | `stat_statements` | disabled | Per-query aggregates: call counts, total execution time, rows returned, and block read/write time. The most direct way to find your slowest and most frequent queries. Requires the `pg_stat_statements` extension, and it is the highest-cardinality collector here — one series set per distinct query. From `pg_stat_statements`. |
+| `aurora_instance` | disabled | **Amazon Aurora PostgreSQL only.** `pg_aurora_instance_info` with value 1, labeled by the instance the exporter is connected to (`server_id`, as in `aurora_replica_status`) and the Aurora version. It shows which instance a cluster endpoint points to, e.g. after a failover. Requires Aurora PostgreSQL 13.7, 12.11, 11.16, 10.21 or later; on older versions and on non-Aurora servers it reports nothing. From `aurora_db_instance_identifier()` and `aurora_version()`. |
 
 By default `stat_statements` labels its metrics with the query ID only, not the query text. Its sub-flags control that and bound how much it emits:
 
@@ -103,7 +110,6 @@ Flags specific to this exporter:
 
 | Flag | Purpose |
 |---|---|
-| `--web.telemetry-path` | Metrics path. Default `/metrics`. |
 | `--config.file` | Path to the [config file](#config-file). Default `postgres_exporter.yml`. |
 | `--collection-timeout` | Per-scrape timeout. Default `1m`. See [Connecting](connecting.md#connection-timeout). |
 | `--wrap-large-counters` | Wrap 64-bit counters at 2^53 to avoid floating point rounding. Default `true`. |
@@ -114,6 +120,9 @@ The exporter's HTTP server is provided by [exporter-toolkit](https://github.com/
 
 | Flag | Purpose |
 |---|---|
+| `--web.telemetry-path` | Metrics path. Default `/metrics`. |
+| `--web.max-requests` | Maximum concurrent scrapes per endpoint, independently for the metrics path and `/probe`. Default `40`; excess requests receive HTTP 503. Set `0` for no limit. Reload and debug endpoints are not limited. |
+| `--web.disable-exporter-metrics` | Exclude Go, process, and `postgres_exporter_build_info` metrics. PostgreSQL scrape-status and config-reload metrics remain available. Default `false`. |
 | `--web.listen-address` | Address to serve on. Default `:9187`. Repeatable, to listen on several addresses (e.g. `--web.listen-address=:9187 --web.listen-address=[::1]:9187`). |
 | `--web.config.file` | Enables TLS and/or basic auth on the exporter's own HTTP server. File format: [web-configuration.md](https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md). See also [Secrets](secrets.md#exporter-http-endpoint). |
 | `--web.systemd-socket` | Use systemd socket activation instead of binding a port. Linux only — the flag doesn't exist on other platforms. |
@@ -125,7 +134,7 @@ Logging flags come from the shared [`prometheus/common`](https://github.com/prom
 | `--log.level` | Logging verbosity: `debug`, `info` (default), `warn`, or `error`. |
 | `--log.format` | Log output format: `logfmt` (default) or `json`. |
 
-Most flags also have an environment-variable equivalent (e.g. `PG_EXPORTER_WEB_TELEMETRY_PATH`, `PG_EXPORTER_COLLECTION_TIMEOUT`); a CLI flag, if set, always wins over the corresponding environment variable. The full list is in the [main README](../README.md#flags).
+`PG_EXPORTER_WEB_TELEMETRY_PATH` is deprecated; use `--web.telemetry-path` instead. It continues to work during deprecation and will be removed in postgres_exporter v0.22.0. Many flags also have an environment-variable equivalent (e.g. `PG_EXPORTER_COLLECTION_TIMEOUT`); a CLI flag, if set, always wins over the corresponding environment variable. The full list is in the [main README](../README.md#flags).
 
 ## Config file
 

@@ -73,9 +73,16 @@ const (
 	CollectorXlogLocation            = "xlog_location"
 
 	// Amazon Aurora PostgreSQL collectors.
-	CollectorAuroraGlobalDBStatus      = "aurora_global_db_status"
-	CollectorAuroraReplicaStatus       = "aurora_replica_status"
-	CollectorAuroraStatLogicalWalCache = "aurora_stat_logical_wal_cache"
+	CollectorAuroraGlobalDBInstanceStatus  = "aurora_global_db_instance_status"
+	CollectorAuroraGlobalDBStatus          = "aurora_global_db_status"
+	CollectorAuroraInstance                = "aurora_instance"
+	CollectorAuroraReplicaStatus           = "aurora_replica_status"
+	CollectorAuroraStatBgwriter            = "aurora_stat_bgwriter"
+	CollectorAuroraStatDatabase            = "aurora_stat_database"
+	CollectorAuroraStatDMLActivity         = "aurora_stat_dml_activity"
+	CollectorAuroraStatGetDBCommitLatency  = "aurora_stat_get_db_commit_latency"
+	CollectorAuroraStatLogicalWalCache     = "aurora_stat_logical_wal_cache"
+	CollectorAuroraStatOptimizedReadsCache = "aurora_stat_optimized_reads_cache"
 )
 
 type Config struct {
@@ -234,9 +241,16 @@ func DefaultCollectorConfig() map[string]bool {
 		CollectorXlogLocation:            false,
 
 		// Amazon Aurora PostgreSQL collectors.
-		CollectorAuroraGlobalDBStatus:      false,
-		CollectorAuroraReplicaStatus:       false,
-		CollectorAuroraStatLogicalWalCache: false,
+		CollectorAuroraGlobalDBInstanceStatus:  false,
+		CollectorAuroraGlobalDBStatus:          false,
+		CollectorAuroraInstance:                false,
+		CollectorAuroraReplicaStatus:           false,
+		CollectorAuroraStatBgwriter:            false,
+		CollectorAuroraStatDatabase:            false,
+		CollectorAuroraStatDMLActivity:         false,
+		CollectorAuroraStatGetDBCommitLatency:  false,
+		CollectorAuroraStatLogicalWalCache:     false,
+		CollectorAuroraStatOptimizedReadsCache: false,
 	}
 }
 

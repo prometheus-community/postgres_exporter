@@ -103,14 +103,36 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
   Show context-sensitive help (also try --help-long and --help-man).
 
 
+* `[no-]collector.aurora_global_db_instance_status`
+  Enable the `aurora_global_db_instance_status` collector (default: disabled).
+
 * `[no-]collector.aurora_global_db_status`
   Enable the `aurora_global_db_status` collector (default: disabled).
+
+* `[no-]collector.aurora_instance`
+  Enable the `aurora_instance` collector (default: disabled).
 
 * `[no-]collector.aurora_replica_status`
   Enable the `aurora_replica_status` collector (default: disabled).
 
+* `[no-]collector.aurora_stat_bgwriter`
+  Enable the `aurora_stat_bgwriter` collector (default: disabled).
+
+* `[no-]collector.aurora_stat_database`
+  Enable the `aurora_stat_database` collector (default: disabled).
+
+
+* `[no-]collector.aurora_stat_dml_activity`
+  Enable the `aurora_stat_dml_activity` collector (default: disabled).
+
+* `[no-]collector.aurora_stat_get_db_commit_latency`
+  Enable the `aurora_stat_get_db_commit_latency` collector (default: disabled).
+
 * `[no-]collector.aurora_stat_logical_wal_cache`
   Enable the `aurora_stat_logical_wal_cache` collector (default: disabled).
+
+* `[no-]collector.aurora_stat_optimized_reads_cache`
+  Enable the `aurora_stat_optimized_reads_cache` collector (default: disabled).
 
 * `[no-]collector.database`
   Enable the `database` collector (default: enabled).
@@ -215,6 +237,12 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `web.telemetry-path`
   Path under which to expose metrics. Default is `/metrics`.
 
+* `web.max-requests`
+  Maximum number of parallel scrape requests per endpoint (`/metrics` and `/probe` have independent limits). Excess requests receive HTTP 503. Use `0` to disable. Default is `40`.
+
+* `web.disable-exporter-metrics`
+  Exclude Go, process, and `postgres_exporter_build_info` metrics. PostgreSQL scrape-status and configuration-reload metrics remain available. Default is `false`.
+
 * `disable-default-metrics`
   Use only metrics supplied from `queries.yaml` via `--extend.query-path`.  Default is `false`.
 
@@ -310,8 +338,8 @@ warning at startup when one of them is set.
   and will avoid exhausting the pool of connections of the database.
   Value of `0` or less than `1ms` is considered invalid and will report an error.
 
-* `PG_EXPORTER_WEB_TELEMETRY_PATH`
-  Path under which to expose metrics. Default is `/metrics`.
+* `PG_EXPORTER_WEB_TELEMETRY_PATH` (DEPRECATED)
+  Path under which to expose metrics when `--web.telemetry-path` is unset. Default is `/metrics`. This environment variable will be removed in postgres_exporter v0.22.0. Use `--web.telemetry-path` instead; an explicit flag takes precedence.
 
 * `PG_EXPORTER_DISABLE_DEFAULT_METRICS`
   Use only metrics supplied from `queries.yaml`. Value can be `true` or `false`. Default is `false`.
@@ -394,7 +422,7 @@ discovered databases is re-evaluated on every scrape, so databases created or dr
 picked up without a restart. At most `--auto-discover-databases.max-concurrency` discovered databases are scraped
 concurrently, so a server with many databases cannot make a single scrape open more connections than it can spare.
 
-In addition, the option `--exclude-databases` adds the possibily to filter the result from the auto discovery to discard databases you do not need.
+In addition, the option `--exclude-databases` adds the possibility to filter the result from the auto discovery to discard databases you do not need.
 
 If you want to include only subset of databases, you can use option `--include-databases`. Exporter still makes request to
 `pg_database` table, but do scrape from only if database is in include list.
