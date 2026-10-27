@@ -15,6 +15,7 @@ package collector
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -278,5 +279,134 @@ func TestPGReplicationSlotsCollectorBefore94(t *testing.T) {
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled exceptions: %s", err)
+	}
+}
+
+func TestPGReplicationSlotsCollectorPG17(t *testing.T) {
+	for _, version := range []string{"17.0.0", "18.1.0"} {
+		t.Run(version, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			if err != nil {
+				t.Fatalf("Error opening a stub db connection: %s", err)
+			}
+			defer db.Close()
+
+			inst := &instance{db: db, version: semver.MustParse(version)}
+
+			rows := sqlmock.NewRows([]string{"slot_name", "database", "active", "pg_wal_lsn_diff"})
+			mock.ExpectQuery(sanitizeQuery(replicationSlotsQuery)).WillReturnRows(rows)
+			slotRows := sqlmock.NewRows([]string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active", "safe_wal_size", "wal_status", "conflicting", "inactive_since", "failover", "synced"}).
+				AddRow("failover_slot", "logical", 200, 150, false, nil, "reserved", false, 1760697600.25, true, false).
+				AddRow("synced_slot", "logical", 200, 120, false, nil, "reserved", false, nil, true, true).
+				AddRow("conflicting_slot", "logical", 200, 110, false, nil, "lost", true, nil, true, true).
+				AddRow("physical_slot", "physical", 200, 0, true, 4096, "reserved", nil, nil, false, false)
+			mock.ExpectQuery(sanitizeQuery(replicationSlotsSlotQueryPG17)).WillReturnRows(slotRows)
+
+			ch := make(chan prometheus.Metric)
+			go func() {
+				defer close(ch)
+				c := PGReplicationSlotsCollector{}
+				if err := c.Update(context.Background(), inst, ch); err != nil {
+					t.Errorf("Error calling PGReplicationSlotsCollector.Update: %s", err)
+				}
+			}()
+
+			failoverLabels := labelMap{"slot_name": "failover_slot", "slot_type": "logical"}
+			syncedLabels := labelMap{"slot_name": "synced_slot", "slot_type": "logical"}
+			conflictingLabels := labelMap{"slot_name": "conflicting_slot", "slot_type": "logical"}
+			physicalLabels := labelMap{"slot_name": "physical_slot", "slot_type": "physical"}
+			assertReplicationSlotsMetrics(t, ch, []replicationSlotsExpectedMetric{
+				{replicationSlotsCurrentWalDesc, MetricResult{labels: failoverLabels, value: 200, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsIsActiveDesc, MetricResult{labels: failoverLabels, value: 0, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsWalStatus, MetricResult{labels: labelMap{"slot_name": "failover_slot", "slot_type": "logical", "wal_status": "reserved"}, value: 1, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsConflictingDesc, MetricResult{labels: failoverLabels, value: 0, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsInactiveSinceDesc, MetricResult{labels: failoverLabels, value: 1760697600.25, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsFailoverDesc, MetricResult{labels: failoverLabels, value: 1, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsSyncedDesc, MetricResult{labels: failoverLabels, value: 0, metricType: dto.MetricType_GAUGE}},
+
+				{replicationSlotsCurrentWalDesc, MetricResult{labels: syncedLabels, value: 200, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsIsActiveDesc, MetricResult{labels: syncedLabels, value: 0, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsWalStatus, MetricResult{labels: labelMap{"slot_name": "synced_slot", "slot_type": "logical", "wal_status": "reserved"}, value: 1, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsConflictingDesc, MetricResult{labels: syncedLabels, value: 0, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsFailoverDesc, MetricResult{labels: syncedLabels, value: 1, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsSyncedDesc, MetricResult{labels: syncedLabels, value: 1, metricType: dto.MetricType_GAUGE}},
+
+				{replicationSlotsCurrentWalDesc, MetricResult{labels: conflictingLabels, value: 200, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsIsActiveDesc, MetricResult{labels: conflictingLabels, value: 0, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsWalStatus, MetricResult{labels: labelMap{"slot_name": "conflicting_slot", "slot_type": "logical", "wal_status": "lost"}, value: 1, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsConflictingDesc, MetricResult{labels: conflictingLabels, value: 1, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsFailoverDesc, MetricResult{labels: conflictingLabels, value: 1, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsSyncedDesc, MetricResult{labels: conflictingLabels, value: 1, metricType: dto.MetricType_GAUGE}},
+
+				{replicationSlotsCurrentWalDesc, MetricResult{labels: physicalLabels, value: 200, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsCurrentFlushDesc, MetricResult{labels: physicalLabels, value: 0, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsIsActiveDesc, MetricResult{labels: physicalLabels, value: 1, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsSafeWal, MetricResult{labels: physicalLabels, value: 4096, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsWalStatus, MetricResult{labels: labelMap{"slot_name": "physical_slot", "slot_type": "physical", "wal_status": "reserved"}, value: 1, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsFailoverDesc, MetricResult{labels: physicalLabels, value: 0, metricType: dto.MetricType_GAUGE}},
+				{replicationSlotsSyncedDesc, MetricResult{labels: physicalLabels, value: 0, metricType: dto.MetricType_GAUGE}},
+			})
+			if err := mock.ExpectationsWereMet(); err != nil {
+				t.Errorf("there were unfulfilled exceptions: %s", err)
+			}
+		})
+	}
+}
+
+func TestPGReplicationSlotsCollectorPG17NullValues(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Error opening a stub db connection: %s", err)
+	}
+	defer db.Close()
+
+	inst := &instance{db: db, version: semver.MustParse("17.0.0")}
+
+	rows := sqlmock.NewRows([]string{"slot_name", "database", "active", "pg_wal_lsn_diff"})
+	mock.ExpectQuery(sanitizeQuery(replicationSlotsQuery)).WillReturnRows(rows)
+	slotRows := sqlmock.NewRows([]string{"slot_name", "slot_type", "current_wal_lsn", "confirmed_flush_lsn", "active", "safe_wal_size", "wal_status", "conflicting", "inactive_since", "failover", "synced"}).
+		AddRow(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	mock.ExpectQuery(sanitizeQuery(replicationSlotsSlotQueryPG17)).WillReturnRows(slotRows)
+
+	ch := make(chan prometheus.Metric)
+	go func() {
+		defer close(ch)
+		c := PGReplicationSlotsCollector{}
+		if err := c.Update(context.Background(), inst, ch); err != nil {
+			t.Errorf("Error calling PGReplicationSlotsCollector.Update: %s", err)
+		}
+	}()
+
+	if metric, ok := <-ch; ok {
+		t.Fatalf("unexpected metric emitted for NULL replication_slots value: %s", metric.Desc())
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled exceptions: %s", err)
+	}
+}
+
+type replicationSlotsExpectedMetric struct {
+	desc   *prometheus.Desc
+	result MetricResult
+}
+
+// assertReplicationSlotsMetrics reads metrics from ch in order and fails if
+// any of them differs from expected or if more metrics follow.
+func assertReplicationSlotsMetrics(t *testing.T, ch <-chan prometheus.Metric, expected []replicationSlotsExpectedMetric) {
+	t.Helper()
+	for i, want := range expected {
+		metric, ok := <-ch
+		if !ok {
+			t.Fatalf("metric %d: channel closed, want %s", i, want.desc)
+		}
+		if got := metric.Desc().String(); got != want.desc.String() {
+			t.Fatalf("metric %d: desc = %s, want %s", i, got, want.desc)
+		}
+		if got := readMetric(metric); !reflect.DeepEqual(got, want.result) {
+			t.Fatalf("metric %d (%s): got %+v, want %+v", i, want.desc, got, want.result)
+		}
+	}
+	if metric, ok := <-ch; ok {
+		t.Fatalf("unexpected metric emitted: %s", metric.Desc())
 	}
 }

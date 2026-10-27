@@ -41,6 +41,7 @@ the `-file` flags at a mounted secret.
 * [FEATURE] Add `aurora_replica_status` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1311
 * [FEATURE] Add `aurora_global_db_status` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1410
 * [FEATURE] Add `aurora_stat_logical_wal_cache` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1414
+* [FEATURE] `replication_slots`: export `conflicting`, `inactive_since`, `failover` and `synced` from `pg_replication_slots` on PostgreSQL 17+ by @abd-ulbasit in https://github.com/prometheus-community/postgres_exporter/pull/1421
 * [BUGFIX] Fix the `replication` collector failing on every scrape on Amazon Aurora PostgreSQL, where it now reports only `pg_replication_is_replica`, by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1424, based on the contribution by @dannotripp in https://github.com/prometheus-community/postgres_exporter/pull/1274
 * [FEATURE] Add `aurora_stat_database` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1425
 * [FEATURE] Add `aurora_global_db_instance_status` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1411
