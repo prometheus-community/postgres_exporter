@@ -253,13 +253,6 @@ func TestPGStatReplicationCollectorBefore10NullValues(t *testing.T) {
 	}
 }
 
-// collectFunc adapts a plain function to prometheus.Collector so it can be
-// exercised through testutil.CollectAndCompare.
-type collectFunc func(ch chan<- prometheus.Metric)
-
-func (f collectFunc) Describe(chan<- *prometheus.Desc)    {}
-func (f collectFunc) Collect(ch chan<- prometheus.Metric) { f(ch) }
-
 // TestPGStatReplicationCollectorDuplicateConnections is a regression test
 // for https://github.com/prometheus-community/postgres_exporter/issues/1352.
 //

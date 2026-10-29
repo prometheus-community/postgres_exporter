@@ -14,7 +14,9 @@ package collector
 
 import (
 	"context"
+	"database/sql/driver"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -121,6 +123,7 @@ func TestPGStatDatabaseCollector(t *testing.T) {
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 16},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 823},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 1685059842},
+		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_GAUGE, value: 1685059842},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 0.033},
 	}
 
@@ -225,6 +228,7 @@ func TestPGStatDatabaseCollectorNullValues(t *testing.T) {
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 16},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 823},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 1685059842},
+		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_GAUGE, value: 1685059842},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 0.032},
 	}
 
@@ -351,6 +355,7 @@ func TestPGStatDatabaseCollectorRowLeakTest(t *testing.T) {
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 16},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 823},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 1685059842},
+		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_GAUGE, value: 1685059842},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 0.014},
 
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_GAUGE, value: 355},
@@ -370,6 +375,7 @@ func TestPGStatDatabaseCollectorRowLeakTest(t *testing.T) {
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 17},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 824},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 1685059842},
+		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_GAUGE, value: 1685059842},
 		{labels: labelMap{"datid": "pid", "datname": "postgres"}, metricType: dto.MetricType_COUNTER, value: 0.015},
 	}
 
@@ -518,4 +524,45 @@ func TestPGStatDatabaseCollectorRowsError(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestPGStatDatabaseCollectorStatsResetTimestampExposition(t *testing.T) {
+	resetTime := time.Date(2023, 5, 26, 0, 10, 42, 0, time.UTC)
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	inst := &instance{db: db, version: semver.MustParse("14.0.0")}
+	values := func(id, name string, reset driver.Value) []driver.Value {
+		row := make([]driver.Value, len(pgStatCollectorTestColumns))
+		for i := range row {
+			row[i] = int64(0)
+		}
+		row[0], row[1], row[18] = id, name, reset
+		return row
+	}
+	rows := sqlmock.NewRows(pgStatCollectorTestColumns).
+		AddRow(values("1", "first", resetTime)...).
+		AddRow(values("2", "second", nil)...).
+		AddRow(values("3", "epoch", time.Unix(0, 0))...)
+	mock.ExpectQuery(sanitizeQuery(statDatabaseQuery(pgStatCollectorTestColumns))).WillReturnRows(rows)
+	ch := make(chan prometheus.Metric, 100)
+	c := PGStatDatabaseCollector{log: promslog.NewNopLogger()}
+	if err := c.Update(context.Background(), inst, ch); err != nil {
+		t.Fatal(err)
+	}
+	close(ch)
+	exposition := resetTestExposition(t, ch)
+	assertResetFamily(t, exposition, "pg_stat_database_stats_reset", "pg_stat_database_stats_reset_timestamp_seconds", `{datid="1",datname="first"}`, 1685059842, true)
+	assertResetFamily(t, exposition, "pg_stat_database_stats_reset", "pg_stat_database_stats_reset_timestamp_seconds", `{datid="3",datname="epoch"}`, 0, true)
+	if strings.Contains(exposition, `pg_stat_database_stats_reset_timestamp_seconds{datid="2",datname="second"}`) {
+		t.Errorf("unexpected timestamp gauge for NULL database reset time:\n%s", exposition)
+	}
+	if !strings.Contains(exposition, `pg_stat_database_stats_reset{datid="2",datname="second"} 0`+"\n") {
+		t.Errorf("missing legacy counter for NULL database reset time:\n%s", exposition)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
 }

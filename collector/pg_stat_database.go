@@ -197,12 +197,22 @@ var (
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
 	)
+	// Deprecated: remove this counter two releases after introducing the timestamp gauge.
 	statDatabaseStatsReset = prometheus.NewDesc(prometheus.BuildFQName(
 		namespace,
 		statDatabaseSubsystem,
 		"stats_reset",
 	),
-		"Time at which these statistics were last reset",
+		"Deprecated: use pg_stat_database_stats_reset_timestamp_seconds instead. Time at which these statistics were last reset",
+		[]string{"datid", "datname"},
+		prometheus.Labels{},
+	)
+	statDatabaseStatsResetTimestamp = prometheus.NewDesc(prometheus.BuildFQName(
+		namespace,
+		statDatabaseSubsystem,
+		"stats_reset_timestamp_seconds",
+	),
+		"Unix timestamp in seconds at which these statistics were last reset",
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
 	)
@@ -373,7 +383,7 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 
 		statsResetMetric := 0.0
 		if !statsReset.Valid {
-			c.log.Debug("No metric for stats_reset, will collect 0 instead")
+			c.log.Debug("No timestamp gauge for stats_reset, will collect 0 for the deprecated counter instead")
 		}
 		if statsReset.Valid {
 			statsResetMetric = float64(statsReset.Time.Unix())
@@ -499,6 +509,14 @@ func (c *PGStatDatabaseCollector) Update(ctx context.Context, instance *instance
 			statsResetMetric,
 			labels...,
 		)
+		if statsReset.Valid {
+			ch <- prometheus.MustNewConstMetric(
+				statDatabaseStatsResetTimestamp,
+				prometheus.GaugeValue,
+				statsResetMetric,
+				labels...,
+			)
+		}
 
 		if activeTimeAvail {
 			ch <- prometheus.MustNewConstMetric(

@@ -15,6 +15,8 @@ package collector
 import (
 	"context"
 	"errors"
+	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -23,6 +25,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/promslog"
 )
@@ -372,5 +375,57 @@ func TestExecuteDropsMetricsOnError(t *testing.T) {
 				t.Fatalf("unexpected success value %v", success)
 			}
 		})
+	}
+}
+
+// collectFunc adapts a plain function to prometheus.Collector so it can be
+// exercised through testutil.CollectAndCompare.
+type collectFunc func(ch chan<- prometheus.Metric)
+
+func (f collectFunc) Describe(chan<- *prometheus.Desc)    {}
+func (f collectFunc) Collect(ch chan<- prometheus.Metric) { f(ch) }
+
+func resetTestExposition(t *testing.T, metrics <-chan prometheus.Metric) string {
+	t.Helper()
+	registry := prometheus.NewRegistry()
+	if err := registry.Register(collectFunc(func(ch chan<- prometheus.Metric) {
+		for metric := range metrics {
+			ch <- metric
+		}
+	})); err != nil {
+		t.Fatal(err)
+	}
+	recorder := httptest.NewRecorder()
+	promhttp.HandlerFor(registry, promhttp.HandlerOpts{}).ServeHTTP(recorder, httptest.NewRequest("GET", "/metrics", nil))
+	if recorder.Code != 200 {
+		t.Fatalf("metrics response: %d: %s", recorder.Code, recorder.Body.String())
+	}
+	return recorder.Body.String()
+}
+
+func assertResetFamily(t *testing.T, exposition, legacy, canonical, labels string, value float64, valid bool) {
+	t.Helper()
+	for _, family := range []struct {
+		name, metricType, helpFragment string
+	}{
+		{legacy, "counter", "Deprecated: use " + canonical},
+		{canonical, "gauge", "Unix timestamp in seconds at which these statistics were last reset"},
+	} {
+		if family.name == canonical && !valid {
+			if strings.Contains(exposition, "# TYPE "+canonical+" ") {
+				t.Errorf("unexpected %s for NULL reset time in exposition:\n%s", canonical, exposition)
+			}
+			continue
+		}
+		for _, fragment := range []string{
+			"# HELP " + family.name + " ",
+			"# TYPE " + family.name + " " + family.metricType,
+			family.helpFragment,
+			family.name + labels + " " + strconv.FormatFloat(value, 'g', -1, 64) + "\n",
+		} {
+			if !strings.Contains(exposition, fragment) {
+				t.Errorf("missing %q in exposition:\n%s", fragment, exposition)
+			}
+		}
 	}
 }
