@@ -14,6 +14,7 @@ package collector
 
 import (
 	"context"
+	"database/sql/driver"
 	"testing"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/promslog"
 	"github.com/smartystreets/goconvey/convey"
 )
 
@@ -131,7 +133,6 @@ func TestPGStatCheckpointerCollectorNullValues(t *testing.T) {
 		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
 		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
 		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
-		{labels: labelMap{}, metricType: dto.MetricType_GAUGE, value: 0},
 	}
 
 	convey.Convey("Metrics comparison", t, func() {
@@ -142,5 +143,53 @@ func TestPGStatCheckpointerCollectorNullValues(t *testing.T) {
 	})
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled exceptions: %s", err)
+	}
+}
+
+func TestPGStatCheckpointerCollectorStatsResetTimestampExposition(t *testing.T) {
+	resetTime := time.Date(2023, 5, 26, 0, 10, 42, 0, time.UTC)
+	for _, test := range []struct {
+		name  string
+		reset driver.Value
+	}{
+		{"timestamp", resetTime},
+		{"null", nil},
+		{"epoch", time.Unix(0, 0)},
+	} {
+		t.Run("checkpointer_"+test.name, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer db.Close()
+			inst := &instance{db: db, version: semver.MustParse("17.0.0")}
+			rows := sqlmock.NewRows([]string{"num_timed", "num_requested", "restartpoints_timed", "restartpoints_req", "restartpoints_done", "write_time", "sync_time", "buffers_written", "stats_reset"}).AddRow(0, 0, 0, 0, 0, 0, 0, 0, test.reset)
+			mock.ExpectQuery(sanitizeQuery(statCheckpointerQuery)).WillReturnRows(rows)
+			ch := make(chan prometheus.Metric, 20)
+			if err := (PGStatCheckpointerCollector{}).Update(context.Background(), inst, ch); err != nil {
+				t.Fatal(err)
+			}
+			close(ch)
+			value := float64(0)
+			if test.reset != nil {
+				value = float64(test.reset.(time.Time).Unix())
+			}
+			assertResetFamily(t, resetTestExposition(t, ch), "pg_stat_checkpointer_stats_reset_total", "pg_stat_checkpointer_stats_reset_timestamp_seconds", "", value, test.reset != nil)
+			if err := mock.ExpectationsWereMet(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestPGStatCheckpointerCollectorBefore17(t *testing.T) {
+	ch := make(chan prometheus.Metric, 1)
+	inst := &instance{version: semver.MustParse("16.0.0")}
+	c := PGStatCheckpointerCollector{log: promslog.NewNopLogger()}
+	if err := c.Update(context.Background(), inst, ch); err != nil {
+		t.Fatal(err)
+	}
+	if len(ch) != 0 {
+		t.Fatal("checkpointer emitted metrics on PostgreSQL 16")
 	}
 }

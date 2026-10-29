@@ -14,6 +14,7 @@ package collector
 
 import (
 	"context"
+	"database/sql/driver"
 	"testing"
 	"time"
 
@@ -139,7 +140,6 @@ func TestPGStatBGWriterCollectorNullValues(t *testing.T) {
 		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
 		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
 		{labels: labelMap{}, metricType: dto.MetricType_COUNTER, value: 0},
-		{labels: labelMap{}, metricType: dto.MetricType_GAUGE, value: 0},
 	}
 
 	convey.Convey("Metrics comparison", t, func() {
@@ -194,12 +194,55 @@ func TestPGStatBGWriterCollectorWrapsLargeCounters(t *testing.T) {
 			if metric.value != test.value {
 				t.Fatalf("buffers_clean value = %v, want %v", metric.value, test.value)
 			}
-			for range 4 {
-				<-ch
+			for range ch {
 			}
 
 			if err := mock.ExpectationsWereMet(); err != nil {
 				t.Errorf("unmet database expectations: %v", err)
+			}
+		})
+	}
+}
+
+func TestPGStatBGWriterCollectorStatsResetTimestampExposition(t *testing.T) {
+	resetTime := time.Date(2023, 5, 26, 0, 10, 42, 0, time.UTC)
+	for _, test := range []struct {
+		name, version string
+		reset         driver.Value
+	}{
+		{"pre17_timestamp", "16.0.0", resetTime},
+		{"pre17_null", "16.0.0", nil},
+		{"pre17_epoch", "16.0.0", time.Unix(0, 0)},
+		{"post17_timestamp", "17.0.0", resetTime},
+		{"post17_null", "17.0.0", nil},
+		{"post17_epoch", "17.0.0", time.Unix(0, 0)},
+	} {
+		t.Run("bgwriter_"+test.name, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer db.Close()
+			inst := &instance{db: db, version: semver.MustParse(test.version)}
+			query := statBGWriterQueryBefore17
+			rows := sqlmock.NewRows([]string{"checkpoints_timed", "checkpoints_req", "checkpoint_write_time", "checkpoint_sync_time", "buffers_checkpoint", "buffers_clean", "maxwritten_clean", "buffers_backend", "buffers_backend_fsync", "buffers_alloc", "stats_reset"}).AddRow(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, test.reset)
+			if inst.version.GE(semver.MustParse("17.0.0")) {
+				query = statBGWriterQueryAfter17
+				rows = sqlmock.NewRows([]string{"buffers_clean", "maxwritten_clean", "buffers_alloc", "stats_reset"}).AddRow(0, 0, 0, test.reset)
+			}
+			mock.ExpectQuery(sanitizeQuery(query)).WillReturnRows(rows)
+			ch := make(chan prometheus.Metric, 20)
+			if err := (PGStatBGWriterCollector{}).Update(context.Background(), inst, ch); err != nil {
+				t.Fatal(err)
+			}
+			close(ch)
+			value := float64(0)
+			if test.reset != nil {
+				value = float64(test.reset.(time.Time).Unix())
+			}
+			assertResetFamily(t, resetTestExposition(t, ch), "pg_stat_bgwriter_stats_reset_total", "pg_stat_bgwriter_stats_reset_timestamp_seconds", "", value, test.reset != nil)
+			if err := mock.ExpectationsWereMet(); err != nil {
+				t.Fatal(err)
 			}
 		})
 	}

@@ -1,5 +1,8 @@
 ## main / (unreleased)
 
+* [BUGFIX] Expose `pg_stat_bgwriter`, `pg_stat_checkpointer`, and `pg_stat_database` statistics reset times as `_timestamp_seconds` gauges, omitting samples when PostgreSQL returns NULL, by @je4yfc in https://github.com/prometheus-community/postgres_exporter/pull/1416
+* [CHANGE] Deprecate `pg_stat_bgwriter_stats_reset_total`, `pg_stat_checkpointer_stats_reset_total`, and `pg_stat_database_stats_reset` in favor of their `_stats_reset_timestamp_seconds` gauges; the counters will be removed two releases after this deprecation, by @je4yfc in https://github.com/prometheus-community/postgres_exporter/pull/1416
+
 ## 0.21.1 / 2026-11-18
 
 * [CHANGE] Fix container image publishing #1469
@@ -86,8 +89,6 @@ will be removed in v0.22.0.
 * [BUGFIX] Apply `--collection-timeout` to the legacy exporter, including custom queries from `--extend.query-path`, so that slow queries no longer pile up across scrapes, by @maltere in https://github.com/prometheus-community/postgres_exporter/pull/1393
 * [BUGFIX] `stat_activity_autovacuum`: skip autovacuum workers whose `xact_start` is NULL instead of failing the whole collector, by @locker95 in https://github.com/prometheus-community/postgres_exporter/pull/1381
 * [BUGFIX] `stat_database`: report errors raised while reading query results instead of ignoring them, by @chieflibrarian in https://github.com/prometheus-community/postgres_exporter/pull/1399
-
-* [ENHANCEMENT] Expose `pg_stat_bgwriter`, `pg_stat_checkpointer`, and `pg_stat_database` statistics reset times as `_timestamp_seconds` gauges; retain the former counter families as deprecated aliases.
 
 ## 0.20.1 / 2026-07-07
 

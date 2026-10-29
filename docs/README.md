@@ -23,8 +23,6 @@ The exporter reads PostgreSQL's own statistics and catalog views — nothing is 
 
 All metrics are prefixed with `pg_`. The exporter's own health is exposed via `pg_up` and `pg_exporter_*` metrics alongside the standard Go runtime metrics.
 
-The last statistics-reset time is exposed as a Unix-seconds gauge in `pg_stat_bgwriter_stats_reset_timestamp_seconds`, `pg_stat_checkpointer_stats_reset_timestamp_seconds` (PostgreSQL 17+), and `pg_stat_database_stats_reset_timestamp_seconds` (with `datid` and `datname` labels). A value of `0` means PostgreSQL returned a NULL reset time, so filter for values greater than zero before calculating an age with `time() - metric`. The older `pg_stat_bgwriter_stats_reset_total`, `pg_stat_checkpointer_stats_reset_total`, and `pg_stat_database_stats_reset` families remain as deprecated counters with their existing values for compatibility; they represent timestamps, not reset counts, and should not be used with `rate()`, `increase()`, or `resets()`.
-
 Run `postgres_exporter --help` for the authoritative list of collectors and flags in the version you're running.
 
 ## Supported PostgreSQL versions
