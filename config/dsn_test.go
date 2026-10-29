@@ -324,3 +324,39 @@ func Test_DSN_WithDatabase(t *testing.T) {
 		})
 	}
 }
+
+func TestDSNServerAndDatabase(t *testing.T) {
+	tests := []struct {
+		name         string
+		dsn          string
+		wantServer   string
+		wantDatabase string
+	}{
+		{"url with port and database", "postgresql://u:p@db.example:6432/app?sslmode=disable", "db.example:6432", "app"},
+		{"url defaults", "postgresql://u@db.example/", "db.example:5432", "u"},
+		{"url without host", "postgresql://u@/app", "localhost:5432", "app"},
+		{"dbname parameter wins over path", "postgresql://u@db.example/one?dbname=two", "db.example:5432", "two"},
+		{"key value", "host=db.example port=6432 user=u dbname=app", "db.example:6432", "app"},
+		{"key value defaults", "user=u", "localhost:5432", "u"},
+		{"socket host in query", "postgresql://u@/app?host=/var/run/postgresql&port=5433", "/var/run/postgresql:5433", "app"},
+		{"ipv6", "postgresql://u@[::1]:5433/app", "[::1]:5433", "app"},
+		{"WithDatabase override", "postgresql://u@db.example/app", "db.example:5432", "other"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			dsn, err := NewDSN(test.dsn)
+			if err != nil {
+				t.Fatalf("NewDSN() error = %v", err)
+			}
+			if test.wantDatabase == "other" {
+				dsn = dsn.WithDatabase("other")
+			}
+			if got := dsn.Server(); got != test.wantServer {
+				t.Errorf("Server() = %q, want %q", got, test.wantServer)
+			}
+			if got := dsn.Database(); got != test.wantDatabase {
+				t.Errorf("Database() = %q, want %q", got, test.wantDatabase)
+			}
+		})
+	}
+}

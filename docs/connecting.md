@@ -47,6 +47,14 @@ scrape_configs:
 
 Credentials for `/probe` targets come from an `auth_module` defined in the [config file](configuration.md#config-file), referenced via the `auth_module` query/HTTP parameter — this avoids putting usernames and passwords in the target URL.
 
+## Detecting connection problems
+
+On every scrape the exporter reports `pg_scrape_connection_success{server, datname}`: `1` if it could open a new connection to the target and run its initial queries, `0` if not. A connection limit that is reached, a `pg_hba.conf` change, rotated or revoked credentials, and TLS failures all give `0`. The series is emitted whether or not the connection succeeds and keeps the same labels, which are taken from the DSN (`server` is `host:port`, `datname` is the database it names) rather than from the connection.
+
+It is reported for every configured DSN, for each database found by `--auto-discover-databases` (as its own `datname`), and for every `/probe` request. Collectors only run against the first configured DSN; the others get the connection check only. If the connection to the first DSN fails, the other databases of that server cannot be discovered, so only the first one reports `0`.
+
+This is a different question from `pg_scrape_collector_success`, which says whether one collector's query worked, and a failed connection does not set it to `0` for every collector. `pg_up` is reported by the older long-lived connection and can stay `1` while new connections are refused. Alert on `pg_scrape_connection_success == 0` to find out that the exporter cannot connect.
+
 ## Connection timeout
 
 `PG_EXPORTER_COLLECTION_TIMEOUT` (default `1m`) bounds how long a scrape is allowed to take before the exporter drops the connection. This protects against connections piling up if the database is slow to respond (e.g. during a large DDL operation holding locks). Values less than `1ms` are invalid.
