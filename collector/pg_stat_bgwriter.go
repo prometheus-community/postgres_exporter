@@ -93,6 +93,7 @@ var (
 		[]string{},
 		prometheus.Labels{},
 	)
+	// Deprecated: remove this counter two releases after introducing the timestamp gauge.
 	statBGWriterStatsResetDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, bgWriterSubsystem, "stats_reset_total"),
 		"Deprecated: use pg_stat_bgwriter_stats_reset_timestamp_seconds instead. Time at which these statistics were last reset",
@@ -101,7 +102,7 @@ var (
 	)
 	statBGWriterStatsResetTimestampDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, bgWriterSubsystem, "stats_reset_timestamp_seconds"),
-		"Unix timestamp in seconds at which these statistics were last reset; 0 means PostgreSQL returned NULL",
+		"Unix timestamp in seconds at which these statistics were last reset",
 		[]string{},
 		prometheus.Labels{},
 	)
@@ -168,11 +169,13 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, c
 			prometheus.CounterValue,
 			srMetric,
 		)
-		ch <- prometheus.MustNewConstMetric(
-			statBGWriterStatsResetTimestampDesc,
-			prometheus.GaugeValue,
-			srMetric,
-		)
+		if sr.Valid {
+			ch <- prometheus.MustNewConstMetric(
+				statBGWriterStatsResetTimestampDesc,
+				prometheus.GaugeValue,
+				srMetric,
+			)
+		}
 	} else {
 		db := instance.getDB()
 		row := db.QueryRowContext(ctx, statBGWriterQueryBefore17)
@@ -261,11 +264,13 @@ func (PGStatBGWriterCollector) Update(ctx context.Context, instance *instance, c
 			prometheus.CounterValue,
 			srMetric,
 		)
-		ch <- prometheus.MustNewConstMetric(
-			statBGWriterStatsResetTimestampDesc,
-			prometheus.GaugeValue,
-			srMetric,
-		)
+		if sr.Valid {
+			ch <- prometheus.MustNewConstMetric(
+				statBGWriterStatsResetTimestampDesc,
+				prometheus.GaugeValue,
+				srMetric,
+			)
+		}
 	}
 
 	return nil

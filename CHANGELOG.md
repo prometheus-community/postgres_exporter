@@ -15,8 +15,8 @@ enabling wrapping later will still create this one-time reset boundary.
 * [BUGFIX] Fix `long_running_transactions` to count only transactions older than a configurable threshold, by @ArthurSens in https://github.com/prometheus-community/postgres_exporter/pull/1379, based on the contribution by @moreinhardt in https://github.com/prometheus-community/postgres_exporter/pull/1210
 * [FEATURE] Export `pg_settings.pending_restart` as `pg_settings_pending_restart{name}` from the `settings` collector by @MarcWort in https://github.com/prometheus-community/postgres_exporter/pull/1396
 * [FEATURE] Add `aurora_replica_status` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1311
-
-* [ENHANCEMENT] Expose `pg_stat_bgwriter`, `pg_stat_checkpointer`, and `pg_stat_database` statistics reset times as `_timestamp_seconds` gauges; retain the former counter families as deprecated aliases.
+* [BUGFIX] Expose `pg_stat_bgwriter`, `pg_stat_checkpointer`, and `pg_stat_database` statistics reset times as `_timestamp_seconds` gauges, omitting samples when PostgreSQL returns NULL, by @je4yfc in https://github.com/prometheus-community/postgres_exporter/pull/1416
+* [CHANGE] Deprecate `pg_stat_bgwriter_stats_reset_total`, `pg_stat_checkpointer_stats_reset_total`, and `pg_stat_database_stats_reset` in favor of their `_stats_reset_timestamp_seconds` gauges; the counters will be removed two releases after this deprecation, by @je4yfc in https://github.com/prometheus-community/postgres_exporter/pull/1416
 
 ## 0.20.1 / 2026-07-07
 
