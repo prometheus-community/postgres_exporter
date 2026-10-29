@@ -1,5 +1,6 @@
 ## main / (unreleased)
 
+* [BUGFIX] Report `pg_replication_lag_seconds` as 0 on a caught-up replica whose WAL receive position is behind the replay position, which happens after the WAL receiver restarts on an idle cluster (#1434).
 * [BUGFIX] Add unit-correct `pg_database_wraparound_age_datfrozenxid` and `pg_database_wraparound_age_datminmxid` gauges. The existing `_seconds` metrics remain as deprecated aliases with unchanged ID-count values; migrate dashboards, rules, and alerts to the new names.
 
 **WARNING: upgrading with large counters can cause a one-time false rate spike.**
