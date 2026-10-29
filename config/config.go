@@ -45,7 +45,6 @@ const (
 )
 
 const (
-	CollectorAuroraReplicaStatus     = "aurora_replica_status"
 	CollectorBuffercacheSummary      = "buffercache_summary"
 	CollectorDatabase                = "database"
 	CollectorDatabaseWraparound      = "database_wraparound"
@@ -72,6 +71,18 @@ const (
 	CollectorStatioUserTables        = "statio_user_tables"
 	CollectorWal                     = "wal"
 	CollectorXlogLocation            = "xlog_location"
+
+	// Amazon Aurora PostgreSQL collectors.
+	CollectorAuroraGlobalDBInstanceStatus  = "aurora_global_db_instance_status"
+	CollectorAuroraGlobalDBStatus          = "aurora_global_db_status"
+	CollectorAuroraInstance                = "aurora_instance"
+	CollectorAuroraReplicaStatus           = "aurora_replica_status"
+	CollectorAuroraStatBgwriter            = "aurora_stat_bgwriter"
+	CollectorAuroraStatDatabase            = "aurora_stat_database"
+	CollectorAuroraStatDMLActivity         = "aurora_stat_dml_activity"
+	CollectorAuroraStatGetDBCommitLatency  = "aurora_stat_get_db_commit_latency"
+	CollectorAuroraStatLogicalWalCache     = "aurora_stat_logical_wal_cache"
+	CollectorAuroraStatOptimizedReadsCache = "aurora_stat_optimized_reads_cache"
 )
 
 type Config struct {
@@ -202,7 +213,6 @@ func (c Config) clone() Config {
 
 func DefaultCollectorConfig() map[string]bool {
 	return map[string]bool{
-		CollectorAuroraReplicaStatus:     false,
 		CollectorBuffercacheSummary:      false,
 		CollectorDatabase:                true,
 		CollectorDatabaseWraparound:      false,
@@ -229,6 +239,18 @@ func DefaultCollectorConfig() map[string]bool {
 		CollectorStatioUserTables:        true,
 		CollectorWal:                     true,
 		CollectorXlogLocation:            false,
+
+		// Amazon Aurora PostgreSQL collectors.
+		CollectorAuroraGlobalDBInstanceStatus:  false,
+		CollectorAuroraGlobalDBStatus:          false,
+		CollectorAuroraInstance:                false,
+		CollectorAuroraReplicaStatus:           false,
+		CollectorAuroraStatBgwriter:            false,
+		CollectorAuroraStatDatabase:            false,
+		CollectorAuroraStatDMLActivity:         false,
+		CollectorAuroraStatGetDBCommitLatency:  false,
+		CollectorAuroraStatLogicalWalCache:     false,
+		CollectorAuroraStatOptimizedReadsCache: false,
 	}
 }
 

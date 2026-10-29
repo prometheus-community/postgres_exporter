@@ -1,5 +1,7 @@
 ## main / (unreleased)
 
+* [BUGFIX] Add unit-correct `pg_database_wraparound_age_datfrozenxid` and `pg_database_wraparound_age_datminmxid` gauges. The existing `_seconds` metrics remain as deprecated aliases with unchanged ID-count values; migrate dashboards, rules, and alerts to the new names.
+
 **WARNING: upgrading with large counters can cause a one-time false rate spike.**
 Non-negative 64-bit counters are now wrapped at `2^53` by default so that
 single-unit changes remain representable as `float64`. On the first scrape
@@ -10,13 +12,46 @@ large false spike for that evaluation window. Use
 `--no-wrap-large-counters` to preserve the previous conversion during rollout;
 enabling wrapping later will still create this one-time reset boundary.
 
+**DEPRECATION: the `DATA_SOURCE_*` environment variables that now have a flag.**
+Each one below keeps working and still takes effect when its flag is unset, but
+the exporter logs a warning on startup and they will be removed in v0.22.0.
+
+| Deprecated env var | Replacement |
+| --- | --- |
+| `DATA_SOURCE_URI` | `--datasource.uri` |
+| `DATA_SOURCE_URI_FILE` | `--datasource.uri-file` |
+| `DATA_SOURCE_USER_FILE` | `--datasource.user-file` |
+| `DATA_SOURCE_PASS_FILE` | `--datasource.pass-file` |
+
+`DATA_SOURCE_NAME`, `DATA_SOURCE_USER` and `DATA_SOURCE_PASS` are **not**
+deprecated and get no flag: they carry secrets, and CLI flags are readable via
+`/proc` and the Kubernetes API. Pass those by environment variable, or point
+the `-file` flags at a mounted secret.
+
+* [CHANGE] Add `--datasource.*` CLI flags for the Postgres connection config and deprecate the `DATA_SOURCE_*` environment variables they replace by @nicolastakashi in https://github.com/prometheus-community/postgres_exporter/pull/1376
 * [CHANGE] Wrap non-negative 64-bit counters at `2^53` to preserve single-unit precision by @gnanirahulnutakki in https://github.com/prometheus-community/postgres_exporter/pull/1351
 * [CHANGE] stat_replication: add `pid` label to disambiguate replication connections that otherwise share identical labels by @sysadmind in https://github.com/prometheus-community/postgres_exporter/pull/1353
+* [CHANGE] stat_activity_autovacuum: add `datname` and `schemaname` labels to disambiguate autovacuum workers that otherwise share a `relname` by @spicysharkco in https://github.com/prometheus-community/postgres_exporter/pull/1419
+* [CHANGE] Deprecate `PG_EXPORTER_WEB_TELEMETRY_PATH` for removal in v0.22.0; use `--web.telemetry-path` instead, by @ArthurSens in https://github.com/prometheus-community/postgres_exporter/pull/1428. Until removal, the environment variable continues to set the metrics path when the flag is unset and logs a startup warning. Other `PG_EXPORTER_*` variables retain their existing behavior.
+* [BUGFIX] Enforce concurrent scrape limits through `--web.max-requests` (default `40`), independently for the metrics and `/probe` endpoints, by @ArthurSens in https://github.com/prometheus-community/postgres_exporter/pull/1428. Previously, both endpoints allowed unlimited concurrent scrapes. After upgrading, requests exceeding the limit receive HTTP 503; multi-target deployments share one limit across all `/probe` targets. Set `--web.max-requests=0` to preserve the previous unlimited behavior.
 * [BUGFIX] Fix `long_running_transactions` to count only transactions older than a configurable threshold, by @ArthurSens in https://github.com/prometheus-community/postgres_exporter/pull/1379, based on the contribution by @moreinhardt in https://github.com/prometheus-community/postgres_exporter/pull/1210
+* [BUGFIX] Fix the `wal` collector failing on every scrape on Amazon Aurora PostgreSQL versions that don't support `pg_ls_waldir()` by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1312
+* [FEATURE] Add `--web.disable-exporter-metrics` to exclude Go, process, and `postgres_exporter_build_info` metrics while retaining PostgreSQL scrape-status and configuration-reload metrics, by @ArthurSens in https://github.com/prometheus-community/postgres_exporter/pull/1428, based on @nicolastakashi's work in https://github.com/prometheus-community/postgres_exporter/pull/1368.
 * [FEATURE] Export `pg_settings.pending_restart` as `pg_settings_pending_restart{name}` from the `settings` collector by @MarcWort in https://github.com/prometheus-community/postgres_exporter/pull/1396
 * [FEATURE] Add `aurora_replica_status` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1311
 * [BUGFIX] Expose `pg_stat_bgwriter`, `pg_stat_checkpointer`, and `pg_stat_database` statistics reset times as `_timestamp_seconds` gauges, omitting samples when PostgreSQL returns NULL, by @je4yfc in https://github.com/prometheus-community/postgres_exporter/pull/1416
 * [CHANGE] Deprecate `pg_stat_bgwriter_stats_reset_total`, `pg_stat_checkpointer_stats_reset_total`, and `pg_stat_database_stats_reset` in favor of their `_stats_reset_timestamp_seconds` gauges; the counters will be removed two releases after this deprecation, by @je4yfc in https://github.com/prometheus-community/postgres_exporter/pull/1416
+* [FEATURE] Add `aurora_global_db_status` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1410
+* [FEATURE] Add `aurora_stat_logical_wal_cache` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1414
+* [FEATURE] `replication_slots`: export `conflicting`, `inactive_since`, `failover` and `synced` from `pg_replication_slots` on PostgreSQL 17+ by @abd-ulbasit in https://github.com/prometheus-community/postgres_exporter/pull/1421
+* [BUGFIX] Fix the `replication` collector failing on every scrape on Amazon Aurora PostgreSQL, where it now reports only `pg_replication_is_replica`, by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1424, based on the contribution by @dannotripp in https://github.com/prometheus-community/postgres_exporter/pull/1274
+* [FEATURE] Add `aurora_stat_database` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1425
+* [FEATURE] Add `aurora_global_db_instance_status` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1411
+* [FEATURE] Add `aurora_stat_get_db_commit_latency` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1413
+* [FEATURE] Add `aurora_stat_dml_activity` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1412
+* [FEATURE] Add `aurora_stat_bgwriter` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1426
+* [FEATURE] Add `aurora_stat_optimized_reads_cache` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1427
+* [FEATURE] Add `aurora_instance` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1433
 
 ## 0.20.1 / 2026-07-07
 
