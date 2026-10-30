@@ -20,6 +20,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/promslog"
 	"github.com/smartystreets/goconvey/convey"
 )
 
@@ -183,4 +184,82 @@ func TestPGStatWalReceiverCollectorWithNoFlushedLSN(t *testing.T) {
 		t.Errorf("there were unfulfilled exceptions: %s", err)
 	}
 
+}
+
+func TestPGStatWalReceiverCollectorWithNoSlotName(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Error opening a stub db connection: %s", err)
+	}
+	defer db.Close()
+
+	inst := &instance{db: db}
+	infoSchemaColumns := []string{
+		"column_name",
+	}
+
+	infoSchemaRows := sqlmock.NewRows(infoSchemaColumns)
+
+	mock.ExpectQuery(sanitizeQuery(pgStatWalColumnQuery)).WillReturnRows(infoSchemaRows)
+
+	columns := []string{
+		"upstream_host",
+		"slot_name",
+		"status",
+		"receive_start_lsn",
+		"receive_start_tli",
+		"received_tli",
+		"last_msg_send_time",
+		"last_msg_receipt_time",
+		"latest_end_lsn",
+		"latest_end_time",
+		"upstream_node",
+	}
+	// Replication without a slot (primary_slot_name unset): slot_name is NULL,
+	// and so is upstream_node, which is parsed from it.
+	rows := sqlmock.NewRows(columns).
+		AddRow(
+			"foo",
+			nil,
+			"streaming",
+			int64(1200668684563608),
+			1687321285,
+			1687321280,
+			1687321275,
+			1687321276,
+			int64(1200668684563610),
+			1687321277,
+			nil,
+		)
+	mock.ExpectQuery(sanitizeQuery(queryWithNoFlushedLSN)).WillReturnRows(rows)
+
+	ch := make(chan prometheus.Metric)
+	go func() {
+		defer close(ch)
+		c := PGStatWalReceiverCollector{log: promslog.NewNopLogger()}
+
+		if err := c.Update(context.Background(), inst, ch); err != nil {
+			t.Errorf("Error calling PgStatWalReceiverCollector.Update: %s", err)
+		}
+	}()
+	expected := []MetricResult{
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "", "status": "streaming"}, value: 1200668684563608, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "", "status": "streaming"}, value: 1687321285, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "", "status": "streaming"}, value: 1687321280, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "", "status": "streaming"}, value: 1687321275, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "", "status": "streaming"}, value: 1687321276, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "", "status": "streaming"}, value: 1200668684563610, metricType: dto.MetricType_COUNTER},
+		{labels: labelMap{"upstream_host": "foo", "slot_name": "", "status": "streaming"}, value: 1687321277, metricType: dto.MetricType_COUNTER},
+	}
+	convey.Convey("Metrics comparison", t, func() {
+		for _, expect := range expected {
+			m := readMetric(<-ch)
+			convey.So(expect, convey.ShouldResemble, m)
+		}
+		_, more := <-ch
+		convey.So(more, convey.ShouldBeFalse)
+	})
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled exceptions: %s", err)
+	}
 }

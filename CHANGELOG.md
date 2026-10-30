@@ -1,5 +1,6 @@
 ## main / (unreleased)
 
+* [BUGFIX] `stat_wal_receiver`: export metrics with an empty `slot_name` when replicating without a replication slot instead of dropping them. #1193
 * [BUGFIX] Add unit-correct `pg_database_wraparound_age_datfrozenxid` and `pg_database_wraparound_age_datminmxid` gauges. The existing `_seconds` metrics remain as deprecated aliases with unchanged ID-count values; migrate dashboards, rules, and alerts to the new names.
 
 **WARNING: upgrading with large counters can cause a one-time false rate spike.**
