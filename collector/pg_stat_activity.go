@@ -41,17 +41,19 @@ var (
 		"wait_event_type",
 		"wait_event",
 	}
-	statActivityCountDesc = prometheus.NewDesc(
+	statActivityCountDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statActivitySubsystem, "count"),
 		"number of connections in this state",
-		statActivityLabels,
+		prometheus.UnconstrainedLabels(statActivityLabels),
 		prometheus.Labels{},
+		prometheus.WithUnit("{connection}"),
 	)
-	statActivityMaxTxDurationDesc = prometheus.NewDesc(
+	statActivityMaxTxDurationDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statActivitySubsystem, "max_tx_duration"),
 		"max duration in seconds any active transaction has been running",
-		statActivityLabels,
+		prometheus.UnconstrainedLabels(statActivityLabels),
 		prometheus.Labels{},
+		prometheus.WithUnit("s"),
 	)
 
 	statActivityQuery = `

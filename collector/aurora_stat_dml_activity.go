@@ -37,15 +37,17 @@ func NewAuroraStatDMLActivityCollector(collectorConfig) (Collector, error) {
 }
 
 var (
-	auroraStatDMLActivityOperations = prometheus.NewDesc(
+	auroraStatDMLActivityOperations = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraStatDMLActivitySubsystem, "operations_total"),
 		"Number of successful DML operations, by operation type.",
-		[]string{"datid", "datname", "operation"}, nil,
+		prometheus.UnconstrainedLabels([]string{"datid", "datname", "operation"}), nil,
+		prometheus.WithUnit("{operation}"),
 	)
-	auroraStatDMLActivityLatency = prometheus.NewDesc(
+	auroraStatDMLActivityLatency = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraStatDMLActivitySubsystem, "latency_seconds_total"),
 		"Total time spent in successful DML operations in seconds, by operation type.",
-		[]string{"datid", "datname", "operation"}, nil,
+		prometheus.UnconstrainedLabels([]string{"datid", "datname", "operation"}), nil,
+		prometheus.WithUnit("s"),
 	)
 
 	// LATERAL calls the function once per database; (f(oid)).* in the

@@ -37,10 +37,11 @@ func NewAuroraInstanceCollector(collectorConfig) (Collector, error) {
 }
 
 var (
-	auroraInstanceInfo = prometheus.NewDesc(
+	auroraInstanceInfo = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraInstanceSubsystem, "info"),
 		"The Aurora instance the exporter is connected to and its Aurora version, with value 1.",
-		[]string{"server_id", "version"}, nil,
+		prometheus.UnconstrainedLabels([]string{"server_id", "version"}), nil,
+		prometheus.WithUnit("1"),
 	)
 
 	auroraInstanceQuery = `SELECT aurora_db_instance_identifier(), aurora_version()`

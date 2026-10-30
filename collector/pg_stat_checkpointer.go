@@ -37,59 +37,68 @@ func NewPGStatCheckpointerCollector(config collectorConfig) (Collector, error) {
 }
 
 var (
-	statCheckpointerNumTimedDesc = prometheus.NewDesc(
+	statCheckpointerNumTimedDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statCheckpointerSubsystem, "num_timed_total"),
 		"Number of scheduled checkpoints due to timeout",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{checkpoint}"),
 	)
-	statCheckpointerNumRequestedDesc = prometheus.NewDesc(
+	statCheckpointerNumRequestedDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statCheckpointerSubsystem, "num_requested_total"),
 		"Number of requested checkpoints that have been performed",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{checkpoint}"),
 	)
-	statCheckpointerRestartpointsTimedDesc = prometheus.NewDesc(
+	statCheckpointerRestartpointsTimedDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statCheckpointerSubsystem, "restartpoints_timed_total"),
 		"Number of scheduled restartpoints due to timeout or after a failed attempt to perform it",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{restartpoint}"),
 	)
-	statCheckpointerRestartpointsReqDesc = prometheus.NewDesc(
+	statCheckpointerRestartpointsReqDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statCheckpointerSubsystem, "restartpoints_req_total"),
 		"Number of requested restartpoints",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{restartpoint}"),
 	)
-	statCheckpointerRestartpointsDoneDesc = prometheus.NewDesc(
+	statCheckpointerRestartpointsDoneDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statCheckpointerSubsystem, "restartpoints_done_total"),
 		"Number of restartpoints that have been performed",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{restartpoint}"),
 	)
-	statCheckpointerWriteTimeDesc = prometheus.NewDesc(
+	statCheckpointerWriteTimeDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statCheckpointerSubsystem, "write_time_total"),
 		"Total amount of time that has been spent in the portion of processing checkpoints and restartpoints where files are written to disk, in milliseconds",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("ms"),
 	)
-	statCheckpointerSyncTimeDesc = prometheus.NewDesc(
+	statCheckpointerSyncTimeDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statCheckpointerSubsystem, "sync_time_total"),
 		"Total amount of time that has been spent in the portion of processing checkpoints and restartpoints where files are synchronized to disk, in milliseconds",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("ms"),
 	)
-	statCheckpointerBuffersWrittenDesc = prometheus.NewDesc(
+	statCheckpointerBuffersWrittenDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statCheckpointerSubsystem, "buffers_written_total"),
 		"Number of buffers written during checkpoints and restartpoints",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{buffer}"),
 	)
-	statCheckpointerStatsResetDesc = prometheus.NewDesc(
+	statCheckpointerStatsResetDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statCheckpointerSubsystem, "stats_reset_total"),
 		"Time at which these statistics were last reset",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("s"),
 	)
 
 	statCheckpointerQuery = `SELECT

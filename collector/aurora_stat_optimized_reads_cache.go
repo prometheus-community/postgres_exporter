@@ -39,15 +39,17 @@ func NewAuroraStatOptimizedReadsCacheCollector(collectorConfig) (Collector, erro
 }
 
 var (
-	auroraStatOptimizedReadsCacheTotalSize = prometheus.NewDesc(
+	auroraStatOptimizedReadsCacheTotalSize = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraStatOptimizedReadsCacheSubsystem, "total_size_bytes"),
 		"Total size of the Optimized Reads cache in bytes.",
-		nil, nil,
+		prometheus.UnconstrainedLabels(nil), nil,
+		prometheus.WithUnit("By"),
 	)
-	auroraStatOptimizedReadsCacheUsedSize = prometheus.NewDesc(
+	auroraStatOptimizedReadsCacheUsedSize = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraStatOptimizedReadsCacheSubsystem, "used_size_bytes"),
 		"Used size of the Optimized Reads cache in bytes.",
-		nil, nil,
+		prometheus.UnconstrainedLabels(nil), nil,
+		prometheus.WithUnit("By"),
 	)
 
 	auroraStatOptimizedReadsCacheQuery = `SELECT

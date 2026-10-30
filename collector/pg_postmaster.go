@@ -32,14 +32,15 @@ func NewPGPostmasterCollector(collectorConfig) (Collector, error) {
 }
 
 var (
-	pgPostMasterStartTimeSeconds = prometheus.NewDesc(
+	pgPostMasterStartTimeSeconds = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			postmasterSubsystem,
 			"start_time_seconds",
 		),
 		"Time at which postmaster started",
-		[]string{}, nil,
+		prometheus.UnconstrainedLabels([]string{}), nil,
+		prometheus.WithUnit("s"),
 	)
 
 	pgPostmasterQuery = "SELECT extract(epoch from pg_postmaster_start_time) from pg_postmaster_start_time();"
