@@ -37,15 +37,17 @@ func NewAuroraGlobalDBStatusCollector(collectorConfig) (Collector, error) {
 }
 
 var (
-	auroraGlobalDBStatusDurabilityLag = prometheus.NewDesc(
+	auroraGlobalDBStatusDurabilityLag = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraGlobalDBStatusSubsystem, "durability_lag_seconds"),
 		"Storage lag of the secondary cluster behind the primary cluster in seconds.",
-		[]string{"aws_region"}, nil,
+		prometheus.UnconstrainedLabels([]string{"aws_region"}), nil,
+		prometheus.WithUnit("s"),
 	)
-	auroraGlobalDBStatusRPOLag = prometheus.NewDesc(
+	auroraGlobalDBStatusRPOLag = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraGlobalDBStatusSubsystem, "rpo_lag_seconds"),
 		"Recovery point objective lag of the secondary cluster in seconds: how long a commit on the primary cluster takes to be stored on it.",
-		[]string{"aws_region"}, nil,
+		prometheus.UnconstrainedLabels([]string{"aws_region"}), nil,
+		prometheus.WithUnit("s"),
 	)
 
 	auroraGlobalDBStatusQuery = `SELECT

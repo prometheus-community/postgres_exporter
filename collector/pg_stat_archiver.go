@@ -32,23 +32,26 @@ func NewPGStatArchiverCollector(collectorConfig) (Collector, error) {
 }
 
 var (
-	statArchiverArchivedCountDesc = prometheus.NewDesc(
+	statArchiverArchivedCountDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statArchiverSubsystem, "archived_count"),
 		"Number of WAL files that have been successfully archived",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{file}"),
 	)
-	statArchiverFailedCountDesc = prometheus.NewDesc(
+	statArchiverFailedCountDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statArchiverSubsystem, "failed_count"),
 		"Number of failed attempts for archiving WAL files",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{attempt}"),
 	)
-	statArchiverLastArchiveAgeDesc = prometheus.NewDesc(
+	statArchiverLastArchiveAgeDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statArchiverSubsystem, "last_archive_age"),
 		"Time in seconds since last WAL segment was successfully archived",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("s"),
 	)
 
 	statArchiverQuery = `SELECT

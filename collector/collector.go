@@ -65,29 +65,33 @@ var (
 	// and scrapeSuccessDescWithDatname are used instead once discovery is
 	// enabled, where the same collector name can legitimately run
 	// concurrently against several databases in one scrape.
-	scrapeDurationDesc = prometheus.NewDesc(
+	scrapeDurationDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, "scrape", "collector_duration_seconds"),
 		"postgres_exporter: Duration of a collector scrape.",
-		[]string{"collector"},
+		prometheus.UnconstrainedLabels([]string{"collector"}),
 		nil,
+		prometheus.WithUnit("s"),
 	)
-	scrapeSuccessDesc = prometheus.NewDesc(
+	scrapeSuccessDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, "scrape", "collector_success"),
 		"postgres_exporter: Whether a collector succeeded.",
-		[]string{"collector"},
+		prometheus.UnconstrainedLabels([]string{"collector"}),
 		nil,
+		prometheus.WithUnit("1"),
 	)
-	scrapeDurationDescWithDatname = prometheus.NewDesc(
+	scrapeDurationDescWithDatname = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, "scrape", "collector_duration_seconds"),
 		"postgres_exporter: Duration of a collector scrape.",
-		[]string{"collector", "datname"},
+		prometheus.UnconstrainedLabels([]string{"collector", "datname"}),
 		nil,
+		prometheus.WithUnit("s"),
 	)
-	scrapeSuccessDescWithDatname = prometheus.NewDesc(
+	scrapeSuccessDescWithDatname = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, "scrape", "collector_success"),
 		"postgres_exporter: Whether a collector succeeded.",
-		[]string{"collector", "datname"},
+		prometheus.UnconstrainedLabels([]string{"collector", "datname"}),
 		nil,
+		prometheus.WithUnit("1"),
 	)
 )
 

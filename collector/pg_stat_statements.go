@@ -76,42 +76,48 @@ func NewPGStatStatementsCollector(collectorCfg collectorConfig) (Collector, erro
 }
 
 var (
-	statStatementsCallsTotal = prometheus.NewDesc(
+	statStatementsCallsTotal = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statStatementsSubsystem, "calls_total"),
 		"Number of times executed",
-		[]string{"user", "datname", "queryid"},
+		prometheus.UnconstrainedLabels([]string{"user", "datname", "queryid"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{call}"),
 	)
-	statStatementsSecondsTotal = prometheus.NewDesc(
+	statStatementsSecondsTotal = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statStatementsSubsystem, "seconds_total"),
 		"Total time spent in the statement, in seconds",
-		[]string{"user", "datname", "queryid"},
+		prometheus.UnconstrainedLabels([]string{"user", "datname", "queryid"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("s"),
 	)
-	statStatementsRowsTotal = prometheus.NewDesc(
+	statStatementsRowsTotal = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statStatementsSubsystem, "rows_total"),
 		"Total number of rows retrieved or affected by the statement",
-		[]string{"user", "datname", "queryid"},
+		prometheus.UnconstrainedLabels([]string{"user", "datname", "queryid"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{row}"),
 	)
-	statStatementsBlockReadSecondsTotal = prometheus.NewDesc(
+	statStatementsBlockReadSecondsTotal = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statStatementsSubsystem, "block_read_seconds_total"),
 		"Total time the statement spent reading blocks, in seconds",
-		[]string{"user", "datname", "queryid"},
+		prometheus.UnconstrainedLabels([]string{"user", "datname", "queryid"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("s"),
 	)
-	statStatementsBlockWriteSecondsTotal = prometheus.NewDesc(
+	statStatementsBlockWriteSecondsTotal = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statStatementsSubsystem, "block_write_seconds_total"),
 		"Total time the statement spent writing blocks, in seconds",
-		[]string{"user", "datname", "queryid"},
+		prometheus.UnconstrainedLabels([]string{"user", "datname", "queryid"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("s"),
 	)
 
-	statStatementsQuery = prometheus.NewDesc(
+	statStatementsQuery = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statStatementsSubsystem, "query_id"),
 		"SQL Query to queryid mapping",
-		[]string{"queryid", "query"},
+		prometheus.UnconstrainedLabels([]string{"queryid", "query"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("1"),
 	)
 )
 

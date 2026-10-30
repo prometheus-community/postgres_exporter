@@ -46,17 +46,19 @@ func NewPGStatioUserIndexesCollector(config collectorConfig) (Collector, error) 
 	return &PGStatioUserIndexesCollector{
 		log:            config.logger,
 		includeDatname: config.databaseDiscoveryEnabled,
-		idxBlksRead: prometheus.NewDesc(
+		idxBlksRead: prometheus.V2.NewDesc(
 			prometheus.BuildFQName(namespace, statioUserIndexesSubsystem, "idx_blks_read_total"),
 			"Number of disk blocks read from this index",
-			labels,
+			prometheus.UnconstrainedLabels(labels),
 			prometheus.Labels{},
+			prometheus.WithUnit("{block}"),
 		),
-		idxBlksHit: prometheus.NewDesc(
+		idxBlksHit: prometheus.V2.NewDesc(
 			prometheus.BuildFQName(namespace, statioUserIndexesSubsystem, "idx_blks_hit_total"),
 			"Number of buffer hits in this index",
-			labels,
+			prometheus.UnconstrainedLabels(labels),
 			prometheus.Labels{},
+			prometheus.WithUnit("{block}"),
 		),
 	}, nil
 }

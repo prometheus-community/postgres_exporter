@@ -43,23 +43,25 @@ func NewPGDatabaseCollector(config collectorConfig) (Collector, error) {
 }
 
 var (
-	pgDatabaseSizeDesc = prometheus.NewDesc(
+	pgDatabaseSizeDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			databaseSubsystem,
 			"size_bytes",
 		),
 		"Disk space used by the database",
-		[]string{"datname"}, nil,
+		prometheus.UnconstrainedLabels([]string{"datname"}), nil,
+		prometheus.WithUnit("By"),
 	)
-	pgDatabaseConnectionLimitsDesc = prometheus.NewDesc(
+	pgDatabaseConnectionLimitsDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			databaseSubsystem,
 			"connection_limit",
 		),
 		"Connection limit set for the database",
-		[]string{"datname"}, nil,
+		prometheus.UnconstrainedLabels([]string{"datname"}), nil,
+		prometheus.WithUnit("{connection}"),
 	)
 
 	pgDatabaseQuery     = "SELECT pg_database.datname, pg_database.datconnlimit FROM pg_database;"

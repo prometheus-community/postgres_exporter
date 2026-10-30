@@ -37,183 +37,201 @@ func NewPGStatDatabaseCollector(config collectorConfig) (Collector, error) {
 }
 
 var (
-	statDatabaseNumbackends = prometheus.NewDesc(
+	statDatabaseNumbackends = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
 			"numbackends",
 		),
 		"Number of backends currently connected to this database. This is the only column in this view that returns a value reflecting current state; all other columns return the accumulated values since the last reset.",
-		[]string{"datid", "datname"},
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{backend}"),
 	)
-	statDatabaseXactCommit = prometheus.NewDesc(
+	statDatabaseXactCommit = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
 			"xact_commit",
 		),
 		"Number of transactions in this database that have been committed",
-		[]string{"datid", "datname"},
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{transaction}"),
 	)
-	statDatabaseXactRollback = prometheus.NewDesc(
+	statDatabaseXactRollback = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
 			"xact_rollback",
 		),
 		"Number of transactions in this database that have been rolled back",
-		[]string{"datid", "datname"},
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{transaction}"),
 	)
-	statDatabaseBlksRead = prometheus.NewDesc(
+	statDatabaseBlksRead = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
 			"blks_read",
 		),
 		"Number of disk blocks read in this database",
-		[]string{"datid", "datname"},
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{block}"),
 	)
-	statDatabaseBlksHit = prometheus.NewDesc(
+	statDatabaseBlksHit = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
 			"blks_hit",
 		),
 		"Number of times disk blocks were found already in the buffer cache, so that a read was not necessary (this only includes hits in the PostgreSQL buffer cache, not the operating system's file system cache)",
-		[]string{"datid", "datname"},
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{block}"),
 	)
-	statDatabaseTupReturned = prometheus.NewDesc(
+	statDatabaseTupReturned = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
 			"tup_returned",
 		),
 		"Number of rows returned by queries in this database",
-		[]string{"datid", "datname"},
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{row}"),
 	)
-	statDatabaseTupFetched = prometheus.NewDesc(
+	statDatabaseTupFetched = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
 			"tup_fetched",
 		),
 		"Number of rows fetched by queries in this database",
-		[]string{"datid", "datname"},
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{row}"),
 	)
-	statDatabaseTupInserted = prometheus.NewDesc(
+	statDatabaseTupInserted = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
 			"tup_inserted",
 		),
 		"Number of rows inserted by queries in this database",
-		[]string{"datid", "datname"},
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{row}"),
 	)
-	statDatabaseTupUpdated = prometheus.NewDesc(
+	statDatabaseTupUpdated = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
 			"tup_updated",
 		),
 		"Number of rows updated by queries in this database",
-		[]string{"datid", "datname"},
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{row}"),
 	)
-	statDatabaseTupDeleted = prometheus.NewDesc(
+	statDatabaseTupDeleted = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
 			"tup_deleted",
 		),
 		"Number of rows deleted by queries in this database",
-		[]string{"datid", "datname"},
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{row}"),
 	)
-	statDatabaseConflicts = prometheus.NewDesc(
+	statDatabaseConflicts = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
 			"conflicts",
 		),
 		"Number of queries canceled due to conflicts with recovery in this database. (Conflicts occur only on standby servers; see pg_stat_database_conflicts for details.)",
-		[]string{"datid", "datname"},
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{conflict}"),
 	)
-	statDatabaseTempFiles = prometheus.NewDesc(
+	statDatabaseTempFiles = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
 			"temp_files",
 		),
 		"Number of temporary files created by queries in this database. All temporary files are counted, regardless of why the temporary file was created (e.g., sorting or hashing), and regardless of the log_temp_files setting.",
-		[]string{"datid", "datname"},
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{file}"),
 	)
-	statDatabaseTempBytes = prometheus.NewDesc(
+	statDatabaseTempBytes = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
 			"temp_bytes",
 		),
 		"Total amount of data written to temporary files by queries in this database. All temporary files are counted, regardless of why the temporary file was created, and regardless of the log_temp_files setting.",
-		[]string{"datid", "datname"},
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("By"),
 	)
-	statDatabaseDeadlocks = prometheus.NewDesc(
+	statDatabaseDeadlocks = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
 			"deadlocks",
 		),
 		"Number of deadlocks detected in this database",
-		[]string{"datid", "datname"},
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{deadlock}"),
 	)
-	statDatabaseBlkReadTime = prometheus.NewDesc(
+	statDatabaseBlkReadTime = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
 			"blk_read_time",
 		),
 		"Time spent reading data file blocks by backends in this database, in milliseconds",
-		[]string{"datid", "datname"},
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("ms"),
 	)
-	statDatabaseBlkWriteTime = prometheus.NewDesc(
+	statDatabaseBlkWriteTime = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			statDatabaseSubsystem,
 			"blk_write_time",
 		),
 		"Time spent writing data file blocks by backends in this database, in milliseconds",
-		[]string{"datid", "datname"},
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("ms"),
 	)
-	statDatabaseStatsReset = prometheus.NewDesc(prometheus.BuildFQName(
+	statDatabaseStatsReset = prometheus.V2.NewDesc(prometheus.BuildFQName(
 		namespace,
 		statDatabaseSubsystem,
 		"stats_reset",
 	),
 		"Time at which these statistics were last reset",
-		[]string{"datid", "datname"},
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("s"),
 	)
-	statDatabaseActiveTime = prometheus.NewDesc(prometheus.BuildFQName(
+	statDatabaseActiveTime = prometheus.V2.NewDesc(prometheus.BuildFQName(
 		namespace,
 		statDatabaseSubsystem,
 		"active_time_seconds_total",
 	),
 		"Time spent executing SQL statements in this database, in seconds",
-		[]string{"datid", "datname"},
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("s"),
 	)
 )
 
