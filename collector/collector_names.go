@@ -33,9 +33,11 @@ const (
 	bgWriterSubsystem                = config.CollectorStatBGWriter
 	statCheckpointerSubsystem        = config.CollectorStatCheckpointer
 	statDatabaseSubsystem            = config.CollectorStatDatabase
+	statIOSubsystem                  = config.CollectorStatIO
 	progressVacuumSubsystem          = config.CollectorStatProgressVacuum
 	statReplicationSubsystem         = config.CollectorStatReplication
 	statStatementsSubsystem          = config.CollectorStatStatements
+	statWALSubsystem                 = config.CollectorStatWAL
 	userTableSubsystem               = config.CollectorStatUserTables
 	statWalReceiverSubsystem         = config.CollectorStatWalReceiver
 	statioUserIndexesSubsystem       = config.CollectorStatioUserIndexes
