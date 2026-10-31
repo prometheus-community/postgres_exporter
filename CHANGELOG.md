@@ -50,6 +50,8 @@ the `-file` flags at a mounted secret.
 * [FEATURE] Add `aurora_stat_bgwriter` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1426
 * [FEATURE] Add `aurora_stat_optimized_reads_cache` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1427
 * [FEATURE] Add `aurora_instance` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1433
+* [FEATURE] Add `stat_wal` collector (enabled by default) exporting WAL generation statistics from `pg_stat_wal` on PostgreSQL 14+ by @JimStavr in https://github.com/prometheus-community/postgres_exporter/pull/1445
+* [FEATURE] Add `stat_io` collector (disabled by default) exporting I/O statistics by backend type, object, and context from `pg_stat_io` on PostgreSQL 16+ by @JimStavr in https://github.com/prometheus-community/postgres_exporter/pull/1445
 
 ## 0.20.1 / 2026-07-07
 

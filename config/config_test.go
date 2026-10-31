@@ -55,6 +55,12 @@ func TestNewConfigWithDefaults(t *testing.T) {
 	if got, want := cfg.Collectors[CollectorStatStatements], false; got != want {
 		t.Fatalf("Collectors[%q] = %t, want %t", CollectorStatStatements, got, want)
 	}
+	if got, want := cfg.Collectors[CollectorStatIO], false; got != want {
+		t.Fatalf("Collectors[%q] = %t, want %t", CollectorStatIO, got, want)
+	}
+	if got, want := cfg.Collectors[CollectorStatWAL], true; got != want {
+		t.Fatalf("Collectors[%q] = %t, want %t", CollectorStatWAL, got, want)
+	}
 }
 
 func TestConfigValidate(t *testing.T) {

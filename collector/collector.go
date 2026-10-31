@@ -443,6 +443,21 @@ func Int32(m sql.NullInt32) float64 {
 	return mM
 }
 
+// nullFloat64Value returns the value, or 0 if it is NULL. Use it only where
+// NULL really means zero; otherwise skip the metric.
+func nullFloat64Value(value sql.NullFloat64) float64 {
+	if !value.Valid {
+		return 0
+	}
+	return value.Float64
+}
+
+// nullMillisecondsToSeconds converts a millisecond value to seconds, treating
+// NULL as 0 like nullFloat64Value.
+func nullMillisecondsToSeconds(value sql.NullFloat64) float64 {
+	return nullFloat64Value(value) / 1000
+}
+
 func int64CounterValue(value sql.NullInt64, wrap bool) float64 {
 	if !value.Valid {
 		return 0
