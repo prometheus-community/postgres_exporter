@@ -86,7 +86,10 @@ const (
 )
 
 type Config struct {
-	DataSourceNames       []string
+	DataSourceNames []string
+	// DriverName is the database/sql driver used to connect to
+	// DataSourceNames. Empty means lib/pq's "postgres".
+	DriverName            string
 	MetricPrefix          string
 	CollectionTimeout     time.Duration
 	WrapLargeCounters     bool
@@ -261,6 +264,7 @@ type AuthConfig struct {
 type AuthModule struct {
 	Type     string   `yaml:"type"`
 	UserPass UserPass `yaml:"userpass,omitempty"`
+	IAM      IAM      `yaml:"iam,omitempty"`
 	// Add alternative auth modules here
 	Options map[string]string `yaml:"options"`
 }
@@ -268,6 +272,13 @@ type AuthModule struct {
 type UserPass struct {
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
+}
+
+// IAM configures Amazon RDS IAM database authentication. Empty fields fall
+// back to the AWS SDK's default chain.
+type IAM struct {
+	Region  string `yaml:"region,omitempty"`
+	RoleARN string `yaml:"role_arn,omitempty"`
 }
 
 type Handler struct {

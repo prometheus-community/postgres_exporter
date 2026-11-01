@@ -291,6 +291,11 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
   Reads the password to connect with from a file. The flag takes a path, so
   the password itself never appears on the command line.
 
+* `datasource.auth`
+  How to authenticate to the data source: `password` (default), or `iam` for
+  Amazon RDS IAM database authentication. See
+  [AWS RDS](docs/aws-rds.md#iam-database-authentication).
+
 * `log.level`
   Set logging level: one of `debug`, `info`, `warn`, `error`.
 

@@ -34,6 +34,7 @@ type Server struct {
 	master            bool
 	runonserver       string
 	wrapLargeCounters bool
+	driverName        string
 
 	// Last version used to calculate metric map. If mismatch on scrape,
 	// then maps are recalculated.
@@ -74,6 +75,16 @@ func ServerWithWrapLargeCounters(wrap bool) ServerOpt {
 	}
 }
 
+// ServerWithDriverName sets the database/sql driver used to connect. Empty
+// means lib/pq's "postgres".
+func ServerWithDriverName(name string) ServerOpt {
+	return func(s *Server) {
+		if name != "" {
+			s.driverName = name
+		}
+	}
+}
+
 // NewServer establishes a new connection using DSN.
 func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 	fingerprint, err := parseFingerprint(dsn)
@@ -81,17 +92,10 @@ func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 		return nil, err
 	}
 
-	db, err := sql.Open("postgres", dsn)
-	if err != nil {
-		return nil, err
-	}
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
-
 	s := &Server{
-		db:                db,
 		master:            false,
 		wrapLargeCounters: true,
+		driverName:        "postgres",
 		labels: prometheus.Labels{
 			serverLabelName: fingerprint,
 		},
@@ -102,6 +106,14 @@ func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 	for _, opt := range opts {
 		opt(s)
 	}
+
+	db, err := sql.Open(s.driverName, dsn)
+	if err != nil {
+		return nil, err
+	}
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+	s.db = db
 
 	s.logger.Info("Established new database connection", "fingerprint", fingerprint)
 

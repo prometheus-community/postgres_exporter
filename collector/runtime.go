@@ -53,6 +53,7 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 		WithLongRunningTransactionsConfig(cfg.LongRunningTransactions),
 		WithPGStatStatementsConfig(cfg.PGStatStatements),
 		WithWrapLargeCounters(cfg.WrapLargeCounters),
+		WithDriverName(cfg.DriverName),
 	}
 	if cfg.AutoDiscoverDatabases {
 		// Run the database-scoped collectors (stat_user_tables,
@@ -109,5 +110,6 @@ func exporterOptions(cfg config.Config) []exporter.ExporterOpt {
 		exporter.IncludeDatabases(strings.Join(cfg.IncludeDatabases, ",")),
 		exporter.WithMetricPrefix(cfg.MetricPrefix),
 		exporter.WrapLargeCounters(cfg.WrapLargeCounters),
+		exporter.WithDriverName(cfg.DriverName),
 	}
 }
