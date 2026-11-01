@@ -47,7 +47,7 @@ func handleProbe(logger *slog.Logger, authHandler *config.Handler, baseConfig co
 				return
 			}
 			switch authModule.Type {
-			case "iam":
+			case "aws-iam":
 				// The user comes from the target or the module's options.
 			default:
 				if authModule.UserPass.Username == "" || authModule.UserPass.Password == "" {
@@ -71,8 +71,8 @@ func handleProbe(logger *slog.Logger, authHandler *config.Handler, baseConfig co
 		// Copy process-level config before setting the per-request target DSN.
 		probeConfig := baseConfig
 		probeConfig.DataSourceNames = []string{dsn.GetConnectionString()}
-		if authModule.Type == "iam" {
-			probeConfig.DriverName = rdsiam.DriverName(authModule.IAM.Region, authModule.IAM.RoleARN)
+		if authModule.Type == "aws-iam" {
+			probeConfig.DriverName = rdsiam.DriverName(authModule.AWSIAM.Region, authModule.AWSIAM.RoleARN)
 		}
 		validatedConfig, err := probeConfig.Validate()
 		if err != nil {

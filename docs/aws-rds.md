@@ -60,7 +60,7 @@ With [IAM database authentication](https://docs.aws.amazon.com/AmazonRDS/latest/
 
 ### Single target (`/metrics`)
 
-Set `--datasource.auth=iam` and leave the password out:
+Set `--datasource.auth=aws-iam` and leave the password out:
 
 ```bash
 docker run \
@@ -68,19 +68,19 @@ docker run \
   -e AWS_REGION=us-east-1 \
   -v /path/to/global-bundle.pem:/etc/rds/global-bundle.pem:ro \
   quay.io/prometheuscommunity/postgres-exporter \
-  --datasource.auth=iam \
+  --datasource.auth=aws-iam \
   --datasource.uri="mydb.cluster-abcdefghijkl.us-east-1.rds.amazonaws.com:5432/postgres?sslmode=verify-full&sslrootcert=/etc/rds/global-bundle.pem"
 ```
 
 ### Multi-target (`/probe`)
 
-Use an `iam` auth module in the [config file](configuration.md#config-file). Both `region` and `role_arn` are optional: without them the module uses the exporter's own region and credentials, and with `role_arn` it assumes that role to sign the tokens.
+Use an `aws-iam` auth module in the [config file](configuration.md#config-file). Both `region` and `role_arn` are optional: without them the module uses the exporter's own region and credentials, and with `role_arn` it assumes that role to sign the tokens.
 
 ```yaml
 auth_modules:
   orders:
-    type: iam
-    iam:
+    type: aws-iam
+    aws_iam:
       region: eu-west-1
       role_arn: arn:aws:iam::123456789012:role/orders-exporter
     options:
@@ -94,5 +94,5 @@ auth_modules:
 - The connection must use TLS: `sslmode` has to be `require` (the default), `verify-ca` or `verify-full`. The exporter refuses `disable`, `allow` and `prefer`, which could send the token in plaintext. Use `verify-full` with the [RDS certificate bundle](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/UsingWithRDS.SSL.html) to also check the server's identity.
 - Connect to the RDS endpoint itself. The token is signed for the host name you connect to, so a custom DNS name, such as a Route 53 CNAME, doesn't work.
 - The data source must name a single host and must not contain a password. The exporter refuses to start otherwise.
-- Without a region, every scrape fails with `no AWS region configured; set iam.region or AWS_REGION`.
+- Without a region, every scrape fails with `no AWS region configured; set aws_iam.region or AWS_REGION`.
 - AWS recommends 300 to 1000 MiB of extra memory on the database for IAM authentication; see its [limitations](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/UsingWithRDS.IAMDBAuth.html).

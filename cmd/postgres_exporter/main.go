@@ -58,7 +58,7 @@ var (
 	datasourceURIFile                   = kingpin.Flag("datasource.uri-file", "Path to a file containing the data source URI. Takes precedence over datasource.uri.").Default("").String()
 	datasourceUserFile                  = kingpin.Flag("datasource.user-file", "Path to a file containing the data source user name.").Default("").String()
 	datasourcePassFile                  = kingpin.Flag("datasource.pass-file", "Path to a file containing the data source password.").Default("").String()
-	datasourceAuth                      = kingpin.Flag("datasource.auth", "How to authenticate to the data source: password, or iam for Amazon RDS IAM database authentication.").Default("password").Enum("password", "iam")
+	datasourceAuth                      = kingpin.Flag("datasource.auth", "How to authenticate to the data source: password, or aws-iam for Amazon RDS IAM database authentication.").Default("password").Enum("password", "aws-iam")
 	collectorFlags                      = newCollectorFlags()
 
 	longRunningTransactionsThreshold = kingpin.Flag(
@@ -228,7 +228,7 @@ func (s *exporterServer) newMetricsHandler(b *bootstrap.Bootstrap) (http.Handler
 	if err != nil {
 		return nil, fmt.Errorf("failed building config: %w", err)
 	}
-	if *datasourceAuth == "iam" {
+	if *datasourceAuth == "aws-iam" {
 		if err := validateIAMDataSources(cfg.DriverName, cfg.DataSourceNames); err != nil {
 			return nil, err
 		}
@@ -313,7 +313,7 @@ func buildConfig(dsns []string) (config.Config, error) {
 
 	cfg := config.NewConfigWithDefaults()
 	cfg.DataSourceNames = dsns
-	if *datasourceAuth == "iam" {
+	if *datasourceAuth == "aws-iam" {
 		cfg.DriverName = rdsiam.DriverName("", "")
 	}
 	cfg.MetricPrefix = *metricPrefix

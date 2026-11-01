@@ -177,12 +177,12 @@ func loadDefaultAWSConfig(ctx context.Context, region, roleARN string) (aws.Conf
 		// elsewhere the lookup fails on every new connection.
 		out, err := imds.New(imds.Options{Retryer: aws.NopRetryer{}}).GetRegion(ctx, nil)
 		if err != nil {
-			return aws.Config{}, fmt.Errorf("no AWS region configured; set iam.region or AWS_REGION (EC2 instance metadata: %w)", err)
+			return aws.Config{}, fmt.Errorf("no AWS region configured; set aws_iam.region or AWS_REGION (EC2 instance metadata: %w)", err)
 		}
 		cfg.Region = out.Region
 	}
 	if cfg.Region == "" {
-		return aws.Config{}, errors.New("no AWS region configured; set iam.region or AWS_REGION")
+		return aws.Config{}, errors.New("no AWS region configured; set aws_iam.region or AWS_REGION")
 	}
 	if roleARN != "" {
 		cfg.Credentials = aws.NewCredentialsCache(stscreds.NewAssumeRoleProvider(sts.NewFromConfig(cfg), roleARN))

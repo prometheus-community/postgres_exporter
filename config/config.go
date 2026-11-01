@@ -264,7 +264,7 @@ type AuthConfig struct {
 type AuthModule struct {
 	Type     string   `yaml:"type"`
 	UserPass UserPass `yaml:"userpass,omitempty"`
-	IAM      IAM      `yaml:"iam,omitempty"`
+	AWSIAM   AWSIAM   `yaml:"aws_iam,omitempty"`
 	// Add alternative auth modules here
 	Options map[string]string `yaml:"options"`
 }
@@ -274,9 +274,9 @@ type UserPass struct {
 	Password string `yaml:"password"`
 }
 
-// IAM configures Amazon RDS IAM database authentication. Empty fields fall
+// AWSIAM configures Amazon RDS IAM database authentication. Empty fields fall
 // back to the AWS SDK's default chain.
-type IAM struct {
+type AWSIAM struct {
 	Region  string `yaml:"region,omitempty"`
 	RoleARN string `yaml:"role_arn,omitempty"`
 }

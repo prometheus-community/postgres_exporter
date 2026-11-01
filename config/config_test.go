@@ -282,8 +282,8 @@ func TestDecodeAuthConfigIAM(t *testing.T) {
 	config, err := DecodeAuthConfig(strings.NewReader(`
 auth_modules:
   orders:
-    type: iam
-    iam:
+    type: aws-iam
+    aws_iam:
       region: eu-west-1
       role_arn: arn:aws:iam::123456789012:role/orders-exporter
     options:
@@ -292,9 +292,9 @@ auth_modules:
 	if err != nil {
 		t.Fatalf("DecodeAuthConfig() error = %v", err)
 	}
-	want := IAM{Region: "eu-west-1", RoleARN: "arn:aws:iam::123456789012:role/orders-exporter"}
-	if got := config.AuthModules["orders"].IAM; got != want {
-		t.Fatalf("iam = %+v, want %+v", got, want)
+	want := AWSIAM{Region: "eu-west-1", RoleARN: "arn:aws:iam::123456789012:role/orders-exporter"}
+	if got := config.AuthModules["orders"].AWSIAM; got != want {
+		t.Fatalf("aws_iam = %+v, want %+v", got, want)
 	}
 }
 

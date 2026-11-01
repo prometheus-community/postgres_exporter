@@ -95,8 +95,8 @@ func TestHandleProbeConnectsThroughIAMModule(t *testing.T) {
 	configFile := filepath.Join(dir, "postgres_exporter.yml")
 	if err := os.WriteFile(configFile, []byte(`auth_modules:
   rds:
-    type: iam
-    iam:
+    type: aws-iam
+    aws_iam:
       region: us-east-1
     options:
       user: exporter

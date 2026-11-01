@@ -50,7 +50,7 @@ the `-file` flags at a mounted secret.
 * [FEATURE] Add `aurora_stat_bgwriter` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1426
 * [FEATURE] Add `aurora_stat_optimized_reads_cache` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1427
 * [FEATURE] Add `aurora_instance` collector for Amazon Aurora PostgreSQL by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1433
-* [FEATURE] Add Amazon RDS IAM database authentication, with `--datasource.auth=iam` and auth modules of `type: iam`, by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1446, based on @sysadmind's prototype in https://github.com/prometheus-community/postgres_exporter/pull/1392.
+* [FEATURE] Add Amazon RDS IAM database authentication, with `--datasource.auth=aws-iam` and auth modules of `type: aws-iam`, by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1446, based on @sysadmind's prototype in https://github.com/prometheus-community/postgres_exporter/pull/1392.
 
 ## 0.20.1 / 2026-07-07
 

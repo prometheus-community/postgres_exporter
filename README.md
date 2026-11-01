@@ -292,7 +292,7 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
   the password itself never appears on the command line.
 
 * `datasource.auth`
-  How to authenticate to the data source: `password` (default), or `iam` for
+  How to authenticate to the data source: `password` (default), or `aws-iam` for
   Amazon RDS IAM database authentication. See
   [AWS RDS](docs/aws-rds.md#iam-database-authentication).
 
