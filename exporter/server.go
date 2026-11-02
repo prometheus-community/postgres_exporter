@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/blang/semver/v4"
+	"github.com/prometheus-community/postgres_exporter/internal/dbconn"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/promslog"
 )
@@ -29,6 +30,7 @@ import (
 // Server describes a connection to Postgres.
 // Also it contains metrics map and query overrides.
 type Server struct {
+	ctx               context.Context
 	db                *sql.DB
 	labels            prometheus.Labels
 	master            bool
@@ -74,6 +76,13 @@ func ServerWithWrapLargeCounters(wrap bool) ServerOpt {
 	}
 }
 
+// ServerWithContext bounds the lifetime of the server's connections.
+func ServerWithContext(ctx context.Context) ServerOpt {
+	return func(s *Server) {
+		s.ctx = ctx
+	}
+}
+
 // NewServer establishes a new connection using DSN.
 func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 	fingerprint, err := parseFingerprint(dsn)
@@ -81,15 +90,8 @@ func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 		return nil, err
 	}
 
-	db, err := sql.Open("postgres", dsn)
-	if err != nil {
-		return nil, err
-	}
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
-
 	s := &Server{
-		db:                db,
+		ctx:               context.Background(),
 		master:            false,
 		wrapLargeCounters: true,
 		labels: prometheus.Labels{
@@ -102,6 +104,14 @@ func NewServer(dsn string, opts ...ServerOpt) (*Server, error) {
 	for _, opt := range opts {
 		opt(s)
 	}
+
+	db, err := dbconn.Open(s.ctx, dsn)
+	if err != nil {
+		return nil, err
+	}
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+	s.db = db
 
 	s.logger.Info("Established new database connection", "fingerprint", fingerprint)
 

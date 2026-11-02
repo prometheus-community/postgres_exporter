@@ -121,6 +121,7 @@ type PostgresCollector struct {
 	Collectors map[string]Collector
 	logger     *slog.Logger
 
+	ctx                     context.Context
 	instance                *instance
 	CollectionTimeout       time.Duration
 	collectorStates         map[string]bool
@@ -149,6 +150,7 @@ type Option func(*PostgresCollector) error
 // NewPostgresCollector creates a new PostgresCollector.
 func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn string, filters []string, options ...Option) (*PostgresCollector, error) {
 	p := &PostgresCollector{
+		ctx:                     context.Background(),
 		logger:                  logger,
 		excludeDatabases:        excludeDatabases,
 		collectorStates:         config.DefaultCollectorConfig(),
@@ -270,6 +272,14 @@ func WithLongRunningTransactionsConfig(cfg config.LongRunningTransactionsConfig)
 	}
 }
 
+// WithContext bounds collection by ctx in addition to CollectionTimeout.
+func WithContext(ctx context.Context) Option {
+	return func(p *PostgresCollector) error {
+		p.ctx = ctx
+		return nil
+	}
+}
+
 func WithCollectionTimeout(s string) Option {
 	return func(e *PostgresCollector) error {
 		duration, err := time.ParseDuration(s)
@@ -308,8 +318,7 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 	// copy the instance so that concurrent scrapes have independent instances
 	inst := p.instance.copy()
 
-	// Eventually, connect this to the http scraping context
-	ctx, cancel := context.WithTimeout(context.Background(), p.CollectionTimeout)
+	ctx, cancel := context.WithTimeout(p.ctx, p.CollectionTimeout)
 	defer cancel()
 
 	// Set up the database connection for the collector.

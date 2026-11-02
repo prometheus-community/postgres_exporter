@@ -58,8 +58,6 @@ func handleProbe(logger *slog.Logger, authHandler *config.Handler, baseConfig co
 			return
 		}
 
-		// TODO(@sysadmind): Timeout
-
 		tl := logger.With("target", target)
 
 		// Copy process-level config before setting the per-request target DSN.
@@ -72,7 +70,7 @@ func handleProbe(logger *slog.Logger, authHandler *config.Handler, baseConfig co
 			return
 		}
 
-		runtime, err := collector.NewRuntime(validatedConfig, tl)
+		runtime, err := collector.NewRuntimeWithContext(ctx, validatedConfig, tl)
 		if err != nil {
 			logger.Error("error creating probe runtime", "err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -88,8 +86,6 @@ func handleProbe(logger *slog.Logger, authHandler *config.Handler, baseConfig co
 		for _, collector := range runtime.Collectors() {
 			registry.MustRegister(collector)
 		}
-
-		_ = ctx
 
 		// TODO check success, etc
 		h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})

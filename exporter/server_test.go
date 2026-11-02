@@ -18,6 +18,10 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestGetServerRetryHonorsContextCancellation(t *testing.T) {
@@ -32,5 +36,38 @@ func TestGetServerRetryHonorsContextCancellation(t *testing.T) {
 	}
 	if elapsed := time.Since(started); elapsed >= time.Second {
 		t.Fatalf("GetServer() returned after %v, want cancellation before retry delay completed", elapsed)
+	}
+}
+
+func TestProbeStopsBeforeNextDatabase(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherFunc(
+		func(expected, actual string) error {
+			if err := sqlmock.QueryMatcherEqual.Match(expected, actual); err != nil {
+				return err
+			}
+			cancel()
+			return nil
+		})))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	mock.ExpectQuery("SELECT version();").WillReturnError(context.Canceled)
+	mock.ExpectClose()
+
+	first := "postgresql://test@127.0.0.1:1/first?sslmode=disable"
+	second := "postgresql://test@127.0.0.1:1/second?sslmode=disable"
+	e := NewExporter([]string{first, second}, promslog.NewNopLogger(), WithContext(ctx))
+	defer e.servers.Close()
+	e.servers.servers[first] = &Server{ctx: ctx, db: db, logger: promslog.NewNopLogger()}
+	e.servers.opts = append(e.servers.opts, func(*Server) {
+		t.Error("started another database after the probe was canceled")
+	})
+	e.scrape(ctx, make(chan prometheus.Metric, 100))
+	e.servers.Close()
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Error(err)
 	}
 }
