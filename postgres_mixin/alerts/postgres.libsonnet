@@ -62,7 +62,7 @@
             },
             expr: |||
               max by (datname, %(agg)s) (
-                pg_stat_activity_max_tx_duration{%(dbNameFilter)s, %(postgresExporterSelector)s}
+                pg_stat_activity_max_tx_duration{%(dbNameFilter)s, backend_type!="autovacuum worker", %(postgresExporterSelector)s}
               ) > 2 * 60
             ||| % $._config { agg: std.join(', ', $._config.groupLabels + $._config.instanceLabels) },
             'for': '2m',
@@ -162,7 +162,7 @@
                   pg_settings_max_locks_per_transaction{} * pg_settings_max_connections{}
                 )
               ) > 0.20
-            ||| % $._config { agg: std.join(',', $._config.groupLabels + $._config.instanceLabels), aggWithoutServer: std.join(',', std.filter(function(x) x != "server", $._config.groupLabels + $._config.instanceLabels)) },
+            ||| % $._config { agg: std.join(',', $._config.groupLabels + $._config.instanceLabels), aggWithoutServer: std.join(',', std.filter(function(x) x != 'server', $._config.groupLabels + $._config.instanceLabels)) },
             'for': '5m',
             labels: {
               severity: 'warning',

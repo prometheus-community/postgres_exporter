@@ -59,3 +59,36 @@ tests:
       - eval_time: 5m
         alertname: PostgreSQLSlowQueries
         exp_alerts: []
+  - name: long autovacuum run does not fire
+    interval: 15s
+    input_series:
+      - series: pg_stat_activity_max_tx_duration{job="postgres",instance="pg-0:9187",datname="app",state="active",backend_type="autovacuum worker"}
+        values: 0+15x80
+      - series: pg_stat_activity_max_tx_duration{job="postgres",instance="pg-0:9187",datname="app",state="active",backend_type="client backend"}
+        values: 45x80
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: PostgreSQLSlowQueries
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: PostgreSQLSlowQueries
+        exp_alerts: []
+  - name: client backend with an old transaction still fires next to autovacuum
+    interval: 15s
+    input_series:
+      - series: pg_stat_activity_max_tx_duration{job="postgres",instance="pg-0:9187",datname="app",state="active",backend_type="autovacuum worker"}
+        values: 0+15x80
+      - series: pg_stat_activity_max_tx_duration{job="postgres",instance="pg-0:9187",datname="app",state="idle in transaction",backend_type="client backend"}
+        values: 0+15x80
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: PostgreSQLSlowQueries
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: postgres
+              instance: pg-0:9187
+              datname: app
+            exp_annotations:
+              description: 'PostgreSQL transaction for database app on pg-0:9187 has been open for over 2 minutes (current maximum: 300s).'
+              summary: PostgreSQL transaction older than 2 minutes.
