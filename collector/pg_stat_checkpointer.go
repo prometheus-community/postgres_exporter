@@ -85,7 +85,7 @@ var (
 		[]string{},
 		prometheus.Labels{},
 	)
-	// Deprecated: remove this counter two releases after introducing the timestamp gauge.
+	// Deprecated: remove this counter after v0.22.0.
 	statCheckpointerStatsResetDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, statCheckpointerSubsystem, "stats_reset_total"),
 		"Deprecated: use pg_stat_checkpointer_stats_reset_timestamp_seconds instead. Time at which these statistics were last reset",
