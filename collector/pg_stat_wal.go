@@ -15,17 +15,15 @@ package collector
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log/slog"
-	"strings"
 
+	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const statWALSubsystem = "stat_wal"
-
 func init() {
-	registerCollector(statWALSubsystem, defaultDisabled, NewPGStatWALCollector)
+	// Disabled by default because pg_stat_wal is only available from PostgreSQL 14.
+	registerCollector(statWALSubsystem, serverScope, NewPGStatWALCollector)
 }
 
 type PGStatWALCollector struct {
@@ -37,101 +35,115 @@ func NewPGStatWALCollector(config collectorConfig) (Collector, error) {
 }
 
 var statsWALRecordsDesc = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, statWALSubsystem, "wal_records_total"),
+	prometheus.BuildFQName(namespace, statWALSubsystem, "records_total"),
 	"Total number of WAL records generated",
 	[]string{},
 	prometheus.Labels{},
 )
 
 var statsWALFPIDesc = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, statWALSubsystem, "wal_fpi"),
+	prometheus.BuildFQName(namespace, statWALSubsystem, "fpi_total"),
 	"Total number of WAL full page images generated",
 	[]string{},
 	prometheus.Labels{},
 )
 
 var statsWALBytesDesc = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, statWALSubsystem, "wal_bytes"),
+	prometheus.BuildFQName(namespace, statWALSubsystem, "bytes_total"),
 	"Total amount of WAL generated in bytes",
 	[]string{},
 	prometheus.Labels{},
 )
 
 var statsWALBuffersFullDesc = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, statWALSubsystem, "wal_buffers_full"),
+	prometheus.BuildFQName(namespace, statWALSubsystem, "buffers_full_total"),
 	"Number of times WAL data was written to disk because WAL buffers became full",
 	[]string{},
 	prometheus.Labels{},
 )
 
 var statsWALWriteDesc = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, statWALSubsystem, "wal_write"),
+	prometheus.BuildFQName(namespace, statWALSubsystem, "write_total"),
 	"Number of times WAL buffers were written out to disk via XLogWrite request. See Section 30.5 for more information about the internal WAL function XLogWrite.",
 	[]string{},
 	prometheus.Labels{},
 )
 
 var statsWALSyncDesc = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, statWALSubsystem, "wal_sync"),
+	prometheus.BuildFQName(namespace, statWALSubsystem, "sync_total"),
 	"Number of times WAL files were synced to disk via issue_xlog_fsync request (if fsync is on and wal_sync_method is either fdatasync, fsync or fsync_writethrough, otherwise zero). See Section 30.5 for more information about the internal WAL function issue_xlog_fsync.",
 	[]string{},
 	prometheus.Labels{},
 )
 
 var statsWALWriteTimeDesc = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, statWALSubsystem, "wal_write_time"),
-	"Total amount of time spent writing WAL buffers to disk via XLogWrite request, in milliseconds (if track_wal_io_timing is enabled, otherwise zero). This includes the sync time when wal_sync_method is either open_datasync or open_sync.",
+	prometheus.BuildFQName(namespace, statWALSubsystem, "write_time_seconds_total"),
+	"Total amount of time spent writing WAL buffers to disk via XLogWrite request, in seconds (if track_wal_io_timing is enabled, otherwise zero). This includes the sync time when wal_sync_method is either open_datasync or open_sync.",
 	[]string{},
 	prometheus.Labels{},
 )
 
 var statsWALSyncTimeDesc = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, statWALSubsystem, "wal_sync_time"),
-	"Total amount of time spent syncing WAL files to disk via issue_xlog_fsync request, in milliseconds (if track_wal_io_timing is enabled, fsync is on, and wal_sync_method is either fdatasync, fsync or fsync_writethrough, otherwise zero).",
+	prometheus.BuildFQName(namespace, statWALSubsystem, "sync_time_seconds_total"),
+	"Total amount of time spent syncing WAL files to disk via issue_xlog_fsync request, in seconds (if track_wal_io_timing is enabled, fsync is on, and wal_sync_method is either fdatasync, fsync or fsync_writethrough, otherwise zero).",
 	[]string{},
 	prometheus.Labels{},
 )
 
 var statsWALStatsResetDesc = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, statWALSubsystem, "stats_reset"),
+	prometheus.BuildFQName(namespace, statWALSubsystem, "stats_reset_timestamp_seconds"),
 	"Time at which these statistics were last reset",
 	[]string{},
 	prometheus.Labels{},
 )
 
-func statWALQuery(columns []string) string {
-	return fmt.Sprintf("SELECT %s FROM pg_stat_wal;", strings.Join(columns, ","))
-}
+// statWALQuery is used on PostgreSQL 14 through 17.
+const statWALQuery = `SELECT
+	wal_records
+	,wal_fpi
+	,wal_bytes
+	,wal_buffers_full
+	,wal_write
+	,wal_sync
+	,wal_write_time
+	,wal_sync_time
+	,stats_reset
+FROM pg_stat_wal;`
+
+// statWALQuery18 is used on PostgreSQL 18+, which moved wal_write, wal_sync,
+// wal_write_time and wal_sync_time to pg_stat_io.
+const statWALQuery18 = `SELECT
+	wal_records
+	,wal_fpi
+	,wal_bytes
+	,wal_buffers_full
+	,stats_reset
+FROM pg_stat_wal;`
 
 func (c *PGStatWALCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
+	if instance.version.LT(semver.MustParse("14.0.0")) {
+		c.log.Debug("pg_stat_wal collector requires PostgreSQL 14 or newer, skipping")
+		return nil
+	}
+
 	db := instance.getDB()
 
-	columns := []string{
-		"wal_records",      // bigint
-		"wal_fpi",          // bigint
-		"wal_bytes",        // numeric
-		"wal_buffers_full", // bigint
-		"wal_write",        // bigint
-		"wal_sync",         // bigint
-		"wal_write_time",   // double precision
-		"wal_sync_time",    // double precision
-		"stats_reset",      // timestamp with time zone
-	}
+	var walRecords, walFPI, walBytes, walBuffersFull, walWrite, walSync sql.NullInt64
+	var walWriteTime, walSyncTime sql.NullFloat64
+	var statsReset sql.NullTime
 
-	rows, err := db.QueryContext(ctx,
-		statWALQuery(columns),
-	)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var walRecords, walFPI, walBytes, walBuffersFull, walWrite, walSync sql.NullInt64
-		var walWriteTime, walSyncTime sql.NullFloat64
-		var statsReset sql.NullTime
-
-		err := rows.Scan(
+	if instance.version.GE(semver.MustParse("18.0.0")) {
+		if err := db.QueryRowContext(ctx, statWALQuery18).Scan(
+			&walRecords,
+			&walFPI,
+			&walBytes,
+			&walBuffersFull,
+			&statsReset,
+		); err != nil {
+			return err
+		}
+	} else {
+		if err := db.QueryRowContext(ctx, statWALQuery).Scan(
 			&walRecords,
 			&walFPI,
 			&walBytes,
@@ -141,100 +153,82 @@ func (c *PGStatWALCollector) Update(ctx context.Context, instance *instance, ch 
 			&walWriteTime,
 			&walSyncTime,
 			&statsReset,
-		)
-		if err != nil {
+		); err != nil {
 			return err
 		}
+	}
 
-		walRecordsMetric := 0.0
-		if walRecords.Valid {
-			walRecordsMetric = float64(walRecords.Int64)
-		}
+	if walRecords.Valid {
 		ch <- prometheus.MustNewConstMetric(
 			statsWALRecordsDesc,
 			prometheus.CounterValue,
-			walRecordsMetric,
+			int64CounterValue(walRecords, instance.wrapLargeCounters),
 		)
+	}
 
-		walFPIMetric := 0.0
-		if walFPI.Valid {
-			walFPIMetric = float64(walFPI.Int64)
-		}
+	if walFPI.Valid {
 		ch <- prometheus.MustNewConstMetric(
 			statsWALFPIDesc,
 			prometheus.CounterValue,
-			walFPIMetric,
+			int64CounterValue(walFPI, instance.wrapLargeCounters),
 		)
+	}
 
-		walBytesMetric := 0.0
-		if walBytes.Valid {
-			walBytesMetric = float64(walBytes.Int64)
-		}
+	if walBytes.Valid {
 		ch <- prometheus.MustNewConstMetric(
 			statsWALBytesDesc,
 			prometheus.CounterValue,
-			walBytesMetric,
+			int64CounterValue(walBytes, instance.wrapLargeCounters),
 		)
+	}
 
-		walBuffersFullMetric := 0.0
-		if walBuffersFull.Valid {
-			walBuffersFullMetric = float64(walBuffersFull.Int64)
-		}
+	if walBuffersFull.Valid {
 		ch <- prometheus.MustNewConstMetric(
 			statsWALBuffersFullDesc,
 			prometheus.CounterValue,
-			walBuffersFullMetric,
+			int64CounterValue(walBuffersFull, instance.wrapLargeCounters),
 		)
+	}
 
-		walWriteMetric := 0.0
-		if walWrite.Valid {
-			walWriteMetric = float64(walWrite.Int64)
-		}
+	if walWrite.Valid {
 		ch <- prometheus.MustNewConstMetric(
 			statsWALWriteDesc,
 			prometheus.CounterValue,
-			walWriteMetric,
+			int64CounterValue(walWrite, instance.wrapLargeCounters),
 		)
+	}
 
-		walSyncMetric := 0.0
-		if walSync.Valid {
-			walSyncMetric = float64(walSync.Int64)
-		}
+	if walSync.Valid {
 		ch <- prometheus.MustNewConstMetric(
 			statsWALSyncDesc,
 			prometheus.CounterValue,
-			walSyncMetric,
+			int64CounterValue(walSync, instance.wrapLargeCounters),
 		)
+	}
 
-		walWriteTimeMetric := 0.0
-		if walWriteTime.Valid {
-			walWriteTimeMetric = float64(walWriteTime.Float64)
-		}
+	if walWriteTime.Valid {
 		ch <- prometheus.MustNewConstMetric(
 			statsWALWriteTimeDesc,
 			prometheus.CounterValue,
-			walWriteTimeMetric,
+			walWriteTime.Float64/1000,
 		)
+	}
 
-		walSyncTimeMetric := 0.0
-		if walSyncTime.Valid {
-			walSyncTimeMetric = float64(walSyncTime.Float64)
-		}
+	if walSyncTime.Valid {
 		ch <- prometheus.MustNewConstMetric(
 			statsWALSyncTimeDesc,
 			prometheus.CounterValue,
-			walSyncTimeMetric,
-		)
-
-		resetMetric := 0.0
-		if statsReset.Valid {
-			resetMetric = float64(statsReset.Time.Unix())
-		}
-		ch <- prometheus.MustNewConstMetric(
-			statsWALStatsResetDesc,
-			prometheus.CounterValue,
-			resetMetric,
+			walSyncTime.Float64/1000,
 		)
 	}
+
+	if statsReset.Valid {
+		ch <- prometheus.MustNewConstMetric(
+			statsWALStatsResetDesc,
+			prometheus.GaugeValue,
+			float64(statsReset.Time.Unix()),
+		)
+	}
+
 	return nil
 }

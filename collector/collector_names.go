@@ -37,6 +37,7 @@ const (
 	statReplicationSubsystem         = config.CollectorStatReplication
 	statStatementsSubsystem          = config.CollectorStatStatements
 	userTableSubsystem               = config.CollectorStatUserTables
+	statWALSubsystem                 = config.CollectorStatWAL
 	statWalReceiverSubsystem         = config.CollectorStatWalReceiver
 	statioUserIndexesSubsystem       = config.CollectorStatioUserIndexes
 	statioUserTableSubsystem         = config.CollectorStatioUserTables
