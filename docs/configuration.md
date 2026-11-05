@@ -134,7 +134,9 @@ Logging flags come from the shared [`prometheus/common`](https://github.com/prom
 | `--log.level` | Logging verbosity: `debug`, `info` (default), `warn`, or `error`. |
 | `--log.format` | Log output format: `logfmt` (default) or `json`. |
 
-`PG_EXPORTER_WEB_TELEMETRY_PATH` is deprecated; use `--web.telemetry-path` instead. It continues to work during deprecation and will be removed in postgres_exporter v0.22.0. Many flags also have an environment-variable equivalent (e.g. `PG_EXPORTER_COLLECTION_TIMEOUT`); a CLI flag, if set, always wins over the corresponding environment variable. The full list is in the [main README](../README.md#flags).
+The `PG_EXPORTER_*` environment variables are deprecated in favor of their command-line flags. A nonempty environment variable produces a startup warning naming its replacement flag, unless that flag is set explicitly. An explicit flag always wins over the corresponding environment variable. The full list is in the [main README](../README.md#flags).
+
+`PG_EXPORTER_WEB_TELEMETRY_PATH` continues to work during deprecation and will be removed in postgres_exporter v0.22.0. Use `--web.telemetry-path` instead.
 
 ## Config file
 
