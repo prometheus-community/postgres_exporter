@@ -1,4 +1,4 @@
-// Copyright 2024 The Prometheus Authors
+// Copyright 2026 The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -15,6 +15,7 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 
 	"github.com/blang/semver/v4"
@@ -140,7 +141,7 @@ func (c *PGStatWALCollector) Update(ctx context.Context, instance *instance, ch 
 			&walBuffersFull,
 			&statsReset,
 		); err != nil {
-			return err
+			return fmt.Errorf("failed to query pg_stat_wal on PostgreSQL 18 or newer: %w", err)
 		}
 	} else {
 		if err := db.QueryRowContext(ctx, statWALQuery).Scan(
@@ -154,7 +155,7 @@ func (c *PGStatWALCollector) Update(ctx context.Context, instance *instance, ch 
 			&walSyncTime,
 			&statsReset,
 		); err != nil {
-			return err
+			return fmt.Errorf("failed to query pg_stat_wal: %w", err)
 		}
 	}
 
