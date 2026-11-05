@@ -53,15 +53,11 @@ func TestPGStatWALCollectorVersionedQuery(t *testing.T) {
 		statsWALFPIDesc.String():         dto.MetricType_COUNTER,
 		statsWALBytesDesc.String():       dto.MetricType_COUNTER,
 		statsWALBuffersFullDesc.String(): dto.MetricType_COUNTER,
+		statsWALWriteDesc.String():       dto.MetricType_COUNTER,
+		statsWALSyncDesc.String():        dto.MetricType_COUNTER,
+		statsWALWriteTimeDesc.String():   dto.MetricType_COUNTER,
+		statsWALSyncTimeDesc.String():    dto.MetricType_COUNTER,
 		statsWALStatsResetDesc.String():  dto.MetricType_GAUGE,
-	}
-
-	// PostgreSQL 18 moved these columns to pg_stat_io.
-	if version.LT(semver.MustParse("18.0.0")) {
-		want[statsWALWriteDesc.String()] = dto.MetricType_COUNTER
-		want[statsWALSyncDesc.String()] = dto.MetricType_COUNTER
-		want[statsWALWriteTimeDesc.String()] = dto.MetricType_COUNTER
-		want[statsWALSyncTimeDesc.String()] = dto.MetricType_COUNTER
 	}
 
 	if len(metrics) != len(want) {

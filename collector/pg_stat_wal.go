@@ -121,6 +121,19 @@ const statWALQuery18 = `SELECT
 	,stats_reset
 FROM pg_stat_wal;`
 
+// statWALIOQuery collects the WAL write and sync counters that PostgreSQL 18
+// moved from pg_stat_wal to pg_stat_io. Only context 'normal' is counted: it
+// holds the XLogWrite and issue_xlog_fsync activity the pre-18 columns
+// reported, whereas context 'init' tracks WAL segment creation.
+const statWALIOQuery = `SELECT
+	sum(writes)
+	,sum(write_time)
+	,sum(fsyncs)
+	,sum(fsync_time)
+FROM pg_stat_io
+WHERE object = 'wal'
+	AND context = 'normal';`
+
 func (c *PGStatWALCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	if instance.version.LT(semver.MustParse("14.0.0")) {
 		c.log.Debug("pg_stat_wal collector requires PostgreSQL 14 or newer, skipping")
@@ -142,6 +155,14 @@ func (c *PGStatWALCollector) Update(ctx context.Context, instance *instance, ch 
 			&statsReset,
 		); err != nil {
 			return fmt.Errorf("failed to query pg_stat_wal on PostgreSQL 18 or newer: %w", err)
+		}
+		if err := db.QueryRowContext(ctx, statWALIOQuery).Scan(
+			&walWrite,
+			&walWriteTime,
+			&walSync,
+			&walSyncTime,
+		); err != nil {
+			return fmt.Errorf("failed to query pg_stat_io WAL statistics: %w", err)
 		}
 	} else {
 		if err := db.QueryRowContext(ctx, statWALQuery).Scan(

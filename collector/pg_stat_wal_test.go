@@ -149,12 +149,21 @@ func TestPGStatWALCollectorPostgres18(t *testing.T) {
 		AddRow(354, 4945, 289097744, 1242257, srT)
 	mock.ExpectQuery(sanitizeQuery(statWALQuery18)).WillReturnRows(rows)
 
+	ioColumns := []string{"writes", "write_time", "fsyncs", "fsync_time"}
+	ioRows := sqlmock.NewRows(ioColumns).
+		AddRow(int64(3275602074), 450.123439, 89320867, 1234.5678)
+	mock.ExpectQuery(sanitizeQuery(statWALIOQuery)).WillReturnRows(ioRows)
+
 	metrics := collectStatWALMetrics(t, inst)
 	expected := []statsWALExpectedMetric{
 		{desc: statsWALRecordsDesc, metricType: dto.MetricType_COUNTER, value: 354},
 		{desc: statsWALFPIDesc, metricType: dto.MetricType_COUNTER, value: 4945},
 		{desc: statsWALBytesDesc, metricType: dto.MetricType_COUNTER, value: 289097744},
 		{desc: statsWALBuffersFullDesc, metricType: dto.MetricType_COUNTER, value: 1242257},
+		{desc: statsWALWriteDesc, metricType: dto.MetricType_COUNTER, value: 3275602074},
+		{desc: statsWALSyncDesc, metricType: dto.MetricType_COUNTER, value: 89320867},
+		{desc: statsWALWriteTimeDesc, metricType: dto.MetricType_COUNTER, value: 450.123439 / 1000},
+		{desc: statsWALSyncTimeDesc, metricType: dto.MetricType_COUNTER, value: 1234.5678 / 1000},
 		{desc: statsWALStatsResetDesc, metricType: dto.MetricType_GAUGE, value: 1685059842},
 	}
 
