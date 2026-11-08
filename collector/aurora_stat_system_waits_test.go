@@ -26,6 +26,7 @@ import (
 var auroraStatSystemWaitsColumns = []string{
 	"wait_event_type",
 	"wait_event",
+	"wait_event_id",
 	"waits",
 	"wait_time",
 }
@@ -39,10 +40,14 @@ func TestAuroraStatSystemWaitsCollector(t *testing.T) {
 
 	inst := &instance{db: db, isAurora: true}
 
-	// wait_time is in microseconds.
+	expectAuroraStatSystemWaitsFunctions(mock)
+	// wait_time is in microseconds. Aurora PostgreSQL 16.15 names two
+	// different IPC events LogicalSyncStateChange; the event ID keeps their
+	// series apart.
 	rows := sqlmock.NewRows(auroraStatSystemWaitsColumns).
-		AddRow("LWLock", "XidGenLock", 11, 12864).
-		AddRow("IO", "DataFileRead", 53171, 23641847)
+		AddRow("LWLock", "XidGenLock", "16777219", 11, 12864).
+		AddRow("IPC", "LogicalSyncStateChange", "134217759", 3, 1500).
+		AddRow("IPC", "LogicalSyncStateChange", "134217760", 5, 2500)
 	mock.ExpectQuery(sanitizeQuery(auroraStatSystemWaitsQuery)).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -54,16 +59,19 @@ func TestAuroraStatSystemWaitsCollector(t *testing.T) {
 		}
 	}()
 
-	lwlock := labelMap{"wait_event_type": "LWLock", "wait_event": "XidGenLock"}
-	io := labelMap{"wait_event_type": "IO", "wait_event": "DataFileRead"}
+	lwlock := labelMap{"wait_event_type": "LWLock", "wait_event": "XidGenLock", "wait_event_id": "16777219"}
+	sync1 := labelMap{"wait_event_type": "IPC", "wait_event": "LogicalSyncStateChange", "wait_event_id": "134217759"}
+	sync2 := labelMap{"wait_event_type": "IPC", "wait_event": "LogicalSyncStateChange", "wait_event_id": "134217760"}
 	expected := []struct {
 		desc   *prometheus.Desc
 		result MetricResult
 	}{
 		{auroraStatSystemWaitsWaits, MetricResult{labels: lwlock, value: 11, metricType: dto.MetricType_COUNTER}},
 		{auroraStatSystemWaitsWaitTime, MetricResult{labels: lwlock, value: 0.012864, metricType: dto.MetricType_COUNTER}},
-		{auroraStatSystemWaitsWaits, MetricResult{labels: io, value: 53171, metricType: dto.MetricType_COUNTER}},
-		{auroraStatSystemWaitsWaitTime, MetricResult{labels: io, value: 23.641847, metricType: dto.MetricType_COUNTER}},
+		{auroraStatSystemWaitsWaits, MetricResult{labels: sync1, value: 3, metricType: dto.MetricType_COUNTER}},
+		{auroraStatSystemWaitsWaitTime, MetricResult{labels: sync1, value: 0.0015, metricType: dto.MetricType_COUNTER}},
+		{auroraStatSystemWaitsWaits, MetricResult{labels: sync2, value: 5, metricType: dto.MetricType_COUNTER}},
+		{auroraStatSystemWaitsWaitTime, MetricResult{labels: sync2, value: 0.0025, metricType: dto.MetricType_COUNTER}},
 	}
 	convey.Convey("Metrics comparison", t, func() {
 		for _, expect := range expected {
@@ -111,6 +119,7 @@ func TestAuroraStatSystemWaitsCollectorNoRows(t *testing.T) {
 	defer db.Close()
 
 	inst := &instance{db: db, isAurora: true}
+	expectAuroraStatSystemWaitsFunctions(mock)
 	mock.ExpectQuery(sanitizeQuery(auroraStatSystemWaitsQuery)).WillReturnRows(sqlmock.NewRows(auroraStatSystemWaitsColumns))
 
 	ch := make(chan prometheus.Metric, 1)
@@ -120,5 +129,42 @@ func TestAuroraStatSystemWaitsCollectorNoRows(t *testing.T) {
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled exceptions: %s", err)
+	}
+}
+
+var auroraStatSystemWaitsFunctions = []string{"aurora_stat_system_waits", "aurora_stat_wait_type", "aurora_stat_wait_event"}
+
+func expectAuroraStatSystemWaitsFunctions(mock sqlmock.Sqlmock) {
+	for _, name := range auroraStatSystemWaitsFunctions {
+		expectFunctionExists(mock, name, true)
+	}
+}
+
+func TestAuroraStatSystemWaitsCollectorMissingFunction(t *testing.T) {
+	// AWS doesn't document a minimum version for these functions; if any of
+	// them is missing, the collector reports no data instead of failing.
+	for missing, name := range auroraStatSystemWaitsFunctions {
+		t.Run(name, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			if err != nil {
+				t.Fatalf("Error opening a stub db connection: %s", err)
+			}
+			defer db.Close()
+
+			inst := &instance{db: db, isAurora: true}
+			for _, present := range auroraStatSystemWaitsFunctions[:missing] {
+				expectFunctionExists(mock, present, true)
+			}
+			expectFunctionExists(mock, name, false)
+
+			ch := make(chan prometheus.Metric, 1)
+			c := AuroraStatSystemWaitsCollector{}
+			if err := c.Update(context.Background(), inst, ch); err != ErrNoData {
+				t.Errorf("Expected ErrNoData without %s, got: %v", name, err)
+			}
+			if err := mock.ExpectationsWereMet(); err != nil {
+				t.Errorf("there were unfulfilled exceptions: %s", err)
+			}
+		})
 	}
 }
