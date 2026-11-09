@@ -255,6 +255,18 @@ func Test_dsnFromString(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:  "Key value with backslash-escaped space in unquoted password",
+			input: `host=host.example.com user=postgres password=a\ b`,
+			want: DSN{
+				scheme:   "postgresql",
+				host:     "host.example.com",
+				username: "postgres",
+				password: "a b",
+				query:    url.Values{},
+			},
+			wantErr: false,
+		},
+		{
 			name:  "Key value with options containing '='",
 			input: "host=host.example.com options='-c statement_timeout=5000' sslmode=disable",
 			want: DSN{
