@@ -15,6 +15,8 @@ package exporter
 
 import (
 	"context"
+	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"testing"
 	"time"
@@ -242,3 +244,61 @@ func TestQueryNamespaceMappingDiscardsMetricsOnRowError(t *testing.T) {
 		t.Errorf("unmet database expectations: %v", err)
 	}
 }
+
+// blockingDriver is a database/sql driver whose queries ignore the context and
+// block until release is closed, like a PostgreSQL server that stopped
+// answering the cancel request.
+type blockingDriver struct{ release chan struct{} }
+
+func (d *blockingDriver) Open(string) (driver.Conn, error) { return &blockingConn{d}, nil }
+
+type blockingConn struct{ d *blockingDriver }
+
+func (c *blockingConn) Prepare(string) (driver.Stmt, error) { return nil, errors.New("not supported") }
+func (c *blockingConn) Close() error                        { return nil }
+func (c *blockingConn) Begin() (driver.Tx, error)           { return nil, errors.New("not supported") }
+func (c *blockingConn) QueryContext(context.Context, string, []driver.NamedValue) (driver.Rows, error) {
+	<-c.d.release
+	return nil, driver.ErrBadConn
+}
+
+func TestQueryNamespaceMappingsHonorsContextWhenQueryIsStuck(t *testing.T) {
+	drv := &blockingDriver{release: make(chan struct{})}
+	defer close(drv.release)
+
+	db := sql.OpenDB(driverConnector{drv})
+	defer db.Close() // nolint: errcheck
+
+	server := &Server{
+		db:     db,
+		labels: prometheus.Labels{serverLabelName: "test"},
+		metricMap: map[string]MetricMapNamespace{
+			"stuck": {columnMappings: map[string]MetricMap{}},
+		},
+		queryOverrides: map[string]string{"stuck": "SELECT 1"},
+		metricCache:    make(map[string]cachedMetrics),
+		logger:         promslog.NewNopLogger(),
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	ch := make(chan prometheus.Metric, 1)
+	finished := make(chan map[string]error, 1)
+	go func() { finished <- queryNamespaceMappings(ctx, ch, server) }()
+
+	var errs map[string]error
+	select {
+	case errs = <-finished:
+	case <-time.After(2 * time.Second):
+		t.Fatal("queryNamespaceMappings did not return shortly after the 100ms timeout")
+	}
+	if errs["stuck"] == nil {
+		t.Fatal("expected an error for the stuck namespace")
+	}
+}
+
+type driverConnector struct{ d driver.Driver }
+
+func (c driverConnector) Connect(context.Context) (driver.Conn, error) { return c.d.Open("") }
+func (c driverConnector) Driver() driver.Driver                        { return c.d }
