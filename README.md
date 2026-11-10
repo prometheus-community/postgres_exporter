@@ -246,14 +246,6 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `disable-default-metrics`
   Use only metrics supplied from `queries.yaml` via `--extend.query-path`.  Default is `false`.
 
-* `metric-prefix`
-  A prefix to use for each of the default metrics exported by postgres-exporter. Default is `pg`.
-
-* `collection-timeout`
-  Timeout duration to use when collecting the statistics. Default is `1m`.
-  When the timeout is reached, the database connection is dropped.
-  Values less than `1ms` are invalid.
-
 * `auto-discover-databases` (DEPRECATED)
   Whether to discover the databases on a server dynamically.  Default is `false`.
 
@@ -310,8 +302,7 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 The following environment variables configure the exporter. The ones marked
 DEPRECATED have a flag equivalent and are only used when that flag is unset.
 The exporter logs a warning at startup when one of them is set, naming the
-flag to use instead. The deprecated `DATA_SOURCE_*` variables and
-`PG_EXPORTER_WEB_TELEMETRY_PATH` will be removed in v0.22.0.
+flag to use instead. All the DEPRECATED variables will be removed in v0.22.0.
 
 * `DATA_SOURCE_NAME`
   the default legacy format. Accepts URI form and key=value form arguments. The

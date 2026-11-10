@@ -30,9 +30,8 @@ the `-file` flags at a mounted secret.
 
 **DEPRECATION: the `PG_EXPORTER_*` environment variables.**
 Each one below keeps working and still takes effect when its flag is unset, but
-the exporter logs a warning on startup naming the flag to use instead.
-`PG_EXPORTER_WEB_TELEMETRY_PATH` will be removed in v0.22.0. The removal
-release for the others is not set yet.
+the exporter logs a warning on startup naming the flag to use instead. They
+will be removed in v0.22.0.
 
 | Deprecated env var | Replacement |
 | --- | --- |
@@ -50,8 +49,8 @@ release for the others is not set yet.
 * [CHANGE] Wrap non-negative 64-bit counters at `2^53` to preserve single-unit precision by @gnanirahulnutakki in https://github.com/prometheus-community/postgres_exporter/pull/1351
 * [CHANGE] stat_replication: add `pid` label to disambiguate replication connections that otherwise share identical labels by @sysadmind in https://github.com/prometheus-community/postgres_exporter/pull/1353
 * [CHANGE] stat_activity_autovacuum: add `datname` and `schemaname` labels to disambiguate autovacuum workers that otherwise share a `relname` by @spicysharkco in https://github.com/prometheus-community/postgres_exporter/pull/1419
-* [CHANGE] Deprecate `PG_EXPORTER_WEB_TELEMETRY_PATH` for removal in v0.22.0; use `--web.telemetry-path` instead, by @ArthurSens in https://github.com/prometheus-community/postgres_exporter/pull/1428. Until removal, the environment variable continues to set the metrics path when the flag is unset and logs a startup warning. Other `PG_EXPORTER_*` variables retain their existing behavior.
-* [CHANGE] Deprecate the remaining `PG_EXPORTER_*` environment variables in favor of their flags, with a startup warning when one is used, by @adityareddy-dev in https://github.com/prometheus-community/postgres_exporter/pull/1451
+* [CHANGE] Deprecate `PG_EXPORTER_WEB_TELEMETRY_PATH` for removal in v0.22.0; use `--web.telemetry-path` instead, by @ArthurSens in https://github.com/prometheus-community/postgres_exporter/pull/1428. Until removal, the environment variable continues to set the metrics path when the flag is unset and logs a startup warning.
+* [CHANGE] Deprecate the remaining `PG_EXPORTER_*` environment variables for removal in v0.22.0 in favor of their flags, with a startup warning when one is used, by @adityareddy-dev in https://github.com/prometheus-community/postgres_exporter/pull/1451
 * [BUGFIX] Enforce concurrent scrape limits through `--web.max-requests` (default `40`), independently for the metrics and `/probe` endpoints, by @ArthurSens in https://github.com/prometheus-community/postgres_exporter/pull/1428. Previously, both endpoints allowed unlimited concurrent scrapes. After upgrading, requests exceeding the limit receive HTTP 503; multi-target deployments share one limit across all `/probe` targets. Set `--web.max-requests=0` to preserve the previous unlimited behavior.
 * [BUGFIX] Fix `long_running_transactions` to count only transactions older than a configurable threshold, by @ArthurSens in https://github.com/prometheus-community/postgres_exporter/pull/1379, based on the contribution by @moreinhardt in https://github.com/prometheus-community/postgres_exporter/pull/1210
 * [BUGFIX] Fix the `wal` collector failing on every scrape on Amazon Aurora PostgreSQL versions that don't support `pg_ls_waldir()` by @megative in https://github.com/prometheus-community/postgres_exporter/pull/1312
