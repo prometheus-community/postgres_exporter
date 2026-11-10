@@ -246,6 +246,14 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `disable-default-metrics`
   Use only metrics supplied from `queries.yaml` via `--extend.query-path`.  Default is `false`.
 
+* `metric-prefix`
+  A prefix to use for each of the default metrics exported by postgres-exporter. Default is `pg`.
+
+* `collection-timeout`
+  Timeout duration to use when collecting the statistics. Default is `1m`.
+  When the timeout is reached, the database connection is dropped.
+  Values less than `1ms` are invalid.
+
 * `auto-discover-databases` (DEPRECATED)
   Whether to discover the databases on a server dynamically.  Default is `false`.
 
@@ -300,9 +308,10 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 ### Environment Variables
 
 The following environment variables configure the exporter. The ones marked
-DEPRECATED have a `--datasource.*` flag equivalent, are only used when that
-flag is unset, and will be removed in v0.22.0. The exporter logs a
-warning at startup when one of them is set.
+DEPRECATED have a flag equivalent and are only used when that flag is unset.
+The exporter logs a warning at startup when one of them is set, naming the
+flag to use instead. The deprecated `DATA_SOURCE_*` variables and
+`PG_EXPORTER_WEB_TELEMETRY_PATH` will be removed in v0.22.0.
 
 * `DATA_SOURCE_NAME`
   the default legacy format. Accepts URI form and key=value form arguments. The
@@ -330,7 +339,7 @@ warning at startup when one of them is set.
 * `DATA_SOURCE_PASS_FILE` (DEPRECATED, use `--datasource.pass-file`)
   The same as above but reads the password from a file.
 
-* `PG_EXPORTER_COLLECTION_TIMEOUT`
+* `PG_EXPORTER_COLLECTION_TIMEOUT` (DEPRECATED, use `--collection-timeout`)
   Timeout duration to use when collecting the statistics, default to `1m`.
   When the timeout is reached, the database connection will be dropped.
   It avoids connections stacking when the database answers too slowly
@@ -338,30 +347,30 @@ warning at startup when one of them is set.
   and will avoid exhausting the pool of connections of the database.
   Value of `0` or less than `1ms` is considered invalid and will report an error.
 
-* `PG_EXPORTER_WEB_TELEMETRY_PATH` (DEPRECATED)
-  Path under which to expose metrics when `--web.telemetry-path` is unset. Default is `/metrics`. This environment variable will be removed in postgres_exporter v0.22.0. Use `--web.telemetry-path` instead; an explicit flag takes precedence.
+* `PG_EXPORTER_WEB_TELEMETRY_PATH` (DEPRECATED, use `--web.telemetry-path`)
+  Path under which to expose metrics when `--web.telemetry-path` is unset. Default is `/metrics`. This environment variable will be removed in postgres_exporter v0.22.0.
 
-* `PG_EXPORTER_DISABLE_DEFAULT_METRICS`
+* `PG_EXPORTER_DISABLE_DEFAULT_METRICS` (DEPRECATED, use `--disable-default-metrics`)
   Use only metrics supplied from `queries.yaml`. Value can be `true` or `false`. Default is `false`.
 
-* `PG_EXPORTER_AUTO_DISCOVER_DATABASES` (DEPRECATED)
+* `PG_EXPORTER_AUTO_DISCOVER_DATABASES` (DEPRECATED, use `--auto-discover-databases`)
   Whether to discover the databases on a server dynamically. Value can be `true` or `false`. Default is `false`.
 
-* `PG_EXPORTER_EXTEND_QUERY_PATH`
+* `PG_EXPORTER_EXTEND_QUERY_PATH` (DEPRECATED, use `--extend.query-path`)
   Path to a YAML file containing custom queries to run. Check out [`queries.yaml`](queries.yaml)
   for examples of the format.
 
-* `PG_EXPORTER_CONSTANT_LABELS` (DEPRECATED)
+* `PG_EXPORTER_CONSTANT_LABELS` (DEPRECATED, use `--constantLabels`)
   Labels to set in all metrics. A list of `label=value` pairs, separated by commas.
 
-* `PG_EXPORTER_EXCLUDE_DATABASES` (DEPRECATED)
+* `PG_EXPORTER_EXCLUDE_DATABASES` (DEPRECATED, use `--exclude-databases`)
   A comma-separated list of databases to remove when autoDiscoverDatabases is enabled. Default is empty string.
 
-* `PG_EXPORTER_INCLUDE_DATABASES` (DEPRECATED)
+* `PG_EXPORTER_INCLUDE_DATABASES` (DEPRECATED, use `--include-databases`)
   A comma-separated list of databases to only include when autoDiscoverDatabases is enabled. Default is empty string,
   means allow all.
 
-* `PG_EXPORTER_METRIC_PREFIX`
+* `PG_EXPORTER_METRIC_PREFIX` (DEPRECATED, use `--metric-prefix`)
   A prefix to use for each of the default metrics exported by postgres-exporter. Default is `pg`
 
 Settings set by environment variables starting with `PG_` will be overwritten by the corresponding CLI flag if given.
