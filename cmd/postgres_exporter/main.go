@@ -14,6 +14,7 @@
 package main
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
@@ -30,6 +31,7 @@ import (
 	"github.com/prometheus-community/postgres_exporter/collector"
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus-community/postgres_exporter/exporter"
+	"github.com/prometheus-community/postgres_exporter/rdsiam"
 	"github.com/prometheus/client_golang/prometheus"
 	prometheuscollectors "github.com/prometheus/client_golang/prometheus/collectors"
 	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
@@ -56,6 +58,7 @@ var (
 	datasourceURIFile                   = kingpin.Flag("datasource.uri-file", "Path to a file containing the data source URI. Takes precedence over datasource.uri.").Default("").String()
 	datasourceUserFile                  = kingpin.Flag("datasource.user-file", "Path to a file containing the data source user name.").Default("").String()
 	datasourcePassFile                  = kingpin.Flag("datasource.pass-file", "Path to a file containing the data source password.").Default("").String()
+	datasourceAuth                      = kingpin.Flag("datasource.auth", "How to authenticate to the data source: password, or aws-iam for Amazon RDS IAM database authentication.").Default("password").Enum("password", "aws-iam")
 	collectorFlags                      = newCollectorFlags()
 
 	longRunningTransactionsThreshold = kingpin.Flag(
@@ -225,6 +228,11 @@ func (s *exporterServer) newMetricsHandler(b *bootstrap.Bootstrap) (http.Handler
 	if err != nil {
 		return nil, fmt.Errorf("failed building config: %w", err)
 	}
+	if *datasourceAuth == "aws-iam" {
+		if err := validateIAMDataSources(cfg.DriverName, cfg.DataSourceNames); err != nil {
+			return nil, err
+		}
+	}
 	logger.Info("Excluded databases", "databases", fmt.Sprintf("%v", cfg.ExcludeDatabases))
 
 	if cfg.UserQueriesPath != "" {
@@ -284,6 +292,19 @@ func (s *exporterServer) newMetricsHandler(b *bootstrap.Bootstrap) (http.Handler
 	return metricsHandler, nil
 }
 
+// validateIAMDataSources fails at startup, not on the first scrape, on e.g. a
+// stray password. sql.Open only parses each DSN; it doesn't connect.
+func validateIAMDataSources(driverName string, dsns []string) error {
+	for _, dsn := range dsns {
+		db, err := sql.Open(driverName, dsn)
+		if err != nil {
+			return fmt.Errorf("invalid data source for IAM auth: %w", config.RedactError(err, dsn))
+		}
+		_ = db.Close()
+	}
+	return nil
+}
+
 func buildConfig(dsns []string) (config.Config, error) {
 	parsedCollectionTimeout, err := parseCollectionTimeout(*collectionTimeout)
 	if err != nil {
@@ -292,6 +313,9 @@ func buildConfig(dsns []string) (config.Config, error) {
 
 	cfg := config.NewConfigWithDefaults()
 	cfg.DataSourceNames = dsns
+	if *datasourceAuth == "aws-iam" {
+		cfg.DriverName = rdsiam.DriverName("", "")
+	}
 	cfg.MetricPrefix = *metricPrefix
 	cfg.CollectionTimeout = parsedCollectionTimeout
 	cfg.WrapLargeCounters = *wrapLargeCounters

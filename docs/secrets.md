@@ -31,6 +31,8 @@ docker run \
 
 The mounted secret file must be readable by the container's uid/gid (`65534` in the official image — see [Docker Images](docker.md)).
 
+On Amazon RDS and Aurora, [IAM database authentication](aws-rds.md#iam-database-authentication) avoids a database password altogether.
+
 The `DATA_SOURCE_URI`, `DATA_SOURCE_URI_FILE`, `DATA_SOURCE_USER_FILE` and `DATA_SOURCE_PASS_FILE` environment variables still work and are used when the matching flag is unset, but they are deprecated and will be removed in v0.22.0. `DATA_SOURCE_NAME`, `DATA_SOURCE_USER` and `DATA_SOURCE_PASS` are not deprecated.
 
 ### Multi-target (`/probe`) credentials

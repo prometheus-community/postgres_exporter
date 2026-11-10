@@ -111,6 +111,7 @@ Flags specific to this exporter:
 | Flag | Purpose |
 |---|---|
 | `--config.file` | Path to the [config file](#config-file). Default `postgres_exporter.yml`. |
+| `--datasource.auth` | How to authenticate to the data source: `password` (default), or `aws-iam` for [Amazon RDS IAM database authentication](aws-rds.md#iam-database-authentication). |
 | `--collection-timeout` | Per-scrape timeout. Default `1m`. See [Connecting](connecting.md#connection-timeout). |
 | `--wrap-large-counters` | Wrap 64-bit counters at 2^53 to avoid floating point rounding. Default `true`. |
 
@@ -151,6 +152,8 @@ auth_modules:
       # merged into the DSN as key=value query parameters
       sslmode: require
 ```
+
+On Amazon RDS and Aurora, an auth module of `type: aws-iam` connects without a password; see [IAM database authentication](aws-rds.md#iam-database-authentication).
 
 The configuration file can be reloaded without restarting the exporter. Send a `SIGHUP` signal to the process or make a `POST` request to `/-/reload`.
 

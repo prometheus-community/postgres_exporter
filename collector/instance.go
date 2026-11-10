@@ -25,6 +25,7 @@ import (
 
 type instance struct {
 	dsn               string
+	driverName        string
 	db                *sql.DB
 	version           semver.Version
 	database          string
@@ -38,6 +39,7 @@ type instance struct {
 func (i *instance) copy() *instance {
 	return &instance{
 		dsn:               i.dsn,
+		driverName:        i.driverName,
 		wrapLargeCounters: i.wrapLargeCounters,
 	}
 }
@@ -53,6 +55,7 @@ func (i *instance) withDatabase(database string) (*instance, error) {
 	}
 	other := &instance{
 		dsn:               dsn.WithDatabase(database).GetConnectionString(),
+		driverName:        i.driverName,
 		wrapLargeCounters: i.wrapLargeCounters,
 		// database is on the same PostgreSQL server as i, so it runs the same
 		// version; skip re-querying it over the new connection.
@@ -62,7 +65,7 @@ func (i *instance) withDatabase(database string) (*instance, error) {
 }
 
 func (i *instance) setup(ctx context.Context) error {
-	db, err := sql.Open("postgres", i.dsn)
+	db, err := sql.Open(i.driverName, i.dsn)
 	if err != nil {
 		return err
 	}

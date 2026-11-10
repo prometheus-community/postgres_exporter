@@ -20,6 +20,7 @@ import (
 
 	"github.com/prometheus-community/postgres_exporter/collector"
 	"github.com/prometheus-community/postgres_exporter/config"
+	"github.com/prometheus-community/postgres_exporter/rdsiam"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -45,9 +46,14 @@ func handleProbe(logger *slog.Logger, authHandler *config.Handler, baseConfig co
 				http.Error(w, fmt.Sprintf("auth_module %s not found", authModuleName), http.StatusBadRequest)
 				return
 			}
-			if authModule.UserPass.Username == "" || authModule.UserPass.Password == "" {
-				http.Error(w, fmt.Sprintf("auth_module %s has no username or password", authModuleName), http.StatusBadRequest)
-				return
+			switch authModule.Type {
+			case "aws-iam":
+				// The user comes from the target or the module's options.
+			default:
+				if authModule.UserPass.Username == "" || authModule.UserPass.Password == "" {
+					http.Error(w, fmt.Sprintf("auth_module %s has no username or password", authModuleName), http.StatusBadRequest)
+					return
+				}
 			}
 		}
 
@@ -65,6 +71,9 @@ func handleProbe(logger *slog.Logger, authHandler *config.Handler, baseConfig co
 		// Copy process-level config before setting the per-request target DSN.
 		probeConfig := baseConfig
 		probeConfig.DataSourceNames = []string{dsn.GetConnectionString()}
+		if authModule.Type == "aws-iam" {
+			probeConfig.DriverName = rdsiam.DriverName(authModule.AWSIAM.Region, authModule.AWSIAM.RoleARN)
+		}
 		validatedConfig, err := probeConfig.Validate()
 		if err != nil {
 			logger.Error("invalid probe config", "err", err)

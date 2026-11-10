@@ -34,7 +34,7 @@ func TestInstanceWithDatabase(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			primary := &instance{dsn: test.dsn, wrapLargeCounters: true, version: semver.MustParse("15.2.0")}
+			primary := &instance{dsn: test.dsn, driverName: "postgres-rds-iam", wrapLargeCounters: true, version: semver.MustParse("15.2.0")}
 			got, err := primary.withDatabase("other")
 			if test.wantErr {
 				if err == nil {
@@ -47,6 +47,9 @@ func TestInstanceWithDatabase(t *testing.T) {
 			}
 			if got.dsn != test.want {
 				t.Fatalf("withDatabase() dsn = %q, want %q", got.dsn, test.want)
+			}
+			if got.driverName != primary.driverName {
+				t.Fatalf("withDatabase() driverName = %q, want %q", got.driverName, primary.driverName)
 			}
 			if got.wrapLargeCounters != primary.wrapLargeCounters {
 				t.Fatalf("withDatabase() wrapLargeCounters = %v, want %v", got.wrapLargeCounters, primary.wrapLargeCounters)

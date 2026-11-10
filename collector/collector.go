@@ -128,6 +128,7 @@ type PostgresCollector struct {
 	longRunningTransactions config.LongRunningTransactionsConfig
 	pgStatStatements        config.PGStatStatementsConfig
 	wrapLargeCounters       bool
+	driverName              string
 	databaseDiscovery       *databaseDiscoveryConfig
 }
 
@@ -156,6 +157,7 @@ func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn st
 		pgStatStatements:        defaultPGStatStatementsConfig(),
 		CollectionTimeout:       time.Minute,
 		wrapLargeCounters:       true,
+		driverName:              "postgres",
 	}
 	// Apply options to customize the collector
 	for _, o := range options {
@@ -207,6 +209,7 @@ func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn st
 	p.instance = &instance{
 		dsn:               dsn,
 		wrapLargeCounters: p.wrapLargeCounters,
+		driverName:        p.driverName,
 	}
 
 	return p, nil
@@ -288,6 +291,17 @@ func WithCollectionTimeout(s string) Option {
 func WithWrapLargeCounters(wrap bool) Option {
 	return func(p *PostgresCollector) error {
 		p.wrapLargeCounters = wrap
+		return nil
+	}
+}
+
+// WithDriverName sets the database/sql driver used to connect. Empty means
+// lib/pq's "postgres".
+func WithDriverName(name string) Option {
+	return func(p *PostgresCollector) error {
+		if name != "" {
+			p.driverName = name
+		}
 		return nil
 	}
 }
