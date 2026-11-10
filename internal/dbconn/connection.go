@@ -85,7 +85,7 @@ func (d *contextDialer) DialContext(ctx context.Context,
 		defer timer.Stop()
 		select {
 		case <-timer.C:
-			abortConnection(conn)
+			_ = abortConnection(conn)
 		case <-c.closed:
 		}
 	})
@@ -131,7 +131,7 @@ func (c *contextConn) Close() error {
 func abortConnection(conn net.Conn) error {
 	// Do not leave TCP waiting for acknowledgments of lost data and FIN.
 	if tcp, ok := conn.(*net.TCPConn); ok {
-		tcp.SetLinger(0)
+		_ = tcp.SetLinger(0)
 	}
 	return conn.Close()
 }

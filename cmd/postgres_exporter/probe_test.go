@@ -147,9 +147,10 @@ func TestProbeConnectionCleanup(t *testing.T) {
 				sslmode = "require"
 			}
 			target := fmt.Sprintf("postgresql://test@%s/test?sslmode=%s", listener.Addr(), sslmode)
-			if stage == "connect_timeout" {
+			switch stage {
+			case "connect_timeout":
 				target += "&connect_timeout=30"
-			} else if stage == "connect_timeout_expired" {
+			case "connect_timeout_expired":
 				target += "&connect_timeout=1"
 			}
 			request, err := http.NewRequestWithContext(ctx, http.MethodGet,
