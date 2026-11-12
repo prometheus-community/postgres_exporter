@@ -152,6 +152,7 @@ func main() {
 	// Bootstrap registers it without an env binding. Restore that binding until
 	// v0.22.0, preserving explicit CLI flags' precedence.
 	kingpin.CommandLine.GetFlag("web.telemetry-path").Envar(webTelemetryPathEnvar)
+	server.envVarFlags = trackDeprecatedEnvVarFlags(kingpin.CommandLine)
 
 	err := runner.Run()
 	server.close()
@@ -170,8 +171,34 @@ func main() {
 }
 
 type exporterServer struct {
-	runtime    *collector.Runtime
-	stopReload func()
+	runtime     *collector.Runtime
+	stopReload  func()
+	envVarFlags []*deprecatedEnvVarFlag
+}
+
+type deprecatedEnvVarFlag struct {
+	flag      *kingpin.FlagModel
+	setByUser bool
+}
+
+func trackDeprecatedEnvVarFlags(app *kingpin.Application) []*deprecatedEnvVarFlag {
+	var flags []*deprecatedEnvVarFlag
+	for _, flag := range app.Model().Flags {
+		if strings.HasPrefix(flag.Envar, "PG_EXPORTER_") {
+			tracked := &deprecatedEnvVarFlag{flag: flag}
+			app.GetFlag(flag.Name).IsSetByUser(&tracked.setByUser)
+			flags = append(flags, tracked)
+		}
+	}
+	return flags
+}
+
+func warnDeprecatedEnvVars(flags []*deprecatedEnvVarFlag) {
+	for _, tracked := range flags {
+		if !tracked.setByUser && os.Getenv(tracked.flag.Envar) != "" {
+			logger.Warn("Configuring the exporter via environment variable is DEPRECATED", "env", tracked.flag.Envar, "flag", "--"+tracked.flag.Name)
+		}
+	}
 }
 
 func (s *exporterServer) close() {
@@ -207,9 +234,7 @@ func (s *exporterServer) newMetricsHandler(b *bootstrap.Bootstrap) (http.Handler
 
 	warnDeprecatedDataSourceEnvVars()
 
-	if os.Getenv(webTelemetryPathEnvar) != "" {
-		logger.Warn(webTelemetryPathEnvar + " is DEPRECATED, use --web.telemetry-path instead")
-	}
+	warnDeprecatedEnvVars(s.envVarFlags)
 
 	dsns, err := getDataSources(dataSourceOpts{
 		URI:      *datasourceURI,
