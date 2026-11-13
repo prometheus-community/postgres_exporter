@@ -21,6 +21,7 @@ import (
 
 	"github.com/blang/semver/v4"
 	"github.com/prometheus-community/postgres_exporter/config"
+	"github.com/prometheus-community/postgres_exporter/internal/dbconn"
 )
 
 type instance struct {
@@ -62,7 +63,7 @@ func (i *instance) withDatabase(database string) (*instance, error) {
 }
 
 func (i *instance) setup(ctx context.Context) error {
-	db, err := sql.Open("postgres", i.dsn)
+	db, err := dbconn.Open(ctx, i.dsn)
 	if err != nil {
 		return err
 	}

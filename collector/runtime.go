@@ -14,6 +14,7 @@
 package collector
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -30,6 +31,12 @@ type Runtime struct {
 }
 
 func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*Runtime, error) {
+	return NewRuntimeWithContext(context.Background(), validatedConfig, logger)
+}
+
+// NewRuntimeWithContext creates a runtime whose collectors and database
+// connections are bounded by ctx. Use NewRuntime for a long-lived runtime.
+func NewRuntimeWithContext(ctx context.Context, validatedConfig config.ValidatedConfig, logger *slog.Logger) (*Runtime, error) {
 	if !validatedConfig.Valid() {
 		return nil, errors.New("config has not been validated; obtain a ValidatedConfig from Config.Validate")
 	}
@@ -38,7 +45,7 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 	}
 	cfg := validatedConfig.Config()
 
-	exporterCollector := exporter.NewExporter(cfg.DataSourceNames, logger, exporterOptions(cfg)...)
+	exporterCollector := exporter.NewExporter(cfg.DataSourceNames, logger, exporterOptions(ctx, cfg)...)
 	runtime := &Runtime{
 		exporter: exporterCollector,
 	}
@@ -48,6 +55,7 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 	}
 
 	opts := []Option{
+		WithContext(ctx),
 		WithCollectionTimeout(cfg.CollectionTimeout.String()),
 		WithCollectorStates(cfg.Collectors),
 		WithLongRunningTransactionsConfig(cfg.LongRunningTransactions),
@@ -98,8 +106,9 @@ func (r *Runtime) Close() error {
 	return err
 }
 
-func exporterOptions(cfg config.Config) []exporter.ExporterOpt {
+func exporterOptions(ctx context.Context, cfg config.Config) []exporter.ExporterOpt {
 	return []exporter.ExporterOpt{
+		exporter.WithContext(ctx),
 		exporter.DisableDefaultMetrics(cfg.DisableDefaultMetrics),
 		exporter.AutoDiscoverDatabases(cfg.AutoDiscoverDatabases),
 		exporter.WithCollectionTimeout(cfg.CollectionTimeout),

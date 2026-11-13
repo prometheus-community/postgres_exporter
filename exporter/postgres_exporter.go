@@ -353,6 +353,7 @@ type Exporter struct {
 	logger            *slog.Logger
 	metricPrefix      string
 	collectionTimeout time.Duration
+	ctx               context.Context
 }
 
 // ExporterOpt configures Exporter.
@@ -369,6 +370,13 @@ func DisableDefaultMetrics(b bool) ExporterOpt {
 func AutoDiscoverDatabases(b bool) ExporterOpt {
 	return func(e *Exporter) {
 		e.autoDiscoverDatabases = b
+	}
+}
+
+// WithContext bounds the lifetime of the collector and its connections.
+func WithContext(ctx context.Context) ExporterOpt {
+	return func(e *Exporter) {
+		e.ctx = ctx
 	}
 }
 
@@ -457,6 +465,7 @@ func NewExporter(dsn []string, logger *slog.Logger, opts ...ExporterOpt) *Export
 		logger:            logger,
 		wrapLargeCounters: true,
 		collectionTimeout: time.Minute,
+		ctx:               context.Background(),
 	}
 
 	for _, opt := range opts {
@@ -465,6 +474,7 @@ func NewExporter(dsn []string, logger *slog.Logger, opts ...ExporterOpt) *Export
 
 	e.setupInternalMetrics()
 	e.servers = NewServers(
+		ServerWithContext(e.ctx),
 		ServerWithLabels(e.constantLabels),
 		ServerWithLogger(e.logger),
 		ServerWithWrapLargeCounters(e.wrapLargeCounters),
@@ -516,7 +526,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements prometheus.Collector.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
-	ctx, cancel := context.WithTimeout(context.Background(), e.collectionTimeout)
+	ctx, cancel := context.WithTimeout(e.ctx, e.collectionTimeout)
 	defer cancel()
 
 	e.scrape(ctx, ch)
@@ -627,6 +637,10 @@ func (e *Exporter) scrape(ctx context.Context, ch chan<- prometheus.Metric) {
 	var connectionErrorsCount int
 
 	for _, dsn := range dsns {
+		if ctx.Err() != nil {
+			errorsCount++
+			break
+		}
 		if err := e.scrapeDSN(ctx, ch, dsn); err != nil {
 			errorsCount++
 
