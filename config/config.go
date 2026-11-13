@@ -65,6 +65,8 @@ const (
 	CollectorStatProgressVacuum      = "stat_progress_vacuum"
 	CollectorStatReplication         = "stat_replication"
 	CollectorStatStatements          = "stat_statements"
+	CollectorStatIO                  = "stat_io"
+	CollectorStatWAL                 = "stat_wal"
 	CollectorStatUserTables          = "stat_user_tables"
 	CollectorStatWalReceiver         = "stat_wal_receiver"
 	CollectorStatioUserIndexes       = "statio_user_indexes"
@@ -233,6 +235,8 @@ func DefaultCollectorConfig() map[string]bool {
 		CollectorStatProgressVacuum:      true,
 		CollectorStatReplication:         true,
 		CollectorStatStatements:          false,
+		CollectorStatIO:                  false,
+		CollectorStatWAL:                 true,
 		CollectorStatUserTables:          true,
 		CollectorStatWalReceiver:         false,
 		CollectorStatioUserIndexes:       false,

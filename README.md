@@ -179,6 +179,9 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `[no-]collector.stat_database`
   Enable the `stat_database` collector (default: enabled).
 
+* `[no-]collector.stat_io`
+  Enable the `stat_io` collector (default: disabled).
+
 * `[no-]collector.stat_progress_vacuum`
   Enable the `stat_progress_vacuum` collector (default: enabled).
 
@@ -202,6 +205,9 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 
 * `--collector.stat_statements.exclude_users`
   Comma-separated list of user names to exclude from `pg_stat_statements` metrics. Default is none.
+
+* `[no-]collector.stat_wal`
+  Enable the `stat_wal` collector (default: enabled).
 
 * `[no-]collector.stat_user_tables`
   Enable the `stat_user_tables` collector (default: enabled).
