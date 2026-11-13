@@ -188,6 +188,33 @@ func queryNamespaceMapping(ctx context.Context, server *Server, namespace string
 	return metrics, nonfatalErrors, nil
 }
 
+// queryNamespaceMappingWithContext runs queryNamespaceMapping but returns as
+// soon as ctx is done. Canceling the context makes lib/pq send a cancel request
+// and then wait for the server to answer. If PostgreSQL has stopped responding
+// that wait can last much longer than the collection timeout, so the caller
+// stops waiting here and the query goroutine finishes in the background once
+// the connection returns an error.
+func queryNamespaceMappingWithContext(ctx context.Context, server *Server, namespace string, mapping MetricMapNamespace) ([]prometheus.Metric, []error, error) {
+	type result struct {
+		metrics        []prometheus.Metric
+		nonFatalErrors []error
+		err            error
+	}
+	// Buffered so the goroutine can exit even if nobody is receiving anymore.
+	done := make(chan result, 1)
+	go func() {
+		m, nf, err := queryNamespaceMapping(ctx, server, namespace, mapping)
+		done <- result{m, nf, err}
+	}()
+
+	select {
+	case r := <-done:
+		return r.metrics, r.nonFatalErrors, r.err
+	case <-ctx.Done():
+		return []prometheus.Metric{}, []error{}, fmt.Errorf("Error running query on database %q: %s %v", server, namespace, ctx.Err())
+	}
+}
+
 // Iterate through all the namespace mappings in the exporter and run their
 // queries.
 func queryNamespaceMappings(ctx context.Context, ch chan<- prometheus.Metric, server *Server) map[string]error {
@@ -197,6 +224,13 @@ func queryNamespaceMappings(ctx context.Context, ch chan<- prometheus.Metric, se
 	scrapeStart := time.Now()
 
 	for namespace, mapping := range server.metricMap {
+		// Stop once the collection deadline has passed (or the scrape was
+		// canceled) instead of starting more queries.
+		if err := ctx.Err(); err != nil {
+			namespaceErrors[namespace] = err
+			continue
+		}
+
 		server.logger.Debug("Querying namespace", "namespace", namespace)
 
 		if mapping.master && !server.master {
@@ -232,7 +266,7 @@ func queryNamespaceMappings(ctx context.Context, ch chan<- prometheus.Metric, se
 		var nonFatalErrors []error
 		var err error
 		if scrapeMetric {
-			metrics, nonFatalErrors, err = queryNamespaceMapping(ctx, server, namespace, mapping)
+			metrics, nonFatalErrors, err = queryNamespaceMappingWithContext(ctx, server, namespace, mapping)
 		} else {
 			metrics = cachedMetric.metrics
 		}
