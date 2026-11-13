@@ -286,6 +286,13 @@ func (s *FunctionalSuite) TestParseConstLabels(c *C) {
 			s:      "a=",
 			labels: prometheus.Labels{},
 		},
+		{
+			s: "a=b=c, d=e",
+			labels: prometheus.Labels{
+				"a": "b=c",
+				"d": "e",
+			},
+		},
 	}
 
 	for _, cs := range cases {
