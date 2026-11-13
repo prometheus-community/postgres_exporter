@@ -29,6 +29,7 @@ func TestInstanceWithDatabase(t *testing.T) {
 		{name: "postgresql URI", dsn: "postgresql://user:pass@localhost:5432/postgres?sslmode=disable", want: "postgresql://user:pass@localhost:5432?dbname=other&sslmode=disable"},
 		{name: "postgres URI", dsn: "postgres://localhost/postgres", want: "postgres://localhost?dbname=other"},
 		{name: "connstring", dsn: "host=localhost port=5432 dbname=postgres", want: "postgresql://localhost:5432?dbname=other"},
+		{name: "connstring with options", dsn: "host=localhost port=5432 dbname=postgres options='-c statement_timeout=5000'", want: "postgresql://localhost:5432?dbname=other&options=-c+statement_timeout%3D5000"},
 		{name: "unparsable", dsn: "not a dsn", wantErr: true},
 	}
 
