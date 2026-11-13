@@ -59,10 +59,15 @@ var (
 		[]string{}, nil,
 	)
 
+	// The lag is 0 when everything received has been replayed. The receive
+	// LSN can be behind the replay LSN: after the WAL receiver (re)starts it
+	// reports the start of the segment it streams from until new WAL arrives,
+	// so an idle replica would otherwise report the age of the last replayed
+	// transaction as lag.
 	pgReplicationQuery = `SELECT
 	CASE
 		WHEN NOT pg_is_in_recovery() THEN 0
-                WHEN pg_last_wal_receive_lsn () = pg_last_wal_replay_lsn () THEN 0
+		WHEN pg_last_wal_receive_lsn () <= pg_last_wal_replay_lsn () THEN 0
 		ELSE GREATEST (0, EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())))
 	END AS lag,
 	CASE
