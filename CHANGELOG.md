@@ -1,5 +1,6 @@
 ## main / (unreleased)
 
+* [BUGFIX] Return at `--collection-timeout` when a legacy query is stuck on an unresponsive PostgreSQL, and stop starting new namespace queries after the deadline. Fixes #1455.
 * [BUGFIX] Add unit-correct `pg_database_wraparound_age_datfrozenxid` and `pg_database_wraparound_age_datminmxid` gauges. The existing `_seconds` metrics remain as deprecated aliases with unchanged ID-count values; migrate dashboards, rules, and alerts to the new names.
 
 **WARNING: upgrading with large counters can cause a one-time false rate spike.**
