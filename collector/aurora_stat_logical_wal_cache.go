@@ -37,20 +37,23 @@ func NewAuroraStatLogicalWalCacheCollector(collectorConfig) (Collector, error) {
 }
 
 var (
-	auroraStatLogicalWalCacheHits = prometheus.NewDesc(
+	auroraStatLogicalWalCacheHits = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraStatLogicalWalCacheSubsystem, "cache_hits_total"),
 		"Number of WAL cache hits for the replication slot.",
-		[]string{"slot_name"}, nil,
+		prometheus.UnconstrainedLabels([]string{"slot_name"}), nil,
+		prometheus.WithUnit("{hit}"),
 	)
-	auroraStatLogicalWalCacheMisses = prometheus.NewDesc(
+	auroraStatLogicalWalCacheMisses = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraStatLogicalWalCacheSubsystem, "cache_misses_total"),
 		"Number of WAL cache misses for the replication slot.",
-		[]string{"slot_name"}, nil,
+		prometheus.UnconstrainedLabels([]string{"slot_name"}), nil,
+		prometheus.WithUnit("{miss}"),
 	)
-	auroraStatLogicalWalCacheBlocksRead = prometheus.NewDesc(
+	auroraStatLogicalWalCacheBlocksRead = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraStatLogicalWalCacheSubsystem, "blocks_read_total"),
 		"Number of WAL cache read requests for the replication slot.",
-		[]string{"slot_name"}, nil,
+		prometheus.UnconstrainedLabels([]string{"slot_name"}), nil,
+		prometheus.WithUnit("{block}"),
 	)
 
 	auroraStatLogicalWalCacheQuery = `SELECT

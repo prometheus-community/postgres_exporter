@@ -35,23 +35,26 @@ func NewPGStatReplicationCollector(collectorConfig) (Collector, error) {
 var (
 	statReplicationLabels = []string{"application_name", "client_addr", "state", "slot_name", "pid"}
 
-	statReplicationCurrentWalLSNBytesDesc = prometheus.NewDesc(
+	statReplicationCurrentWalLSNBytesDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statReplicationSubsystem, "pg_current_wal_lsn_bytes"),
 		"WAL position in bytes",
-		statReplicationLabels,
+		prometheus.UnconstrainedLabels(statReplicationLabels),
 		prometheus.Labels{},
+		prometheus.WithUnit("By"),
 	)
-	statReplicationWalLSNDiffDesc = prometheus.NewDesc(
+	statReplicationWalLSNDiffDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statReplicationSubsystem, "pg_wal_lsn_diff"),
 		"Lag in bytes between master and slave",
-		statReplicationLabels,
+		prometheus.UnconstrainedLabels(statReplicationLabels),
 		prometheus.Labels{},
+		prometheus.WithUnit("By"),
 	)
-	statReplicationXlogLocationDiffDesc = prometheus.NewDesc(
+	statReplicationXlogLocationDiffDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statReplicationSubsystem, "pg_xlog_location_diff"),
 		"Lag in bytes between master and slave",
-		statReplicationLabels,
+		prometheus.UnconstrainedLabels(statReplicationLabels),
 		prometheus.Labels{},
+		prometheus.WithUnit("By"),
 	)
 
 	// slot_name is not a column of pg_stat_replication; it lives on

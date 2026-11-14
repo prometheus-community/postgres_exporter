@@ -38,10 +38,11 @@ func NewAuroraGlobalDBInstanceStatusCollector(collectorConfig) (Collector, error
 }
 
 var (
-	auroraGlobalDBInstanceStatusVisibilityLag = prometheus.NewDesc(
+	auroraGlobalDBInstanceStatusVisibilityLag = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraGlobalDBInstanceStatusSubsystem, "visibility_lag_seconds"),
 		"How far the instance lags behind the writer instance in seconds.",
-		[]string{"server_id", "aws_region"}, nil,
+		prometheus.UnconstrainedLabels([]string{"server_id", "aws_region"}), nil,
+		prometheus.WithUnit("s"),
 	)
 
 	auroraGlobalDBInstanceStatusQuery = `SELECT

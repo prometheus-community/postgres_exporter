@@ -39,35 +39,41 @@ func NewAuroraStatDatabaseCollector(collectorConfig) (Collector, error) {
 }
 
 var (
-	auroraStatDatabaseStorageBlocksRead = prometheus.NewDesc(
+	auroraStatDatabaseStorageBlocksRead = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraStatDatabaseSubsystem, "storage_blocks_read_total"),
 		"Number of shared blocks read from Aurora storage.",
-		[]string{"datid", "datname"}, nil,
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}), nil,
+		prometheus.WithUnit("{block}"),
 	)
-	auroraStatDatabaseOrcacheBlocksHit = prometheus.NewDesc(
+	auroraStatDatabaseOrcacheBlocksHit = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraStatDatabaseSubsystem, "orcache_blocks_hit_total"),
 		"Number of blocks read from the Optimized Reads cache.",
-		[]string{"datid", "datname"}, nil,
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}), nil,
+		prometheus.WithUnit("{block}"),
 	)
-	auroraStatDatabaseLocalBlocksRead = prometheus.NewDesc(
+	auroraStatDatabaseLocalBlocksRead = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraStatDatabaseSubsystem, "local_blocks_read_total"),
 		"Number of local blocks read.",
-		[]string{"datid", "datname"}, nil,
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}), nil,
+		prometheus.WithUnit("{block}"),
 	)
-	auroraStatDatabaseStorageBlockReadTime = prometheus.NewDesc(
+	auroraStatDatabaseStorageBlockReadTime = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraStatDatabaseSubsystem, "storage_block_read_time_seconds_total"),
 		"Time spent reading data file blocks from Aurora storage in seconds, if track_io_timing is enabled.",
-		[]string{"datid", "datname"}, nil,
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}), nil,
+		prometheus.WithUnit("s"),
 	)
-	auroraStatDatabaseOrcacheBlockReadTime = prometheus.NewDesc(
+	auroraStatDatabaseOrcacheBlockReadTime = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraStatDatabaseSubsystem, "orcache_block_read_time_seconds_total"),
 		"Time spent reading data file blocks from the Optimized Reads cache in seconds, if track_io_timing is enabled.",
-		[]string{"datid", "datname"}, nil,
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}), nil,
+		prometheus.WithUnit("s"),
 	)
-	auroraStatDatabaseLocalBlockReadTime = prometheus.NewDesc(
+	auroraStatDatabaseLocalBlockReadTime = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraStatDatabaseSubsystem, "local_block_read_time_seconds_total"),
 		"Time spent reading local data file blocks in seconds, if track_io_timing is enabled.",
-		[]string{"datid", "datname"}, nil,
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}), nil,
+		prometheus.WithUnit("s"),
 	)
 
 	auroraStatDatabaseQuery = `SELECT

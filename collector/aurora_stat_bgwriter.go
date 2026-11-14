@@ -39,15 +39,17 @@ func NewAuroraStatBgwriterCollector(collectorConfig) (Collector, error) {
 }
 
 var (
-	auroraStatBgwriterOrcacheBlocksWritten = prometheus.NewDesc(
+	auroraStatBgwriterOrcacheBlocksWritten = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraStatBgwriterSubsystem, "orcache_blocks_written_total"),
 		"Number of data blocks written to the Optimized Reads cache.",
-		nil, nil,
+		prometheus.UnconstrainedLabels(nil), nil,
+		prometheus.WithUnit("{block}"),
 	)
-	auroraStatBgwriterOrcacheBlockWriteTime = prometheus.NewDesc(
+	auroraStatBgwriterOrcacheBlockWriteTime = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraStatBgwriterSubsystem, "orcache_block_write_time_seconds_total"),
 		"Time spent writing data file blocks to the Optimized Reads cache in seconds, if track_io_timing is enabled.",
-		nil, nil,
+		prometheus.UnconstrainedLabels(nil), nil,
+		prometheus.WithUnit("s"),
 	)
 
 	auroraStatBgwriterQuery = `SELECT

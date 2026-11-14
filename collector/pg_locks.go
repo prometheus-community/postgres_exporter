@@ -36,14 +36,15 @@ func NewPGLocksCollector(config collectorConfig) (Collector, error) {
 }
 
 var (
-	pgLocksDesc = prometheus.NewDesc(
+	pgLocksDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			locksSubsystem,
 			"count",
 		),
 		"Number of locks",
-		[]string{"datname", "mode"}, nil,
+		prometheus.UnconstrainedLabels([]string{"datname", "mode"}), nil,
+		prometheus.WithUnit("{lock}"),
 	)
 
 	pgLocksQuery = `

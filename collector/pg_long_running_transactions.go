@@ -46,18 +46,20 @@ func NewPGLongRunningTransactionsCollector(cfg collectorConfig) (Collector, erro
 }
 
 var (
-	longRunningTransactionsCount = prometheus.NewDesc(
+	longRunningTransactionsCount = prometheus.V2.NewDesc(
 		"pg_long_running_transactions",
 		"Current number of long running transactions",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{transaction}"),
 	)
 
-	longRunningTransactionsAgeInSeconds = prometheus.NewDesc(
+	longRunningTransactionsAgeInSeconds = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, longRunningTransactionsSubsystem, "oldest_timestamp_seconds"),
 		"The current maximum transaction age in seconds",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("s"),
 	)
 
 	longRunningTransactionsQuery = `

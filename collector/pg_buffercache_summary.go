@@ -44,35 +44,40 @@ func NewBuffercacheSummaryCollector(config collectorConfig) (Collector, error) {
 }
 
 var (
-	buffersUsedDesc = prometheus.NewDesc(
+	buffersUsedDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, buffercacheSummarySubsystem, "buffers_used"),
 		"Number of used shared buffers",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{buffer}"),
 	)
-	buffersUnusedDesc = prometheus.NewDesc(
+	buffersUnusedDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, buffercacheSummarySubsystem, "buffers_unused"),
 		"Number of unused shared buffers",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{buffer}"),
 	)
-	buffersDirtyDesc = prometheus.NewDesc(
+	buffersDirtyDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, buffercacheSummarySubsystem, "buffers_dirty"),
 		"Number of dirty shared buffers",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{buffer}"),
 	)
-	buffersPinnedDesc = prometheus.NewDesc(
+	buffersPinnedDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, buffercacheSummarySubsystem, "buffers_pinned"),
 		"Number of pinned shared buffers",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{buffer}"),
 	)
-	usageCountAvgDesc = prometheus.NewDesc(
+	usageCountAvgDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, buffercacheSummarySubsystem, "usagecount_avg"),
 		"Average usage count of used shared buffers",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("1"),
 	)
 
 	buffercacheQuery = `

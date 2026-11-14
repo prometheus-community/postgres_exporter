@@ -36,20 +36,23 @@ func NewAuroraReplicaStatusCollector(collectorConfig) (Collector, error) {
 }
 
 var (
-	auroraReplicaStatusLag = prometheus.NewDesc(
+	auroraReplicaStatusLag = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraReplicaStatusSubsystem, "lag_seconds"),
 		"Replica lag behind the writer instance in seconds.",
-		[]string{"server_id"}, nil,
+		prometheus.UnconstrainedLabels([]string{"server_id"}), nil,
+		prometheus.WithUnit("s"),
 	)
-	auroraReplicaStatusReplayLatency = prometheus.NewDesc(
+	auroraReplicaStatusReplayLatency = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraReplicaStatusSubsystem, "replay_latency_seconds"),
 		"Expected log replay latency in seconds.",
-		[]string{"server_id"}, nil,
+		prometheus.UnconstrainedLabels([]string{"server_id"}), nil,
+		prometheus.WithUnit("s"),
 	)
-	auroraReplicaStatusPendingReadIOs = prometheus.NewDesc(
+	auroraReplicaStatusPendingReadIOs = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraReplicaStatusSubsystem, "pending_read_ios"),
 		"Outstanding page reads pending on the instance.",
-		[]string{"server_id"}, nil,
+		prometheus.UnconstrainedLabels([]string{"server_id"}), nil,
+		prometheus.WithUnit("{operation}"),
 	)
 
 	auroraReplicaStatusQuery = `SELECT

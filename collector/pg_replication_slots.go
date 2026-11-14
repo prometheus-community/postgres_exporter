@@ -35,104 +35,116 @@ var (
 	replicationSlotsLabels     = []string{"slot_name", "database"}
 	replicationSlotsSlotLabels = []string{"slot_name", "slot_type"}
 
-	replicationSlotsActiveDesc = prometheus.NewDesc(
+	replicationSlotsActiveDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, replicationSlotsSubsystem, "active"),
 		"Flag indicating if the slot is active",
-		replicationSlotsLabels,
+		prometheus.UnconstrainedLabels(replicationSlotsLabels),
 		prometheus.Labels{},
+		prometheus.WithUnit("1"),
 	)
-	replicationSlotsWalLSNDiffDesc = prometheus.NewDesc(
+	replicationSlotsWalLSNDiffDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, replicationSlotsSubsystem, "pg_wal_lsn_diff"),
 		"Replication lag in bytes",
-		replicationSlotsLabels,
+		prometheus.UnconstrainedLabels(replicationSlotsLabels),
 		prometheus.Labels{},
+		prometheus.WithUnit("By"),
 	)
-	replicationSlotsXlogLocationDiffDesc = prometheus.NewDesc(
+	replicationSlotsXlogLocationDiffDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, replicationSlotsSubsystem, "pg_xlog_location_diff"),
 		"Unknown metric from pg_replication_slots",
-		replicationSlotsLabels,
+		prometheus.UnconstrainedLabels(replicationSlotsLabels),
 		prometheus.Labels{},
+		prometheus.WithUnit("By"),
 	)
-	replicationSlotsCurrentWalDesc = prometheus.NewDesc(
+	replicationSlotsCurrentWalDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			replicationSlotsSubsystem,
 			"slot_current_wal_lsn",
 		),
 		"current wal lsn value",
-		replicationSlotsSlotLabels, nil,
+		prometheus.UnconstrainedLabels(replicationSlotsSlotLabels), nil,
+		prometheus.WithUnit("1"),
 	)
-	replicationSlotsCurrentFlushDesc = prometheus.NewDesc(
+	replicationSlotsCurrentFlushDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			replicationSlotsSubsystem,
 			"slot_confirmed_flush_lsn",
 		),
 		"last lsn confirmed flushed to the replication slot",
-		replicationSlotsSlotLabels, nil,
+		prometheus.UnconstrainedLabels(replicationSlotsSlotLabels), nil,
+		prometheus.WithUnit("1"),
 	)
-	replicationSlotsIsActiveDesc = prometheus.NewDesc(
+	replicationSlotsIsActiveDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			replicationSlotsSubsystem,
 			"slot_is_active",
 		),
 		"whether the replication slot is active or not",
-		replicationSlotsSlotLabels, nil,
+		prometheus.UnconstrainedLabels(replicationSlotsSlotLabels), nil,
+		prometheus.WithUnit("1"),
 	)
-	replicationSlotsSafeWal = prometheus.NewDesc(
+	replicationSlotsSafeWal = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			replicationSlotsSubsystem,
 			"safe_wal_size_bytes",
 		),
 		"number of bytes that can be written to WAL such that this slot is not in danger of getting in state lost",
-		replicationSlotsSlotLabels, nil,
+		prometheus.UnconstrainedLabels(replicationSlotsSlotLabels), nil,
+		prometheus.WithUnit("By"),
 	)
-	replicationSlotsWalStatus = prometheus.NewDesc(
+	replicationSlotsWalStatus = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			replicationSlotsSubsystem,
 			"wal_status",
 		),
 		"availability of WAL files claimed by this slot",
-		[]string{"slot_name", "slot_type", "wal_status"}, nil,
+		prometheus.UnconstrainedLabels([]string{"slot_name", "slot_type", "wal_status"}), nil,
+		prometheus.WithUnit("1"),
 	)
-	replicationSlotsConflictingDesc = prometheus.NewDesc(
+	replicationSlotsConflictingDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			replicationSlotsSubsystem,
 			"conflicting",
 		),
 		"whether the logical replication slot was invalidated by a conflict with recovery",
-		replicationSlotsSlotLabels, nil,
+		prometheus.UnconstrainedLabels(replicationSlotsSlotLabels), nil,
+		prometheus.WithUnit("1"),
 	)
-	replicationSlotsInactiveSinceDesc = prometheus.NewDesc(
+	replicationSlotsInactiveSinceDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			replicationSlotsSubsystem,
 			"inactive_since_timestamp_seconds",
 		),
 		"time when the replication slot became inactive, in seconds since the Unix epoch",
-		replicationSlotsSlotLabels, nil,
+		prometheus.UnconstrainedLabels(replicationSlotsSlotLabels), nil,
+		prometheus.WithUnit("s"),
 	)
-	replicationSlotsFailoverDesc = prometheus.NewDesc(
+	replicationSlotsFailoverDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			replicationSlotsSubsystem,
 			"failover",
 		),
 		"whether the logical replication slot is enabled to be synced to standbys",
-		replicationSlotsSlotLabels, nil,
+		prometheus.UnconstrainedLabels(replicationSlotsSlotLabels), nil,
+		prometheus.WithUnit("1"),
 	)
-	replicationSlotsSyncedDesc = prometheus.NewDesc(
+	replicationSlotsSyncedDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			replicationSlotsSubsystem,
 			"synced",
 		),
 		"whether the logical replication slot was synced from a primary server",
-		replicationSlotsSlotLabels, nil,
+		prometheus.UnconstrainedLabels(replicationSlotsSlotLabels), nil,
+		prometheus.WithUnit("1"),
 	)
 
 	replicationSlotsQuery = `
