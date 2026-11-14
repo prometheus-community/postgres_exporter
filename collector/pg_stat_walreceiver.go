@@ -158,10 +158,8 @@ func (c *PGStatWalReceiverCollector) Update(ctx context.Context, instance *insta
 			continue
 		}
 
-		if !slotName.Valid {
-			c.log.Debug("Skipping wal receiver stats because slotname host is null")
-			continue
-		}
+		// slot_name is NULL when replicating without a slot (primary_slot_name unset);
+		// export it as an empty label rather than dropping the row.
 
 		if !status.Valid {
 			c.log.Debug("Skipping wal receiver stats because status is null")
