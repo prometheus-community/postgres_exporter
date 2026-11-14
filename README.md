@@ -206,6 +206,9 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
 * `[no-]collector.stat_user_tables`
   Enable the `stat_user_tables` collector (default: enabled).
 
+* `[no-]collector.stat_wal`
+  Enable the `stat_wal` collector (default: disabled).
+
 * `[no-]collector.stat_wal_receiver`
   Enable the `stat_wal_receiver` collector (default: disabled).
 
