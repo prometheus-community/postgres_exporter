@@ -31,8 +31,9 @@ func TestPGLocksCollector(t *testing.T) {
 
 	inst := &instance{db: db}
 
-	rows := sqlmock.NewRows([]string{"datname", "mode", "count"}).
-		AddRow("test", "exclusivelock", 42)
+	rows := sqlmock.NewRows([]string{"datname", "mode", "count", "waiting"}).
+		AddRow("test", "exclusivelock", 42, 3).
+		AddRow("test", "accesssharelock", 0, nil)
 
 	mock.ExpectQuery(sanitizeQuery(pgLocksQuery)).WillReturnRows(rows)
 
@@ -47,6 +48,9 @@ func TestPGLocksCollector(t *testing.T) {
 
 	expected := []MetricResult{
 		{labels: labelMap{"datname": "test", "mode": "exclusivelock"}, value: 42, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"datname": "test", "mode": "exclusivelock"}, value: 3, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"datname": "test", "mode": "accesssharelock"}, value: 0, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"datname": "test", "mode": "accesssharelock"}, value: 0, metricType: dto.MetricType_GAUGE},
 	}
 	convey.Convey("Metrics comparison", t, func() {
 		for _, expect := range expected {

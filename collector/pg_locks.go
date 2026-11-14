@@ -45,12 +45,22 @@ var (
 		"Number of locks",
 		[]string{"datname", "mode"}, nil,
 	)
+	pgLocksWaitingDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(
+			namespace,
+			locksSubsystem,
+			"waiting_count",
+		),
+		"Number of lock requests not yet granted",
+		[]string{"datname", "mode"}, nil,
+	)
 
 	pgLocksQuery = `
 		SELECT 
 		  pg_database.datname as datname,
 		  tmp.mode as mode,
-		  COALESCE(count, 0) as count 
+		  COALESCE(count, 0) as count,
+		  COALESCE(waiting, 0) as waiting
 		FROM 
 		  (
 		    VALUES 
@@ -69,7 +79,8 @@ var (
 		    SELECT 
 		      database, 
 		      lower(mode) AS mode, 
-		      count(*) AS count 
+		      count(*) AS count,
+		      count(*) FILTER (WHERE NOT granted) AS waiting
 		    FROM 
 		      pg_locks 
 		    WHERE 
@@ -98,10 +109,10 @@ func (c PGLocksCollector) Update(ctx context.Context, instance *instance, ch cha
 	defer rows.Close()
 
 	var datname, mode sql.NullString
-	var count sql.NullInt64
+	var count, waiting sql.NullInt64
 
 	for rows.Next() {
-		if err := rows.Scan(&datname, &mode, &count); err != nil {
+		if err := rows.Scan(&datname, &mode, &count, &waiting); err != nil {
 			return err
 		}
 
@@ -113,10 +124,19 @@ func (c PGLocksCollector) Update(ctx context.Context, instance *instance, ch cha
 		if count.Valid {
 			countMetric = float64(count.Int64)
 		}
+		waitingMetric := 0.0
+		if waiting.Valid {
+			waitingMetric = float64(waiting.Int64)
+		}
 
 		ch <- prometheus.MustNewConstMetric(
 			pgLocksDesc,
 			prometheus.GaugeValue, countMetric,
+			datname.String, mode.String,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			pgLocksWaitingDesc,
+			prometheus.GaugeValue, waitingMetric,
 			datname.String, mode.String,
 		)
 	}
