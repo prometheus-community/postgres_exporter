@@ -18,6 +18,7 @@ import (
 	"database/sql"
 	"log/slog"
 
+	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -81,7 +82,7 @@ var (
 
 	statProgressVacuumMaxDeadTuples = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, progressVacuumSubsystem, "max_dead_tuples"),
-		"Maximum number of dead tuples that can be stored before cleanup is performed.",
+		"Maximum number of dead tuples that can be stored before cleanup is performed (PostgreSQL 16 and earlier).",
 		[]string{"datname", "relname"},
 		nil,
 	)
@@ -93,8 +94,25 @@ var (
 		nil,
 	)
 
+	statProgressVacuumMaxDeadTupleBytes = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, progressVacuumSubsystem, "max_dead_tuple_bytes"),
+		"Amount of dead tuple data that can be stored before cleanup is performed (PostgreSQL 17 and later).",
+		[]string{"datname", "relname"},
+		nil,
+	)
+
+	statProgressVacuumDeadTupleBytes = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, progressVacuumSubsystem, "dead_tuple_bytes"),
+		"Amount of dead tuple data collected since the last index vacuum cycle (PostgreSQL 17 and later).",
+		[]string{"datname", "relname"},
+		nil,
+	)
+
 	// Based on the view definition of pg_stat_progress_vacuum, without the conversion
 	// of "phase" to a human-readable string. We prefer the numeric representation.
+	// PostgreSQL 17 changed the meaning of param6 and param7: they are
+	// max_dead_tuple_bytes and dead_tuple_bytes, and the dead tuple count moved
+	// to param8 (num_dead_item_ids).
 	// relname is resolved via ::regclass::text (schema-qualified) when the vacuum is
 	// running in the currently connected database. For cross-database vacuums, pg_class
 	// cannot be used (it is per-database and OIDs can collide), so we fall back to the
@@ -110,8 +128,9 @@ var (
 		s.param3 AS heap_blks_scanned,
 		s.param4 AS heap_blks_vacuumed,
 		s.param5 AS index_vacuum_count,
-		s.param6 AS max_dead_tuples,
-		s.param7 AS num_dead_tuples
+		s.param6,
+		s.param7,
+		s.param8
 	FROM
 		pg_stat_get_progress_info('VACUUM'::text)
 		s(pid, datid, relid, param1, param2, param3, param4, param5, param6, param7, param8, param9, param10, param11, param12, param13, param14, param15, param16, param17, param18, param19, param20)
@@ -121,6 +140,8 @@ var (
 
 func (c *PGStatProgressVacuumCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
+	before17 := instance.version.LT(semver.MustParse("17.0.0"))
+
 	rows, err := db.QueryContext(ctx,
 		statProgressVacuumQuery)
 
@@ -138,8 +159,9 @@ func (c *PGStatProgressVacuumCollector) Update(ctx context.Context, instance *in
 			heapBlksScanned  sql.NullInt64
 			heapBlksVacuumed sql.NullInt64
 			indexVacuumCount sql.NullInt64
-			maxDeadTuples    sql.NullInt64
-			numDeadTuples    sql.NullInt64
+			param6           sql.NullInt64
+			param7           sql.NullInt64
+			param8           sql.NullInt64
 		)
 
 		if err := rows.Scan(
@@ -150,8 +172,9 @@ func (c *PGStatProgressVacuumCollector) Update(ctx context.Context, instance *in
 			&heapBlksScanned,
 			&heapBlksVacuumed,
 			&indexVacuumCount,
-			&maxDeadTuples,
-			&numDeadTuples,
+			&param6,
+			&param7,
+			&param8,
 		); err != nil {
 			return err
 		}
@@ -207,18 +230,22 @@ func (c *PGStatProgressVacuumCollector) Update(ctx context.Context, instance *in
 		}
 		ch <- prometheus.MustNewConstMetric(statProgressVacuumIndexVacuumCount, prometheus.GaugeValue, indexCount, labels...)
 
-		maxDead := 0.0
-		if maxDeadTuples.Valid {
-			maxDead = float64(maxDeadTuples.Int64)
+		if before17 {
+			ch <- prometheus.MustNewConstMetric(statProgressVacuumMaxDeadTuples, prometheus.GaugeValue, progressParamValue(param6), labels...)
+			ch <- prometheus.MustNewConstMetric(statProgressVacuumNumDeadTuples, prometheus.GaugeValue, progressParamValue(param7), labels...)
+		} else {
+			ch <- prometheus.MustNewConstMetric(statProgressVacuumMaxDeadTupleBytes, prometheus.GaugeValue, progressParamValue(param6), labels...)
+			ch <- prometheus.MustNewConstMetric(statProgressVacuumDeadTupleBytes, prometheus.GaugeValue, progressParamValue(param7), labels...)
+			ch <- prometheus.MustNewConstMetric(statProgressVacuumNumDeadTuples, prometheus.GaugeValue, progressParamValue(param8), labels...)
 		}
-		ch <- prometheus.MustNewConstMetric(statProgressVacuumMaxDeadTuples, prometheus.GaugeValue, maxDead, labels...)
-
-		numDead := 0.0
-		if numDeadTuples.Valid {
-			numDead = float64(numDeadTuples.Int64)
-		}
-		ch <- prometheus.MustNewConstMetric(statProgressVacuumNumDeadTuples, prometheus.GaugeValue, numDead, labels...)
 	}
 
 	return rows.Err()
+}
+
+func progressParamValue(v sql.NullInt64) float64 {
+	if v.Valid {
+		return float64(v.Int64)
+	}
+	return 0
 }
