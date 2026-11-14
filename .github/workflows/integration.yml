@@ -23,6 +23,10 @@ jobs:
           - 16.10
           - 17.6
           - 18.1
+        dsn:
+          - 'postgresql://postgres:test@postgres:5432/circle_test?sslmode=disable'
+          - 'postgres:///circle_test?host=/run/postgresql'
+          - 'postgresql://postgres@/circle_test?host=/run/postgresql'
     services:
       postgres:
         image: postgres:${{ matrix.postgres_version }}
@@ -30,17 +34,19 @@ jobs:
           POSTGRES_DB: circle_test
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: test
-        # options: >-
-        #   --health-cmd="pg_isready -U postgres -d circle_test"
-        #   --health-interval=10s
-        #   --health-timeout=5s
-        #   --health-retries=5
+        volumes:
+          - /run/postgresql:/run/postgresql
+        options: >-
+          --health-cmd="pg_isready -U postgres -d circle_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     container:
       # Whenever the Go version is updated here, .promu.yml
       # should also be updated.
       image: quay.io/prometheus/golang-builder:1.26-base
     env:
-      DATA_SOURCE_NAME: 'postgresql://postgres:test@postgres:5432/circle_test?sslmode=disable'
+      DATA_SOURCE_NAME: ${{ matrix.dsn }}
       GOOPTS: '-v -tags integration'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
