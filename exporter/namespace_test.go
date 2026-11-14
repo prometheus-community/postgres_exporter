@@ -302,3 +302,36 @@ type driverConnector struct{ d driver.Driver }
 
 func (c driverConnector) Connect(context.Context) (driver.Conn, error) { return c.d.Open("") }
 func (c driverConnector) Driver() driver.Driver                        { return c.d }
+
+func TestQueryNamespaceMappingsEmitsCachedMetricsAfterDeadline(t *testing.T) {
+	desc := prometheus.NewDesc("cached_metric", "cached", nil, nil)
+	cached := prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, 1)
+
+	server := &Server{
+		labels: prometheus.Labels{serverLabelName: "test"},
+		metricMap: map[string]MetricMapNamespace{
+			"cached": {columnMappings: map[string]MetricMap{}, cacheSeconds: 3600},
+		},
+		metricCache: map[string]cachedMetrics{
+			"cached": {metrics: []prometheus.Metric{cached}, lastScrape: time.Now()},
+		},
+		logger: promslog.NewNopLogger(),
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // deadline already passed
+
+	ch := make(chan prometheus.Metric, 1)
+	errs := queryNamespaceMappings(ctx, ch, server)
+	if len(errs) != 0 {
+		t.Fatalf("expected no errors for a fresh cached namespace, got %v", errs)
+	}
+	select {
+	case m := <-ch:
+		if m != cached {
+			t.Fatal("unexpected metric emitted")
+		}
+	default:
+		t.Fatal("expected the cached metric to be emitted")
+	}
+}

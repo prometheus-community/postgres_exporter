@@ -224,13 +224,6 @@ func queryNamespaceMappings(ctx context.Context, ch chan<- prometheus.Metric, se
 	scrapeStart := time.Now()
 
 	for namespace, mapping := range server.metricMap {
-		// Stop once the collection deadline has passed (or the scrape was
-		// canceled) instead of starting more queries.
-		if err := ctx.Err(); err != nil {
-			namespaceErrors[namespace] = err
-			continue
-		}
-
 		server.logger.Debug("Querying namespace", "namespace", namespace)
 
 		if mapping.master && !server.master {
@@ -266,6 +259,13 @@ func queryNamespaceMappings(ctx context.Context, ch chan<- prometheus.Metric, se
 		var nonFatalErrors []error
 		var err error
 		if scrapeMetric {
+			// Stop once the collection deadline has passed (or the scrape was
+			// canceled) instead of starting more queries. Namespaces with a
+			// valid cache still emit their cached metrics.
+			if cerr := ctx.Err(); cerr != nil {
+				namespaceErrors[namespace] = cerr
+				continue
+			}
 			metrics, nonFatalErrors, err = queryNamespaceMappingWithContext(ctx, server, namespace, mapping)
 		} else {
 			metrics = cachedMetric.metrics
