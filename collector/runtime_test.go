@@ -14,10 +14,12 @@
 package collector
 
 import (
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/prometheus-community/postgres_exporter/config"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/promslog"
 )
 
@@ -173,5 +175,33 @@ func TestNewRuntimePropagatesLongRunningTransactionsThreshold(t *testing.T) {
 	}
 	if got, want := collector.threshold, 5*time.Minute; got != want {
 		t.Fatalf("threshold = %v, want %v", got, want)
+	}
+}
+
+// TestNewRuntimeReportsConnectionHealthForEveryDataSource checks that the
+// collectors run against the first DSN only, while every configured DSN is
+// reported in pg_scrape_connection_success.
+func TestNewRuntimeReportsConnectionHealthForEveryDataSource(t *testing.T) {
+	cfg := config.NewConfigWithDefaults()
+	// Nothing listens on ports 1 and 2, so both connections are refused.
+	cfg.DataSourceNames = []string{
+		"postgresql://postgres@127.0.0.1:1/postgres?sslmode=disable&connect_timeout=2",
+		"postgresql://postgres@127.0.0.1:2/other?sslmode=disable&connect_timeout=2",
+	}
+	validated, err := cfg.Validate()
+	if err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+	runtime, err := NewRuntime(validated, promslog.NewNopLogger())
+	if err != nil {
+		t.Fatalf("NewRuntime() error = %v", err)
+	}
+	defer runtime.Close()
+
+	want := connectionSuccessHeader +
+		`pg_scrape_connection_success{datname="other",server="127.0.0.1:2"} 0` + "\n" +
+		`pg_scrape_connection_success{datname="postgres",server="127.0.0.1:1"} 0` + "\n"
+	if err := testutil.CollectAndCompare(runtime.postgresCollector, strings.NewReader(want)); err != nil {
+		t.Fatal(err)
 	}
 }

@@ -144,6 +144,46 @@ func (d DSN) WithDatabase(database string) DSN {
 	return d
 }
 
+// Server returns the host:port the DSN connects to, with the same defaults as
+// the "server" label of the legacy exporter metrics ("localhost" and 5432).
+// It is derived only from the DSN text, never from a live connection, so it
+// is the same whether or not the connection succeeds. It carries no
+// credentials.
+func (d DSN) Server() string {
+	host, port := d.host, ""
+	if h, p, err := net.SplitHostPort(d.host); err == nil {
+		host, port = h, p
+	}
+	if host == "" {
+		host = d.query.Get("host")
+	}
+	if port == "" {
+		port = d.query.Get("port")
+	}
+	if host == "" {
+		host = "localhost"
+	}
+	if port == "" {
+		port = "5432"
+	}
+	return net.JoinHostPort(host, port)
+}
+
+// Database returns the name of the database the DSN targets: the "dbname"
+// parameter or the URL path, and otherwise the user name, which is what
+// PostgreSQL connects to when no database is given. Like Server, it is
+// derived only from the DSN text, so it is the same whether or not the
+// connection succeeds.
+func (d DSN) Database() string {
+	if name := d.query.Get("dbname"); name != "" {
+		return name
+	}
+	if name := strings.TrimPrefix(d.path, "/"); name != "" {
+		return name
+	}
+	return d.username
+}
+
 // NewDSN parses a connection string into a DSN.
 func NewDSN(in string) (DSN, error) {
 	return dsnFromString(in)

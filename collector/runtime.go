@@ -53,6 +53,9 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 		WithLongRunningTransactionsConfig(cfg.LongRunningTransactions),
 		WithPGStatStatementsConfig(cfg.PGStatStatements),
 		WithWrapLargeCounters(cfg.WrapLargeCounters),
+		// The collectors only ever run against DataSourceNames[0], but every
+		// configured DSN is checked for connectivity.
+		WithAdditionalConnectionTargets(cfg.DataSourceNames[1:]),
 	}
 	if cfg.AutoDiscoverDatabases {
 		// Run the database-scoped collectors (stat_user_tables,
