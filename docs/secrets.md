@@ -14,7 +14,7 @@ The exporter resolves the connection to use in this order, first match wins:
 2. **`--datasource.user-file` / `--datasource.pass-file`** — file paths; the exporter reads the username/password from these files at startup. Use this to keep the password out of the environment entirely.
 3. **`DATA_SOURCE_USER` / `DATA_SOURCE_PASS`** — plain environment variables, used only if the corresponding file flag isn't set.
 
-The host/port/database/query-string portion is supplied separately via `--datasource.uri` (or `--datasource.uri-file`), which never contains credentials.
+The host/port/database/query-string portion is supplied separately via `--datasource.uri` (or `--datasource.uri-file`, which takes precedence), which never contains credentials. If `DATA_SOURCE_NAME` is set it wins outright and the `--datasource.*` flags are ignored. For each setting, a flag takes precedence over its deprecated `DATA_SOURCE_*` environment variable.
 
 The username and password have no flag on purpose: flags are readable via `/proc/<pid>/cmdline` and, on Kubernetes, through the API. The `-file` flags pass only a path, so the secret itself never reaches the command line.
 
