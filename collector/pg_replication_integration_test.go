@@ -18,6 +18,7 @@ package collector
 import (
 	"database/sql"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -34,28 +35,49 @@ func TestPGReplicationLagQuerySemantics(t *testing.T) {
 	}
 	defer db.Close()
 
+	const streamingCheck = "EXISTS (SELECT 1 FROM pg_stat_wal_receiver WHERE status = 'streaming')"
+
 	for _, tc := range []struct {
 		name           string
 		receive        string
 		replay         string
+		streaming      bool
 		wantLagMinimum float64
 		wantLagMaximum float64
 	}{
 		// After the WAL receiver restarts on an idle cluster, the receive
 		// position is the start of the segment it streams from, behind replay.
-		{name: "receive behind replay", receive: "0/1000000", replay: "0/14EFCE0", wantLagMinimum: 0, wantLagMaximum: 0},
-		{name: "receive equals replay", receive: "0/14EFCE0", replay: "0/14EFCE0", wantLagMinimum: 0, wantLagMaximum: 0},
+		{name: "receive behind replay, streaming", receive: "0/1000000", replay: "0/14EFCE0", streaming: true, wantLagMinimum: 0, wantLagMaximum: 0},
+		// Replaying from the archive with no WAL receiver: receive stays at its
+		// last value while replay advances, and the replica can still be behind.
+		{name: "receive behind replay, not streaming", receive: "0/1000000", replay: "0/14EFCE0", streaming: false, wantLagMinimum: 3599, wantLagMaximum: 3700},
+		{name: "receive equals replay, streaming", receive: "0/14EFCE0", replay: "0/14EFCE0", streaming: true, wantLagMinimum: 0, wantLagMaximum: 0},
+		{name: "receive equals replay, not streaming", receive: "0/14EFCE0", replay: "0/14EFCE0", streaming: false, wantLagMinimum: 0, wantLagMaximum: 0},
 		// WAL received but not replayed yet: the lag is the replay age.
-		{name: "receive ahead of replay", receive: "0/2000060", replay: "0/14EFCE0", wantLagMinimum: 3599, wantLagMaximum: 3700},
+		{name: "receive ahead of replay", receive: "0/2000060", replay: "0/14EFCE0", streaming: true, wantLagMinimum: 3599, wantLagMaximum: 3700},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			query := strings.NewReplacer(
+			replacements := []string{
 				"NOT pg_is_in_recovery()", "false",
 				"pg_is_in_recovery()", "true",
-				"pg_last_wal_receive_lsn ()", "'"+tc.receive+"'::pg_lsn",
-				"pg_last_wal_replay_lsn ()", "'"+tc.replay+"'::pg_lsn",
+				"pg_last_wal_receive_lsn ()", "'" + tc.receive + "'::pg_lsn",
+				"pg_last_wal_replay_lsn ()", "'" + tc.replay + "'::pg_lsn",
 				"pg_last_xact_replay_timestamp()", "(now() - interval '1 hour')",
-			).Replace(pgReplicationQuery)
+				streamingCheck, strconv.FormatBool(tc.streaming),
+			}
+			// A replacement whose target is not in the query would leave the
+			// real function in place and test the CI server's state instead.
+			for i := 0; i < len(replacements); i += 2 {
+				if !strings.Contains(pgReplicationQuery, replacements[i]) {
+					t.Fatalf("pgReplicationQuery does not contain %q", replacements[i])
+				}
+			}
+			query := strings.NewReplacer(replacements...).Replace(pgReplicationQuery)
+			for _, fn := range []string{"pg_is_in_recovery", "pg_last_wal_receive_lsn", "pg_last_wal_replay_lsn", "pg_last_xact_replay_timestamp", "pg_stat_wal_receiver"} {
+				if strings.Contains(query, fn) {
+					t.Fatalf("%s left in the query after the replacements:\n%s", fn, query)
+				}
+			}
 
 			var lag, replayAge float64
 			var isReplica int64

@@ -63,11 +63,18 @@ var (
 	// LSN can be behind the replay LSN: after the WAL receiver (re)starts it
 	// reports the start of the segment it streams from until new WAL arrives,
 	// so an idle replica would otherwise report the age of the last replayed
-	// transaction as lag.
+	// transaction as lag. That only means "caught up" while a WAL receiver is
+	// streaming; a replica replaying from the archive (no WAL receiver) also
+	// has receive behind replay while it is behind the primary, so it keeps
+	// reporting the replay age. pg_stat_wal_receiver.status is only visible to
+	// superusers and pg_read_all_stats (pg_monitor) members; other users get
+	// the replay age in that case, as before.
 	pgReplicationQuery = `SELECT
 	CASE
 		WHEN NOT pg_is_in_recovery() THEN 0
-		WHEN pg_last_wal_receive_lsn () <= pg_last_wal_replay_lsn () THEN 0
+		WHEN pg_last_wal_receive_lsn () = pg_last_wal_replay_lsn () THEN 0
+		WHEN pg_last_wal_receive_lsn () < pg_last_wal_replay_lsn ()
+			AND EXISTS (SELECT 1 FROM pg_stat_wal_receiver WHERE status = 'streaming') THEN 0
 		ELSE GREATEST (0, EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())))
 	END AS lag,
 	CASE
