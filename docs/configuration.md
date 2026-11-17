@@ -69,7 +69,7 @@ and `datname` labels; update dashboards and alerts to use the names without
 | `aurora_global_db_instance_status` | disabled | **Amazon Aurora PostgreSQL only.** For each instance, including the cross-Region replicas of an Aurora global database: how far it lags behind the writer, in seconds. On non-Aurora servers it reports nothing. From `aurora_global_db_instance_status()`. |
 | `aurora_global_db_status` | disabled | **Amazon Aurora PostgreSQL only.** For each secondary cluster of an Aurora global database, by AWS Region: storage (durability) lag and recovery point objective (RPO) lag behind the primary cluster, in seconds. On non-Aurora servers it reports nothing. From `aurora_global_db_status()`. |
 | `aurora_replica_status` | disabled | **Amazon Aurora PostgreSQL only.** For each instance in the cluster: replica lag behind the writer, replay latency, and pending page reads. On non-Aurora servers it reports nothing. From `aurora_replica_status()`. |
-| `aurora_stat_logical_wal_cache` | disabled | **Amazon Aurora PostgreSQL only.** Per logical replication slot: WAL cache hits, misses, and read requests. Requires Aurora PostgreSQL 11.17, 12.12, 13.8, 14.7, 15.2 or later; on older versions and on non-Aurora servers it reports nothing. From `aurora_stat_logical_wal_cache()`. |
+| `aurora_stat_logical_wal_cache` | disabled | **Amazon Aurora PostgreSQL only.** Per logical replication slot: WAL cache hits, misses, and read requests. Requires Aurora PostgreSQL 11.17, 12.12, 13.8, 14.7, 15.2 or later; on older versions, on readers (Aurora Replicas), where the function isn't supported, and on non-Aurora servers it reports nothing. From `aurora_stat_logical_wal_cache()`. |
 
 ### Checkpoints, buffers, and I/O
 
@@ -134,7 +134,7 @@ Logging flags come from the shared [`prometheus/common`](https://github.com/prom
 | `--log.level` | Logging verbosity: `debug`, `info` (default), `warn`, or `error`. |
 | `--log.format` | Log output format: `logfmt` (default) or `json`. |
 
-`PG_EXPORTER_WEB_TELEMETRY_PATH` is deprecated; use `--web.telemetry-path` instead. It continues to work during deprecation and will be removed in postgres_exporter v0.22.0. Many flags also have an environment-variable equivalent (e.g. `PG_EXPORTER_COLLECTION_TIMEOUT`); a CLI flag, if set, always wins over the corresponding environment variable. The full list is in the [main README](../README.md#flags).
+The `PG_EXPORTER_*` environment variables are deprecated in favor of their command-line flags and will be removed in postgres_exporter v0.22.0. A nonempty environment variable produces a startup warning naming its replacement flag, unless that flag is set explicitly. An explicit flag always wins over the corresponding environment variable. The full list is in the [main README](../README.md#flags).
 
 ## Config file
 

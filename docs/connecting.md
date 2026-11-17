@@ -49,7 +49,7 @@ Credentials for `/probe` targets come from an `auth_module` defined in the [conf
 
 ## Connection timeout
 
-`PG_EXPORTER_COLLECTION_TIMEOUT` (default `1m`) bounds how long a scrape is allowed to take before the exporter drops the connection. This protects against connections piling up if the database is slow to respond (e.g. during a large DDL operation holding locks). Values less than `1ms` are invalid.
+`--collection-timeout` (default `1m`) bounds how long a scrape is allowed to take before the exporter drops the connection. This protects against connections piling up if the database is slow to respond (e.g. during a large DDL operation holding locks). Values less than `1ms` are invalid.
 
 ## Running against non-superusers or unusual variants
 

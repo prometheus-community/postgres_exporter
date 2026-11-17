@@ -46,3 +46,23 @@ func TestPQErrorHelpers(t *testing.T) {
 		}
 	}
 }
+
+func TestIsObjectNotInPrerequisiteState(t *testing.T) {
+	notInPrerequisiteState := &pq.Error{Code: "55000"}
+
+	for _, tc := range []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"object_not_in_prerequisite_state", notInPrerequisiteState, true},
+		{"wrapped object_not_in_prerequisite_state", fmt.Errorf("query: %w", notInPrerequisiteState), true},
+		{"other PostgreSQL error", &pq.Error{Code: "0A000"}, false},
+		{"not a PostgreSQL error", errors.New("connection refused"), false},
+		{"nil", nil, false},
+	} {
+		if got := isObjectNotInPrerequisiteState(tc.err); got != tc.want {
+			t.Errorf("%s: isObjectNotInPrerequisiteState = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}

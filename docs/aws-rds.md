@@ -9,7 +9,7 @@ RDS is a managed PostgreSQL service, so you don't have superuser access — a fe
 
 ## Excluded database and role
 
-`rdsadmin` is an RDS-internal database and role you can't (and shouldn't) query. Point `DATA_SOURCE_NAME` at your actual database (e.g. `postgres`), same as any other target — see [Connecting to PostgreSQL](connecting.md). If you use the deprecated `--auto-discover-databases` flag to scrape every database on the instance, exclude it with `PG_EXPORTER_EXCLUDE_DATABASES=rdsadmin`.
+`rdsadmin` is an RDS-internal database and role you can't (and shouldn't) query. Point `DATA_SOURCE_NAME` at your actual database (e.g. `postgres`), same as any other target — see [Connecting to PostgreSQL](connecting.md). If you use the deprecated `--auto-discover-databases` flag to scrape every database on the instance, exclude it with `--exclude-databases=rdsadmin`.
 
 ## Permissions
 
