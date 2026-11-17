@@ -1,0 +1,7 @@
+# Illustration based on a historical change; not a pending release entry.
+change_type: new_component
+component: collector
+note: Add the aurora_replica_status collector for Amazon Aurora PostgreSQL
+issues: [1311]
+subtext: |-
+  Enable it with `--collector.aurora_replica_status`.

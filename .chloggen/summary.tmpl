@@ -1,0 +1,32 @@
+{{- define "links" -}}
+{{- range $i, $issue := .Issues }}{{ if $i }}, {{ end }}[#{{ $issue }}](https://github.com/prometheus-community/postgres_exporter/issues/{{ $issue }}){{ end -}}
+{{- end -}}
+{{- define "entry" -}}
+{{ .Note }} ({{ template "links" . }})
+{{ if and .SubText (or (eq .ChangeType "new_component") (eq .ChangeType "enhancement") (eq .ChangeType "bug_fix")) }}
+{{ .SubText | indent 2 }}
+{{ end -}}
+{{ end -}}
+{{- $hasNotices := false -}}
+{{- range .BreakingChanges }}{{ if .SubText }}{{ $hasNotices = true }}{{ end }}{{ end -}}
+{{- range .Deprecations }}{{ if .SubText }}{{ $hasNotices = true }}{{ end }}{{ end -}}
+## {{ .Version }}
+
+{{ if $hasNotices }}### Upgrade notes
+{{ range .BreakingChanges }}{{ if .SubText }}
+**Breaking change: `{{ .Component }}`** ({{ template "links" . }})
+
+{{ .SubText }}
+{{ end }}{{ end -}}
+{{ range .Deprecations }}{{ if .SubText }}
+**Deprecation: `{{ .Component }}`** ({{ template "links" . }})
+
+{{ .SubText }}
+{{ end }}{{ end }}
+### Changes
+{{ end }}
+{{ range .BreakingChanges }}* [CHANGE] {{ template "entry" . }}{{ end -}}
+{{ range .Deprecations }}* [CHANGE] {{ template "entry" . }}{{ end -}}
+{{ range .NewComponents }}* [FEATURE] {{ template "entry" . }}{{ end -}}
+{{ range .Enhancements }}* [FEATURE] {{ template "entry" . }}{{ end -}}
+{{ range .BugFixes }}* [BUGFIX] {{ template "entry" . }}{{ end -}}

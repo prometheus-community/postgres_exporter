@@ -1,4 +1,4 @@
-## main / (unreleased)
+<!-- next version -->
 
 ## 0.21.0 / 2026-11-17
 

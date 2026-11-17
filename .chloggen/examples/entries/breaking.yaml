@@ -1,0 +1,8 @@
+# Illustration based on a historical change; not a pending release entry.
+change_type: breaking
+component: web
+note: Enforce a limit on concurrent scrapes
+issues: [1428]
+subtext: |-
+  Requests above `--web.max-requests` receive HTTP 503.
+  Set `--web.max-requests=0` to retain unlimited concurrency.

@@ -1,0 +1,11 @@
+# Illustration based on a historical change; not a pending release entry.
+change_type: deprecation
+component: config
+note: Deprecate environment variables that have flag equivalents
+issues: [1451]
+subtext: |-
+  These variables continue to work until v0.22.0. Update deployments before upgrading.
+
+  | Deprecated variable | Replacement |
+  | --- | --- |
+  | `PG_EXPORTER_METRIC_PREFIX` | `--metric-prefix` |
