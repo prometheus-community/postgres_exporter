@@ -51,9 +51,9 @@ The per-table and per-index collectors scale with your schema — one set of ser
 The `database_wraparound` gauges `pg_database_wraparound_age_datfrozenxid`
 and `pg_database_wraparound_age_datminmxid` report transaction ID and
 MultiXact ID counts, respectively. They are not elapsed time. The former
-`_seconds` names remain available as deprecated aliases with the same values
-and `datname` labels; update dashboards and alerts to use the names without
-`_seconds`.
+`_seconds` aliases were removed in v0.22.0; dashboards, recording rules, and
+alerts must use the names without `_seconds`. The values and `datname` labels
+are unchanged, so no numeric conversion is required.
 
 ### Replication and WAL
 

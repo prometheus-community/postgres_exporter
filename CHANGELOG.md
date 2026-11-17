@@ -1,5 +1,7 @@
 ## main / (unreleased)
 
+* [CHANGE] Remove the deprecated `pg_database_wraparound_age_datfrozenxid_seconds` and `pg_database_wraparound_age_datminmxid_seconds` metrics. Use `pg_database_wraparound_age_datfrozenxid` and `pg_database_wraparound_age_datminmxid` instead; the values are unchanged ID counts, so no numeric conversion is required. #1461
+
 ## 0.21.0 / 2026-11-17
 
 **WARNING: upgrading with large counters can cause a one-time false rate spike.**
