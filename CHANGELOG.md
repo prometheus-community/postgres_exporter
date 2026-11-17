@@ -1,5 +1,7 @@
 ## main / (unreleased)
 
+* [CHANGE] Remove the deprecated `exporter.GetDataSources()`, by @tridev-tej. Embedders using `exporter.NewExporter` pass their DSNs to it directly; users of `collector.NewRuntime` set `config.Config.DataSourceNames` before validating the configuration.
+
 ## 0.21.0 / 2026-11-17
 
 **WARNING: upgrading with large counters can cause a one-time false rate spike.**

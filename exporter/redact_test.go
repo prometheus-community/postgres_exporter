@@ -35,7 +35,7 @@ func TestScrapeLogsOmitPasswords(t *testing.T) {
 		secrets      []string
 	}{
 		{
-			// The form GetDataSources builds from DATA_SOURCE_USER and
+			// The form cmd/postgres_exporter builds from DATA_SOURCE_USER and
 			// DATA_SOURCE_PASS (issue #1408). Port 1 refuses the connection.
 			name:    "url with encoded space in password",
 			dsn:     "postgresql://demo:dummy%20secret-PW@127.0.0.1:1/demo?sslmode=disable",
