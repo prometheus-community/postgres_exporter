@@ -41,16 +41,16 @@ import (
 
 var (
 	configFile                          = kingpin.Flag("config.file", "Postgres exporter configuration file.").Default("postgres_exporter.yml").String()
-	disableDefaultMetrics               = kingpin.Flag("disable-default-metrics", "Do not include default metrics.").Default("false").Envar("PG_EXPORTER_DISABLE_DEFAULT_METRICS").Bool()
-	autoDiscoverDatabases               = kingpin.Flag("auto-discover-databases", "Whether to discover the databases on a server dynamically. (DEPRECATED)").Default("false").Envar("PG_EXPORTER_AUTO_DISCOVER_DATABASES").Bool()
+	disableDefaultMetrics               = kingpin.Flag("disable-default-metrics", "Do not include default metrics.").Default("false").Bool()
+	autoDiscoverDatabases               = kingpin.Flag("auto-discover-databases", "Whether to discover the databases on a server dynamically. (DEPRECATED)").Default("false").Bool()
 	autoDiscoverDatabasesMaxConcurrency = kingpin.Flag("auto-discover-databases.max-concurrency", "Maximum number of discovered databases to scrape concurrently in a single scrape.").Default(fmt.Sprintf("%d", config.DefaultAutoDiscoverDatabasesMaxConcurrency)).Int()
-	queriesPath                         = kingpin.Flag("extend.query-path", "Path to custom queries to run. (DEPRECATED)").Default("").Envar("PG_EXPORTER_EXTEND_QUERY_PATH").String()
+	queriesPath                         = kingpin.Flag("extend.query-path", "Path to custom queries to run. (DEPRECATED)").Default("").String()
 	onlyDumpMaps                        = kingpin.Flag("dumpmaps", "Do not run, simply dump the maps.").Bool()
-	constantLabelsList                  = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,). (DEPRECATED)").Default("").Envar("PG_EXPORTER_CONSTANT_LABELS").String()
-	excludeDatabases                    = kingpin.Flag("exclude-databases", "A list of databases to remove when autoDiscoverDatabases is enabled (DEPRECATED)").Default("").Envar("PG_EXPORTER_EXCLUDE_DATABASES").String()
-	includeDatabases                    = kingpin.Flag("include-databases", "A list of databases to include when autoDiscoverDatabases is enabled (DEPRECATED)").Default("").Envar("PG_EXPORTER_INCLUDE_DATABASES").String()
-	metricPrefix                        = kingpin.Flag("metric-prefix", "A metric prefix can be used to have non-default (not \"pg\") prefixes for each of the metrics").Default("pg").Envar("PG_EXPORTER_METRIC_PREFIX").String()
-	collectionTimeout                   = kingpin.Flag("collection-timeout", "Timeout for collecting the statistics when the database is slow").Default("1m").Envar("PG_EXPORTER_COLLECTION_TIMEOUT").String()
+	constantLabelsList                  = kingpin.Flag("constantLabels", "A list of label=value separated by comma(,). (DEPRECATED)").Default("").String()
+	excludeDatabases                    = kingpin.Flag("exclude-databases", "A list of databases to remove when autoDiscoverDatabases is enabled (DEPRECATED)").Default("").String()
+	includeDatabases                    = kingpin.Flag("include-databases", "A list of databases to include when autoDiscoverDatabases is enabled (DEPRECATED)").Default("").String()
+	metricPrefix                        = kingpin.Flag("metric-prefix", "A metric prefix can be used to have non-default (not \"pg\") prefixes for each of the metrics").Default("pg").String()
+	collectionTimeout                   = kingpin.Flag("collection-timeout", "Timeout for collecting the statistics when the database is slow").Default("1m").String()
 	wrapLargeCounters                   = kingpin.Flag("wrap-large-counters", "Wrap 64-bit counters at 2^53 to avoid floating point rounding.").Default("true").Bool()
 	datasourceURI                       = kingpin.Flag("datasource.uri", "Data source URI, in host:port/dbname form.").Default("").String()
 	datasourceURIFile                   = kingpin.Flag("datasource.uri-file", "Path to a file containing the data source URI. Takes precedence over datasource.uri.").Default("").String()
@@ -69,10 +69,6 @@ var (
 
 // The name of the exporter.
 const exporterName = "postgres_exporter"
-
-// webTelemetryPathEnvar is deprecated and will be removed in v0.22.0.
-// Use --web.telemetry-path instead.
-const webTelemetryPathEnvar = "PG_EXPORTER_WEB_TELEMETRY_PATH"
 
 // Bootstrap parses flags and builds the handler before starting the listener.
 // Returning errDumpMaps from the handler factory stops startup before database
@@ -148,11 +144,6 @@ func main() {
 		},
 		MetricsHandlerFactory: server.newMetricsHandler,
 	})
-	// This flag previously belonged to postgres_exporter and read this env var.
-	// Bootstrap registers it without an env binding. Restore that binding until
-	// v0.22.0, preserving explicit CLI flags' precedence.
-	kingpin.CommandLine.GetFlag("web.telemetry-path").Envar(webTelemetryPathEnvar)
-	server.envVarFlags = trackDeprecatedEnvVarFlags(kingpin.CommandLine)
 
 	err := runner.Run()
 	server.close()
@@ -171,34 +162,8 @@ func main() {
 }
 
 type exporterServer struct {
-	runtime     *collector.Runtime
-	stopReload  func()
-	envVarFlags []*deprecatedEnvVarFlag
-}
-
-type deprecatedEnvVarFlag struct {
-	flag      *kingpin.FlagModel
-	setByUser bool
-}
-
-func trackDeprecatedEnvVarFlags(app *kingpin.Application) []*deprecatedEnvVarFlag {
-	var flags []*deprecatedEnvVarFlag
-	for _, flag := range app.Model().Flags {
-		if strings.HasPrefix(flag.Envar, "PG_EXPORTER_") {
-			tracked := &deprecatedEnvVarFlag{flag: flag}
-			app.GetFlag(flag.Name).IsSetByUser(&tracked.setByUser)
-			flags = append(flags, tracked)
-		}
-	}
-	return flags
-}
-
-func warnDeprecatedEnvVars(flags []*deprecatedEnvVarFlag) {
-	for _, tracked := range flags {
-		if !tracked.setByUser && os.Getenv(tracked.flag.Envar) != "" {
-			logger.Warn("Configuring the exporter via environment variable is DEPRECATED", "env", tracked.flag.Envar, "flag", "--"+tracked.flag.Name)
-		}
-	}
+	runtime    *collector.Runtime
+	stopReload func()
 }
 
 func (s *exporterServer) close() {
@@ -231,10 +196,6 @@ func (s *exporterServer) newMetricsHandler(b *bootstrap.Bootstrap) (http.Handler
 		// This is not fatal, but it means that auth must be provided for every dsn.
 		logger.Warn("Error loading config", "err", err)
 	}
-
-	warnDeprecatedDataSourceEnvVars()
-
-	warnDeprecatedEnvVars(s.envVarFlags)
 
 	dsns, err := getDataSources(dataSourceOpts{
 		URI:      *datasourceURI,
