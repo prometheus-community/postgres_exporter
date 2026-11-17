@@ -46,20 +46,6 @@ var (
 		[]string{"datname"},
 		prometheus.Labels{},
 	)
-	// Retain the old metric names for existing dashboards and alerts. Their values
-	// have always been ID counts, despite the misleading _seconds suffix.
-	databaseWraparoundAgeDatfrozenxidSeconds = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, databaseWraparoundSubsystem, "age_datfrozenxid_seconds"),
-		"DEPRECATED: Age of pg_database.datfrozenxid in transaction IDs, not seconds. Use pg_database_wraparound_age_datfrozenxid instead.",
-		[]string{"datname"},
-		prometheus.Labels{},
-	)
-	databaseWraparoundAgeDatminmxidSeconds = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, databaseWraparoundSubsystem, "age_datminmxid_seconds"),
-		"DEPRECATED: Age of pg_database.datminmxid in MultiXact IDs, not seconds. Use pg_database_wraparound_age_datminmxid instead.",
-		[]string{"datname"},
-		prometheus.Labels{},
-	)
 
 	databaseWraparoundQuery = `
 	SELECT
@@ -111,20 +97,10 @@ func (c *PGDatabaseWraparoundCollector) Update(ctx context.Context, instance *in
 			prometheus.GaugeValue,
 			ageDatfrozenxidMetric, datname.String,
 		)
-		ch <- prometheus.MustNewConstMetric(
-			databaseWraparoundAgeDatfrozenxidSeconds,
-			prometheus.GaugeValue,
-			ageDatfrozenxidMetric, datname.String,
-		)
 
 		ageDatminmxidMetric := ageDatminmxid.Float64
 		ch <- prometheus.MustNewConstMetric(
 			databaseWraparoundAgeDatminmxid,
-			prometheus.GaugeValue,
-			ageDatminmxidMetric, datname.String,
-		)
-		ch <- prometheus.MustNewConstMetric(
-			databaseWraparoundAgeDatminmxidSeconds,
 			prometheus.GaugeValue,
 			ageDatminmxidMetric, datname.String,
 		)
