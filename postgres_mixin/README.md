@@ -27,5 +27,8 @@ for Grafana:
 $ make build
 ```
 
+To generate the rules and run the alert tests, install `promtool` and run
+`make test` from this directory.
+
 For more advanced uses of mixins, see
 https://github.com/monitoring-mixins/docs.

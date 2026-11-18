@@ -2,7 +2,7 @@ JSONNET_FMT := jsonnetfmt -n 2 --max-blank-lines 2 --string-style s --comment-st
 
 default: build
 
-all: fmt lint build clean
+all: fmt lint build test clean
 
 fmt:
 	find . -name 'vendor' -prune -o -name '*.libsonnet' -print -o -name '*.jsonnet' -print | \
@@ -18,6 +18,10 @@ lint:
 
 build:
 	mixtool generate all mixin.libsonnet
+
+.PHONY: test
+test: build
+	promtool test rules tests/*.test.yml
 
 clean:
 	rm -rf dashboards_out alerts.yaml rules.yaml

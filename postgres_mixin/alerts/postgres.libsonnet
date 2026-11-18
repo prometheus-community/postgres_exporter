@@ -57,14 +57,12 @@
           {
             alert: 'PostgreSQLSlowQueries',
             annotations: {
-              description: 'PostgreSQL high number of slow queries {{ $labels.cluster }} for database {{ $labels.datname }} with a value of {{ $value }} ',
-              summary: 'PostgreSQL high number of slow queries.',
+              description: 'PostgreSQL transaction for database {{ $labels.datname }} on {{ $labels.instance }} has been open for over 2 minutes (current maximum: {{ $value }}s).',
+              summary: 'PostgreSQL transaction older than 2 minutes.',
             },
             expr: |||
-              avg by (datname, %(agg)s) (
-                rate (
-                  pg_stat_activity_max_tx_duration{%(dbNameFilter)s, %(postgresExporterSelector)s}[2m]
-                )
+              max by (datname, %(agg)s) (
+                pg_stat_activity_max_tx_duration{%(dbNameFilter)s, backend_type!="autovacuum worker", %(postgresExporterSelector)s}
               ) > 2 * 60
             ||| % $._config { agg: std.join(', ', $._config.groupLabels + $._config.instanceLabels) },
             'for': '2m',
@@ -164,7 +162,7 @@
                   pg_settings_max_locks_per_transaction{} * pg_settings_max_connections{}
                 )
               ) > 0.20
-            ||| % $._config { agg: std.join(',', $._config.groupLabels + $._config.instanceLabels), aggWithoutServer: std.join(',', std.filter(function(x) x != "server", $._config.groupLabels + $._config.instanceLabels)) },
+            ||| % $._config { agg: std.join(',', $._config.groupLabels + $._config.instanceLabels), aggWithoutServer: std.join(',', std.filter(function(x) x != 'server', $._config.groupLabels + $._config.instanceLabels)) },
             'for': '5m',
             labels: {
               severity: 'warning',
