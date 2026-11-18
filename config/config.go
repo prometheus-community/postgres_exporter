@@ -66,6 +66,7 @@ const (
 	CollectorStatReplication         = "stat_replication"
 	CollectorStatStatements          = "stat_statements"
 	CollectorStatUserTables          = "stat_user_tables"
+	CollectorStatWAL                 = "stat_wal"
 	CollectorStatWalReceiver         = "stat_wal_receiver"
 	CollectorStatioUserIndexes       = "statio_user_indexes"
 	CollectorStatioUserTables        = "statio_user_tables"
@@ -234,6 +235,7 @@ func DefaultCollectorConfig() map[string]bool {
 		CollectorStatReplication:         true,
 		CollectorStatStatements:          false,
 		CollectorStatUserTables:          true,
+		CollectorStatWAL:                 false,
 		CollectorStatWalReceiver:         false,
 		CollectorStatioUserIndexes:       false,
 		CollectorStatioUserTables:        true,
