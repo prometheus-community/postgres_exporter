@@ -433,13 +433,14 @@ func parseConstLabels(s string, logger *slog.Logger) prometheus.Labels {
 
 	parts := strings.Split(s, ",")
 	for _, p := range parts {
-		keyValue := strings.Split(strings.TrimSpace(p), "=")
-		if len(keyValue) != 2 {
+		// Split on the first "=" only: label values may contain "=".
+		key, value, ok := strings.Cut(strings.TrimSpace(p), "=")
+		if !ok {
 			logger.Error(`Wrong constant labels format, should be "key=value"`, "input", p)
 			continue
 		}
-		key := strings.TrimSpace(keyValue[0])
-		value := strings.TrimSpace(keyValue[1])
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
 		if key == "" || value == "" {
 			continue
 		}
