@@ -1,5 +1,7 @@
 ## main / (unreleased)
 
+* [BUGFIX] Report `pg_replication_lag_seconds` as 0 on a caught-up replica whose WAL receive position is behind the replay position while its WAL receiver is streaming, which happens after the WAL receiver restarts on an idle cluster (#1434) by @sarankumar1325 in https://github.com/prometheus-community/postgres_exporter/pull/1440
+
 ## 0.21.0 / 2026-11-17
 
 **WARNING: upgrading with large counters can cause a one-time false rate spike.**
