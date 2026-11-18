@@ -282,7 +282,8 @@ This will build the docker image as `prometheuscommunity/postgres_exporter:${bra
   `my_pg_hostname:5432/postgres?sslmode=disable`.
 
 * `datasource.uri-file`
-  The same as above but reads the URI from a file.
+  The same as above but reads the URI from a file. Takes precedence over
+  `datasource.uri`.
 
 * `datasource.user-file`
   Reads the username to connect with from a file.
@@ -369,7 +370,23 @@ Settings set by environment variables starting with `PG_` will be overwritten by
 ### Setting the Postgres server's data source name
 
 The PostgreSQL server's [data source name](http://en.wikipedia.org/wiki/Data_source_name)
-must be set via the `DATA_SOURCE_NAME` environment variable.
+is set in one of two ways. The exporter checks them in this order and the first
+one that is set wins:
+
+1. The `DATA_SOURCE_NAME` environment variable: a full DSN (or a comma-separated
+   list of them), credentials included. If it is set, the `--datasource.*` flags
+   and the other `DATA_SOURCE_*` variables are ignored.
+2. The `--datasource.*` flags for the host, port, database and query string
+   (`--datasource.uri` or `--datasource.uri-file`), with the credentials supplied
+   by `DATA_SOURCE_USER` / `DATA_SOURCE_PASS` or by `--datasource.user-file` /
+   `--datasource.pass-file`. A flag takes precedence over the matching
+   deprecated `DATA_SOURCE_*` environment variable, and the `-file` flags take
+   precedence over the plain `DATA_SOURCE_USER` / `DATA_SOURCE_PASS` variables.
+
+There is deliberately no flag for the username or password: command-line
+arguments can be read by other users through `/proc` and, on Kubernetes, through
+the API. Pass them through the environment or through a mounted file with the
+`-file` flags. See [Secrets](docs/secrets.md).
 
 For running it locally on a default Debian/Ubuntu install, this will work (transpose to init script as appropriate):
 
@@ -378,6 +395,12 @@ For running it locally on a default Debian/Ubuntu install, this will work (trans
 Also, you can set a list of sources to scrape different instances from the one exporter setup. Just define a comma separated string.
 
     sudo -u postgres DATA_SOURCE_NAME="port=5432,port=6432" postgres_exporter
+
+Or, without `DATA_SOURCE_NAME`, set a single source with the flags:
+
+    DATA_SOURCE_USER=postgres_exporter postgres_exporter \
+      --datasource.uri="localhost:5432/postgres?sslmode=disable" \
+      --datasource.pass-file=/run/secrets/pg_password
 
 See the [github.com/lib/pq](http://github.com/lib/pq) module for other ways to format the connection string.
 
