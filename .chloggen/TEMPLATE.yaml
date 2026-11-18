@@ -1,0 +1,18 @@
+# One of: breaking, deprecation, new_component, enhancement, bug_fix.
+change_type:
+
+# One of: collector, config, web, mixin, build, all.
+# Put specific collector names in note.
+component:
+
+# A short user-facing description. new_component and enhancement render as [FEATURE].
+note:
+
+# One or more issue or PR numbers. Add the PR number after opening it.
+issues: []
+
+# Optional Markdown with upgrade instructions, warnings, tables, or examples.
+# Use subtext: |- for multiline text without a trailing newline.
+# For breaking/deprecation entries, this appears above the release's entry list.
+# For other entries, this appears beneath the entry.
+subtext:

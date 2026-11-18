@@ -1,0 +1,3 @@
+# Used by the reusable OpenTelemetry changelog workflow.
+max_retries = 2
+timeout = 20

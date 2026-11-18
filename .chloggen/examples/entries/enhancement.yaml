@@ -1,0 +1,7 @@
+# Illustration based on a historical change; not a pending release entry.
+change_type: enhancement
+component: collector
+note: "settings: export whether a setting requires a server restart"
+issues: [1396]
+subtext: |-
+  The `pg_settings_pending_restart{name}` gauge is 1 when the setting needs a restart.

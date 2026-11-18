@@ -1,0 +1,13 @@
+change_logs:
+  user: CHANGELOG.md
+default_change_logs: [user]
+entries_dir: .chloggen
+template_yaml: .chloggen/TEMPLATE.yaml
+summary_template: .chloggen/summary.tmpl
+components:
+  - collector
+  - config
+  - web
+  - mixin
+  - build
+  - all

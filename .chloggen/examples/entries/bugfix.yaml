@@ -1,0 +1,5 @@
+# Illustration based on a historical change; not a pending release entry.
+change_type: bug_fix
+component: collector
+note: "stat_database: report errors encountered while reading query results"
+issues: [1399]
