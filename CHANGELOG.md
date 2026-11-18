@@ -1,5 +1,9 @@
 ## main / (unreleased)
 
+## 0.21.1 / 2026-11-18
+
+* [CHANGE] Fix container image publishing #1469
+
 ## 0.21.0 / 2026-11-17
 
 **WARNING: upgrading with large counters can cause a one-time false rate spike.**
