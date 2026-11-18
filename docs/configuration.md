@@ -134,7 +134,7 @@ Logging flags come from the shared [`prometheus/common`](https://github.com/prom
 | `--log.level` | Logging verbosity: `debug`, `info` (default), `warn`, or `error`. |
 | `--log.format` | Log output format: `logfmt` (default) or `json`. |
 
-The `PG_EXPORTER_*` environment variables are deprecated in favor of their command-line flags and will be removed in postgres_exporter v0.22.0. A nonempty environment variable produces a startup warning naming its replacement flag, unless that flag is set explicitly. An explicit flag always wins over the corresponding environment variable. The full list is in the [main README](../README.md#flags).
+The `PG_EXPORTER_*` environment variables were deprecated in v0.21.0 and removed in v0.22.0 in favor of their command-line flags. `DATA_SOURCE_NAME`, `DATA_SOURCE_USER` and `DATA_SOURCE_PASS` remain supported (see [Secrets](secrets.md)).
 
 ## Config file
 

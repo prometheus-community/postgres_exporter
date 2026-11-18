@@ -47,7 +47,10 @@ func clearDataSourceEnv(t *testing.T) {
 	}
 }
 
-func TestGetDataSourcesWithSecretsFiles(t *testing.T) {
+// The deprecated DATA_SOURCE_URI/URI_FILE/USER_FILE/PASS_FILE environment
+// variables were removed in v0.22.0: with no flags and no DATA_SOURCE_NAME,
+// they no longer produce a data source.
+func TestGetDataSourcesIgnoresRemovedEnvVars(t *testing.T) {
 	clearDataSourceEnv(t)
 	t.Setenv("DATA_SOURCE_USER_FILE", writeSecretFile(t, "user", testUser))
 	t.Setenv("DATA_SOURCE_PASS_FILE", writeSecretFile(t, "pass", testPass))
@@ -57,8 +60,8 @@ func TestGetDataSourcesWithSecretsFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getDataSources() error = %v", err)
 	}
-	if len(dsn) != 1 || dsn[0] != secretsFileDSN {
-		t.Fatalf("getDataSources() = %v, want [%v]", dsn, secretsFileDSN)
+	if len(dsn) != 0 {
+		t.Fatalf("getDataSources() = %v, want empty", dsn)
 	}
 }
 
