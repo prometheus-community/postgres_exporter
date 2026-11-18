@@ -34,11 +34,12 @@ func NewPGStatActivityAutovacuumCollector(config collectorConfig) (Collector, er
 }
 
 var (
-	statActivityAutovacuumAgeInSeconds = prometheus.NewDesc(
+	statActivityAutovacuumAgeInSeconds = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, statActivityAutovacuumSubsystem, "timestamp_seconds"),
 		"Start timestamp of the vacuum process in seconds",
-		[]string{"datname", "schemaname", "relname"},
+		prometheus.UnconstrainedLabels([]string{"datname", "schemaname", "relname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("s"),
 	)
 
 	statActivityAutovacuumQuery = `

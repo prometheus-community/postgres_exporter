@@ -44,53 +44,60 @@ var vacuumPhases = []string{
 }
 
 var (
-	statProgressVacuumPhase = prometheus.NewDesc(
+	statProgressVacuumPhase = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, progressVacuumSubsystem, "phase"),
 		"Current vacuum phase (1 = active, 0 = inactive). Label 'phase' is human-readable.",
-		[]string{"datname", "relname", "phase"},
+		prometheus.UnconstrainedLabels([]string{"datname", "relname", "phase"}),
 		nil,
+		prometheus.WithUnit("1"),
 	)
 
-	statProgressVacuumHeapBlksTotal = prometheus.NewDesc(
+	statProgressVacuumHeapBlksTotal = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, progressVacuumSubsystem, "heap_blks"),
 		"Total number of heap blocks in the table being vacuumed.",
-		[]string{"datname", "relname"},
+		prometheus.UnconstrainedLabels([]string{"datname", "relname"}),
 		nil,
+		prometheus.WithUnit("{block}"),
 	)
 
-	statProgressVacuumHeapBlksScanned = prometheus.NewDesc(
+	statProgressVacuumHeapBlksScanned = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, progressVacuumSubsystem, "heap_blks_scanned"),
 		"Number of heap blocks scanned so far.",
-		[]string{"datname", "relname"},
+		prometheus.UnconstrainedLabels([]string{"datname", "relname"}),
 		nil,
+		prometheus.WithUnit("{block}"),
 	)
 
-	statProgressVacuumHeapBlksVacuumed = prometheus.NewDesc(
+	statProgressVacuumHeapBlksVacuumed = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, progressVacuumSubsystem, "heap_blks_vacuumed"),
 		"Number of heap blocks vacuumed so far.",
-		[]string{"datname", "relname"},
+		prometheus.UnconstrainedLabels([]string{"datname", "relname"}),
 		nil,
+		prometheus.WithUnit("{block}"),
 	)
 
-	statProgressVacuumIndexVacuumCount = prometheus.NewDesc(
+	statProgressVacuumIndexVacuumCount = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, progressVacuumSubsystem, "index_vacuums"),
 		"Number of completed index vacuum cycles.",
-		[]string{"datname", "relname"},
+		prometheus.UnconstrainedLabels([]string{"datname", "relname"}),
 		nil,
+		prometheus.WithUnit("{cycle}"),
 	)
 
-	statProgressVacuumMaxDeadTuples = prometheus.NewDesc(
+	statProgressVacuumMaxDeadTuples = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, progressVacuumSubsystem, "max_dead_tuples"),
 		"Maximum number of dead tuples that can be stored before cleanup is performed.",
-		[]string{"datname", "relname"},
+		prometheus.UnconstrainedLabels([]string{"datname", "relname"}),
 		nil,
+		prometheus.WithUnit("{tuple}"),
 	)
 
-	statProgressVacuumNumDeadTuples = prometheus.NewDesc(
+	statProgressVacuumNumDeadTuples = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, progressVacuumSubsystem, "num_dead_tuples"),
 		"Current number of dead tuples found so far.",
-		[]string{"datname", "relname"},
+		prometheus.UnconstrainedLabels([]string{"datname", "relname"}),
 		nil,
+		prometheus.WithUnit("{tuple}"),
 	)
 
 	// Based on the view definition of pg_stat_progress_vacuum, without the conversion

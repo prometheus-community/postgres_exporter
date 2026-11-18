@@ -31,32 +31,35 @@ func NewPGReplicationCollector(collectorConfig) (Collector, error) {
 }
 
 var (
-	pgReplicationLag = prometheus.NewDesc(
+	pgReplicationLag = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			replicationSubsystem,
 			"lag_seconds",
 		),
 		"Replication lag behind master in seconds",
-		[]string{}, nil,
+		prometheus.UnconstrainedLabels([]string{}), nil,
+		prometheus.WithUnit("s"),
 	)
-	pgReplicationIsReplica = prometheus.NewDesc(
+	pgReplicationIsReplica = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			replicationSubsystem,
 			"is_replica",
 		),
 		"Indicates if the server is a replica",
-		[]string{}, nil,
+		prometheus.UnconstrainedLabels([]string{}), nil,
+		prometheus.WithUnit("1"),
 	)
-	pgReplicationLastReplay = prometheus.NewDesc(
+	pgReplicationLastReplay = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			replicationSubsystem,
 			"last_replay_seconds",
 		),
 		"Age of last replay in seconds",
-		[]string{}, nil,
+		prometheus.UnconstrainedLabels([]string{}), nil,
+		prometheus.WithUnit("s"),
 	)
 
 	pgReplicationQuery = `SELECT

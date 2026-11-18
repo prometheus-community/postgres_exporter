@@ -34,31 +34,35 @@ func NewPGDatabaseWraparoundCollector(config collectorConfig) (Collector, error)
 }
 
 var (
-	databaseWraparoundAgeDatfrozenxid = prometheus.NewDesc(
+	databaseWraparoundAgeDatfrozenxid = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, databaseWraparoundSubsystem, "age_datfrozenxid"),
 		"Age of pg_database.datfrozenxid in transaction IDs.",
-		[]string{"datname"},
+		prometheus.UnconstrainedLabels([]string{"datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{transaction}"),
 	)
-	databaseWraparoundAgeDatminmxid = prometheus.NewDesc(
+	databaseWraparoundAgeDatminmxid = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, databaseWraparoundSubsystem, "age_datminmxid"),
 		"Age of pg_database.datminmxid in MultiXact IDs.",
-		[]string{"datname"},
+		prometheus.UnconstrainedLabels([]string{"datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{multixact}"),
 	)
 	// Retain the old metric names for existing dashboards and alerts. Their values
 	// have always been ID counts, despite the misleading _seconds suffix.
-	databaseWraparoundAgeDatfrozenxidSeconds = prometheus.NewDesc(
+	databaseWraparoundAgeDatfrozenxidSeconds = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, databaseWraparoundSubsystem, "age_datfrozenxid_seconds"),
 		"DEPRECATED: Age of pg_database.datfrozenxid in transaction IDs, not seconds. Use pg_database_wraparound_age_datfrozenxid instead.",
-		[]string{"datname"},
+		prometheus.UnconstrainedLabels([]string{"datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{transaction}"),
 	)
-	databaseWraparoundAgeDatminmxidSeconds = prometheus.NewDesc(
+	databaseWraparoundAgeDatminmxidSeconds = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, databaseWraparoundSubsystem, "age_datminmxid_seconds"),
 		"DEPRECATED: Age of pg_database.datminmxid in MultiXact IDs, not seconds. Use pg_database_wraparound_age_datminmxid instead.",
-		[]string{"datname"},
+		prometheus.UnconstrainedLabels([]string{"datname"}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{multixact}"),
 	)
 
 	databaseWraparoundQuery = `

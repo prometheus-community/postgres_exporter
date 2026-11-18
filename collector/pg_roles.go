@@ -36,14 +36,15 @@ func NewPGRolesCollector(config collectorConfig) (Collector, error) {
 }
 
 var (
-	pgRolesConnectionLimitsDesc = prometheus.NewDesc(
+	pgRolesConnectionLimitsDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			rolesSubsystem,
 			"connection_limit",
 		),
 		"Connection limit set for the role",
-		[]string{"rolname"}, nil,
+		prometheus.UnconstrainedLabels([]string{"rolname"}), nil,
+		prometheus.WithUnit("{connection}"),
 	)
 
 	pgRolesConnectionLimitsQuery = "SELECT pg_roles.rolname, pg_roles.rolconnlimit FROM pg_roles"

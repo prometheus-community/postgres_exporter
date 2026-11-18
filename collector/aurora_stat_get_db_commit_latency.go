@@ -37,10 +37,11 @@ func NewAuroraStatGetDBCommitLatencyCollector(collectorConfig) (Collector, error
 }
 
 var (
-	auroraStatGetDBCommitLatency = prometheus.NewDesc(
+	auroraStatGetDBCommitLatency = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, auroraStatGetDBCommitLatencySubsystem, "seconds_total"),
 		"Total time spent committing transactions in seconds, from the commit request until the client receives the acknowledgement.",
-		[]string{"datid", "datname"}, nil,
+		prometheus.UnconstrainedLabels([]string{"datid", "datname"}), nil,
+		prometheus.WithUnit("s"),
 	)
 
 	auroraStatGetDBCommitLatencyQuery = `SELECT

@@ -35,11 +35,12 @@ func NewPGProcessIdleCollector(config collectorConfig) (Collector, error) {
 	return &PGProcessIdleCollector{log: config.logger}, nil
 }
 
-var pgProcessIdleSeconds = prometheus.NewDesc(
+var pgProcessIdleSeconds = prometheus.V2.NewDesc(
 	prometheus.BuildFQName(namespace, processIdleSubsystem, "seconds"),
 	"Idle time of server processes",
-	[]string{"state", "application_name"},
+	prometheus.UnconstrainedLabels([]string{"state", "application_name"}),
 	prometheus.Labels{},
+	prometheus.WithUnit("s"),
 )
 
 func (PGProcessIdleCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {

@@ -32,23 +32,25 @@ func NewPGWALCollector(config collectorConfig) (Collector, error) {
 }
 
 var (
-	pgWALSegments = prometheus.NewDesc(
+	pgWALSegments = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			walSubsystem,
 			"segments",
 		),
 		"Number of WAL segments",
-		[]string{}, nil,
+		prometheus.UnconstrainedLabels([]string{}), nil,
+		prometheus.WithUnit("{segment}"),
 	)
-	pgWALSize = prometheus.NewDesc(
+	pgWALSize = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(
 			namespace,
 			walSubsystem,
 			"size_bytes",
 		),
 		"Total size of WAL segments",
-		[]string{}, nil,
+		prometheus.UnconstrainedLabels([]string{}), nil,
+		prometheus.WithUnit("By"),
 	)
 
 	pgWALQuery = `

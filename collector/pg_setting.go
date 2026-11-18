@@ -56,11 +56,12 @@ var (
 	// pgSettingsPendingRestartDesc reports which settings have been changed
 	// but only take effect after a server restart, as flagged by the
 	// pg_settings.pending_restart column.
-	pgSettingsPendingRestartDesc = prometheus.NewDesc(
+	pgSettingsPendingRestartDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, settingsSubsystem, "pending_restart"),
 		"PostgreSQL settings that require a server restart to take effect.",
-		[]string{"name"},
+		prometheus.UnconstrainedLabels([]string{"name"}),
 		nil,
+		prometheus.WithUnit("1"),
 	)
 )
 

@@ -33,71 +33,82 @@ func NewPGStatBGWriterCollector(collectorConfig) (Collector, error) {
 }
 
 var (
-	statBGWriterCheckpointsTimedDesc = prometheus.NewDesc(
+	statBGWriterCheckpointsTimedDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, bgWriterSubsystem, "checkpoints_timed_total"),
 		"Number of scheduled checkpoints that have been performed",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{checkpoint}"),
 	)
-	statBGWriterCheckpointsReqDesc = prometheus.NewDesc(
+	statBGWriterCheckpointsReqDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, bgWriterSubsystem, "checkpoints_req_total"),
 		"Number of requested checkpoints that have been performed",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{checkpoint}"),
 	)
-	statBGWriterCheckpointsReqTimeDesc = prometheus.NewDesc(
+	statBGWriterCheckpointsReqTimeDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, bgWriterSubsystem, "checkpoint_write_time_total"),
 		"Total amount of time that has been spent in the portion of checkpoint processing where files are written to disk, in milliseconds",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("ms"),
 	)
-	statBGWriterCheckpointsSyncTimeDesc = prometheus.NewDesc(
+	statBGWriterCheckpointsSyncTimeDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, bgWriterSubsystem, "checkpoint_sync_time_total"),
 		"Total amount of time that has been spent in the portion of checkpoint processing where files are synchronized to disk, in milliseconds",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("ms"),
 	)
-	statBGWriterBuffersCheckpointDesc = prometheus.NewDesc(
+	statBGWriterBuffersCheckpointDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, bgWriterSubsystem, "buffers_checkpoint_total"),
 		"Number of buffers written during checkpoints",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{buffer}"),
 	)
-	statBGWriterBuffersCleanDesc = prometheus.NewDesc(
+	statBGWriterBuffersCleanDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, bgWriterSubsystem, "buffers_clean_total"),
 		"Number of buffers written by the background writer",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{buffer}"),
 	)
-	statBGWriterMaxwrittenCleanDesc = prometheus.NewDesc(
+	statBGWriterMaxwrittenCleanDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, bgWriterSubsystem, "maxwritten_clean_total"),
 		"Number of times the background writer stopped a cleaning scan because it had written too many buffers",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{event}"),
 	)
-	statBGWriterBuffersBackendDesc = prometheus.NewDesc(
+	statBGWriterBuffersBackendDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, bgWriterSubsystem, "buffers_backend_total"),
 		"Number of buffers written directly by a backend",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{buffer}"),
 	)
-	statBGWriterBuffersBackendFsyncDesc = prometheus.NewDesc(
+	statBGWriterBuffersBackendFsyncDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, bgWriterSubsystem, "buffers_backend_fsync_total"),
 		"Number of times a backend had to execute its own fsync call (normally the background writer handles those even when the backend does its own write)",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{fsync}"),
 	)
-	statBGWriterBuffersAllocDesc = prometheus.NewDesc(
+	statBGWriterBuffersAllocDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, bgWriterSubsystem, "buffers_alloc_total"),
 		"Number of buffers allocated",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("{buffer}"),
 	)
-	statBGWriterStatsResetDesc = prometheus.NewDesc(
+	statBGWriterStatsResetDesc = prometheus.V2.NewDesc(
 		prometheus.BuildFQName(namespace, bgWriterSubsystem, "stats_reset_total"),
 		"Time at which these statistics were last reset",
-		[]string{},
+		prometheus.UnconstrainedLabels([]string{}),
 		prometheus.Labels{},
+		prometheus.WithUnit("s"),
 	)
 
 	statBGWriterQueryBefore17 = `SELECT
