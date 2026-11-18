@@ -109,83 +109,6 @@ func (s *FunctionalSuite) TestSemanticVersionColumnDiscard(c *C) {
 	}
 }
 
-// test read username and password from file
-func (s *FunctionalSuite) TestEnvironmentSettingWithSecretsFiles(c *C) {
-	err := os.Setenv("DATA_SOURCE_USER_FILE", "./tests/username_file")
-	c.Assert(err, IsNil)
-	defer UnsetEnvironment(c, "DATA_SOURCE_USER_FILE")
-
-	err = os.Setenv("DATA_SOURCE_PASS_FILE", "./tests/userpass_file")
-	c.Assert(err, IsNil)
-	defer UnsetEnvironment(c, "DATA_SOURCE_PASS_FILE")
-
-	err = os.Setenv("DATA_SOURCE_URI", "localhost:5432/?sslmode=disable")
-	c.Assert(err, IsNil)
-	defer UnsetEnvironment(c, "DATA_SOURCE_URI")
-
-	var expected = "postgresql://custom_username$&+,%2F%3A;=%3F%40:custom_password$&+,%2F%3A;=%3F%40@localhost:5432/?sslmode=disable"
-
-	dsn, err := GetDataSources()
-	if err != nil {
-		c.Errorf("Unexpected error reading datasources")
-	}
-
-	if len(dsn) == 0 {
-		c.Errorf("Expected one data source, zero found")
-	}
-	if dsn[0] != expected {
-		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn[0], expected)
-	}
-}
-
-// test read DATA_SOURCE_NAME from environment
-func (s *FunctionalSuite) TestEnvironmentSettingWithDns(c *C) {
-	envDsn := "postgresql://user:password@localhost:5432/?sslmode=enabled"
-	err := os.Setenv("DATA_SOURCE_NAME", envDsn)
-	c.Assert(err, IsNil)
-	defer UnsetEnvironment(c, "DATA_SOURCE_NAME")
-
-	dsn, err := GetDataSources()
-	if err != nil {
-		c.Errorf("Unexpected error reading datasources")
-	}
-
-	if len(dsn) == 0 {
-		c.Errorf("Expected one data source, zero found")
-	}
-	if dsn[0] != envDsn {
-		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn[0], envDsn)
-	}
-}
-
-// test DATA_SOURCE_NAME is used even if username and password environment variables are set
-func (s *FunctionalSuite) TestEnvironmentSettingWithDnsAndSecrets(c *C) {
-	envDsn := "postgresql://userDsn:passwordDsn@localhost:55432/?sslmode=disabled"
-	err := os.Setenv("DATA_SOURCE_NAME", envDsn)
-	c.Assert(err, IsNil)
-	defer UnsetEnvironment(c, "DATA_SOURCE_NAME")
-
-	err = os.Setenv("DATA_SOURCE_USER_FILE", "./tests/username_file")
-	c.Assert(err, IsNil)
-	defer UnsetEnvironment(c, "DATA_SOURCE_USER_FILE")
-
-	err = os.Setenv("DATA_SOURCE_PASS", "envUserPass")
-	c.Assert(err, IsNil)
-	defer UnsetEnvironment(c, "DATA_SOURCE_PASS")
-
-	dsn, err := GetDataSources()
-	if err != nil {
-		c.Errorf("Unexpected error reading datasources")
-	}
-
-	if len(dsn) == 0 {
-		c.Errorf("Expected one data source, zero found")
-	}
-	if dsn[0] != envDsn {
-		c.Errorf("Expected Username to be read from file. Found=%v, expected=%v", dsn[0], envDsn)
-	}
-}
-
 func (s *FunctionalSuite) TestPostgresVersionParsing(c *C) {
 	type TestCase struct {
 		input    string
@@ -294,11 +217,6 @@ func (s *FunctionalSuite) TestParseConstLabels(c *C) {
 			c.Fatalf("labels not equal (%v -> %v)", labels, cs.labels)
 		}
 	}
-}
-
-func UnsetEnvironment(c *C, d string) {
-	err := os.Unsetenv(d)
-	c.Assert(err, IsNil)
 }
 
 type isNaNChecker struct {

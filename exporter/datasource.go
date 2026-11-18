@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"os"
 	"regexp"
 	"slices"
 	"strings"
@@ -115,65 +114,4 @@ func (e *Exporter) scrapeDSN(ctx context.Context, ch chan<- prometheus.Metric, d
 	}
 
 	return server.Scrape(ctx, ch)
-}
-
-// try to get the DataSource
-// DATA_SOURCE_NAME always wins so we do not break older versions
-// reading secrets from files wins over secrets in environment variables
-// DATA_SOURCE_NAME > DATA_SOURCE_{USER|PASS}_FILE > DATA_SOURCE_{USER|PASS}
-//
-// Deprecated: cmd/postgres_exporter reads the --datasource.* flags instead and
-// passes the DSNs to NewExporter; embedders should do the same. Removed in
-// v0.22.0.
-func GetDataSources() ([]string, error) {
-	var dsn = os.Getenv("DATA_SOURCE_NAME")
-	if len(dsn) != 0 {
-		return strings.Split(dsn, ","), nil
-	}
-
-	var user, pass, uri string
-
-	dataSourceUserFile := os.Getenv("DATA_SOURCE_USER_FILE")
-	if len(dataSourceUserFile) != 0 {
-		fileContents, err := os.ReadFile(dataSourceUserFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed loading data source user file %s: %s", dataSourceUserFile, err.Error())
-		}
-		user = strings.TrimSpace(string(fileContents))
-	} else {
-		user = os.Getenv("DATA_SOURCE_USER")
-	}
-
-	dataSourcePassFile := os.Getenv("DATA_SOURCE_PASS_FILE")
-	if len(dataSourcePassFile) != 0 {
-		fileContents, err := os.ReadFile(dataSourcePassFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed loading data source pass file %s: %s", dataSourcePassFile, err.Error())
-		}
-		pass = strings.TrimSpace(string(fileContents))
-	} else {
-		pass = os.Getenv("DATA_SOURCE_PASS")
-	}
-
-	ui := url.UserPassword(user, pass).String()
-	dataSrouceURIFile := os.Getenv("DATA_SOURCE_URI_FILE")
-	if len(dataSrouceURIFile) != 0 {
-		fileContents, err := os.ReadFile(dataSrouceURIFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed loading data source URI file %s: %s", dataSrouceURIFile, err.Error())
-		}
-		uri = strings.TrimSpace(string(fileContents))
-	} else {
-		uri = os.Getenv("DATA_SOURCE_URI")
-	}
-
-	// No datasources found. This allows us to support the multi-target pattern
-	// without an explicit datasource.
-	if uri == "" {
-		return []string{}, nil
-	}
-
-	dsn = "postgresql://" + ui + "@" + uri
-
-	return []string{dsn}, nil
 }
