@@ -6,7 +6,7 @@ sort_rank: 3
 
 ## How the exporter connects
 
-The exporter connects using a standard PostgreSQL [connection string / DSN](https://www.postgresql.org/docs/current/libpq-connstring.html), e.g. `postgresql://user:pass@host:5432/dbname?sslmode=disable`. Any parameter supported by [github.com/lib/pq](https://github.com/lib/pq) can be included in the DSN's query string (`sslmode`, `connect_timeout`, `application_name`, etc.).
+The exporter connects using a standard PostgreSQL [connection string / DSN](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING), e.g. `postgresql://user:pass@host:5432/dbname?sslmode=disable`. Any parameter supported by [github.com/lib/pq](https://github.com/lib/pq) can be included in the DSN's query string (`sslmode`, `connect_timeout`, `application_name`, etc.).
 
 Each scrape opens a connection using that DSN, runs the enabled collectors' queries, and closes it — the exporter keeps at most one open connection per configured target at a time. On each successful connection to a target, the exporter also detects the PostgreSQL server version, which determines which version-specific queries collectors use.
 
