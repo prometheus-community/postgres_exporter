@@ -1,5 +1,7 @@
 ## main / (unreleased)
 
+* [BUGFIX] Log only allowlisted DSN parameters (`host`, `hostaddr`, `port`, `user`, `dbname`, `service`, `application_name` and `sslmode`) in logged DSNs and redacted errors. Previously every other parameter was logged, including `sslkey`, which holds a PEM private key when `sslinline=true`, by @sysadmind
+
 ## 0.21.0 / 2026-11-17
 
 **WARNING: upgrading with large counters can cause a one-time false rate spike.**

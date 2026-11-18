@@ -24,11 +24,16 @@ import (
 	"github.com/lib/pq"
 )
 
-// TestRedactSecretsRemovesPasswords feeds RedactSecrets the error messages
+const (
+	testPEMKeyLine = "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDummyKeyLine0"
+	testPEMKey     = "-----BEGIN PRIVATE KEY-----\n" + testPEMKeyLine + "\n-----END PRIVATE KEY-----"
+)
+
+// TestRedactSecretsRemovesSecrets feeds RedactSecrets the error messages
 // that the URL parser, NewDSN and the pq driver actually produce for each
 // connection string, alongside messages that quote the connection string
-// directly, and checks that no part of the password survives.
-func TestRedactSecretsRemovesPasswords(t *testing.T) {
+// directly, and checks that no secret survives.
+func TestRedactSecretsRemovesSecrets(t *testing.T) {
 	tests := []struct {
 		name    string
 		dsn     string
@@ -115,6 +120,37 @@ func TestRedactSecretsRemovesPasswords(t *testing.T) {
 			dsn:     "host=127.0.0.1\nport=5999\nuser=demo\npassword=dummy secret-PW\nsslmode=disable",
 			secrets: []string{"dummy", "secret-PW"},
 		},
+		{
+			// The URL parser quotes the whole input when the port is invalid.
+			name:    "url with invalid port and inline key",
+			dsn:     "postgresql://postgres:s3cret@127.0.0.1:bad/postgres?sslinline=true&sslkey=KEYFRAGMENT",
+			secrets: []string{"s3cret", "KEYFRAGMENT"},
+		},
+		{
+			name:    "url with inline key",
+			dsn:     "postgresql://postgres:s3cret@127.0.0.1:5999/postgres?sslinline=true&sslkey=" + url.QueryEscape(testPEMKey),
+			secrets: []string{"s3cret", testPEMKeyLine},
+			extra: []string{
+				// The driver's key=value rewrite of the URL.
+				"sslkey='" + testPEMKey + "' sslinline='true'",
+			},
+		},
+		{
+			name:    "key value with quoted inline key",
+			dsn:     "host=127.0.0.1 port=5999 user=demo password=s3cret sslinline=true sslkey='" + testPEMKey + "'",
+			secrets: []string{"s3cret", testPEMKeyLine},
+		},
+		{
+			// pq quotes whichever fragment it fails on.
+			name:    "key value with unquoted inline key",
+			dsn:     "host=127.0.0.1 port=5999 user=demo sslinline=true sslkey=" + testPEMKey,
+			secrets: []string{testPEMKeyLine},
+		},
+		{
+			name:    "key value with options",
+			dsn:     "host=127.0.0.1 port=5999 user=demo options='-c app.token=tok3n-s3cret'",
+			secrets: []string{"tok3n-s3cret"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -153,10 +189,34 @@ func TestRedactSecretsKeepsContext(t *testing.T) {
 		want string
 	}{
 		{
-			name: "password replaced in place",
-			text: `parse "postgresql://demo:hunter2@127.0.0.1:5999/demo": bad`,
-			dsn:  "postgresql://demo:hunter2@127.0.0.1:5999/demo",
-			want: `parse "postgresql://demo:PASSWORD_REMOVED@127.0.0.1:5999/demo": bad`,
+			name: "parseable dsn replaced with its loggable form",
+			text: `parse "postgresql://demo:hunter2@127.0.0.1:5999/demo?application_name=exporter&sslmode=require&sslkey=KEYFRAGMENT": bad`,
+			dsn:  "postgresql://demo:hunter2@127.0.0.1:5999/demo?application_name=exporter&sslmode=require&sslkey=KEYFRAGMENT",
+			want: `parse "postgresql://demo:******@127.0.0.1:5999/demo?application_name=exporter&sslmode=require": bad`,
+		},
+		{
+			name: "unparseable dsn removed whole",
+			text: `parse "postgresql://demo:hunter2@127.0.0.1:bad/demo?sslkey=KEYFRAGMENT": invalid port ":bad" after host`,
+			dsn:  "postgresql://demo:hunter2@127.0.0.1:bad/demo?sslkey=KEYFRAGMENT",
+			want: `parse "DSN_REMOVED": invalid port ":bad" after host`,
+		},
+		{
+			name: "password fragment replaced in place",
+			text: `missing "=" after "secret-PW" in connection info string`,
+			dsn:  "host=127.0.0.1 user=demo password=dummy secret-PW",
+			want: `missing "=" after "SECRET_REMOVED" in connection info string`,
+		},
+		{
+			name: "loggable key value parameters left alone",
+			text: `dial tcp db.example.com:5999 as postgres_exporter: connect: connection refused`,
+			dsn:  "host=db.example.com port=5999 user=postgres_exporter password=hunter2 dbname=postgres sslkey='-----BEGIN PRIVATE KEY-----'",
+			want: `dial tcp db.example.com:5999 as postgres_exporter: connect: connection refused`,
+		},
+		{
+			name: "short values of other parameters left alone",
+			text: `dial tcp 127.0.0.1:5999: connect: connection refused`,
+			dsn:  "postgresql://demo@127.0.0.1:5999/demo?statement_timeout=0&lock_timeout=1",
+			want: `dial tcp 127.0.0.1:5999: connect: connection refused`,
 		},
 		{
 			name: "dsn without password left alone",

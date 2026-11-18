@@ -66,10 +66,10 @@ func Test_dsn_String(t *testing.T) {
 				password: "supersecret",
 				host:     "localhost:5432",
 				query: url.Values{
-					"ssldisable": []string{"true"},
+					"application_name": []string{"exporter"},
 				},
 			},
-			want: "postgresql://test:******@localhost:5432?ssldisable=true",
+			want: "postgresql://test:******@localhost:5432?application_name=exporter",
 		},
 		{
 			name: "With Password, Path, and Query String",
@@ -80,10 +80,27 @@ func Test_dsn_String(t *testing.T) {
 				host:     "localhost:5432",
 				path:     "/somevalue",
 				query: url.Values{
-					"ssldisable": []string{"true"},
+					"application_name": []string{"exporter"},
 				},
 			},
-			want: "postgresql://test:******@localhost:5432/somevalue?ssldisable=true",
+			want: "postgresql://test:******@localhost:5432/somevalue?application_name=exporter",
+		},
+		{
+			name: "Query String Outside the Allowlist",
+			fields: fields{
+				scheme:   "postgresql",
+				username: "test",
+				host:     "localhost:5432",
+				query: url.Values{
+					"dbname":            []string{"postgres"},
+					"sslmode":           []string{"require"},
+					"sslinline":         []string{"true"},
+					"sslkey":            []string{"-----BEGIN PRIVATE KEY-----"},
+					"options":           []string{"-c secret.setting=value"},
+					"statement_timeout": []string{"5000"},
+				},
+			},
+			want: "postgresql://test@localhost:5432?dbname=postgres&sslmode=require",
 		},
 	}
 	for _, tt := range tests {
@@ -157,6 +174,58 @@ func TestDSNStringRedacted(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestDSNStringOmitsSSLKey checks that sslkey, a PEM key when sslinline is set, is not logged.
+func TestDSNStringOmitsSSLKey(t *testing.T) {
+	const key = "DUMMYKEYMATERIALnotarealkey"
+
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "inline key in a key=value connection string",
+			input: "host=127.0.0.1 port=1 user=postgres password=s3cret dbname=postgres application_name=exporter sslmode=require sslinline=true sslkey='-----BEGIN PRIVATE KEY-----\n" + key + "\n-----END PRIVATE KEY-----'",
+		},
+		{
+			name:  "inline key in a URL",
+			input: "postgresql://postgres:s3cret@127.0.0.1:1/postgres?application_name=exporter&sslmode=require&sslinline=true&sslkey=" + key,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d, err := dsnFromString(tt.input)
+			if err != nil {
+				t.Fatalf("dsnFromString(%q) error = %v", tt.input, err)
+			}
+			got := d.String()
+			if strings.Contains(got, key) || strings.Contains(got, "sslkey") {
+				t.Errorf("dsn.String() leaked the key: %v", got)
+			}
+			if !strings.Contains(got, "application_name=exporter") {
+				t.Errorf("dsn.String() dropped an allowed parameter: %v", got)
+			}
+			if !strings.Contains(d.GetConnectionString(), key) {
+				t.Errorf("dsn.GetConnectionString() lost the key: %v", d.GetConnectionString())
+			}
+		})
+	}
+
+	t.Run("inline key from an auth module", func(t *testing.T) {
+		m := AuthModule{
+			Type:     "userpass",
+			UserPass: UserPass{Username: "postgres", Password: "s3cret"},
+			Options:  map[string]string{"sslinline": "true", "sslkey": key},
+		}
+		d, err := m.ConfigureTarget("127.0.0.1:1/postgres")
+		if err != nil {
+			t.Fatalf("ConfigureTarget() error = %v", err)
+		}
+		if got := d.String(); strings.Contains(got, key) {
+			t.Errorf("dsn.String() leaked the key: %v", got)
+		}
+	})
 }
 
 // Test_dsnFromString tests the dsnFromString function with known variations

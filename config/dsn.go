@@ -34,18 +34,37 @@ type DSN struct {
 	query    url.Values
 }
 
-// String makes a dsn safe to print by excluding any passwords. This allows dsn to be used in
-// strings and log messages without needing to call a redaction function first.
+// loggableParams are the only connection parameters that may be logged. host, port and user
+// are stored outside the query but are listed for RedactSecrets.
+var loggableParams = map[string]bool{
+	"host":             true,
+	"hostaddr":         true,
+	"port":             true,
+	"user":             true,
+	"dbname":           true,
+	"service":          true,
+	"application_name": true,
+	"sslmode":          true,
+}
+
+// String returns dsn for logging, with the password masked and only loggableParams kept.
 func (d DSN) String() string {
+	query := url.Values{}
+	for k, v := range d.query {
+		if loggableParams[k] {
+			query[k] = v
+		}
+	}
+
 	if d.password != "" {
-		return fmt.Sprintf("%s://%s:******@%s%s?%s", d.scheme, d.username, d.host, d.path, d.query.Encode())
+		return fmt.Sprintf("%s://%s:******@%s%s?%s", d.scheme, d.username, d.host, d.path, query.Encode())
 	}
 
 	if d.username != "" {
-		return fmt.Sprintf("%s://%s@%s%s?%s", d.scheme, d.username, d.host, d.path, d.query.Encode())
+		return fmt.Sprintf("%s://%s@%s%s?%s", d.scheme, d.username, d.host, d.path, query.Encode())
 	}
 
-	return fmt.Sprintf("%s://%s%s?%s", d.scheme, d.host, d.path, d.query.Encode())
+	return fmt.Sprintf("%s://%s%s?%s", d.scheme, d.host, d.path, query.Encode())
 }
 
 // GetConnectionString returns the connection string to pass to the driver
