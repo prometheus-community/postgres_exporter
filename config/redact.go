@@ -22,30 +22,26 @@ import (
 )
 
 const (
-	redactedPassword = "PASSWORD_REMOVED"
-	redactedDSN      = "DSN_REMOVED"
+	redactedSecret = "SECRET_REMOVED"
+	redactedDSN    = "DSN_REMOVED"
+
+	// minSecretLength skips short values such as "0" that would garble the
+	// message. Passwords are removed at any length.
+	minSecretLength = 8
 )
 
 var (
-	// queryPasswordRe matches a password supplied as a URL query parameter.
-	queryPasswordRe = regexp.MustCompile(`[?&]password=([^&#]*)`)
-	// keyValuePasswordRe matches a password keyword in a key=value connection
-	// string and everything after it up to the next keyword (or the end). A
-	// malformed value, such as an unquoted password containing a space, can
-	// leave part of the password where the driver expects a keyword, and the
-	// driver then quotes that fragment in its error. The driver treats any
-	// whitespace, newlines included, as a separator, so the s flag lets the
-	// value span lines rather than leaving the match to fail at the first
-	// newline.
-	keyValuePasswordRe = regexp.MustCompile(`(?s)(?:^|\s)password\s*=\s*(.*?)(?:\s+[A-Za-z_]+\s*=|$)`)
+	// queryParamRe matches a parameter in a URL query string.
+	queryParamRe = regexp.MustCompile(`[?&]([^=&#]*)=([^&#]*)`)
+	// keyValueKeywordRe matches a keyword and its "=" in a key=value
+	// connection string. A keyword's value runs to the next match.
+	keyValueKeywordRe = regexp.MustCompile(`(?:^|\s)([A-Za-z_]+)\s*=\s*`)
 )
 
-// RedactError returns err with every copy of dsn's password, and of dsn
-// itself, removed from its message. Use it on any error produced while
-// parsing dsn or connecting with it before logging or wrapping that error:
-// the standard library's URL parser and the pq driver both echo the
-// connection string they were given. The original error stays reachable
-// through errors.Unwrap so that errors.Is and errors.As keep working.
+// RedactError returns err with its message passed through RedactSecrets.
+// Use it on any error from parsing or connecting with dsn before logging it:
+// the URL parser and the pq driver both echo the connection string. The
+// original error stays reachable through errors.Unwrap.
 func RedactError(err error, dsn string) error {
 	if err == nil {
 		return nil
@@ -61,30 +57,32 @@ type redactedError struct {
 func (e *redactedError) Error() string { return e.msg }
 func (e *redactedError) Unwrap() error { return e.err }
 
-// RedactSecrets returns text with every copy of dsn's password, and of dsn
-// itself, removed. It works on malformed connection strings too, since those
-// are the ones that end up quoted in error messages.
+// RedactSecrets returns text with copies of dsn replaced by DSN.String and
+// any value String omits removed. dsn may be malformed.
 func RedactSecrets(text, dsn string) string {
 	if dsn == "" {
 		return text
 	}
 
-	var replacements []string
-	for _, secret := range passwordCandidates(dsn) {
-		for _, form := range encodedForms(secret) {
-			replacements = append(replacements, form, redactedPassword)
-		}
+	// Whole copies go first: removing values would break the match.
+	safe := redactedDSN
+	if d, err := NewDSN(dsn); err == nil {
+		safe = d.String()
 	}
-	// Passwords are replaced first so that an error quoting a parseable dsn
-	// stays useful. Whatever copy of dsn is still left contains a password
-	// that could not be located, so it is removed whole.
-	text = replace(text, replacements)
-
 	var dsnReplacements []string
 	for _, form := range encodedForms(dsn) {
-		dsnReplacements = append(dsnReplacements, form, redactedDSN)
+		dsnReplacements = append(dsnReplacements, form, safe)
 	}
-	return replace(text, dsnReplacements)
+	text = replace(text, dsnReplacements)
+
+	// Catch fragments, such as the driver quoting part of a malformed value.
+	var replacements []string
+	for _, secret := range secretCandidates(dsn) {
+		for _, form := range encodedForms(secret) {
+			replacements = append(replacements, form, redactedSecret)
+		}
+	}
+	return replace(text, replacements)
 }
 
 // replace applies the old, new pairs in replacements to text, longest old
@@ -107,9 +105,9 @@ func replace(text string, replacements []string) string {
 	return strings.NewReplacer(flat...).Replace(text)
 }
 
-// passwordCandidates returns every string in dsn that may be all or part of a
-// password. It is deliberately lenient: dsn may be malformed.
-func passwordCandidates(dsn string) []string {
+// secretCandidates returns the values in dsn, which may be malformed, that
+// String omits.
+func secretCandidates(dsn string) []string {
 	var out []string
 	add := func(s string) {
 		if s == "" {
@@ -123,9 +121,20 @@ func passwordCandidates(dsn string) []string {
 			out = append(out, u)
 		}
 	}
+	addValue := func(key, value string) {
+		if loggableParams[key] || (key != "password" && len(value) < minSecretLength) {
+			return
+		}
+		add(value)
+	}
 
 	if d, err := NewDSN(dsn); err == nil {
 		add(d.password)
+		for k, values := range d.query {
+			for _, v := range values {
+				addValue(k, v)
+			}
+		}
 	}
 
 	// The extractors below all run regardless of which form dsn appears to
@@ -140,17 +149,27 @@ func passwordCandidates(dsn string) []string {
 		}
 	}
 
-	for _, m := range queryPasswordRe.FindAllStringSubmatch(dsn, -1) {
-		add(m[1])
+	for _, m := range queryParamRe.FindAllStringSubmatch(dsn, -1) {
+		key := m[1]
+		if k, err := url.QueryUnescape(key); err == nil {
+			key = k
+		}
+		addValue(key, m[2])
 	}
 
-	for _, m := range keyValuePasswordRe.FindAllStringSubmatch(dsn, -1) {
-		value := strings.TrimSpace(m[1])
-		add(value)
-		add(unquoteKeyValue(value))
+	matches := keyValueKeywordRe.FindAllStringSubmatchIndex(dsn, -1)
+	for i, m := range matches {
+		end := len(dsn)
+		if i+1 < len(matches) {
+			end = matches[i+1][0]
+		}
+		key := dsn[m[2]:m[3]]
+		value := strings.TrimSpace(dsn[m[1]:end])
+		addValue(key, value)
+		addValue(key, unquoteKeyValue(value))
 		for field := range strings.FieldsSeq(value) {
-			add(field)
-			add(strings.Trim(field, `'`))
+			addValue(key, field)
+			addValue(key, strings.Trim(field, `'`))
 		}
 	}
 	return out
