@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/prometheus-community/postgres_exporter/config"
@@ -122,6 +123,7 @@ type PostgresCollector struct {
 	logger     *slog.Logger
 
 	instance                *instance
+	closed                  *atomic.Bool // shared by copies of the collector
 	CollectionTimeout       time.Duration
 	collectorStates         map[string]bool
 	excludeDatabases        []string
@@ -149,6 +151,7 @@ type Option func(*PostgresCollector) error
 // NewPostgresCollector creates a new PostgresCollector.
 func NewPostgresCollector(logger *slog.Logger, excludeDatabases []string, dsn string, filters []string, options ...Option) (*PostgresCollector, error) {
 	p := &PostgresCollector{
+		closed:                  &atomic.Bool{},
 		logger:                  logger,
 		excludeDatabases:        excludeDatabases,
 		collectorStates:         config.DefaultCollectorConfig(),
@@ -305,6 +308,9 @@ func (p PostgresCollector) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements the prometheus.Collector interface.
 func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
+	if p.closed.Load() {
+		return
+	}
 	// copy the instance so that concurrent scrapes have independent instances
 	inst := p.instance.copy()
 
@@ -321,7 +327,7 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 	p.collectFromConnection(ctx, inst, ch, nil)
 
-	if p.databaseDiscovery != nil {
+	if p.databaseDiscovery != nil && !p.closed.Load() {
 		p.collectDiscoveredDatabases(ctx, inst, ch)
 	}
 }
@@ -344,6 +350,9 @@ func (p PostgresCollector) collectDiscoveredDatabases(ctx context.Context, prima
 	}
 
 	collectDatabase := func(ctx context.Context, database string) {
+		if p.closed.Load() {
+			return
+		}
 		inst, err := primary.withDatabase(database)
 		if err != nil {
 			p.logger.Error("failed to build connection for discovered database", "database", database, "err", config.RedactError(err, primary.dsn))
@@ -378,7 +387,9 @@ func (p PostgresCollector) collectFromConnection(ctx context.Context, inst *inst
 	wg.Wait()
 }
 
+// Close prevents the collector from starting new database work.
 func (p *PostgresCollector) Close() error {
+	p.closed.Store(true)
 	return p.instance.Close()
 }
 

@@ -528,6 +528,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.userQueriesError.Collect(ch)
 }
 
+// CloseServers closes the database connections and prevents future connections.
 func (e *Exporter) CloseServers() {
 	e.servers.Close()
 }

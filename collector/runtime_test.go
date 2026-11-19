@@ -14,10 +14,12 @@
 package collector
 
 import (
+	"net"
 	"testing"
 	"time"
 
 	"github.com/prometheus-community/postgres_exporter/config"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/promslog"
 )
 
@@ -173,5 +175,50 @@ func TestNewRuntimePropagatesLongRunningTransactionsThreshold(t *testing.T) {
 	}
 	if got, want := collector.threshold, 5*time.Minute; got != want {
 		t.Fatalf("threshold = %v, want %v", got, want)
+	}
+}
+
+func TestRuntimeClosePreventsCollectorConnections(t *testing.T) {
+	for index, name := range []string{"legacy", "native"} {
+		t.Run(name, func(t *testing.T) {
+			listener, err := net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer listener.Close()
+
+			cfg := config.NewConfigWithDefaults()
+			cfg.DataSourceNames = []string{"postgres://test@" + listener.Addr().String() + "/postgres?sslmode=disable&connect_timeout=1"}
+			cfg.CollectionTimeout = 250 * time.Millisecond
+			validated, err := cfg.Validate()
+			if err != nil {
+				t.Fatal(err)
+			}
+			runtime, err := NewRuntime(validated, promslog.NewNopLogger())
+			if err != nil {
+				t.Fatal(err)
+			}
+			registry := prometheus.NewRegistry()
+			registry.MustRegister(runtime.Collectors()[index])
+			for range 2 {
+				if err := runtime.Close(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err := registry.Gather(); err != nil {
+				t.Fatal(err)
+			}
+			if err := listener.SetDeadline(time.Now().Add(50 * time.Millisecond)); err != nil {
+				t.Fatal(err)
+			}
+			conn, err := listener.Accept()
+			if err == nil {
+				conn.Close()
+				t.Fatal("collector opened a database connection after Runtime.Close()")
+			}
+			if netErr, ok := err.(net.Error); !ok || !netErr.Timeout() {
+				t.Fatalf("Accept() error = %v, want timeout", err)
+			}
+		})
 	}
 }
