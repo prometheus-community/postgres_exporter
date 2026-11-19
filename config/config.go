@@ -62,6 +62,7 @@ const (
 	CollectorStatBGWriter            = "stat_bgwriter"
 	CollectorStatCheckpointer        = "stat_checkpointer"
 	CollectorStatDatabase            = "stat_database"
+	CollectorStatDatabaseConflicts   = "stat_database_conflicts"
 	CollectorStatProgressVacuum      = "stat_progress_vacuum"
 	CollectorStatReplication         = "stat_replication"
 	CollectorStatStatements          = "stat_statements"
@@ -230,6 +231,7 @@ func DefaultCollectorConfig() map[string]bool {
 		CollectorStatBGWriter:            true,
 		CollectorStatCheckpointer:        false,
 		CollectorStatDatabase:            true,
+		CollectorStatDatabaseConflicts:   true,
 		CollectorStatProgressVacuum:      true,
 		CollectorStatReplication:         true,
 		CollectorStatStatements:          false,

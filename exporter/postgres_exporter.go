@@ -169,21 +169,9 @@ func DumpMaps() {
 	}
 }
 
-var builtinMetricMaps = map[string]intermediateMetricMap{
-	"pg_stat_database_conflicts": {
-		map[string]ColumnMapping{
-			"datid":            {LABEL, "OID of a database", nil, nil},
-			"datname":          {LABEL, "Name of this database", nil, nil},
-			"confl_tablespace": {COUNTER, "Number of queries in this database that have been canceled due to dropped tablespaces", nil, nil},
-			"confl_lock":       {COUNTER, "Number of queries in this database that have been canceled due to lock timeouts", nil, nil},
-			"confl_snapshot":   {COUNTER, "Number of queries in this database that have been canceled due to old snapshots", nil, nil},
-			"confl_bufferpin":  {COUNTER, "Number of queries in this database that have been canceled due to pinned buffers", nil, nil},
-			"confl_deadlock":   {COUNTER, "Number of queries in this database that have been canceled due to deadlocks", nil, nil},
-		},
-		true,
-		0,
-	},
-}
+// Every built-in metric now lives in the collector package; only user queries
+// (--extend.query-path) still go through the legacy path.
+var builtinMetricMaps = map[string]intermediateMetricMap{}
 
 // Turn the MetricMap column mapping into a prometheus descriptor mapping.
 func makeDescMap(pgVersion semver.Version, serverLabels prometheus.Labels, metricMaps map[string]intermediateMetricMap, logger *slog.Logger, metricPrefix string) map[string]MetricMapNamespace {
