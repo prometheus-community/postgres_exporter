@@ -33,6 +33,7 @@ const (
 	bgWriterSubsystem                = config.CollectorStatBGWriter
 	statCheckpointerSubsystem        = config.CollectorStatCheckpointer
 	statDatabaseSubsystem            = config.CollectorStatDatabase
+	statDatabaseConflictsSubsystem   = config.CollectorStatDatabaseConflicts
 	progressVacuumSubsystem          = config.CollectorStatProgressVacuum
 	statReplicationSubsystem         = config.CollectorStatReplication
 	statStatementsSubsystem          = config.CollectorStatStatements

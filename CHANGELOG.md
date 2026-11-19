@@ -1,5 +1,7 @@
 ## main / (unreleased)
 
+* [CHANGE] Move the `pg_stat_database_conflicts_*` metrics from the legacy exporter path to a native `stat_database_conflicts` collector (enabled by default). Metric names, labels and help text are unchanged. The collector is controlled by `--[no-]collector.stat_database_conflicts` instead of `--disable-default-metrics`, and, like other native collectors, does not apply `--metric-prefix`. Counters are now wrapped at `2^53` unless `--no-wrap-large-counters` is set.
+
 ## 0.21.1 / 2026-11-18
 
 * [CHANGE] Fix container image publishing #1469

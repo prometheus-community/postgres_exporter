@@ -30,6 +30,7 @@ The long_running_transactions collector can be customized with the `--collector.
 | Collector | Default | What it tells you |
 |---|---|---|
 | `stat_database` | enabled | Per-database counters: commits and rollbacks, blocks read from disk vs. found in shared buffers (cache hit ratio), tuples returned/fetched/inserted/updated/deleted, conflicts, deadlocks, temp files and bytes, and I/O timings. The workhorse collector. From `pg_stat_database`. |
+| `stat_database_conflicts` | enabled | Per-database count of queries canceled by recovery conflicts (dropped tablespaces, lock timeouts, old snapshots, pinned buffers, deadlocks). Only non-zero on standby servers. From `pg_stat_database_conflicts`. |
 | `database` | enabled | Per-database on-disk size and connection limit. Note that it calls `pg_database_size()` once per database on every scrape, which gets expensive with many or very large databases. |
 | `stat_user_tables` | enabled | Per-table: sequential vs. index scans, rows inserted/updated/deleted, live and dead tuple counts, rows modified since last analyze, last vacuum/analyze times and counts, and table and index size. How you find missing indexes and tables that aren't being vacuumed. From `pg_stat_user_tables`. |
 | `statio_user_tables` | enabled | Per-table block I/O: heap, index, and TOAST blocks read from disk vs. served from shared buffers. From `pg_statio_user_tables`. |
