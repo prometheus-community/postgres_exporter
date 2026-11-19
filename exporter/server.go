@@ -16,6 +16,7 @@ package exporter
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -148,10 +149,13 @@ func (s *Server) Scrape(ctx context.Context, ch chan<- prometheus.Metric) error 
 	return err
 }
 
+var errServersClosed = errors.New("server collection is closed")
+
 // Servers contains a collection of servers to Postgres.
 type Servers struct {
 	m       sync.Mutex
 	servers map[string]*Server
+	closed  bool
 	opts    []ServerOpt
 }
 
@@ -167,6 +171,9 @@ func NewServers(opts ...ServerOpt) *Servers {
 func (s *Servers) GetServer(ctx context.Context, dsn string) (*Server, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
+	if s.closed {
+		return nil, errServersClosed
+	}
 	var err error
 	var ok bool
 	errCount := 0 // start at zero because we increment before doing work
@@ -204,13 +211,15 @@ func (s *Servers) GetServer(ctx context.Context, dsn string) (*Server, error) {
 	return server, nil
 }
 
-// Close disconnects from all known servers.
+// Close disconnects from all known servers and prevents new connections.
 func (s *Servers) Close() {
 	s.m.Lock()
 	defer s.m.Unlock()
+	s.closed = true
 	for _, server := range s.servers {
 		if err := server.Close(); err != nil {
 			server.logger.Error("Failed to close connection", "server", server, "err", err)
 		}
 	}
+	s.servers = nil
 }

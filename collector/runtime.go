@@ -87,6 +87,7 @@ func (r *Runtime) Collectors() []prometheus.Collector {
 	return collectors
 }
 
+// Close closes the runtime's collectors, including previously returned collectors.
 func (r *Runtime) Close() error {
 	var err error
 	if r.exporter != nil {

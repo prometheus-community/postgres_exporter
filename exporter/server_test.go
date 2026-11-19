@@ -16,6 +16,8 @@ package exporter
 import (
 	"context"
 	"errors"
+	"log/slog"
+	"net"
 	"testing"
 	"time"
 )
@@ -32,5 +34,35 @@ func TestGetServerRetryHonorsContextCancellation(t *testing.T) {
 	}
 	if elapsed := time.Since(started); elapsed >= time.Second {
 		t.Fatalf("GetServer() returned after %v, want cancellation before retry delay completed", elapsed)
+	}
+}
+
+func TestExporterCloseServersPreventsNewConnections(t *testing.T) {
+	listener, err := net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+
+	e := NewExporter(nil, slog.Default())
+	e.CloseServers()
+	e.CloseServers()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	defer cancel()
+	server, err := e.servers.GetServer(ctx, "postgres://test@"+listener.Addr().String()+"/postgres?sslmode=disable&connect_timeout=1")
+	if server != nil || err == nil {
+		t.Fatalf("GetServer() after close returned server = %t, error = %v", server != nil, err)
+	}
+	if err := listener.SetDeadline(time.Now().Add(50 * time.Millisecond)); err != nil {
+		t.Fatal(err)
+	}
+	conn, err := listener.Accept()
+	if err == nil {
+		conn.Close()
+		t.Fatal("GetServer() opened a database connection after CloseServers()")
+	}
+	if netErr, ok := err.(net.Error); !ok || !netErr.Timeout() {
+		t.Fatalf("Accept() error = %v, want timeout", err)
 	}
 }
