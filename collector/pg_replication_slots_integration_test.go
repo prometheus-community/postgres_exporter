@@ -33,7 +33,7 @@ func TestPGReplicationSlotsCollectorPhysicalSlot(t *testing.T) {
 	}
 	defer db.Close()
 
-	version, err := queryVersion(context.Background(), db)
+	version, _, err := queryVersion(context.Background(), db)
 	if err != nil {
 		t.Fatalf("queryVersion() error = %v", err)
 	}

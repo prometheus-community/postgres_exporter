@@ -24,9 +24,11 @@ import (
 )
 
 type instance struct {
-	dsn               string
-	db                *sql.DB
-	version           semver.Version
+	dsn     string
+	db      *sql.DB
+	version semver.Version
+	// versionString is the raw SELECT version() output, for the pg_static metric.
+	versionString     string
 	database          string
 	wrapLargeCounters bool
 	// isAurora reports whether the server is Amazon Aurora PostgreSQL.
@@ -71,11 +73,11 @@ func (i *instance) setup(ctx context.Context) error {
 	i.db = db
 
 	if i.version.EQ(semver.Version{}) {
-		version, err := queryVersion(ctx, i.db)
+		version, versionString, err := queryVersion(ctx, i.db)
 		if err != nil {
 			return fmt.Errorf("error querying postgresql version: %w", err)
 		}
-		i.version = version
+		i.version, i.versionString = version, versionString
 	}
 
 	// aurora_version() only exists on Amazon Aurora PostgreSQL. to_regproc
@@ -105,26 +107,28 @@ func (i *instance) Close() error {
 var versionRegex = regexp.MustCompile(`^\w+ ((\d+)(\.\d+)?(\.\d+)?)`)
 var serverVersionRegex = regexp.MustCompile(`^((\d+)(\.\d+)?(\.\d+)?)`)
 
-func queryVersion(ctx context.Context, db *sql.DB) (semver.Version, error) {
+func queryVersion(ctx context.Context, db *sql.DB) (semver.Version, string, error) {
 	var version string
 	err := db.QueryRowContext(ctx, "SELECT version();").Scan(&version)
 	if err != nil {
-		return semver.Version{}, err
+		return semver.Version{}, "", err
 	}
 	submatches := versionRegex.FindStringSubmatch(version)
 	if len(submatches) > 1 {
-		return semver.ParseTolerant(submatches[1])
+		v, err := semver.ParseTolerant(submatches[1])
+		return v, version, err
 	}
 
 	// We could also try to parse the version from the server_version field.
 	// This is of the format 13.3 (Debian 13.3-1.pgdg100+1)
 	err = db.QueryRowContext(ctx, "SHOW server_version;").Scan(&version)
 	if err != nil {
-		return semver.Version{}, err
+		return semver.Version{}, "", err
 	}
 	submatches = serverVersionRegex.FindStringSubmatch(version)
 	if len(submatches) > 1 {
-		return semver.ParseTolerant(submatches[1])
+		v, err := semver.ParseTolerant(submatches[1])
+		return v, version, err
 	}
-	return semver.Version{}, fmt.Errorf("could not parse version from %q", version)
+	return semver.Version{}, "", fmt.Errorf("could not parse version from %q", version)
 }

@@ -37,9 +37,6 @@ const (
 	namespace = "pg"
 	// Subsystems.
 	exporter = "exporter"
-	// Metric label used for static string data thats handy to send to Prometheus
-	// e.g. version
-	staticLabelName = "static"
 	// Metric label used for server identification.
 	serverLabelName = "server"
 )
@@ -532,25 +529,25 @@ func (e *Exporter) CloseServers() {
 	e.servers.Close()
 }
 
-func checkPostgresVersion(ctx context.Context, db *sql.DB, server string, logger *slog.Logger) (semver.Version, string, error) {
+func checkPostgresVersion(ctx context.Context, db *sql.DB, server string, logger *slog.Logger) (semver.Version, error) {
 	logger.Debug("Querying PostgreSQL version", "server", server)
 	versionRow := db.QueryRowContext(ctx, "SELECT version();")
 	var versionString string
 	err := versionRow.Scan(&versionString)
 	if err != nil {
-		return semver.Version{}, "", fmt.Errorf("Error scanning version string on %q: %v", server, err)
+		return semver.Version{}, fmt.Errorf("Error scanning version string on %q: %v", server, err)
 	}
 	semanticVersion, err := parseVersion(versionString)
 	if err != nil {
-		return semver.Version{}, "", fmt.Errorf("Error parsing version string on %q: %v", server, err)
+		return semver.Version{}, fmt.Errorf("Error parsing version string on %q: %v", server, err)
 	}
 
-	return semanticVersion, versionString, nil
+	return semanticVersion, nil
 }
 
 // Check and update the exporters query maps if the version has changed.
 func (e *Exporter) checkMapVersions(ctx context.Context, ch chan<- prometheus.Metric, server *Server) error {
-	semanticVersion, versionString, err := checkPostgresVersion(ctx, server.db, server.String(), e.logger)
+	semanticVersion, err := checkPostgresVersion(ctx, server.db, server.String(), e.logger)
 	if err != nil {
 		return fmt.Errorf("Error fetching version string on %q: %v", server, err)
 	}
@@ -600,14 +597,6 @@ func (e *Exporter) checkMapVersions(ctx context.Context, ch chan<- prometheus.Me
 		server.mappingMtx.Unlock()
 	}
 
-	// Output the version as a special metric only for master database
-	versionDesc := prometheus.NewDesc(fmt.Sprintf("%s_%s", namespace, staticLabelName),
-		"Version string as reported by postgres", []string{"version", "short_version"}, server.labels)
-
-	if !e.disableDefaultMetrics && server.master {
-		ch <- prometheus.MustNewConstMetric(versionDesc,
-			prometheus.UntypedValue, 1, versionString, semanticVersion.String())
-	}
 	return nil
 }
 

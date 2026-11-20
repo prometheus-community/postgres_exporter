@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"strings"
 
 	"github.com/prometheus-community/postgres_exporter/config"
@@ -53,6 +54,12 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 		WithLongRunningTransactionsConfig(cfg.LongRunningTransactions),
 		WithPGStatStatementsConfig(cfg.PGStatStatements),
 		WithWrapLargeCounters(cfg.WrapLargeCounters),
+	}
+	if cfg.DisableDefaultMetrics {
+		// pg_static is a default metric: keep honouring the legacy flag.
+		states := maps.Clone(cfg.Collectors)
+		states[config.CollectorVersion] = false
+		opts = append(opts, WithCollectorStates(states))
 	}
 	if cfg.AutoDiscoverDatabases {
 		// Run the database-scoped collectors (stat_user_tables,
