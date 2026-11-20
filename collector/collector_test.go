@@ -14,7 +14,10 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -23,6 +26,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/promslog"
 )
@@ -275,6 +279,207 @@ type collectorFunc func(ctx context.Context, instance *instance, ch chan<- prome
 
 func (f collectorFunc) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	return f(ctx, instance, ch)
+}
+
+// fakeServers stands in for PostgreSQL servers so a test can make new
+// connections fail and recover between scrapes. reject decides, per DSN,
+// whether the server turns the new connection away, and hang whether it never
+// answers.
+type fakeServers struct {
+	mu        sync.Mutex
+	reject    func(dsn string) bool
+	hang      func(dsn string) bool
+	databases []string
+}
+
+func (f *fakeServers) setReject(reject func(dsn string) bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.reject = reject
+}
+
+func (f *fakeServers) open(dsn string) (*sql.DB, error) {
+	f.mu.Lock()
+	rejected := f.reject != nil && f.reject(dsn)
+	hanging := f.hang != nil && f.hang(dsn)
+	databases := f.databases
+	f.mu.Unlock()
+
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		return nil, err
+	}
+	mock.MatchExpectationsInOrder(false)
+	if rejected {
+		refused := errors.New("pq: sorry, too many clients already")
+		mock.ExpectQuery("SELECT version").WillReturnError(refused)
+		mock.ExpectQuery("SELECT current_database").WillReturnError(refused)
+		return db, nil
+	}
+	if hanging {
+		mock.ExpectQuery("SELECT version").WillDelayFor(time.Minute).WillReturnRows(sqlmock.NewRows([]string{"version"}))
+		mock.ExpectQuery("SELECT current_database").WillDelayFor(time.Minute).WillReturnRows(sqlmock.NewRows([]string{"current_database", "is_aurora"}))
+		return db, nil
+	}
+	parsed, err := config.NewDSN(dsn)
+	if err != nil {
+		return nil, err
+	}
+	mock.ExpectQuery("SELECT version").WillReturnRows(sqlmock.NewRows([]string{"version"}).AddRow("PostgreSQL 17.0 on x86_64-pc-linux-gnu"))
+	mock.ExpectQuery("SELECT current_database").WillReturnRows(sqlmock.NewRows([]string{"current_database", "is_aurora"}).AddRow(parsed.Database(), false))
+	rows := sqlmock.NewRows([]string{"datname"})
+	for _, database := range databases {
+		rows.AddRow(database)
+	}
+	mock.ExpectQuery("SELECT datname FROM pg_database").WillReturnRows(rows)
+	return db, nil
+}
+
+// newConnectionTestCollector returns a PostgresCollector whose connections
+// go to servers and whose only collector always succeeds.
+func newConnectionTestCollector(t *testing.T, servers *fakeServers, dsn string, options ...Option) *PostgresCollector {
+	t.Helper()
+	c, err := NewPostgresCollector(promslog.NewNopLogger(), nil, dsn, nil, options...)
+	if err != nil {
+		t.Fatalf("NewPostgresCollector() error = %v", err)
+	}
+	c.instance.open = servers.open
+	c.Collectors = map[string]Collector{
+		"stub": collectorFunc(func(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error { return nil }),
+	}
+	return c
+}
+
+const connectionSuccessHeader = `
+# HELP pg_scrape_connection_success postgres_exporter: Whether a new connection to the target could be opened during this scrape.
+# TYPE pg_scrape_connection_success gauge
+`
+
+// assertCollected scrapes c and requires the named metrics to be exactly
+// want, label sets included.
+func assertCollected(t *testing.T, c prometheus.Collector, want string, names ...string) {
+	t.Helper()
+	if err := testutil.CollectAndCompare(c, strings.NewReader(want), names...); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestPostgresCollectorReportsConnectionHealth covers
+// https://github.com/prometheus-community/postgres_exporter/issues/1387:
+// when a new connection cannot be made, the failure must show up as a metric
+// that keeps the series identity of the success path, and not as the absence
+// of the collectors' metrics or as failures of every collector.
+func TestPostgresCollectorReportsConnectionHealth(t *testing.T) {
+	servers := &fakeServers{}
+	c := newConnectionTestCollector(t, servers, "postgresql://exporter@db.example:5432/postgres")
+	const collectorSuccess = `
+# HELP pg_scrape_collector_success postgres_exporter: Whether a collector succeeded.
+# TYPE pg_scrape_collector_success gauge
+pg_scrape_collector_success{collector="stub"} 1
+`
+	up := connectionSuccessHeader + `pg_scrape_connection_success{datname="postgres",server="db.example:5432"} 1` + "\n"
+	down := connectionSuccessHeader + `pg_scrape_connection_success{datname="postgres",server="db.example:5432"} 0` + "\n"
+
+	assertCollected(t, c, up, "pg_scrape_connection_success")
+	assertCollected(t, c, collectorSuccess, "pg_scrape_collector_success")
+
+	// The server starts refusing new connections, e.g. the connection limit
+	// is reached or pg_hba.conf no longer matches. Only the connection
+	// metric remains, and it keeps its labels.
+	servers.setReject(func(string) bool { return true })
+	assertCollected(t, c, down, "pg_scrape_connection_success")
+	assertCollected(t, c, "", "pg_scrape_collector_success")
+
+	servers.setReject(nil)
+	assertCollected(t, c, up, "pg_scrape_connection_success")
+	assertCollected(t, c, collectorSuccess, "pg_scrape_collector_success")
+}
+
+// TestPostgresCollectorReportsRefusedConnection uses a real refused TCP
+// connection instead of a fake driver.
+func TestPostgresCollectorReportsRefusedConnection(t *testing.T) {
+	// Nothing listens on port 1, so setup() fails fast.
+	dsn := "postgresql://postgres@127.0.0.1:1/postgres?sslmode=disable&connect_timeout=2"
+	c, err := NewPostgresCollector(promslog.NewNopLogger(), nil, dsn, []string{databaseSubsystem})
+	if err != nil {
+		t.Fatalf("NewPostgresCollector() error = %v", err)
+	}
+	want := connectionSuccessHeader + `pg_scrape_connection_success{datname="postgres",server="127.0.0.1:1"} 0` + "\n"
+	assertCollected(t, c, want)
+}
+
+func TestPostgresCollectorConnectionHealthWithDatabaseDiscovery(t *testing.T) {
+	servers := &fakeServers{databases: []string{"app", "shop"}}
+	c := newConnectionTestCollector(t, servers, "postgresql://exporter@db.example:5432/postgres",
+		WithDatabaseDiscovery(nil, nil, 2))
+	rejectDatabases := func(names ...string) func(string) bool {
+		return func(dsn string) bool {
+			parsed, err := config.NewDSN(dsn)
+			return err == nil && slices.Contains(names, parsed.Database())
+		}
+	}
+	series := func(datname string, value int) string {
+		return fmt.Sprintf("pg_scrape_connection_success{datname=%q,server=\"db.example:5432\"} %d\n", datname, value)
+	}
+	const collectorSuccess = `
+# HELP pg_scrape_collector_success postgres_exporter: Whether a collector succeeded.
+# TYPE pg_scrape_collector_success gauge
+pg_scrape_collector_success{collector="stub",datname="postgres"} 1
+`
+
+	assertCollected(t, c, connectionSuccessHeader+series("app", 1)+series("postgres", 1)+series("shop", 1), "pg_scrape_connection_success")
+	assertCollected(t, c, collectorSuccess, "pg_scrape_collector_success")
+
+	// A discovered database that refuses connections reports 0 under its
+	// own name while the others keep reporting 1.
+	servers.setReject(rejectDatabases("app"))
+	assertCollected(t, c, connectionSuccessHeader+series("app", 0)+series("postgres", 1)+series("shop", 1), "pg_scrape_connection_success")
+
+	servers.setReject(nil)
+	assertCollected(t, c, connectionSuccessHeader+series("app", 1)+series("postgres", 1)+series("shop", 1), "pg_scrape_connection_success")
+
+	// With the primary connection refused the other databases cannot be
+	// discovered, so only the primary reports.
+	servers.setReject(rejectDatabases("postgres"))
+	assertCollected(t, c, connectionSuccessHeader+series("postgres", 0), "pg_scrape_connection_success")
+	assertCollected(t, c, "", "pg_scrape_collector_success")
+
+	servers.setReject(nil)
+	assertCollected(t, c, connectionSuccessHeader+series("app", 1)+series("postgres", 1)+series("shop", 1), "pg_scrape_connection_success")
+}
+
+// TestPostgresCollectorConnectionHealthWhenDiscoveryTimesOut checks that a
+// discovered database the collection timeout keeps the scrape from reaching
+// still reports 0 under its own name.
+func TestPostgresCollectorConnectionHealthWhenDiscoveryTimesOut(t *testing.T) {
+	servers := &fakeServers{
+		databases: []string{"app", "shop"},
+		hang: func(dsn string) bool {
+			parsed, err := config.NewDSN(dsn)
+			return err == nil && parsed.Database() == "app"
+		},
+	}
+	// With one database at a time, "shop" waits behind "app", which never
+	// answers, until the collection timeout ends the scrape.
+	c := newConnectionTestCollector(t, servers, "postgresql://exporter@db.example:5432/postgres",
+		WithDatabaseDiscovery(nil, nil, 1))
+	c.CollectionTimeout = 200 * time.Millisecond
+	want := connectionSuccessHeader +
+		`pg_scrape_connection_success{datname="app",server="db.example:5432"} 0` + "\n" +
+		`pg_scrape_connection_success{datname="postgres",server="db.example:5432"} 1` + "\n" +
+		`pg_scrape_connection_success{datname="shop",server="db.example:5432"} 0` + "\n"
+	assertCollected(t, c, want, "pg_scrape_connection_success")
+}
+
+// A DSN that cannot be parsed still reports its failure, with empty labels,
+// and the metric does not leak the password.
+func TestPostgresCollectorReportsUnparseableDSN(t *testing.T) {
+	c, err := NewPostgresCollector(promslog.NewNopLogger(), nil, "postgresql://demo:bad%zzpw@127.0.0.1:1/demo?sslmode=disable", nil)
+	if err != nil {
+		t.Fatalf("NewPostgresCollector() error = %v", err)
+	}
+	want := connectionSuccessHeader + `pg_scrape_connection_success{datname="",server=""} 0` + "\n"
+	assertCollected(t, c, want)
 }
 
 func TestRegisterCollectorRejectsUnknownConfig(t *testing.T) {

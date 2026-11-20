@@ -1,5 +1,7 @@
 ## main / (unreleased)
 
+* [FEATURE] Add `pg_scrape_connection_success{server,datname}`, reported on every scrape for the collector's DSN, each discovered database and each `/probe` target: `1` if a new connection could be opened, `0` if not, so a connection failure is visible without the collector metrics. `pg_up` is unchanged and can stay `1` while new connections are refused, by @akashchamp in https://github.com/prometheus-community/postgres_exporter/pull/1394
+
 ## 0.21.1 / 2026-11-18
 
 * [CHANGE] Fix container image publishing #1469

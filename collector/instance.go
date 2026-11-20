@@ -32,6 +32,16 @@ type instance struct {
 	// isAurora reports whether the server is Amazon Aurora PostgreSQL.
 	// Aurora-specific collectors return ErrNoData when it is false.
 	isAurora bool
+	// open opens the database handle for dsn. It is nil outside tests, which
+	// substitute a fake driver to simulate connection failure and recovery.
+	open func(dsn string) (*sql.DB, error)
+}
+
+func (i *instance) openDB() (*sql.DB, error) {
+	if i.open != nil {
+		return i.open(i.dsn)
+	}
+	return sql.Open("postgres", i.dsn)
 }
 
 // copy returns a copy of the instance.
@@ -39,6 +49,7 @@ func (i *instance) copy() *instance {
 	return &instance{
 		dsn:               i.dsn,
 		wrapLargeCounters: i.wrapLargeCounters,
+		open:              i.open,
 	}
 }
 
@@ -54,6 +65,7 @@ func (i *instance) withDatabase(database string) (*instance, error) {
 	other := &instance{
 		dsn:               dsn.WithDatabase(database).GetConnectionString(),
 		wrapLargeCounters: i.wrapLargeCounters,
+		open:              i.open,
 		// database is on the same PostgreSQL server as i, so it runs the same
 		// version; skip re-querying it over the new connection.
 		version: i.version,
@@ -62,7 +74,7 @@ func (i *instance) withDatabase(database string) (*instance, error) {
 }
 
 func (i *instance) setup(ctx context.Context) error {
-	db, err := sql.Open("postgres", i.dsn)
+	db, err := i.openDB()
 	if err != nil {
 		return err
 	}

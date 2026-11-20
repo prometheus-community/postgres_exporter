@@ -77,6 +77,16 @@ var (
 		[]string{"collector"},
 		nil,
 	)
+	// scrapeConnectionSuccessDesc is owned by PostgresCollector and emitted on
+	// every scrape for its DSN and for every discovered database. Both labels
+	// are derived from the DSN rather than from the connection, so a database
+	// keeps the same series whether or not the connection could be opened.
+	scrapeConnectionSuccessDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "scrape", "connection_success"),
+		"postgres_exporter: Whether a new connection to the target could be opened during this scrape.",
+		[]string{"server", "datname"},
+		nil,
+	)
 	scrapeDurationDescWithDatname = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "scrape", "collector_duration_seconds"),
 		"postgres_exporter: Duration of a collector scrape.",
@@ -294,6 +304,7 @@ func WithWrapLargeCounters(wrap bool) Option {
 
 // Describe implements the prometheus.Collector interface.
 func (p PostgresCollector) Describe(ch chan<- *prometheus.Desc) {
+	ch <- scrapeConnectionSuccessDesc
 	if p.databaseDiscovery != nil {
 		ch <- scrapeDurationDescWithDatname
 		ch <- scrapeSuccessDescWithDatname
@@ -304,6 +315,12 @@ func (p PostgresCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 // Collect implements the prometheus.Collector interface.
+//
+// Every scrape reports pg_scrape_connection_success for the collector's DSN
+// and for each discovered database: 1 if a new connection could be opened and
+// answered the initial queries, 0 if not. The metric is separate from
+// pg_scrape_collector_success, which only says whether one collector's query
+// worked.
 func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 	// copy the instance so that concurrent scrapes have independent instances
 	inst := p.instance.copy()
@@ -312,9 +329,18 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 	ctx, cancel := context.WithTimeout(context.Background(), p.CollectionTimeout)
 	defer cancel()
 
+	// The labels come from the DSN rather than from the connection, so the
+	// series is the same whether or not the connection can be opened. A DSN
+	// that cannot be parsed reports empty labels.
+	var server, datname string
+	if dsn, err := config.NewDSN(inst.dsn); err == nil {
+		server, datname = dsn.Server(), dsn.Database()
+	}
+
 	// Set up the database connection for the collector.
 	err := inst.setup(ctx)
 	defer inst.Close()
+	sendConnectionSuccess(ch, server, datname, err == nil)
 	if err != nil {
 		p.logger.Error("Error opening connection to database", "err", config.RedactError(err, inst.dsn))
 		return
@@ -322,8 +348,18 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 	p.collectFromConnection(ctx, inst, ch, nil)
 
 	if p.databaseDiscovery != nil {
-		p.collectDiscoveredDatabases(ctx, inst, ch)
+		p.collectDiscoveredDatabases(ctx, inst, server, ch)
 	}
+}
+
+// sendConnectionSuccess reports whether a new connection to the database
+// named by server and datname could be opened.
+func sendConnectionSuccess(ch chan<- prometheus.Metric, server, datname string, success bool) {
+	value := 0.0
+	if success {
+		value = 1
+	}
+	ch <- prometheus.MustNewConstMetric(scrapeConnectionSuccessDesc, prometheus.GaugeValue, value, server, datname)
 }
 
 // collectDiscoveredDatabases discovers every other database on the same
@@ -335,22 +371,32 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 // server with many databases cannot make a single scrape exhaust its
 // connection slots. ctx carries the single deadline for the whole call, so a
 // server with more databases than fit in one batch cannot make the overall
-// scrape run past CollectionTimeout.
-func (p PostgresCollector) collectDiscoveredDatabases(ctx context.Context, primary *instance, ch chan<- prometheus.Metric) {
+// scrape run past CollectionTimeout. Each discovered database reports
+// pg_scrape_connection_success under server and its own name, including one
+// that the deadline kept the scrape from reaching.
+func (p PostgresCollector) collectDiscoveredDatabases(ctx context.Context, primary *instance, server string, ch chan<- prometheus.Metric) {
 	databases, err := discoverDatabases(ctx, primary.getDB(), p.databaseDiscovery.includeDatabases, p.databaseDiscovery.excludeDatabases)
 	if err != nil {
 		p.logger.Error("failed to discover databases", "err", config.RedactError(err, primary.dsn))
 		return
 	}
 
+	var mu sync.Mutex
+	reached := make(map[string]bool, len(databases))
 	collectDatabase := func(ctx context.Context, database string) {
+		mu.Lock()
+		reached[database] = true
+		mu.Unlock()
 		inst, err := primary.withDatabase(database)
 		if err != nil {
+			sendConnectionSuccess(ch, server, database, false)
 			p.logger.Error("failed to build connection for discovered database", "database", database, "err", config.RedactError(err, primary.dsn))
 			return
 		}
 		defer inst.Close()
-		if err := inst.setup(ctx); err != nil {
+		err = inst.setup(ctx)
+		sendConnectionSuccess(ch, server, database, err == nil)
+		if err != nil {
 			p.logger.Error("failed to connect to discovered database", "database", database, "err", config.RedactError(err, inst.dsn))
 			return
 		}
@@ -358,6 +404,15 @@ func (p PostgresCollector) collectDiscoveredDatabases(ctx context.Context, prima
 		p.collectFromConnection(ctx, inst, ch, &scope)
 	}
 	forEachDatabase(ctx, databases, p.databaseDiscovery.maxConcurrency, collectDatabase)
+
+	// A database the deadline kept the scrape from reaching still reports, as
+	// 0. forEachDatabase has returned, so no collectDatabase call is running.
+	for _, database := range databases {
+		if !reached[database] {
+			p.logger.Error("discovered database was not reached before the collection timeout", "database", database)
+			sendConnectionSuccess(ch, server, database, false)
+		}
+	}
 }
 
 // collectFromConnection runs the Collectors matching scope against inst,
