@@ -40,6 +40,7 @@ const (
 	statWalReceiverSubsystem         = config.CollectorStatWalReceiver
 	statioUserIndexesSubsystem       = config.CollectorStatioUserIndexes
 	statioUserTableSubsystem         = config.CollectorStatioUserTables
+	versionSubsystem                 = config.CollectorVersion
 	walSubsystem                     = config.CollectorWal
 	xlogLocationSubsystem            = config.CollectorXlogLocation
 )

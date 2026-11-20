@@ -69,6 +69,7 @@ const (
 	CollectorStatWalReceiver         = "stat_wal_receiver"
 	CollectorStatioUserIndexes       = "statio_user_indexes"
 	CollectorStatioUserTables        = "statio_user_tables"
+	CollectorVersion                 = "version"
 	CollectorWal                     = "wal"
 	CollectorXlogLocation            = "xlog_location"
 
@@ -237,6 +238,7 @@ func DefaultCollectorConfig() map[string]bool {
 		CollectorStatWalReceiver:         false,
 		CollectorStatioUserIndexes:       false,
 		CollectorStatioUserTables:        true,
+		CollectorVersion:                 true,
 		CollectorWal:                     true,
 		CollectorXlogLocation:            false,
 

@@ -1,5 +1,7 @@
 ## main / (unreleased)
 
+* [CHANGE] Move the `pg_static` metric from the legacy exporter path to a native `version` collector (enabled by default). Metric name, `version`/`short_version` labels and help text are unchanged, but the legacy `server` and `--constantLabels` labels are no longer attached. Like other server-scoped collectors it is emitted once, for the first data source: with several data sources and no auto-discovery, the legacy per-data-source series (told apart by `server`) become one. It is now also controlled by `--[no-]collector.version`; `--disable-default-metrics` still disables it. Like other native collectors, it does not apply `--metric-prefix`.
+
 ## 0.21.1 / 2026-11-18
 
 * [CHANGE] Fix container image publishing #1469
