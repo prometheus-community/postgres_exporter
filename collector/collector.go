@@ -321,9 +321,18 @@ func (p PostgresCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 	p.collectFromConnection(ctx, inst, ch, nil)
 
-	if p.databaseDiscovery != nil {
+	if p.databaseDiscovery != nil && p.hasDatabaseScopedCollectors() {
 		p.collectDiscoveredDatabases(ctx, inst, ch)
 	}
+}
+
+func (p PostgresCollector) hasDatabaseScopedCollectors() bool {
+	for name := range p.Collectors {
+		if factories[name].scope == databaseScope {
+			return true
+		}
+	}
+	return false
 }
 
 // collectDiscoveredDatabases discovers every other database on the same
@@ -376,6 +385,17 @@ func (p PostgresCollector) collectFromConnection(ctx context.Context, inst *inst
 		}(name, c)
 	}
 	wg.Wait()
+}
+
+func (p *PostgresCollector) withCollectors(names map[string]bool) *PostgresCollector {
+	filtered := *p
+	filtered.Collectors = make(map[string]Collector, len(names))
+	for name := range names {
+		if c, ok := p.Collectors[name]; ok {
+			filtered.Collectors[name] = c
+		}
+	}
+	return &filtered
 }
 
 func (p *PostgresCollector) Close() error {

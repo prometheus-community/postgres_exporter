@@ -33,7 +33,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	prometheuscollectors "github.com/prometheus/client_golang/prometheus/collectors"
 	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/promslog"
 	"github.com/prometheus/exporter-toolkit/bootstrap"
 	"github.com/prometheus/exporter-toolkit/web"
@@ -282,14 +281,10 @@ func (s *exporterServer) newMetricsHandler(b *bootstrap.Bootstrap) (http.Handler
 			prometheuscollectors.NewProcessCollector(prometheuscollectors.ProcessCollectorOpts{}),
 		)
 	}
-	for _, collector := range runtime.Collectors() {
-		registry.MustRegister(collector)
-	}
-
 	b.Handle("/probe", b.MaxRequestsHandler(handleProbe(logger, authHandler, cfg)))
 	b.Handle("/debug/", http.DefaultServeMux)
 
-	metricsHandler := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
+	metricsHandler := handleMetrics(registry, runtime)
 
 	b.HandleFunc("/-/reload", handleReload(authHandler, *configFile))
 

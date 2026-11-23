@@ -16,11 +16,15 @@
 package collector
 
 import (
+	"bytes"
 	"database/sql"
+	"log/slog"
+	"net/url"
 	"os"
+	"strings"
 	"testing"
 
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/promslog"
 )
@@ -110,5 +114,88 @@ func TestPostgresCollectorRunsDatabaseScopedCollectorsAgainstDiscoveredDatabases
 	}
 	if !sawDiscoveredDatabase {
 		t.Fatalf("no stat_user_tables metric observed for table %q in discovered database %q", "t", discoveredDB)
+	}
+}
+
+func TestPostgresCollectorSkipsDiscoveryWithoutDatabaseScopedCollectors(t *testing.T) {
+	primaryDSN := os.Getenv("DATA_SOURCE_NAME")
+	if primaryDSN == "" {
+		t.Skip("DATA_SOURCE_NAME not set")
+	}
+	primaryURL, err := url.Parse(primaryDSN)
+	if err != nil || primaryURL.Scheme == "" {
+		t.Skip("DATA_SOURCE_NAME is not a URL")
+	}
+
+	admin, err := sql.Open("postgres", primaryDSN)
+	if err != nil {
+		t.Fatalf("sql.Open() error = %v", err)
+	}
+	defer admin.Close()
+
+	var lockedDB string
+	err = admin.QueryRow(`SELECT datname FROM pg_database WHERE datallowconn AND NOT datistemplate AND datname <> current_database() ORDER BY datname LIMIT 1`).Scan(&lockedDB)
+	if err == sql.ErrNoRows {
+		t.Skip("no other database to discover")
+	}
+	if err != nil {
+		t.Fatalf("find database to discover: %v", err)
+	}
+
+	const (
+		role     = "pe_discovery_user"
+		password = "pe_discovery_password"
+	)
+	quotedDB := pq.QuoteIdentifier(lockedDB)
+	admin.Exec("DROP ROLE IF EXISTS " + role)
+	defer func() {
+		admin.Exec("GRANT CONNECT ON DATABASE " + quotedDB + " TO PUBLIC")
+		admin.Exec("DROP ROLE IF EXISTS " + role)
+	}()
+	for _, stmt := range []string{
+		"CREATE ROLE " + role + " LOGIN PASSWORD '" + password + "'",
+		"REVOKE CONNECT ON DATABASE " + quotedDB + " FROM PUBLIC",
+	} {
+		if _, err := admin.Exec(stmt); err != nil {
+			t.Fatalf("%s: %v", stmt, err)
+		}
+	}
+
+	roleURL := *primaryURL
+	roleURL.User = url.UserPassword(role, password)
+
+	tests := []struct {
+		name          string
+		collectors    []string
+		wantDiscovery bool
+	}{
+		{name: "server-scoped only", collectors: []string{settingsSubsystem}, wantDiscovery: false},
+		{name: "database-scoped", collectors: []string{settingsSubsystem, userTableSubsystem}, wantDiscovery: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var logs bytes.Buffer
+			logger := slog.New(slog.NewTextHandler(&logs, nil))
+
+			c, err := NewPostgresCollector(logger, nil, roleURL.String(), test.collectors, WithDatabaseDiscovery(nil, nil, 0))
+			if err != nil {
+				t.Fatalf("NewPostgresCollector() error = %v", err)
+			}
+			defer c.Close()
+
+			reg := prometheus.NewRegistry()
+			if err := reg.Register(c); err != nil {
+				t.Fatalf("Register() error = %v", err)
+			}
+			if _, err := reg.Gather(); err != nil {
+				t.Fatalf("Gather() error = %v", err)
+			}
+
+			tried := strings.Contains(logs.String(), "failed to connect to discovered database") &&
+				strings.Contains(logs.String(), lockedDB)
+			if tried != test.wantDiscovery {
+				t.Fatalf("connected to discovered database %q = %t, want %t; logs:\n%s", lockedDB, tried, test.wantDiscovery, logs.String())
+			}
+		})
 	}
 }

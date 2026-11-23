@@ -1,5 +1,8 @@
 ## main / (unreleased)
 
+* [FEATURE] Add `collect[]` and `exclude[]` parameters to `/metrics` and `/probe` to select collectors per scrape
+* [ENHANCEMENT] Skip connecting to discovered databases when no database-scoped collector is enabled
+
 ## 0.21.1 / 2026-11-18
 
 * [CHANGE] Fix container image publishing #1469

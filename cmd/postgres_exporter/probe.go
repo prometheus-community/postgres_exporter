@@ -20,8 +20,6 @@ import (
 
 	"github.com/prometheus-community/postgres_exporter/collector"
 	"github.com/prometheus-community/postgres_exporter/config"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func handleProbe(logger *slog.Logger, authHandler *config.Handler, baseConfig config.Config) http.HandlerFunc {
@@ -84,15 +82,15 @@ func handleProbe(logger *slog.Logger, authHandler *config.Handler, baseConfig co
 			}
 		}()
 
-		registry := prometheus.NewRegistry()
-		for _, collector := range runtime.Collectors() {
-			registry.MustRegister(collector)
+		collectors, err := runtime.FilteredCollectors(params["collect[]"], params["exclude[]"])
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
 
 		_ = ctx
 
 		// TODO check success, etc
-		h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
-		h.ServeHTTP(w, r)
+		newScrapeHandler(collectors...).ServeHTTP(w, r)
 	}
 }
