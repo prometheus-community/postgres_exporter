@@ -61,6 +61,37 @@ scrape_configs:
         replacement: 127.0.0.1:9116  # The postgres exporter's real hostname:port.
 ```
 
+## Selecting collectors per scrape
+
+Both `/metrics` and `/probe` accept `collect[]` and `exclude[]` URL parameters, which restrict a single scrape to a subset of the collectors enabled by flags. This allows scraping expensive collectors, such as `stat_statements`, from the same exporter with a longer `scrape_interval` and `scrape_timeout` than the rest.
+
+* `collect[]=<name>` runs only the listed collectors. The legacy metrics (`pg_up`, the default metrics, and `queries.yaml`) are not collected.
+* `exclude[]=<name>` runs every enabled collector except the listed ones, together with the legacy metrics.
+
+A request returns `400 Bad Request` when it combines `collect[]` and `exclude[]`, names an unknown collector, asks to `collect[]` a collector disabled by flags, or excludes every enabled collector. On `/metrics`, the exporter's own metrics (`go_*`, `process_*`, `postgres_exporter_*`) are returned with or without a filter, unless disabled with `--web.disable-exporter-metrics`.
+
+Example Prometheus config for an exporter started with `--collector.stat_statements --collection-timeout=50s`:
+```yaml
+scrape_configs:
+  - job_name: 'postgres'
+    scrape_interval: 30s
+    params:
+      exclude[]: [stat_statements]
+    static_configs:
+      - targets: ['127.0.0.1:9187']
+  - job_name: 'postgres_stat_statements'
+    scrape_interval: 5m
+    scrape_timeout: 1m
+    params:
+      collect[]: [stat_statements]
+    static_configs:
+      - targets: ['127.0.0.1:9187']
+```
+
+The same parameters can be combined with `target` and `auth_module` on `/probe`.
+
+`--collection-timeout` is a single exporter-wide setting and applies to every scrape, filtered or not; the `scrape_timeout` of a job is not passed to the exporter. Collectors still running when `--collection-timeout` expires report `pg_scrape_collector_success` 0 and their metrics are omitted, so a `scrape_timeout` longer than `--collection-timeout` does not give them more time. Set `--collection-timeout` a little below the longest `scrape_timeout`, as in the example above, so that the response reaches Prometheus before the scrape times out.
+
 ## Configuration File
 
 The configuration file controls the behavior of the exporter. It can be set using the `--config.file` command line flag and defaults to `postgres_exporter.yml`. Set `--config.file=""` to run without a configuration file.

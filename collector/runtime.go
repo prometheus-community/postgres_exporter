@@ -17,6 +17,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/prometheus-community/postgres_exporter/config"
@@ -27,6 +29,7 @@ import (
 type Runtime struct {
 	exporter          *exporter.Exporter
 	postgresCollector *PostgresCollector
+	collectorStates   map[string]bool
 }
 
 func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*Runtime, error) {
@@ -39,8 +42,11 @@ func NewRuntime(validatedConfig config.ValidatedConfig, logger *slog.Logger) (*R
 	cfg := validatedConfig.Config()
 
 	exporterCollector := exporter.NewExporter(cfg.DataSourceNames, logger, exporterOptions(cfg)...)
+	collectorStates := config.DefaultCollectorConfig()
+	maps.Copy(collectorStates, cfg.Collectors)
 	runtime := &Runtime{
-		exporter: exporterCollector,
+		exporter:        exporterCollector,
+		collectorStates: collectorStates,
 	}
 
 	if len(cfg.DataSourceNames) == 0 {
@@ -85,6 +91,45 @@ func (r *Runtime) Collectors() []prometheus.Collector {
 		collectors = append(collectors, r.postgresCollector)
 	}
 	return collectors
+}
+
+func (r *Runtime) FilteredCollectors(include, exclude []string) ([]prometheus.Collector, error) {
+	if len(include) > 0 && len(exclude) > 0 {
+		return nil, errors.New("combined collect[] and exclude[] filters are not allowed")
+	}
+	if len(include) == 0 && len(exclude) == 0 {
+		return r.Collectors(), nil
+	}
+	for _, name := range slices.Concat(include, exclude) {
+		if _, ok := r.collectorStates[name]; !ok {
+			return nil, fmt.Errorf("unknown collector %q", name)
+		}
+	}
+
+	selected := make(map[string]bool)
+	var collectors []prometheus.Collector
+	if len(include) > 0 {
+		for _, name := range include {
+			if !r.collectorStates[name] {
+				return nil, fmt.Errorf("collector %q is disabled", name)
+			}
+			selected[name] = true
+		}
+	} else {
+		for name, enabled := range r.collectorStates {
+			if enabled && !slices.Contains(exclude, name) {
+				selected[name] = true
+			}
+		}
+		if len(selected) == 0 {
+			return nil, errors.New("exclude[] filter disables every enabled collector")
+		}
+		collectors = append(collectors, r.exporter)
+	}
+	if r.postgresCollector != nil {
+		collectors = append(collectors, r.postgresCollector.withCollectors(selected))
+	}
+	return collectors, nil
 }
 
 func (r *Runtime) Close() error {
