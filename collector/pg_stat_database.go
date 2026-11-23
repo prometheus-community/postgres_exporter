@@ -197,7 +197,7 @@ var (
 		[]string{"datid", "datname"},
 		prometheus.Labels{},
 	)
-	// Deprecated: remove this counter two releases after introducing the timestamp gauge.
+	// Deprecated: remove this counter after v0.22.0.
 	statDatabaseStatsReset = prometheus.NewDesc(prometheus.BuildFQName(
 		namespace,
 		statDatabaseSubsystem,
